@@ -1,0 +1,61 @@
+name: deploy-rules
+
+# Despliega las reglas de seguridad de Firestore (firestore.rules) al
+# proyecto indicado (secrets FIREBASE_SERVICE_ACCOUNT + FIREBASE_PROJECT_ID).
+#
+# Disparos:
+#   - push a main/dev que incluya cambios en firestore.rules.
+#   - workflow_dispatch, con input `force` para desplegar aunque las
+#     reglas no hayan cambiado (útil tras (re)crear los secrets).
+
+on:
+  push:
+    branches: [main, dev]
+    paths: ["firestore.rules"]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Desplegar aunque firestore.rules no haya cambiado"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-rules:
+    name: Deploy Firestore rules
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      FIREBASE_PROJECT: ${{ secrets.FIREBASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Decidir si hay que desplegar
+        run: |
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            echo "should=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          if git diff --quiet HEAD~1 HEAD -- firestore.rules 2>/dev/null; then
+            echo "should=false" >> "$GITHUB_ENV"
+          else
+            echo "should=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Saltar el despliegue
+        if: env.should != 'true' || env.FIREBASE_SA == '' || env.FIREBASE_PROJECT == ''
+        run: echo "firestore.rules sin cambios o secrets ausentes; skipping."
+
+      - name: Escribir la clave de la service account
+        if: env.should == 'true' && env.FIREBASE_SA != '' && env.FIREBASE_PROJECT != ''
+        run: echo "$FIREBASE_SA" > "$RUNNER_TEMP/serviceAccountKey.json"
+
+      - name: Desplegar firestore.rules
+        if: env.should == 'true' && env.FIREBASE_SA != '' && env.FIREBASE_PROJECT != ''
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/serviceAccountKey.json
+        run: npx --yes firebase-tools@latest deploy --only firestore:rules --project "$FIREBASE_PROJECT" --non-interactive --force
