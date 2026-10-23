@@ -10,19 +10,20 @@
 // Versión de despliegue/caché. Se incrementa con scripts/bump-version.sh
 // y se usa para versionar las URLs de los assets (?v=...) de modo que
 // cada deploy invalide las cachés del service worker y del navegador.
-export const APP_VERSION = '20261002';
+export const APP_VERSION = '20261003';
 
 // Configuración de tu proyecto de Firebase
 // (Firebase console → Configuración del proyecto → Tus apps → SDK)
 export const firebaseConfig = {
-    apiKey: "AIzaSyCVA1d9FH26eOJcJ30y--9H_2gAzlZ8RGc",
-    authDomain: "registro-personal-gjh.firebaseapp.com",
-    projectId: "registro-personal-gjh",
-    storageBucket: "registro-personal-gjh.firebasestorage.app",
-    messagingSenderId: "797249707218",
-    appId: "1:797249707218:web:4053d75f5a0c17029e610b",
-    measurementId: "G-HH7JJYF8SR"
-  };
+  apiKey: "AIzaSyA7Hp6Udu07Eh83Ti4Od5zHWqrV73X_0Yg",
+  authDomain: "personal-tracker-e0783.firebaseapp.com",
+  projectId: "personal-tracker-e0783",
+  storageBucket: "personal-tracker-e0783.firebasestorage.app",
+  messagingSenderId: "504174599040",
+  appId: "1:504174599040:web:6c8a0e32ae7d768fd1ff65",
+  measurementId: "G-HWP0MH3ZF9"
+};
+
 
   // La lista de quién puede entrar vive ÚNICAMENTE en la regla
   // isAllowedUser() de firestore.rules (issue #195): se eliminó
