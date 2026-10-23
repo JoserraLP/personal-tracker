@@ -1,0 +1,5942 @@
+/* =========================================================
+   MI REGISTRO — hoja de estilos base (armazón de la app)
+   Variables de color/tipografía, pantalla de acceso, cabecera,
+   pestañas, modal (el armazón, no su contenido), pie, perfil,
+   estadísticas, amigos y notificaciones.
+   El contenido específico de cada sección (hoy, "ocio": pelis,
+   series y libros) vive en su propia carpeta con su propio CSS,
+   por ejemplo ocio/ocio.css.
+   ========================================================= */
+
+/* =========================================================
+   MI REGISTRO — hoja de estilos
+   Concepto: cuaderno de fichas de biblioteca + entradas de cine
+   sobre un fondo de "mesa de lectura" oscura.
+   ========================================================= */
+
+:root {
+  /* Paleta — modo oscuro (por defecto) */
+  --ink: #171512;
+  --ink-raised: #211e19;
+  --ink-soft: #948a76;
+  --paper: #f1ead9;
+  --paper-dim: #e3dac4;
+  --paper-line: #c9bc9c;
+  --teal-reel: #2b6459;
+  --teal-reel-dark: #1c4a41;
+  --ochre-spine: #b9822e;
+  --ochre-spine-dark: #8f6522;
+  --stamp: #a63b2e;
+  --stamp-dark: #7e2c22;
+  --games: #7a5a9e;
+  --games-dark: #5d4780;
+
+  /* Neutros */
+  --white: #ffffff;
+  --backdrop: rgba(10, 9, 7, 0.65);
+
+  /* Opacidades de ink (fondo oscuro) */
+  --ink-alpha-06: rgba(23, 21, 18, 0.06);
+  --ink-alpha-08: rgba(23, 21, 18, 0.08);
+  --ink-alpha-10: rgba(23, 21, 18, 0.10);
+  --ink-alpha-15: rgba(23, 21, 18, 0.15);
+  --ink-alpha-20: rgba(23, 21, 18, 0.20);
+
+  /* Opacidades de paper (fondo claro) */
+  --paper-alpha-10: rgba(241, 234, 217, 0.10);
+  --paper-alpha-14: rgba(241, 234, 217, 0.14);
+  --paper-alpha-20: rgba(241, 234, 217, 0.20);
+  --paper-alpha-30: rgba(241, 234, 217, 0.30);
+  --paper-alpha-35: rgba(241, 234, 217, 0.35);
+  --paper-alpha-40: rgba(241, 234, 217, 0.40);
+  --paper-alpha-92: rgba(241, 234, 217, 0.92);
+
+  /* Opacidades de acentos */
+  --teal-alpha-06: rgba(43, 100, 89, 0.06);
+  --teal-alpha-18: rgba(43, 100, 89, 0.18);
+  --ochre-alpha-08: rgba(185, 130, 46, 0.08);
+  --ochre-alpha-12: rgba(185, 130, 46, 0.12);
+  --ochre-alpha-14: rgba(185, 130, 46, 0.14);
+  --stamp-alpha-12: rgba(166, 59, 46, 0.12);
+
+  /* Fondos de estado para tarjetas (compartidos por ambos temas) */
+  --bg-state-en_curso: #c3ddd6;
+  --bg-state-completado: #f0d9a3;
+  --bg-state-standby: #d9d2c0;
+  --bg-state-abandonado: #f0c2b8;
+
+  /* Filtros para el icono del date picker */
+  --date-picker-filter: invert(1);
+
+  /* Tipografía */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
+
+  --radius: 3px;
+  --shadow-card: 0 10px 24px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 20px 45px rgba(0, 0, 0, 0.5);
+}
+
+/* =========================================================
+   NEGRO PURO (issues #43 y #165)
+   Delta block sobre :root ampliado en la issue #165: además
+   del fondo en negro absoluto, TODAS las superficies de la
+   familia oscura (tarjetas, secciones, dropdowns, modales,
+   entradas, estados) pasan a negro/near-black y la tinta a
+   papel, para que el modo concuerde con el tema igual que
+   el blanco puro con la familia clara. Las superficies que
+   usan --paper como fondo requieren los overrides de la
+   sección "AJUSTES PUNTUALES DEL TEMA — MODO NEGRO PURO"
+   más abajo (mismo patrón de selectores agrupados que la
+   familia clara).
+   Contraste (sobre #000/#0a0a0a): --paper #f1ead9 ≈ 17.5:1
+   (AAA); --ink-soft #948a76 ≈ 6.2:1 (AA); acentos claros
+   --teal-reel-dark #4f9c8e ≈ 6.6:1, --ochre-spine-dark
+   #c99a4e ≈ 8.4:1, --stamp-dark #cf6655 ≈ 4.8:1 (AA);
+   fondos de estado oscuros con texto papel ≈ 10:1 (AAA).
+   ========================================================= */
+[data-theme="black"] {
+  --ink: #000000;
+  --ink-raised: #0a0a0a;
+  --paper-dim: #111111;
+  --white: #0f0f0f;
+
+  /* Bordes sutiles claros sobre superficies oscuras */
+  --paper-line: rgba(241, 234, 217, 0.28);
+
+  /* Tintes de papel (claro translúcido): hovers, focos, líneas
+     divisorias y sombras sobre las superficies ahora oscuras */
+  --ink-alpha-06: rgba(241, 234, 217, 0.06);
+  --ink-alpha-08: rgba(241, 234, 217, 0.08);
+  --ink-alpha-10: rgba(241, 234, 217, 0.10);
+  --ink-alpha-15: rgba(241, 234, 217, 0.15);
+  --ink-alpha-20: rgba(241, 234, 217, 0.20);
+
+  /* Estados de tarjeta en versión oscura: mismo matiz semántico
+     con fondo oscuro (los sellos de las tarjetas, que se
+     mantienen claros sobre papel, usan los hex originales
+     hardcodeados en los overrides) */
+  --bg-state-en_curso: #12372f;
+  --bg-state-completado: #33291a;
+  --bg-state-standby: #26241e;
+  --bg-state-abandonado: #3d1f18;
+
+  /* Acentos oscuros → variantes claras legibles sobre las
+     superficies oscuras (los usos sobre fondos claros quedan
+     cubiertos por los overrides de los sellos) */
+  --teal-reel-dark: #4f9c8e;
+  --ochre-spine-dark: #c99a4e;
+  --stamp-dark: #cf6655;
+  --games-dark: #9a7bc4;
+}
+
+/* =========================================================
+   MODO CLARO
+   ---------------------------------------------------------
+   Semántica de colores (común a ambos modos):
+     --ink   = color de tinta (texto principal) y, en el modo
+               oscuro, fondo general de la app
+     --paper = color de papel (superficies/tarjetas) y, en el
+               modo oscuro, texto principal
+   En modo claro se invierte la relación fondo/texto: el fondo
+   general es claro (--paper-dim) y la tinta oscura (--ink),
+   mientras que las tarjetas siguen siendo blancas (--paper).
+   ========================================================= */
+[data-theme="light"] {
+  --ink: #2c2822;
+  --ink-raised: #ffffff;
+  --ink-soft: #6b6355;
+  --paper: #ffffff;
+  --paper-dim: #f5f0e8;
+  --paper-line: #d9cfc0;
+  --teal-reel: #2b6459;
+  --teal-reel-dark: #1c4a41;
+  --ochre-spine: #b9822e;
+  --ochre-spine-dark: #8f6522;
+  --stamp: #a63b2e;
+  --stamp-dark: #8c3025;
+  --games: #7a5a9e;
+  --games-dark: #5d4780;
+
+  --white: #ffffff;
+  --backdrop: rgba(0, 0, 0, 0.25);
+
+  /* Opacidades de ink (tinta oscura): tintes de hover/foco
+     que funcionan sobre las superficies claras */
+  --ink-alpha-06: rgba(44, 40, 34, 0.06);
+  --ink-alpha-08: rgba(44, 40, 34, 0.08);
+  --ink-alpha-10: rgba(44, 40, 34, 0.10);
+  --ink-alpha-15: rgba(44, 40, 34, 0.15);
+  --ink-alpha-20: rgba(44, 40, 34, 0.20);
+
+  /* Opacidades de paper: los que se usan como bordes sobre el
+     fondo claro pasan a ser oscuros; el 92% se mantiene blanco
+     porque hace de fondo translúcido de los sellos de las tarjetas */
+  --paper-alpha-10: rgba(255, 255, 255, 0.10);
+  --paper-alpha-14: rgba(44, 40, 34, 0.14);
+  --paper-alpha-20: rgba(44, 40, 34, 0.20);
+  --paper-alpha-30: rgba(44, 40, 34, 0.30);
+  --paper-alpha-35: rgba(44, 40, 34, 0.35);
+  --paper-alpha-40: rgba(44, 40, 34, 0.40);
+  --paper-alpha-92: rgba(255, 255, 255, 0.92);
+
+  --teal-alpha-06: rgba(43, 100, 89, 0.06);
+  --teal-alpha-18: rgba(43, 100, 89, 0.18);
+  --ochre-alpha-08: rgba(185, 130, 46, 0.08);
+  --ochre-alpha-12: rgba(185, 130, 46, 0.12);
+  --ochre-alpha-14: rgba(185, 130, 46, 0.14);
+  --stamp-alpha-12: rgba(166, 59, 46, 0.12);
+
+  --bg-state-en_curso: #c3ddd6;
+  --bg-state-completado: #f0d9a3;
+  --bg-state-standby: #d9d2c0;
+  --bg-state-abandonado: #f0c2b8;
+
+  --date-picker-filter: none;
+
+  --shadow-card: 0 8px 20px rgba(0, 0, 0, 0.08);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* =========================================================
+   BLANCO PURO (issue #43)
+   Delta block sobre :root con la paleta de la familia clara
+   llevada al extremo: fondo, tarjetas y superficies en blanco
+   absoluto (#ffffff) y tinta negra pura (#000000). Los
+   elementos que usan --ink como fondo / --paper como texto
+   requieren los mismos overrides que el modo claro: ver la
+   sección "Ajustes puntuales" más abajo, donde cada selector
+   de [data-theme="light"] se repite para [data-theme="white"].
+   Contraste: #000 sobre #fff = 21:1 (AAA); --ink-soft #6b6355
+   sobre #fff ≈ 5.9:1 (AA).
+   ========================================================= */
+[data-theme="white"] {
+  --ink: #000000;
+  --ink-raised: #ffffff;
+  --ink-soft: #6b6355;
+  --paper: #ffffff;
+  --paper-dim: #ffffff;
+  --paper-line: #d9cfc0;
+
+  --backdrop: rgba(0, 0, 0, 0.25);
+
+  /* Opacidades de ink (negro puro): tintes de hover/foco */
+  --ink-alpha-06: rgba(0, 0, 0, 0.06);
+  --ink-alpha-08: rgba(0, 0, 0, 0.08);
+  --ink-alpha-10: rgba(0, 0, 0, 0.10);
+  --ink-alpha-15: rgba(0, 0, 0, 0.15);
+  --ink-alpha-20: rgba(0, 0, 0, 0.20);
+
+  /* Opacidades de paper: bordes oscuros sobre fondo blanco;
+     el 10% y el 92% se mantienen blancos (sellos translúcidos) */
+  --paper-alpha-10: rgba(255, 255, 255, 0.10);
+  --paper-alpha-14: rgba(0, 0, 0, 0.14);
+  --paper-alpha-20: rgba(0, 0, 0, 0.20);
+  --paper-alpha-30: rgba(0, 0, 0, 0.30);
+  --paper-alpha-35: rgba(0, 0, 0, 0.35);
+  --paper-alpha-40: rgba(0, 0, 0, 0.40);
+  --paper-alpha-92: rgba(255, 255, 255, 0.92);
+
+  /* Sombra algo más fuerte que en claro: única separación de
+     las tarjetas blancas sobre fondo blanco puro */
+  --date-picker-filter: none;
+
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-pop: 0 16px 44px rgba(0, 0, 0, 0.18);
+}
+
+/* =========================================================
+   AJUSTES PUNTUALES DE TEMA
+   La sección "Ajustes puntuales del modo claro" que sigue lo
+   es también del modo blanco puro: los elementos que usan
+   --ink como fondo (fondo general) o --paper como color de
+   texto necesitan inversión explícita en toda la familia
+   clara (light y white).
+   ========================================================= */
+
+[data-theme="light"] html,
+[data-theme="white"] html,
+[data-theme="light"] body,
+[data-theme="white"] body {
+  background: var(--paper-dim);
+  color: var(--ink);
+}
+
+[data-theme="light"] .auth-screen,
+[data-theme="white"] .auth-screen {
+  background:
+    radial-gradient(circle at 20% 20%, var(--teal-alpha-18, rgba(43, 100, 89, 0.18)), transparent 45%),
+    radial-gradient(circle at 80% 80%, var(--ochre-alpha-14, rgba(185, 130, 46, 0.14)), transparent 45%),
+    var(--paper-dim);
+}
+
+[data-theme="light"] .profile-view,
+[data-theme="white"] .profile-view {
+  background: var(--paper-dim);
+  color: var(--ink);
+}
+
+[data-theme="light"] .icon-btn,
+[data-theme="white"] .icon-btn {
+  color: var(--ink);
+}
+
+[data-theme="light"] .btn-link,
+[data-theme="white"] .btn-link {
+  color: var(--ink);
+}
+
+[data-theme="light"] .btn--outline-dark,
+[data-theme="white"] .btn--outline-dark {
+  color: var(--ink);
+  border-color: var(--paper-alpha-40);
+}
+[data-theme="light"] .btn--outline-dark:hover,
+[data-theme="white"] .btn--outline-dark:hover {
+  background: var(--ink-alpha-10);
+}
+
+[data-theme="light"] .app-footer {
+  color: rgba(44, 40, 34, 0.55);
+}
+[data-theme="white"] .app-footer {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="light"] .profile-view__header select,
+[data-theme="white"] .profile-view__header select {
+  color: var(--ink);
+}
+
+[data-theme="light"] .settings-select,
+[data-theme="white"] .settings-select {
+  background: var(--white);
+  color: var(--ink);
+  border-color: var(--paper-alpha-30);
+}
+
+[data-theme="light"] .stats-range-fields,
+[data-theme="white"] .stats-range-fields {
+  color: var(--ink);
+}
+[data-theme="light"] .stats-range-fields input[type="date"],
+[data-theme="white"] .stats-range-fields input[type="date"] {
+  background: var(--white);
+  color: var(--ink);
+  border-color: var(--paper-line);
+}
+
+[data-theme="light"] .global-search__input,
+[data-theme="white"] .global-search__input {
+  color: var(--ink);
+}
+/* El dropdown de resultados y sus ítems usan --paper como fondo y
+   --ink como texto en ambos temas (ver sección Buscador global), así
+   que no necesitan override específico de modo claro. */
+
+[data-theme="light"] .activity-event__text,
+[data-theme="white"] .activity-event__text {
+  color: var(--ink);
+}
+
+/* En blanco puro el dropdown es blanco y su hover usa --paper-dim
+   (#ffffff), que lo haría invisible: se usa un tinte de tinta */
+[data-theme="white"] .profile-dropdown__item:hover {
+  background: var(--ink-alpha-06);
+}
+
+[data-theme="light"] .switch__input:focus-visible + .switch__slider,
+[data-theme="white"] .switch__input:focus-visible + .switch__slider {
+  outline-color: var(--ink);
+}
+
+/* =========================================================
+   AJUSTES PUNTUALES DEL TEMA — MODO NEGRO PURO (issue #165)
+   La familia oscura usa --paper como superficie (fondo) y
+   --ink como texto sobre ella. En negro puro las superficies
+   pasan a oscuras (--ink-raised) y el texto a papel, igual
+   que la familia clara invierte los mismos papeles al revés
+   (--ink fondo / --paper texto). Selectores agrupados: una
+   sola fuente de verdad por regla, mismo patrón que los
+   overrides de light/white.
+   ========================================================= */
+
+/* Superficies de papel → superficies oscuras. Borde sutil:
+   en negro puro las sombras sobre fondo negro no separan. */
+[data-theme="black"] .skip-link,
+[data-theme="black"] .btn--primary,
+[data-theme="black"] .library-card,
+[data-theme="black"] .app-sidebar,
+[data-theme="black"] .back-to-top,
+[data-theme="black"] .tab.is-active,
+[data-theme="black"] .modal__card,
+[data-theme="black"] .modal__close,
+[data-theme="black"] .toast,
+[data-theme="black"] .notif-dropdown,
+[data-theme="black"] .profile-dropdown,
+[data-theme="black"] .stat-tile,
+[data-theme="black"] .chart-card,
+[data-theme="black"] .profile-subtab.is-active,
+[data-theme="black"] .friend-subtab.is-active,
+[data-theme="black"] .friend-card,
+[data-theme="black"] .friend-chip.is-active,
+[data-theme="black"] .gym-summary-chip.is-active,
+[data-theme="black"] .gym-summary-card,
+[data-theme="black"] .settings-card,
+[data-theme="black"] .global-search__results {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+
+/* Hover del botón primario: tinte claro sobre la superficie oscura */
+[data-theme="black"] .btn--primary:hover {
+  background: var(--paper-alpha-14);
+}
+
+/* Icono de la pestaña activa: seguía a --ink (ahora #000, invisible) */
+[data-theme="black"] .tab.is-active svg {
+  color: var(--paper);
+}
+
+/* Texto que usaba tinta sobre superficies ahora oscuras */
+[data-theme="black"] .app-sidebar__link,
+[data-theme="black"] .app-sidebar__close:hover,
+[data-theme="black"] .modal__close:hover,
+[data-theme="black"] .profile-dropdown__item,
+[data-theme="black"] .btn--outline,
+[data-theme="black"] .global-search__item-title,
+[data-theme="black"] .global-search__friend-name,
+[data-theme="black"] .global-search__item-status.chip,
+[data-theme="black"] .global-search__type-btn:hover,
+[data-theme="black"] .global-search__clear:hover,
+[data-theme="black"] .switch__input:focus-visible + .switch__slider {
+  color: var(--paper);
+}
+
+/* Cierre del modal: tinta suave legible sobre el chip oscuro */
+[data-theme="black"] .modal__close {
+  color: var(--ink-soft);
+}
+
+/* Enlaces y avisos con acento de peligro: variante clara del
+   acento (--stamp-dark pasa a #cf6655 en negro puro) */
+[data-theme="black"] .profile-dropdown__item--logout,
+[data-theme="black"] .notif-dropdown__header .btn-link,
+[data-theme="black"] .auth-error,
+[data-theme="black"] .btn--danger,
+[data-theme="black"] .notif-row__delete:hover {
+  color: var(--stamp-dark);
+}
+/* El hover de .btn--danger no se toca: su fondo pasa a --stamp y el
+   texto a --paper (5.33:1), como en el modo oscuro */
+
+/* Píldoras y selects del menú (issue #220): en negro puro no hace
+   falta override — --ink-raised es #0a0a0a (fondo casi negro) con
+   texto --paper claro y borde --paper-alpha-30, y el hover usa
+   --paper-alpha-10 (tinte claro sobre negro). La píldora de borrar
+   usa --stamp-dark de la regla de arriba y su hover rellena --stamp. */
+
+/* Filas de notificación: sobre el dropdown oscuro, un tono distinto
+   y un borde sutil para separarlas */
+[data-theme="black"] .notif-row {
+  background: var(--ink);
+  border: 1px solid var(--paper-alpha-10);
+}
+
+/* Botón "marcar como visto" y "alta manual" de la búsqueda global:
+   acento claro sobre el dropdown oscuro */
+[data-theme="black"] .global-search__item-seen,
+[data-theme="black"] .global-search__item-seen:disabled,
+[data-theme="black"] .global-search__manual-add {
+  color: var(--teal-reel-dark);
+}
+[data-theme="black"] .global-search__item-seen,
+[data-theme="black"] .global-search__item-seen:disabled {
+  border-color: var(--teal-reel-dark);
+}
+
+/* Hover de botones con acento (fondo claro + tinta oscura):
+   las variantes claras de los acentos como fondo mantienen
+   contraste AA con la tinta negra */
+[data-theme="black"] .toast__btn:hover,
+[data-theme="black"] .global-search__item-add:hover {
+  background: var(--teal-reel-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .global-search__item-add--books:hover {
+  background: var(--ochre-spine-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .global-search__item-add--games:hover {
+  background: var(--games-dark);
+  color: var(--ink);
+}
+
+/* Barra de acento de la pestaña activa: variante clara del acento
+   para el umbral gráfico 3:1 sobre la superficie oscura */
+[data-theme="black"] .tab--tv.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
+[data-theme="black"] .tab--movies.is-active { box-shadow: inset 0 3px 0 var(--stamp-dark); }
+[data-theme="black"] .tab--books.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+[data-theme="black"] .tab--games.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
+/* Pestañas de Recetas (issue #208): mismo patrón que las de Ocio,
+   reutilizando los acentos de la paleta con sus variantes claras
+   para el modo negro puro. */
+[data-theme="black"] .tab--recipes.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+[data-theme="black"] .tab--ingredients.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
+[data-theme="black"] .tab--menu.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
+[data-theme="black"] .tab--shopping.is-active { box-shadow: inset 0 3px 0 var(--stamp-dark); }
+/* Pestañas de Gimnasio (issue #62): mismo patrón que el resto.
+   Resumen (issue #269) reutiliza el violeta de los videojuegos. */
+[data-theme="black"] .tab--gym-summary.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
+[data-theme="black"] .tab--gym-workouts.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
+[data-theme="black"] .tab--gym-exercises.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+
+/* Iconos de los títulos de grupo de la búsqueda global: acentos
+   claros sobre el dropdown oscuro (en oscuro ya estaban sobre
+   papel, no sobre tinta) */
+[data-theme="black"] .global-search__group-title--tv svg { color: var(--teal-reel-dark); }
+[data-theme="black"] .global-search__group-title--movies svg { color: var(--stamp-dark); }
+[data-theme="black"] .global-search__group-title--books svg { color: var(--ochre-spine-dark); }
+[data-theme="black"] .global-search__group-title--games svg { color: var(--games-dark); }
+
+/* Interruptor: la bolita pasa a oscura (seguía siendo papel) */
+[data-theme="black"] .switch__slider::before {
+  background: var(--ink-raised);
+  border: 1px solid var(--paper-alpha-30);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Issue #92: nunca zoom automático al enfocar. iOS Safari y Android Chrome
+   hacen zoom si el font-size del campo es < 16px. Todos los campos >= 16px. */
+input, textarea, select { font-size: 16px; }
+
+/* Issue #275: nunca zoom por doble toque en interacciones.
+   touch-action: manipulation mantiene el panning y el pinch zoom
+   (accesibilidad: no deshabilita el zoom manual, ADR-042/ADR-016). */
+button, a, input, select, textarea { touch-action: manipulation; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* =========================================================
+   Skip link — visible solo al recibir foco
+   ========================================================= */
+
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 100;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  transition: top 0.15s ease;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: 0;
+  outline: 3px solid var(--teal-reel);
+  outline-offset: 0;
+}
+
+/* =========================================================
+   Foco visible mejorado para todos los elementos
+   ========================================================= */
+
+:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* Foco específico para componentes */
+
+.friend-card:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.profile-subtab:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.modal__close:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.notif-row__delete:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.season-toggle:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.list-row__action:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: -2px;
+}
+
+.item-card__btn:focus-visible {
+  outline-offset: -3px;
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 1px;
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.btn-link:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+
+/* =========================================================
+   Botones
+   ========================================================= */
+
+.btn {
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 0.65rem 1.2rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn--primary {
+  background: var(--paper);
+  color: var(--ink);
+}
+.btn--primary:hover {
+  background: var(--white);
+}
+
+.btn--small {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+/* Variante píldora (issue #220): mismas métricas que
+   .sort-select / .ingredients-filter__btn de Ocio. Declarada ANTES
+   de .btn--danger: para .btn--pill.btn--danger, este último gana
+   fondo/borde/color de peligro y el pill aporta radio/padding. */
+.btn--pill {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 1rem;
+}
+.btn--pill:hover {
+  background: var(--paper-alpha-10);
+}
+
+.btn--danger {
+  background: transparent;
+  color: var(--stamp);
+  border-color: var(--stamp);
+}
+.btn--danger:hover {
+  background: var(--stamp);
+  color: var(--paper);
+}
+
+/* =========================================================
+   Pantalla de acceso (ficha de socio)
+   ========================================================= */
+
+.auth-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 20% 20%, var(--teal-alpha-18, rgba(43, 100, 89, 0.18)), transparent 45%),
+    radial-gradient(circle at 80% 80%, var(--ochre-alpha-14, rgba(185, 130, 46, 0.14)), transparent 45%),
+    var(--ink);
+}
+
+.library-card {
+  background: var(--paper);
+  color: var(--ink);
+  width: min(380px, 100%);
+  padding: 2.4rem 2rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  position: relative;
+  text-align: left;
+}
+.library-card::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px dashed var(--paper-line);
+  pointer-events: none;
+}
+
+.library-card__eyebrow {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin: 0 0 0.6rem;
+}
+
+.library-card__title {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  line-height: 1.05;
+}
+
+.library-card__subtitle {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  margin: 0 0 1.6rem;
+}
+
+.auth-error {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--stamp-dark);
+}
+
+
+/* =========================================================
+   Cabecera de la app
+   ========================================================= */
+
+/* Cabecera fija en todos los dispositivos (issue #79): visible
+   siempre, aunque se haga scroll. Su fondo es el mismo que el de la
+   web (--ink en el tema papel / --paper-dim en claro) y no tiene
+   línea separadora (feedback iteración 4): cabecera y barra de
+   pestañas se integran con la página. z-index 46: un punto por
+   encima de la barra de pestañas (45) para que los dropdowns
+   anclados a la cabecera (hijos suyos) se pinten siempre completos
+   y por debajo de modales, backdrop del drawer y drawer. */
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 46;
+  background: var(--ink);
+  /* Deslizamiento suave al ocultarse/mostrarse con el scroll
+     (issue #137): la transición de visibility va retardada para que
+     el elemento siga siendo "clickeable" mientras se desliza. */
+  transition: transform 0.25s ease, visibility 0s 0s;
+}
+[data-theme="light"] .app-header,
+[data-theme="white"] .app-header {
+  background: var(--paper-dim);
+}
+
+.app {
+  max-width: 980px;
+  margin: 0 auto;
+  /* Padding superior: hueco para la cabecera fija (--header-h) +
+     1rem de aire. Padding inferior: hueco para la barra de pestañas
+     fija (--tabs-bar-h + margen seguro) + 1.5rem: la última fila y
+     el pie nunca quedan tapados por la barra (issue #79). */
+  padding: calc(var(--header-h) + 1rem) 1.25rem calc(var(--tabs-bar-h) + env(safe-area-inset-bottom, 0px) + 1.5rem);
+}
+
+/* En escritorio (≥768px) la barra de pestañas también es fija, bajo
+   la cabecera: el padding superior acumula ambos huecos y el inferior
+   vuelve al original de 4rem (ya no hay barra abajo). */
+@media (min-width: 768px) {
+  .app {
+    padding: calc(var(--header-h) + var(--tabs-bar-h) + 1rem) 1.25rem 4rem;
+  }
+}
+
+.app-header__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Altura fija: el header no envuelve (nowrap) y el contenido queda
+     alineado con #app (max-width 980px + 1.25rem de margen lateral) */
+  height: var(--header-h);
+  flex-wrap: nowrap;
+  gap: 1rem;
+  margin-bottom: 0;
+  max-width: 980px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 1.25rem;
+}
+
+/* #main-content es el destino del enlace "Saltar al contenido" y del
+   foco al cambiar de pestaña (js/app.js): el scroll-margin-top evita
+   que el foco/ancla queden ocultos bajo la cabecera fija (issue #79). */
+#main-content {
+  scroll-margin-top: calc(var(--header-h) + 1rem);
+}
+@media (min-width: 768px) {
+  #main-content {
+    scroll-margin-top: calc(var(--header-h) + var(--tabs-bar-h) + 1rem);
+  }
+}
+
+/* Barra de búsqueda global de la cabecera (issue #46): contenedor
+   relativo para anclar el dropdown de resultados bajo el input. */
+.search-bar-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Iconos SVG de los botones de la cabecera (hamburguesa, campana):
+   plano, trazo currentColor y ~1.15rem como el resto de icon-btn. */
+.icon-btn svg {
+  display: block;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* Issue #253: con la búsqueda global abierta, la hamburguesa del
+   toggle de la cabecera se transforma en una ✕ (al pulsarla se cierra
+   la búsqueda). Las 3 líneas del SVG (viewBox 24x24, y=6/12/18) rotan
+   sobre su propio centro (transform-box: fill-box) y las líneas 1 y 3
+   se trasladan 6px para cruzarse en (12,12); la central se desvanece.
+   La clase is-search-open la gestiona js/global-search.js. La ✕ hereda
+   currentColor de .icon-btn (var(--paper); var(--ink) en claro/blanco
+   puro), así que no necesita overrides de tema. Con prefers-reduced-
+   motion la transición se anula globalmente (media query de la línea
+   623). */
+#btn-sidebar-toggle svg line {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+#btn-sidebar-toggle.is-search-open svg line:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+#btn-sidebar-toggle.is-search-open svg line:nth-child(2) {
+  opacity: 0;
+}
+#btn-sidebar-toggle.is-search-open svg line:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* =========================================================
+   Barra lateral de navegación (issue #46)
+   Drawer fijo a la izquierda estilo Gmail: sale de pantalla con
+   translateX(-100%) y entra con transición de 0.25s. Usa la
+   "superficie de papel" (--paper/--ink) como los dropdowns de
+   notificaciones y perfil, válida en ambos temas. Al cerrar vuelve
+   a quedar fuera de pantalla (position:fixed no empuja el
+   contenido de .app).
+   ========================================================= */
+
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(300px, 85vw);
+  z-index: 60;
+  background: var(--paper);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  overflow-y: auto;
+  box-shadow: var(--shadow-pop);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform 0.25s ease, visibility 0s 0.25s;
+}
+.app-sidebar.is-open {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.25s ease, visibility 0s 0s;
+}
+
+.app-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--backdrop);
+  z-index: 55;
+}
+
+.app-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.app-sidebar__title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.app-sidebar__close {
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.3rem 0.45rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.app-sidebar__close:hover {
+  color: var(--ink);
+}
+
+.app-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* Footer inferior del drawer (issue #75): entradas pinned como
+   «Ajustes», empujadas al borde inferior y separadas con una línea. */
+.app-sidebar__footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--paper-line);
+}
+
+.app-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.app-sidebar__link svg {
+  flex-shrink: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.app-sidebar__link:hover {
+  background: var(--paper-dim);
+}
+.app-sidebar__link.is-active {
+  background: var(--teal-alpha-18);
+  font-weight: 600;
+}
+
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  position: relative;
+  /* margin-left: auto lo empuja a la derecha del header (de una sola
+     fila en todos los anchos) */
+  margin-left: auto;
+}
+
+.user-badge__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--paper-alpha-40);
+}
+
+/* Cabecera compacta en móvil (comentario de la issue #75): en ≤480px
+   TODO va en una sola fila — hamburguesa + barra de búsqueda
+   (flex:1, min-width:0) + campana + avatar — para que los iconos no
+   queden por debajo de la barra de búsqueda. La barra de búsqueda se
+   estrecha y absorbe el ancho sobrante; verificado a 360px sin
+   desborde horizontal. */
+@media (max-width: 480px) {
+  .app-header__top {
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+  }
+  .user-badge {
+    gap: 0.4rem;
+    /* Permanece en la misma fila que la búsqueda (sin flex-basis:100%):
+       los iconos no saltan a una segunda línea. */
+    flex-shrink: 0;
+    justify-content: flex-end;
+  }
+}
+
+/* =========================================================
+   Barra de pestañas fija (issue #79)
+   Series / Películas / Libros viven en una barra fija: en la
+   parte baja de la pantalla en móvil (≤768px) y pegada bajo la
+   cabecera en escritorio (≥768px); el scroll solo desplaza el
+   contenido de .app. Cada pestaña define su propio color de
+   acento (--tab-accent) con la paleta base.
+   ========================================================= */
+
+/* Altura de la cabecera fija y de la barra: móvil con icono sobre
+   nombre (~3.75rem). En PC y tablet la barra de pestañas tiene la
+   MISMA altura que la barra de búsqueda (--tabs-bar-h = --header-h
+   = 3.5rem; feedback iteración 4). */
+:root {
+  --header-h: 3.5rem;
+  --tabs-bar-h: 3.75rem;
+}
+@media (min-width: 768px) {
+  :root {
+    --tabs-bar-h: 3.5rem;
+  }
+}
+
+/* Cascarón fijo que abraza el borde inferior del viewport en móvil
+   (con el margen seguro del iPhone); el contenedor interior se
+   alinea con #app (max-width 980px, centrado). Su fondo es el mismo
+   que el de la web y no tiene línea separadora (feedback iteración
+   4: cabecera y pestañas se integran con la página). */
+.tabs--bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 45;
+  background: var(--ink);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* Deslizamiento suave al ocultarse/mostrarse con el scroll
+     (issue #137), igual que la cabecera. */
+  transition: transform 0.25s ease, visibility 0s 0s;
+}
+[data-theme="light"] .tabs--bar,
+[data-theme="white"] .tabs--bar {
+  background: var(--paper-dim);
+}
+
+/* En PC y tablet (≥768px) la barra se pega bajo la cabecera fija:
+   bottom: auto y top: var(--header-h), con la misma altura que la
+   cabecera (--tabs-bar-h 3.5rem). El padding del margen seguro
+   inferior se anula: en el iPad producía un espacio bajo las
+   pestañas que no existe en PC (feedback iteración 4). */
+@media (min-width: 768px) {
+  .tabs--bar {
+    top: var(--header-h);
+    bottom: auto;
+    padding-bottom: 0;
+  }
+}
+
+/* =========================================================
+   Ocultar navegación al desplazar (issue #137)
+   =========================================================
+   Al hacer scroll hacia abajo en las listas, la cabecera y la
+   barra de pestañas se ocultan deslizándose "hacia su borde" y
+   reaparecen al subir (o al interactuar con la navegación).
+   La animación es un simple translateY: la cabecera sale por el
+   borde superior y las pestañas por su borde correspondiente
+   (abajo en móvil, bajo la cabecera en ≥768px). Con
+   prefers-reduced-motion la transición se anula globalmente y el
+   cambio es instantáneo, sin desplazamiento visible. */
+
+/* Cabecera: sube por completo (translateY(-100%) incluye su altura
+   completa aunque varíe). El visibility se retrasa para que el
+   deslizamiento sea visible y no se corte a mitad. */
+body.is-nav-hidden .app-header {
+  transform: translateY(-100%);
+  visibility: hidden;
+  transition: transform 0.25s ease, visibility 0s 0.25s;
+}
+body.is-nav-hidden .tabs--bar {
+  visibility: hidden;
+  transition: transform 0.25s ease, visibility 0s 0.25s;
+}
+/* Móvil: las pestañas cuelgan del borde inferior, bajan por él. */
+@media (max-width: 767.98px) {
+  body.is-nav-hidden .tabs--bar {
+    transform: translateY(100%);
+  }
+}
+/* ≥768px: las pestañas viven bajo la cabecera, suben con ella
+   (header + su propia altura = borde superior del viewport). */
+@media (min-width: 768px) {
+  body.is-nav-hidden .tabs--bar {
+    transform: translateY(calc(-100% - var(--header-h)));
+  }
+}
+
+/* Botón flotante "Volver arriba" (issue #137): centrado arriba,
+   flotando sobre la lista (position: fixed, no ocupa una línea).
+   Solo se muestra cuando los filtros de la lista han quedado
+   totalmente fuera de vista y la navegación está oculta; lo
+   controla js/auto-hide-nav.js con body.is-back-to-top-visible.
+   z-index 44: por debajo de la cabecera (46) y las pestañas (45)
+   para no taparlas cuando reaparecen, pero sobre el contenido. */
+.back-to-top {
+  position: fixed;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 44;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-pop);
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, visibility 0s 0.2s;
+}
+body.is-back-to-top-visible .back-to-top {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.2s ease 0.15s, visibility 0s 0s 0.15s;
+}
+.back-to-top:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 980px;
+  /* Padding lateral alineado con el header (.app-header__top) y con
+     el contenido de #app, de modo que las pestañas ocupen exactamente
+     el mismo ancho que la barra de búsqueda (issue #79). */
+  padding: 0 1.25rem;
+  margin: 0 auto;
+  height: var(--tabs-bar-h);
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.35rem 0.25rem;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+/* Cada pestaña con su color de acento (los tres distintos entre
+   sí), reutilizando la paleta existente: series verde, películas
+   rojo, libros ocre y videojuegos violeta, válido en ambos temas. */
+.tab--tv { --tab-accent: var(--teal-reel); }
+.tab--movies { --tab-accent: var(--stamp); }
+.tab--books { --tab-accent: var(--ochre-spine); }
+.tab--games { --tab-accent: var(--games); }
+/* Pestañas de Recetas (issue #208): acentos de la paleta existente
+   (ocre, verde y rojo), con sus variantes -dark para negro puro en
+   los overrides de [data-theme="black"] (mismo patrón que Ocio). */
+.tab--recipes { --tab-accent: var(--ochre-spine); }
+.tab--ingredients { --tab-accent: var(--games); }
+.tab--menu { --tab-accent: var(--teal-reel); }
+.tab--shopping { --tab-accent: var(--stamp); }
+/* Pestañas de Gimnasio (issue #62): acentos de la paleta existente
+   (Resumen morado, Entrenos teal, Ejercicios ocre), con sus
+   variantes -dark para negro puro en los overrides de
+   [data-theme="black"]. */
+.tab--gym-summary { --tab-accent: var(--games); }
+.tab--gym-workouts { --tab-accent: var(--teal-reel); }
+.tab--gym-exercises { --tab-accent: var(--ochre-spine); }
+
+.tab svg {
+  display: block;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+  color: var(--tab-accent);
+}
+
+.tab.is-active {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: inset 0 3px 0 var(--tab-accent);
+}
+.tab.is-active svg {
+  color: var(--ink);
+}
+
+/* Etiquetas largas de pestaña (issue #208, p. ej. «Ingredientes» en
+   Recetas): el texto envuelve dentro del ancho de la pestaña en
+   lugar de desbordarla; nunca se trunca (AGENTS.md: sin texto fuera
+   de pantalla). Inofensivo para las etiquetas cortas de Ocio. */
+.tabs--bar .tab span {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* Escritorio (>768px): icono y nombre en la misma línea */
+@media (min-width: 768px) {
+  .tab {
+    flex-direction: row;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.5rem;
+  }
+  .tab svg {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+}
+
+
+/* =========================================================
+   Modal (armazón compartido: lo que se pinta dentro es cosa
+   de cada sección, por ejemplo ocio/ocio.css)
+   ========================================================= */
+
+.modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--backdrop);
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.modal__card {
+  position: relative;
+  background: var(--paper);
+  color: var(--ink);
+  width: min(480px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  padding: 1.6rem 1.4rem 1.4rem;
+}
+
+.modal__close {
+  /* Sticky: el padre .modal__card es el scroll container, así la ✕
+     queda visible en todo momento al hacer scroll dentro del modal.
+     Al estar en flujo, en reposo no se superpone al contenido
+     (corrige el solapamiento latente con títulos largos del header).
+     Issue #26. */
+  position: sticky;
+  top: 0.7rem;
+  right: 0.7rem;
+  display: block;
+  width: fit-content;
+  margin-left: auto;
+  background: var(--paper); /* chip del color del card: tapa limpio el
+                               contenido que pasa por debajo al scrollear */
+  border: none;
+  font-size: 1.1rem;
+  color: var(--ink-soft);
+  line-height: 1;
+  padding: 0.3rem;
+  border-radius: var(--radius);
+}
+.modal__close:hover {
+  color: var(--ink);
+}
+
+/* Ventana de valoración emergente (issue #21): se superpone a los
+   modales de detalle, así que va por encima en el eje z. */
+.modal--top {
+  z-index: 70;
+}
+
+.modal__card--small {
+  width: min(400px, 100%);
+}
+
+/* =========================================================
+   Pie y aviso
+   ========================================================= */
+
+.app-footer {
+  margin-top: 3rem;
+  font-size: 0.72rem;
+  color: var(--paper-alpha-35);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  /* En móvil, por encima de la barra de pestañas fija inferior
+     (issue #79) */
+  bottom: calc(var(--tabs-bar-h) + env(safe-area-inset-bottom, 0px) + 1rem);
+  transform: translateX(-50%);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  font-size: 0.85rem;
+  max-width: min(480px, calc(100vw - 2rem));
+  overflow-wrap: anywhere;
+  /* Por encima de cualquier modal (el más alto es la ventana de
+     valoración, .modal--top con 70) para que los avisos siempre
+     sean visibles */
+  z-index: 80;
+}
+
+/* En escritorio (≥768px) la barra de pestañas está arriba: el toast
+   vuelve al margen inferior original. */
+@media (min-width: 768px) {
+  .toast {
+    bottom: 1.4rem;
+  }
+}
+
+/* Toast con botón de deshacer (undo delete) */
+.toast--undo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1.1rem 0.6rem 1.4rem;
+}
+/* El texto del toast puede envolverse; solo el botón mantiene nowrap */
+.toast--undo span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.toast__btn {
+  background: var(--teal-reel);
+  color: var(--paper);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.35rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+.toast__btn:hover {
+  background: var(--teal-reel-dark);
+}
+
+
+/* =========================================================
+   Enlace "Añadir manualmente"
+   ========================================================= */
+
+.btn-link {
+  background: transparent;
+  border: none;
+  color: var(--paper);
+  opacity: 0.6;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  padding: 0.3rem 0.1rem;
+  margin-top: -0.4rem;
+  margin-bottom: 0.4rem;
+  display: inline-block;
+}
+.btn-link:hover {
+  opacity: 1;
+}
+
+
+/* =========================================================
+   Botón outline (para usar sobre fondo claro, dentro de modales)
+   ========================================================= */
+
+.btn--outline {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--paper-line);
+}
+.btn--outline:hover {
+  background: var(--paper-dim);
+}
+
+.btn--outline-dark {
+  background: transparent;
+  color: var(--paper);
+  border-color: var(--paper-alpha-40);
+}
+.btn--outline-dark:hover {
+  background: var(--paper-alpha-10);
+}
+
+
+/* =========================================================
+   Notificaciones
+   ========================================================= */
+
+.notif-wrap {
+  display: inline-flex;
+}
+
+.icon-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.3rem;
+  color: var(--paper);
+}
+
+.notif-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: var(--stamp);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  border-radius: 999px;
+  padding: 0.05rem 0.32rem;
+  animation: notif-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes notif-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+
+.notif-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: min(320px, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  padding: 0.8rem;
+  z-index: 40;
+}
+
+/* En móvil el dropdown se ancla al viewport (no al botón): si el header
+   envuelve en dos filas, el ancla quedaría a la izquierda de la pantalla
+   y el panel desbordaría. Fixed con márgenes laterales garantiza que
+   nunca se sale del ancho visible. */
+@media (max-width: 600px) {
+  .notif-dropdown {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    top: 4.5rem;
+    width: auto;
+    max-width: none;
+  }
+}
+
+.notif-dropdown__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.notif-dropdown__header .btn-link {
+  color: var(--stamp-dark);
+  opacity: 0.85;
+  margin: 0;
+}
+.notif-dropdown__header .btn-link:hover {
+  opacity: 1;
+}
+
+.notif-list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.notif-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.55rem;
+  font-size: 0.78rem;
+}
+.notif-row.is-unread {
+  border-left: 3px solid var(--teal-reel);
+}
+
+.notif-row__text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.notif-row__delete {
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+.notif-row__delete:hover {
+  color: var(--stamp);
+}
+
+.notif-empty {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  margin: 0.4rem 0 0;
+}
+
+.user-badge__avatar-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.profile-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: min(240px, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  padding: 0.4rem;
+  z-index: 40;
+}
+
+.profile-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.profile-dropdown__item svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  color: currentColor;
+}
+.profile-dropdown__item:hover {
+  background: var(--paper-dim);
+}
+
+.profile-dropdown__separator {
+  height: 1px;
+  margin: 0.3rem 0.4rem;
+  background: var(--paper-line);
+  opacity: 0.5;
+}
+
+.profile-dropdown__item--logout {
+  color: var(--stamp-dark);
+}
+
+/* En móvil el menú de perfil se ancla al viewport (igual que el dropdown
+   de notificaciones): si el header envuelve en dos filas, el ancla quedaría
+   a la izquierda de la pantalla y el panel desbordaría. Fixed con márgenes
+   laterales garantiza que nunca se sale del ancho visible. */
+@media (max-width: 600px) {
+  .profile-dropdown {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    top: 4.5rem;
+    width: auto;
+    max-width: none;
+  }
+}
+
+.user-badge__avatar-btn:focus-visible,
+.profile-dropdown__item:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   Perfil y estadísticas
+   ========================================================= */
+
+.profile-view {
+  min-height: 100vh;
+  background: var(--ink);
+  color: var(--paper);
+  max-width: 980px;
+  margin: 0 auto;
+  /* Padding superior: aire simple de 1.5rem. La cabecera global NO se
+     muestra en el perfil (issue #206, iteración 2026-08-11): el
+     usuario prefiere la flecha de volver y las pestañas en la misma
+     fila, así que no hace falta reservar el hueco de --header-h. */
+  padding: 1.5rem 1.25rem 4rem;
+}
+
+.profile-view__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.6rem;
+  flex-wrap: wrap;
+}
+
+.stats-period {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.profile-view__header select {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 1rem;
+}
+
+.stats-range-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--paper);
+}
+
+.stats-range-fields input[type="date"] {
+  min-width: 0;
+  flex: 1 1 120px;
+}
+
+.stats-range-fields input[type="date"] {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+}
+.stats-range-fields input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: var(--date-picker-filter);
+  opacity: 0.7;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 0.9rem;
+  margin-bottom: 2rem;
+}
+
+.stat-tile {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 1rem;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+}
+
+.stat-tile__value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.stat-tile__label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  margin-top: 0.2rem;
+}
+
+.stats-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 1.2rem;
+}
+
+.chart-card {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--shadow-card);
+}
+
+.chart-card h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin: 0 0 0.8rem;
+}
+
+
+/* =========================================================
+   Perfil: subpestañas Estadísticas / Amigos
+   ========================================================= */
+
+.profile-subtabs,
+.friend-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.profile-subtab,
+.friend-subtab {
+  background: var(--ink-raised);
+  color: var(--ink-soft);
+  border: 1px solid var(--paper-alpha-20);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.profile-subtab.is-active,
+.friend-subtab.is-active {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Subpestañas del perfil en móvil: se compactan (sin ocultar ninguna)
+   y envuelven en varias líneas para no desbordar el viewport */
+@media (max-width: 480px) {
+  .profile-subtabs,
+  .friend-subtabs {
+    justify-content: center;
+  }
+  .profile-subtab,
+  .friend-subtab {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.78rem;
+  }
+}
+
+
+/* =========================================================
+   Amigos: lista y detalle
+   ========================================================= */
+
+.friends-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(120px, 100%), 1fr));
+  gap: 0.9rem;
+}
+
+.friend-card {
+  background: var(--paper);
+  color: var(--ink);
+  border: none;
+  border-radius: var(--radius);
+  padding: 1rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+.friend-card:hover {
+  transform: translateY(-2px);
+}
+
+.friend-card__avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--paper-dim);
+}
+
+.friend-card__name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.friend-detail__name {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  margin: 0.6rem 0 1.4rem;
+}
+
+.friend-tabpanel {
+  margin-top: 1.2rem;
+}
+
+.friend-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+}
+
+.friend-chip {
+  background: transparent;
+  border: 1px solid var(--paper-alpha-30);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+}
+.friend-chip.is-active {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+
+
+/* =========================================================
+   Ajustes: apartado Datos (issue #135). La pestaña «Datos» del
+   perfil se unificó en Ajustes; los botones se apilan en
+   vertical para mantener el aspecto de las antiguas tarjetas.
+   ========================================================= */
+
+.settings-card--data .btn {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 1.2rem;
+}
+
+.settings-card--data .btn:last-child {
+  margin-bottom: 0;
+}
+
+/* =========================================================
+   Ajustes (Settings)
+   ========================================================= */
+
+.settings-card {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 1.4rem;
+  margin-bottom: 1.2rem;
+  box-shadow: var(--shadow-card);
+}
+
+.settings-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.settings-desc {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--paper-line);
+}
+.settings-row:last-child {
+  border-bottom: none;
+}
+.settings-row label:first-child {
+  font-size: 0.88rem;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+.settings-row__text {
+  flex: 1;
+  min-width: 0;
+}
+.settings-row__text label {
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+.settings-row__hint {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  line-height: 1.4;
+  margin: 0.2rem 0 0;
+}
+
+/* Select de tema */
+.settings-select {
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.35rem 1rem 0.35rem 0.7rem;
+  font-size: 1rem;
+  min-width: 110px;
+}
+
+/* Toggle switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.switch__input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switch__slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--ink-soft);
+  border-radius: 24px;
+  transition: background 0.2s ease;
+}
+.switch__slider::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  width: 18px;
+  height: 18px;
+  background: var(--paper);
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+.switch__input:checked + .switch__slider {
+  background: var(--teal-reel);
+}
+.switch__input:checked + .switch__slider::before {
+  transform: translateX(20px);
+}
+.switch__input:focus-visible + .switch__slider {
+  outline: 2px solid var(--paper);
+  outline-offset: 3px;
+}
+
+/* Guardas de visibilidad (issue #97): switch deshabilitado = última
+   sección/pestaña visible; solo opacidad+cursor, válido en los 4 temas. */
+.switch__input:disabled + .switch__slider {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Pestañas de una sección, anidadas bajo su fila (issue #97). */
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 0.4rem 1.1rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--paper-line);
+}
+.settings-group .settings-row {
+  padding: 0.5rem 0;
+  border-bottom: none;
+}
+
+/* =============================================================
+   Buscador global (issue #46)
+   La barra de búsqueda vive en la cabecera (input #global-search-input
+   dentro de .search-bar-wrap) y los resultados se muestran en un
+   dropdown anclado bajo ella (#global-search-results). El dropdown
+   usa la superficie de papel (--paper fondo / --ink texto) en ambos
+   temas, así que no hace falta override de modo claro y no quedan
+   fallbacks hardcodeados.
+   ============================================================= */
+
+.global-search__input {
+  width: 100%;
+  border: 1px solid var(--paper-alpha-20);
+  background: var(--ink-raised);
+  color: var(--paper);
+  border-radius: 999px;
+  padding: 0.45rem 2.2rem 0.45rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+.global-search__input:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 1px;
+}
+.global-search__input::placeholder {
+  color: var(--ink-soft);
+}
+/* Ocultar la ✕ nativa de los input[type=search] de WebKit: la
+   limpieza la gestiona nuestro propio botón #global-search-clear. */
+.global-search__input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.global-search__clear {
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 1;
+}
+.global-search__clear:hover {
+  color: var(--ink);
+}
+
+.global-search__results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-pop);
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.global-search__hint,
+.global-search__empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+/* Botones de tipo (Serie / Película / Libro): búsqueda en el catálogo */
+.global-search__type-buttons {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--paper-line);
+  flex-wrap: wrap;
+}
+
+.global-search__type-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--paper-line);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 4px 14px;
+  font-size: 0.78rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+}
+/* Acento por tipo de medio: mismos colores que las pestañas
+   (--teal-reel series, --stamp películas, --ochre-spine libros) y los
+   mismos SVGs (MEDIA_ICONS, issue #134). */
+.global-search__type-btn--tv { --type-accent: var(--teal-reel); }
+.global-search__type-btn--movies { --type-accent: var(--stamp); }
+.global-search__type-btn--books { --type-accent: var(--ochre-spine); }
+.global-search__type-btn--games { --type-accent: var(--games); }
+.global-search__type-btn .global-search__type-icon svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--type-accent);
+}
+.global-search__type-btn:hover {
+  border-color: var(--type-accent, var(--teal-reel));
+  color: var(--ink);
+}
+.global-search__type-btn.is-active {
+  background: var(--type-accent, var(--teal-reel));
+  color: var(--paper);
+  border-color: var(--type-accent, var(--teal-reel));
+}
+.global-search__type-btn.is-active .global-search__type-icon svg {
+  color: inherit;
+}
+/* Sobre el ocre el texto oscuro (--ink) contrasta mejor que el papel */
+.global-search__type-btn--books.is-active {
+  color: var(--ink);
+}
+
+/* Estado de las secciones del catálogo (buscando / error / vacío) */
+.global-search__status {
+  font-style: italic;
+  color: var(--ink-soft);
+  padding: 12px 16px;
+  text-align: left;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+/* Botón «Añadir» de los resultados del catálogo */
+.global-search__item-add {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--teal-reel);
+  color: var(--paper);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.global-search__item-add:hover {
+  background: var(--teal-reel-dark);
+}
+.global-search__item-add:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.global-search__item-add--books {
+  background: var(--ochre-spine);
+  color: var(--ink);
+}
+.global-search__item-add--books:hover {
+  background: var(--ochre-spine-dark);
+  color: var(--paper);
+}
+.global-search__item-add--games {
+  background: var(--games);
+  color: var(--paper);
+}
+.global-search__item-add--games:hover {
+  background: var(--games-dark);
+}
+
+/* Botón «Marcar visto» de los resultados del catálogo (issue #115):
+   mismo esqueleto compacto que Añadir pero en estilo outline para
+   diferenciar la acción. */
+.global-search__item-seen {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--teal-reel);
+  color: var(--teal-reel);
+  font-weight: 600;
+}
+.global-search__item-seen:hover { background: var(--teal-reel); color: var(--paper); }
+.global-search__item-seen:disabled { opacity: 0.55; cursor: default; background: transparent; color: var(--teal-reel); }
+
+/* Fila «Añadir manualmente» al final de cada sección del catálogo */
+.global-search__manual-add {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: var(--teal-reel);
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.global-search__manual-add:hover {
+  color: var(--teal-reel-dark);
+  background: var(--ink-alpha-06);
+}
+
+/* Grupo */
+.global-search__group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+
+/* Iconos de los títulos de grupo: SVGs de las pestañas (MEDIA_ICONS)
+   coloreados con el acento de cada tipo (issue #134). friends conserva
+   su emoji "👤" y no lleva modificador. */
+.global-search__group-title svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+.global-search__group-title--tv svg { color: var(--teal-reel); }
+.global-search__group-title--movies svg { color: var(--stamp); }
+.global-search__group-title--books svg { color: var(--ochre-spine); }
+.global-search__group-title--games svg { color: var(--games); }
+
+.global-search__group-badge {
+  background: var(--teal-reel);
+  color: var(--paper);
+  border-radius: 10px;
+  padding: 0 6px;
+  font-size: 0.65rem;
+  line-height: 1.4;
+}
+
+/* Item (película, serie, libro) */
+.global-search__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.global-search__item:hover,
+.global-search__item--highlighted {
+  background: var(--ink-alpha-06);
+}
+
+.global-search__item-cover {
+  width: 36px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--ink-soft);
+}
+
+.global-search__item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.global-search__item-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+.global-search__item-meta {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.global-search__item-status {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+/* El estado como "etiqueta" sobre el papel del dropdown: el .chip
+   base (ocio.css) es transparente con texto --ink-soft, pensado para
+   fondos oscuros. Aquí, sobre --paper, hace falta fondo y texto con
+   contraste; specificity mayor que .chip para vencer el orden de
+   carga de ocio.css. */
+.global-search__item-status.chip {
+  background: var(--paper-dim);
+  color: var(--ink);
+  border-color: var(--paper-line);
+}
+
+/* Amigos */
+.global-search__friend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.global-search__friend:hover,
+.global-search__friend--highlighted {
+  background: var(--ink-alpha-06);
+}
+
+.global-search__friend-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--ink-soft);
+}
+
+.global-search__friend-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.global-search__friend-email {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.global-search__item:focus-visible,
+.global-search__friend:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: -2px;
+  background: var(--ink-alpha-06);
+}
+
+/* En móvil el dropdown se ancla al viewport (patrón exacto de
+   .notif-dropdown): el wrap de la barra es estrecho y el panel
+   desbordaría. Fixed con márgenes laterales garantiza que nunca se
+   sale del ancho visible. */
+@media (max-width: 600px) {
+  .global-search__results {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    top: 4.5rem;
+    width: auto;
+    max-width: none;
+  }
+
+  .global-search__type-buttons {
+    flex-wrap: wrap;
+  }
+
+  /* En móvil los títulos/metadatos pueden envolverse a 2 líneas
+     (en desktop conservan nowrap + ellipsis + title) */
+  .global-search__item-title,
+  .global-search__item-meta {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* =========================================================
+   Feed de actividad de amigos
+   ========================================================= */
+
+.activity-feed {
+  padding: 0.5rem 0;
+}
+
+.activity-group {
+  margin-bottom: 1.2rem;
+}
+
+.activity-group__header {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft, #948a76);
+  padding: 0.25rem 0.75rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--ink-soft, #444);
+}
+
+.activity-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.activity-event {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.activity-event:hover {
+  background: var(--ink-raised, #211e19);
+}
+
+.activity-event__cover-wrap {
+  flex-shrink: 0;
+  width: 36px;
+  height: 54px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--ink-soft, #444);
+}
+
+.activity-event__cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.activity-event__body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  gap: 0.5rem;
+}
+
+.activity-event__text {
+  font-size: 0.85rem;
+  color: var(--paper, #f1ead9);
+  line-height: 1.4;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.activity-event__text strong {
+  color: var(--teal-reel, #4caf7d);
+}
+
+.activity-event__text em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ochre-spine, #d4a853);
+}
+
+.activity-event__detail {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--ink-soft, #948a76);
+  margin-left: 0.4rem;
+}
+
+.activity-event__meta {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.activity-event__icon {
+  font-size: 1.1rem;
+  opacity: 0.8;
+}
+
+
+/* =========================================================
+   Indicador de carga de los paneles de Ocio (issue #178)
+   ---------------------------------------------------------
+   Cada pestaña carga su contenido (HTML y datos) la primera
+   vez que se abre (lazy loading); mientras tanto se muestra
+   este marcador, que renderLibraryFor retira al pintar.
+   Colores con variables de tema: texto y arco del spinner en
+   --ink-soft (legible en los cuatro modos: ≈6.2:1 sobre
+   oscuro/negro puro, ≈4.6:1 sobre claro/blanco puro; AA) y
+   pista del arco con --ink-alpha-XX de la misma familia, que
+   en negro puro se invierte a tinta clara automáticamente —
+   no hacen falta overrides por familia. No se usan colores
+   hardcodeados.
+   ========================================================= */
+
+.panel-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.2rem 1rem;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+/* Estado final de error de un panel (issue #286): sustituye al
+   marcador de carga cuando una suscripción agota los reintentos o
+   el fetch del partial falla. Mismo patrón de .panel-loading, solo
+   con variables de tema (--ink-soft: legible en los cuatro modos,
+   ver nota de .panel-loading); el botón «Reintentar» reutiliza
+   .btn--small. No se usan colores hardcodeados. */
+.panel-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.2rem 1rem;
+  text-align: center;
+  color: var(--ink-soft);
+}
+
+.panel-error__message {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.spinner {
+  width: 1.8rem;
+  height: 1.8rem;
+  flex: 0 0 auto;
+  border: 3px solid var(--ink-alpha-15);
+  border-top-color: var(--ink-soft);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* =========================================================
+   Sección de recetas (issue #64): Recetas, Menú y Lista de
+   la compra. Vista de primer nivel hermana de profile-view.
+   ========================================================= */
+
+/* --- Vista y cabecera (patrón profile-view) --- */
+
+.recipes-view {
+  /* Padding superior: hueco para la cabecera global fija (--header-h)
+     + 1rem de aire (issue #206). Padding inferior: hueco para la
+     barra de pestañas fija (--tabs-bar-h + margen seguro) + 1.5rem,
+     mismo patrón que .app (issue #208). */
+  padding: calc(var(--header-h) + 1rem) 1.25rem
+           calc(var(--tabs-bar-h) + env(safe-area-inset-bottom, 0px) + 1.5rem);
+  /* Ancho alineado con #app, la cabecera global y la barra de
+     pestañas (.tabs, max-width 980px): el contenido de Recetas ocupa
+     exactamente el mismo ancho que el de Ocio (issue #208). */
+  max-width: 980px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* En PC y tablet (≥768px) la barra de pestañas también es fija, bajo
+   la cabecera: el padding superior acumula ambos huecos y el inferior
+   vuelve al original de 4rem (ya no hay barra abajo). */
+@media (min-width: 768px) {
+  .recipes-view {
+    padding: calc(var(--header-h) + var(--tabs-bar-h) + 1rem) 1.25rem 4rem;
+  }
+}
+
+/* --- Barra de herramientas de la pestaña Recetas --- */
+
+.recipes-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* --- Grid de recetas --- */
+
+.recipes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 0.9rem;
+}
+
+.recipe-card {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow-wrap: break-word;
+  /* Toda la tarjeta es el botón (issue #234): se abre el detalle en
+     modo lectura al pulsarla. */
+  cursor: pointer;
+}
+
+.recipe-card:hover {
+  box-shadow: var(--shadow-pop);
+}
+
+.recipe-card:focus-visible {
+  outline: 2px solid var(--ochre-spine);
+  outline-offset: 2px;
+}
+
+.recipe-card--review {
+  border: 1px dashed var(--ochre-spine);
+}
+
+.recipe-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.recipe-card__title {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.recipe-card__badge {
+  flex-shrink: 0;
+  background: var(--ochre-spine);
+  color: var(--white);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+}
+
+.recipe-card__photo {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.recipe-card__meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.recipe-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+/* Píldora base de las etiquetas de la tarjeta (issue #234). Los
+   colores por tipo vienen de los modificadores --alergeno (teal) y
+   --tipo (ocre), agrupados con los de la vista de lectura más abajo
+   (una sola fuente de verdad por regla, AGENTS.md §4.3). */
+.recipe-card__tag {
+  font-size: 0.72rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+}
+
+/* --- Filtros de la pestaña Recetas (issue #234) --- */
+
+/* Desplegables de filtro por alérgenos y por tipo de comida
+   (multiselección, todas marcadas por defecto). Mismo patrón visual
+   que el filtro por categorías de Ingredientes, con el acento ocre de
+   la pestaña Recetas para la marca de seleccionado. */
+.recipes-filter {
+  position: relative;
+  display: inline-flex;
+}
+
+.recipes-filter__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.recipes-filter__btn svg {
+  flex-shrink: 0;
+}
+
+.recipes-filter__panel {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 10px);
+  width: min(320px, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  padding: 0.4rem;
+  z-index: 40;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+
+.recipes-filter__all,
+.recipes-filter__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.recipes-filter__item {
+  color: var(--ink);
+}
+
+.recipes-filter__item:hover,
+.recipes-filter__all:hover {
+  background: var(--paper-dim);
+}
+
+.recipes-filter__all {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Marca del checkbox (ocre, acento de la pestaña) con el mismo
+   patrón que el filtro de Ingredientes: input oculto + estado en el
+   label. Texto blanco sobre --ochre-spine-dark ≈ 6.2:1 (AA; el ocre
+   claro --ochre-spine no alcanza 4.5:1 con blanco). En negro puro
+   --ochre-spine-dark es la variante clara (#c99a4e) y el texto pasa
+   a --white (casi negro): contraste ≈ 7.4:1. */
+.recipes-filter__all.is-checked,
+.recipes-filter__item.is-checked {
+  background: var(--ochre-spine-dark);
+  color: var(--white);
+  font-weight: 600;
+}
+
+.recipes-filter__separator {
+  height: 1px;
+  margin: 0.3rem 0.4rem;
+  background: var(--paper-line);
+  opacity: 0.5;
+}
+
+.recipes-filter__all input,
+.recipes-filter__item input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* En móvil el panel se ancla al viewport (patrón de Ingredientes). */
+@media (max-width: 767px) {
+  .recipes-filter__panel {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    top: calc(var(--header-h) + 0.75rem);
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* --- Catálogo de ingredientes (issue #218): estética tipo Ocio --- */
+
+.ingredients-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+  max-width: 100%;
+}
+
+/* Dropdown de filtro por categorías (multiselección, todas por
+   defecto). El botón es una píldora igual que .sort-select (ocio). */
+.ingredients-filter {
+  position: relative;
+  display: inline-flex;
+}
+
+.ingredients-filter__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.ingredients-filter__btn svg {
+  flex-shrink: 0;
+}
+
+.ingredients-filter__panel {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 10px);
+  width: min(320px, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  padding: 0.4rem;
+  z-index: 40;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+
+.ingredients-filter__all,
+.ingredients-filter__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.ingredients-filter__item {
+  color: var(--ink);
+}
+
+.ingredients-filter__item:hover,
+.ingredients-filter__all:hover {
+  background: var(--paper-dim);
+}
+
+.ingredients-filter__all {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Marca del checkbox (violeta, acento de la pestaña) con el mismo
+   patrón que .recipe-form__chip: input oculto + estado en el label. */
+.ingredients-filter__all.is-checked,
+.ingredients-filter__item.is-checked {
+  background: var(--games);
+  color: var(--white);
+  font-weight: 600;
+}
+
+.ingredients-filter__separator {
+  height: 1px;
+  margin: 0.3rem 0.4rem;
+  background: var(--paper-line);
+  opacity: 0.5;
+}
+
+.ingredients-filter__all input,
+.ingredients-filter__item input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* En móvil el panel se ancla al viewport (patrón .profile-dropdown):
+   si el toolbar envuelve en varias filas, el ancla al botón podría
+   dejar el panel fuera del ancho visible. Solo cuenta la cabecera
+   (--tabs-bar-h se omite: en móvil la barra de pestañas está abajo). */
+@media (max-width: 767px) {
+  .ingredients-filter__panel {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    top: calc(var(--header-h) + 0.75rem);
+    width: auto;
+    max-width: none;
+  }
+}
+
+.ingredients-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.ingredients-count {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.ingredient-group {
+  background: var(--ink-raised);
+  border: 1px solid var(--paper-alpha-20);
+  border-radius: var(--radius);
+  padding: 0.8rem;
+}
+
+.ingredient-group__title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.ingredient-group__icon {
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ingredient-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+  gap: 0.6rem;
+}
+
+.ingredient-card {
+  background: var(--paper);
+  color: var(--ink);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 0.7rem 0.8rem;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.ingredient-card:hover {
+  background: var(--paper-alpha-10);
+}
+
+.ingredients-filter__btn:focus-visible,
+.ingredients-filter__all:focus-visible,
+.ingredients-filter__item:focus-visible,
+.ingredient-card:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+/* El acento de la pestaña Recetas es ocre (mismo patrón que la tarjeta). */
+.recipes-filter__btn:focus-visible,
+.recipes-filter__all:focus-visible,
+.recipes-filter__item:focus-visible {
+  outline: 2px solid var(--ochre-spine);
+  outline-offset: 2px;
+}
+
+/* --- Modal de ingrediente (issue #218) --- */
+
+.ingredient-modal__title {
+  margin: 0 0 0.8rem;
+  font-size: 1.05rem;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+/* Vista de solo lectura (issue #232): foto opcional (solo se muestra
+   si el ingrediente tiene una; sin ella no aparece ningún placeholder),
+   etiquetas de campo y valores como texto corriente. */
+.ingredient-modal__photo {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: 0.8rem;
+}
+
+.ingredient-modal__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.ingredient-modal__text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.ingredient-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.7rem;
+}
+
+.ingredient-modal__field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ingredient-modal__field input,
+.ingredient-modal__field select {
+  background: var(--paper-dim);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.6rem;
+  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  min-width: 0;
+}
+
+.ingredient-modal__used {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  overflow-wrap: break-word;
+}
+
+.ingredient-modal__link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--teal-reel);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ingredient-modal__cat-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  overflow-wrap: break-word;
+}
+
+.ingredient-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+/* Supermercados y cantidad del paquete del ingrediente (issue #224):
+   chips de selección en el alta y el detalle, con color de marca por
+   supermercado. Los colores de marca están hardcodeados A PROPÓSITO
+   (AGENTS.md §4.4): son colores corporativos idénticos en los 4 modos
+   de tema; solo los chips desmarcados usan variables (--paper-dim,
+   --paper-line, --ink) y por eso necesitan override en negro puro. */
+
+.ingredient-modal__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.supermarket-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--paper-dim);
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.supermarket-chip input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+}
+
+[data-theme="black"] .supermarket-chip {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+/* Foco de teclado visible en los chips (issue #224): el input está
+   oculto, así que el anillo se dibuja sobre el label contenedor.
+   Mismo color que el resto de :focus-visible del catálogo. */
+.supermarket-chip:focus-within {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+/* Etiqueta de supermercado no interactiva (mismo aspecto que el chip
+   marcado; queda lista para vistas de solo lectura). */
+.supermarket-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Colores de marca hardcodeados A PROPÓSITO (AGENTS.md §4.4): son los
+   colores corporativos de cada supermercado, no variables de tema, y
+   deben verse igual en los 4 modos. Contraste AA verificado: texto
+   blanco sobre #0050AA, #002B5C, #A50F26, #004E9F y #00543F; texto
+   negro sobre el amarillo #FFCB05 de Mercadona. */
+.supermarket-chip--lidl.is-checked,
+.supermarket-tag--lidl { background: #0050AA; border-color: #0050AA; color: #fff; }
+.supermarket-chip--aldi.is-checked,
+.supermarket-tag--aldi { background: #002B5C; border-color: #002B5C; color: #fff; }
+.supermarket-chip--mercadona.is-checked,
+.supermarket-tag--mercadona { background: #FFCB05; border-color: #FFCB05; color: #000; }
+.supermarket-chip--dia.is-checked,
+.supermarket-tag--dia { background: #A50F26; border-color: #A50F26; color: #fff; }
+.supermarket-chip--carrefour.is-checked,
+.supermarket-tag--carrefour { background: #004E9F; border-color: #004E9F; color: #fff; }
+.supermarket-chip--el_corte_ingles.is-checked,
+.supermarket-tag--el_corte_ingles { background: #00543F; border-color: #00543F; color: #fff; }
+
+/* Fila «Cantidad del paquete» (issue #224): el número ocupa el resto
+   del ancho y la unidad un ancho fijo; en móvil envuelve en dos filas
+   para que la unidad no se quede corta ni desborde. */
+.ingredient-modal__qty-row {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.ingredient-modal__qty-row input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.ingredient-modal__qty-row select {
+  flex: 0 0 auto;
+  width: 8rem;
+}
+
+@media (max-width: 480px) {
+  .ingredient-modal__qty-row {
+    flex-wrap: wrap;
+  }
+  .ingredient-modal__qty-row select {
+    flex: 1 1 100%;
+    width: auto;
+  }
+}
+
+/* --- Menú semanal --- */
+
+.menu-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.menu-week-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.menu-comensales {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.menu-comensales input {
+  width: 4.5rem;
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.menu-comensales input:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+/* Rejilla día × comida: en móvil se permite scroll horizontal
+   DENTRO del contenedor (patrón permitido por AGENTS.md). Desde la
+   issue #242 el menú cubre dos comidas (almuerzo y cena), así que la
+   rejilla tiene 3 columnas: día + 2 comidas. */
+.menu-grid {
+  display: grid;
+  grid-template-columns: 7.5rem repeat(2, minmax(170px, 1fr));
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+  min-width: 0;
+}
+
+/* js/menu.js envuelve cabecera y filas en .menu-grid__head y
+   .menu-grid__row (grupos de celdas). Sin caja propia, sus celdas
+   participan directamente en el grid de 3 columnas: cabecera en la
+   fila 1 y cada día en su fila. Sin esto, cada wrapper se auto-coloca
+   en UNA celda estrecha y todo se aplasta y se superpone (issue #215). */
+.menu-grid__head,
+.menu-grid__row {
+  display: contents;
+}
+
+.menu-grid__cell {
+  background: var(--ink-raised);
+  border: 1px solid var(--paper-alpha-14);
+  border-radius: var(--radius);
+  padding: 0.5rem;
+  min-width: 0;
+}
+
+.menu-grid__cell--head {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+.menu-grid__cell--day {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.menu-grid__cell--day small {
+  display: block;
+  font-weight: 400;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.menu-grid__cell--meal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.menu-meal__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* Tarjeta de receta dentro de una celda (issue #242, iteración): la
+   tarjeta del buscador en miniatura — foto, nombre y etiquetas — y
+   clicable para abrir la receta en modo lectura (js/menu.js). El chip
+   usa el tinte translúcido de papel y hereda el texto de la celda
+   (papel sobre --ink-raised en la familia oscura, tinta sobre blanco
+   en la clara). En la familia clara el override de abajo cambia el
+   tinte a --ink-alpha-10: el de papel es blanco translúcido y quedaría
+   invisible sobre la celda blanca. */
+.menu-meal__card {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--paper-alpha-10);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 0.3rem 0.4rem;
+  cursor: pointer;
+  min-width: 0;
+  text-align: left;
+}
+
+.menu-meal__card:hover,
+.menu-meal__card:focus-visible {
+  border-color: var(--teal-reel);
+  outline: none;
+}
+
+/* Excluida de la lista de la compra (issue #225): el tachado va solo
+   al nombre, la foto y las etiquetas conservan su lectura. */
+.menu-meal__card.is-excluded {
+  opacity: 0.6;
+}
+
+.menu-meal__card.is-excluded .menu-meal__card-name {
+  text-decoration: line-through;
+}
+
+.menu-meal__card-photo {
+  width: 2.2rem;
+  height: 2.2rem;
+  object-fit: cover;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  /* Tinte sutil que funciona sobre el chip translúcido en ambas
+     familias (--ink-alpha-* es tinte de tinta en la clara y de papel
+     en la oscura). */
+  background: var(--ink-alpha-08);
+}
+
+.menu-meal__card-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.menu-meal__card-name {
+  font-weight: 600;
+  font-size: 0.78rem;
+  overflow-wrap: break-word;
+}
+
+.menu-meal__card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+/* Etiquetas en miniatura: misma píldora .recipe-card__tag (una sola
+   fuente de verdad por regla), solo se reduce su tamaño dentro de la
+   tarjeta de celda. */
+.menu-meal__card-tags .recipe-card__tag {
+  font-size: 0.64rem;
+  padding: 0.1rem 0.4rem;
+}
+
+/* Comensales propios de una receta del menú (issue #242): distintivo
+   pequeño junto al nombre; si no aparece, la receta hereda los
+   comensales globales de la semana. Sobre la tarjeta .menu-meal__card
+   (--paper-alpha-10 sobre la celda --ink-raised), --ink-soft solo da
+   ≈ 3.73:1 en el tema Oscuro (no AA): se usa papel translúcido al 92%,
+   mismo patrón que .recipe-pick__empty (issue #242, iteración). */
+.menu-meal__comensales {
+  font-size: 0.68rem;
+  color: var(--paper-alpha-92);
+  margin-left: 0.2rem;
+}
+
+/* ✕ de quitar receta (celdas y «recetas a la semana», issue #242,
+   iteración): botón circular con hover y animación de pulsación. El
+   tinte del círculo usa --paper-alpha-14 (papel translúcido en la
+   familia oscura, tinta translúcida en la clara: visible sobre el
+   chip en ambas) y al pulsar el botón se encoge ligeramente (patrón
+   de .btn:active / .trailer-btn:active). Área táctil de 1.5rem
+   (24 px, WCAG 2.2 AA 2.5.8).
+   Rojo claro hardcodeado #d16a59 (≈ 4.7:1, AA) porque --stamp
+   (#a63b2e ≈ 2:1) no llega al umbral 3:1 de componentes gráficos
+   sobre el chip oscuro — mismo patrón y comentario que
+   .shopping-line__remove (issue #225); en la familia clara se
+   oscurece al --stamp (≈ 5.3:1 sobre el chip claro, AA). */
+.menu-meal__remove {
+  background: none;
+  border: none;
+  color: #d16a59;
+  cursor: pointer;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 999px;
+  line-height: 1;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.menu-meal__remove:hover,
+.menu-meal__remove:focus-visible {
+  background: var(--paper-alpha-14);
+  outline: none;
+}
+
+.menu-meal__remove:active {
+  transform: scale(0.8);
+}
+
+/* Buscador de recetas del menú (issue #242): ventana modal que
+   sustituye al desplegable de añadir receta. Tarjetas con foto a la
+   izquierda, nombre arriba y etiquetas de alérgenos / tipo de plato
+   debajo; toolbar con buscador de texto y filtros por etiquetas. */
+
+.recipe-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.recipe-pick__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+/* Selector de destino del botón «+ Añadir receta» (issue #242,
+   iteración): día de la semana (o «Toda la semana») y comida. Mismo
+   patrón de campo que el buscador (--paper-dim/--ink) porque el modal
+   es papel en la familia oscura; en negro puro se invierte como el
+   resto de campos (override abajo). */
+.recipe-pick__target {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: flex-end;
+}
+
+.recipe-pick__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  /* Sobre el modal de papel del tema Oscuro, --ink-soft (#948a76) solo
+     da ≈ 2.8:1 (no AA): tinta del contenido (patrón de .recipe-pick__empty). */
+  color: var(--ink);
+}
+
+.recipe-pick__field select {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  background: var(--paper-dim);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+}
+
+.recipe-pick__field select:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.recipe-pick__field select:disabled {
+  opacity: 0.55;
+}
+
+/* Aviso del destino «Toda la semana» (issue #242, iteración): la
+   receta se añade una vez y no se multiplica por los comensales.
+   Tinta del contenido sobre el modal papel (patrón de .recipe-pick__empty). */
+.recipe-pick__week-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.recipe-pick__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+/* El campo de búsqueda crece y los filtros se mantienen a la
+   derecha; en móvil todo pasa a columna (sin desbordar). 1rem por
+   ADR-042 (nada de < 16px en inputs).
+   El modal del buscador es papel en la familia oscura, así que el
+   campo va en la familia clara (--paper-dim/--ink), patrón de
+   .ingredient-modal__field input / .recipe-form__field input. */
+.recipe-pick__search {
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 100%;
+  background: var(--paper-dim);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 1rem;
+}
+
+.recipe-pick__search::placeholder {
+  /* Sobre el campo claro de la familia oscura, --ink-soft (#948a76)
+     solo da ≈ 2.45:1 (no AA): tinta del contenido, mismo patrón que
+     .recipe-pick__empty. En negro puro el campo es tinta y la base
+     sería invisible: override abajo. */
+  color: var(--ink);
+}
+
+.recipe-pick__search:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+/* Botones de filtro dentro del buscador: la píldora base de la
+   pestaña Recetas es un chip oscuro (--ink-raised/--paper) pensado
+   para la página oscura; dentro del modal papel invertiría el
+   contraste, así que pasan a la familia clara como el resto de
+   controles del buscador (issue #242, iteración). En negro puro el
+   modal es superficie oscura y vuelven al chip oscuro en los
+   overrides de abajo. */
+.recipe-pick .recipes-filter__btn {
+  background: var(--paper-dim);
+  color: var(--ink);
+  border-color: var(--paper-line);
+}
+
+/* Paneles de filtro a la derecha del campo: anclados debajo del
+   botón, anchos limitados para no salirse de la tarjeta del modal.
+   En móvil se conserva el patrón fijo de .recipes-filter__panel
+   (anclado al viewport bajo la cabecera). */
+@media (min-width: 768px) {
+  .recipe-pick__panel.recipes-filter__panel {
+    width: min(300px, calc(100vw - 3.5rem));
+    max-width: calc(100vw - 3.5rem);
+  }
+}
+
+.recipe-pick__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.recipe-pick__card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  /* Tarjeta de la familia clara (patrón de .recipe-card y de los
+     inputs de los modales): el modal del buscador es papel en la
+     familia oscura, así que la tarjeta va en --paper-dim con tinta
+     --ink — el nombre queda oscuro y legible y no se invierte el
+     contraste dentro de la ventana (issue #242, iteración). En negro
+     puro el modal es superficie oscura y la tarjeta vuelve al chip
+     oscuro en los overrides de abajo. */
+  background: var(--paper-dim);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.6rem;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.recipe-pick__card:hover,
+.recipe-pick__card:focus-visible {
+  border-color: var(--teal-reel);
+  outline: none;
+}
+
+.recipe-pick__card-main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.recipe-pick__photo {
+  width: 2.9rem;
+  height: 2.9rem;
+  object-fit: cover;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  /* Tinte sutil que funciona sobre la tarjeta clara en la familia
+     oscura y sobre la oscura en negro puro (--ink-alpha-* es un
+     tinte de tinta en la familia clara y de papel en la oscura). */
+  background: var(--ink-alpha-08);
+}
+
+.recipe-pick__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.recipe-pick__name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  overflow-wrap: break-word;
+}
+
+.recipe-pick__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.recipe-pick__add {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Fila de comensales de la tarjeta (issue #242): número opcional
+   (vacío = hereda los del menú) y botones Añadir / Cancelar. Sobre la
+   tarjeta clara de la familia oscura, --ink-soft solo daría ≈ 2.45:1:
+   tinta del contenido (mismo patrón que .recipe-pick__empty); en
+   negro puro la tarjeta es oscura y vuelve a --ink-soft en los
+   overrides de abajo. */
+.recipe-pick__comensales {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.recipe-pick__comensales input {
+  width: 4.6rem;
+  min-width: 0;
+  background: var(--paper-dim);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.28rem 0.5rem;
+  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+}
+
+.recipe-pick__empty {
+  margin: 0;
+  font-size: 0.82rem;
+  /* Sobre el modal de papel en el tema Oscuro, --ink-soft (#948a76)
+     solo da ≈ 2.8:1 (no alcanza AA): se usa la tinta del contenido,
+     mismo patrón que .recipe-view__meta (issue #242, iteración). */
+  color: var(--ink);
+}
+
+/* Recetas a la semana (no escalan) */
+
+.menu-weekly {
+  margin-top: 1rem;
+  background: var(--ink-raised);
+  border: 1px solid var(--paper-alpha-20);
+  border-radius: var(--radius);
+  padding: 0.9rem;
+}
+
+.menu-weekly h3 {
+  margin: 0 0 0.3rem;
+  font-size: 1rem;
+}
+
+.menu-weekly__hint {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+/* Lista de «recetas a la semana» (issue #242, iteración): las mismas
+   tarjetas .menu-meal__card que las celdas de la rejilla, apiladas
+   con el mismo hueco. El fondo del bloque (.menu-weekly, --ink-raised)
+   coincide con el de las celdas, así que las tarjetas se ven igual
+   que las del menú por días (los overrides de tema de .menu-meal__card
+   ya cubren la familia clara y el negro puro). */
+#menu-weekly-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.menu-weekly__empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+/* --- Lista de la compra --- */
+
+.shopping-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.shopping-extra-form {
+  background: var(--ink-raised);
+  border: 1px solid var(--paper-alpha-20);
+  border-radius: var(--radius);
+  padding: 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.shopping-extra-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.shopping-extra-form__row input,
+.shopping-extra-form__row select,
+.shopping-extra-form__row .ing-combo .ing-nombre {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  min-width: 0;
+}
+
+.shopping-extra-form__row input:focus-visible,
+.shopping-extra-form__row select:focus-visible,
+.shopping-extra-form__row .ing-combo .ing-nombre:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+/* El combobox de ingrediente (issue #249) ocupa el ancho que tenía el
+   nombre libre; cantidad y unidad mantienen su flex fijo. */
+.shopping-extra-form__row .ing-combo {
+  flex: 2 1 180px;
+}
+
+.shopping-extra-form__row .ing-combo .ing-nombre {
+  width: 100%;
+}
+
+.shopping-extra-form__row input#extra-cantidad {
+  flex: 0 1 90px;
+}
+
+/* Unidad de medida como desplegable (issue #249, iteración): mismo
+   flex fijo que tenía el input libre. */
+.shopping-extra-form__row #extra-unidad {
+  flex: 0 1 100px;
+}
+
+/* Aviso bajo el formulario de ítem extra (issue #249): el nombre sale
+   del catálogo, no se escribe libre. */
+.shopping-extra-form__hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  overflow-wrap: break-word;
+}
+
+.shopping-extra-form__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Variante shopping del patrón «píldora» del ADR-083. No reutiliza
+   .btn--pill porque la PR #222 (issue #220) aún abierta lo define; en
+   negro puro no necesita override: --ink-raised (#0a0a0a) + texto
+   --paper claro + hover --paper-alpha-10 ya son correctos. */
+.shopping-btn--ghost {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.shopping-btn--ghost:hover {
+  background: var(--paper-alpha-10);
+}
+
+.shopping-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.shopping-group {
+  background: var(--ink-raised);
+  border: 1px solid var(--paper-alpha-20);
+  border-radius: var(--radius);
+  padding: 0.8rem;
+}
+
+.shopping-group__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+.shopping-group__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* Chips de selección de semanas (issue #225): mismo patrón que
+   .recipe-form__chip — input oculto + estado en el label. */
+.shopping-week-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.8rem;
+}
+
+.shopping-week-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--ink-raised);
+  border: 1px solid var(--paper-alpha-20);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.shopping-week-chip.is-checked {
+  background: var(--teal-reel);
+  border-color: var(--teal-reel);
+  color: var(--white);
+}
+
+[data-theme="black"] .shopping-week-chip.is-checked {
+  background: var(--teal-reel-dark);
+  border-color: var(--teal-reel-dark);
+  color: var(--ink);
+}
+
+.shopping-week-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Foco de teclado visible en los chips (issue #225): el input está
+   oculto, así que el outline va al label cuando recibe el foco. */
+.shopping-week-chip:focus-within {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 1px;
+}
+
+[data-theme="black"] .shopping-week-chip:focus-within {
+  outline-color: var(--teal-reel-dark);
+}
+
+/* Fila de la lista: envoltorio con el fondo rojo del swipe debajo.
+   El contenido (superficie normal) se desplaza a la izquierda al
+   deslizar (issue #225). El fondo se ve solo durante el gesto o en
+   el estado revelado; el hover ya NO lo revela (issue #225,
+   iteración: al pulsar solo se marca la línea). */
+.shopping-line-wrap {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  /* Fondo del swipe: rojo de peligro (--stamp, comentado por ser el
+     mismo acento de .btn--danger; en negro puro se aclara a
+     --stamp-dark para mantener contraste AA con el texto). */
+  background: var(--stamp);
+  touch-action: pan-y;
+}
+
+.shopping-line__swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.7rem;
+}
+
+/* ✕ decorativa del fondo rojo (issue #225, iteración): solo se ve
+   DURANTE el arrastre del swipe (.is-dragging), nunca en reposo ni
+   al quedar revelada la línea — si se mostrara en el estado
+   revelado se superpondría a la ✕ roja de eliminar, siempre
+   visible (iteración 2). El borrado se dispara con el
+   desplazamiento extra, no pulsando este icono. */
+.shopping-line__swipe-icon {
+  color: var(--white);
+  font-size: 0.95rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.shopping-line-wrap.is-dragging .shopping-line__swipe-icon {
+  opacity: 0.9;
+}
+
+[data-theme="black"] .shopping-line-wrap {
+  background: var(--stamp-dark);
+}
+
+[data-theme="black"] .shopping-line__swipe-icon {
+  color: var(--ink);
+}
+
+.shopping-line__content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  padding: 0.35rem 0.3rem;
+  /* Sin border-radius a propósito: las esquinas ya las recorta el wrap
+     (.shopping-line-wrap, que tiene overflow: hidden + border-radius).
+     Tener el mismo radio en contenido y wrap dejaba un halo rojo
+     subpixel en las esquinas de cada ítem por el anti-aliasing sobre
+     el fondo del swipe (issue #225, iteración 3). */
+  background: var(--ink-raised);
+  transition: transform 0.2s ease;
+}
+
+.shopping-line-wrap.is-dragging .shopping-line__content {
+  transition: none;
+}
+
+/* Estado de borrado inminente (issue #225, iteración): al cruzar el
+   desplazamiento extra el fondo rojo se oscurece para comunicar que
+   al soltar se elimina. */
+.shopping-line-wrap.is-deleting {
+  filter: brightness(0.85);
+}
+
+.shopping-line-wrap.is-revealed .shopping-line__content {
+  transform: translateX(-88px);
+}
+
+/* Hover: solo marca la línea (fundido suave); nunca revela el estado
+   de eliminar (issue #225, iteración: «al pulsar estaría marcando
+   el item, no eliminándolo»). El marcado se pinta con sombra interior
+   ENCIMA del fondo base --ink-raised (no lo reemplaza), de modo que el
+   fondo rojo del swipe nunca se transparenta ni tiñe la línea
+   (issue #225, iteración 3). */
+.shopping-line-wrap:hover .shopping-line__content {
+  box-shadow: inset 0 0 0 999px var(--paper-alpha-10);
+}
+
+[data-theme="light"] .shopping-line-wrap:hover .shopping-line__content,
+[data-theme="white"] .shopping-line-wrap:hover .shopping-line__content {
+  box-shadow: inset 0 0 0 999px var(--ink-alpha-10);
+}
+
+.shopping-line-wrap.is-bought .shopping-line__name,
+.shopping-line-wrap.is-bought .shopping-line__pkgcount,
+.shopping-line-wrap.is-bought .shopping-line__qty--plain {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.shopping-line-wrap--hogar .shopping-line__content {
+  border-left: 3px solid var(--ochre-spine);
+}
+
+.shopping-line__main {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.shopping-line__name {
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.shopping-line__qty {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.shopping-line__pkgcount {
+  font-weight: 600;
+  color: inherit;
+}
+
+.shopping-line__stepper {
+  flex-shrink: 0;
+  /* ≥ 24 px de área táctil (WCAG 2.2 AA, 2.5.8): 1.5rem */
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.shopping-line__stepper:hover {
+  background: var(--paper-alpha-10);
+  color: var(--paper);
+}
+
+[data-theme="light"] .shopping-line__stepper,
+[data-theme="white"] .shopping-line__stepper {
+  border-color: var(--ink-alpha-20);
+  color: var(--ink-soft);
+}
+
+[data-theme="light"] .shopping-line__stepper:hover,
+[data-theme="white"] .shopping-line__stepper:hover {
+  background: var(--ink-alpha-10);
+  color: var(--ink);
+}
+
+.shopping-line__pkgreset {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  color: var(--stamp);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0 0.1rem;
+  /* Rojo claro para texto sobre fondo oscuro (issue #225): el --stamp
+     (#a63b2e ≈ 2,6:1) no llega a AA 4,5:1; #d16a59 ≈ 4,7:1 sobre
+     --ink-raised (#211e19). En negro puro casi coincide con
+     --stamp-dark; en la familia clara se oscurece al --stamp
+     (6,4:1 sobre blanco). */
+  color: #d16a59;
+}
+
+[data-theme="light"] .shopping-line__pkgreset,
+[data-theme="white"] .shopping-line__pkgreset {
+  color: var(--stamp);
+}
+
+/* ✕ roja de eliminar, siempre visible a la derecha de cada línea
+   (issue #225, iteración): área táctil de 1.75rem (≥ 24 px, WCAG
+   2.2 AA 2.5.8). Mismo rojo claro que .shopping-line__pkgreset
+   (#d16a59 ≈ 4,7:1 sobre --ink-raised); en la familia clara se
+   oscurece al --stamp (6,4:1 sobre blanco). */
+.shopping-line__remove {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 999px;
+  color: #d16a59;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.shopping-line__remove:hover {
+  background: var(--paper-alpha-10);
+}
+
+.shopping-deleted {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.shopping-deleted p {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.shopping-deleted__btn {
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.8rem;
+  /* Mismo rojo claro que .shopping-line__pkgreset (AA sobre oscuro). */
+  color: #d16a59;
+}
+
+[data-theme="light"] .shopping-deleted__btn,
+[data-theme="white"] .shopping-deleted__btn {
+  color: var(--stamp);
+}
+
+/* Checkboxes de la lista de la compra (marcar comprado) con el acento
+   de la pestaña (--stamp, rojo), mismo patrón que .saga-row
+   input[type="checkbox"] en Ocio: accent-color nativo + tamaño fijo.
+   --stamp (#a63b2e) da check blanco ≈6.4:1 en Oscuro y en la familia
+   clara; en negro puro pasa a --stamp-dark (#cf6655, umbral gráfico
+   3:1 sobre negro, patrón de ocio.css). */
+.shopping-line__main input[type="checkbox"] {
+  accent-color: var(--stamp);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.shopping-excluded {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.shopping-excluded p {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.shopping-excluded__btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--teal-reel);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+[data-theme="black"] .shopping-excluded__btn {
+  color: var(--teal-reel-dark);
+}
+
+.shopping-hint {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  margin: 0.4rem 0 0;
+}
+
+/* --- Formulario / modal de receta --- */
+
+.modal__card--wide {
+  width: min(720px, 100%);
+}
+
+.recipe-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.recipe-form__title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.recipe-form__import {
+  background: var(--ink-alpha-06);
+  border: 1px dashed var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.6rem;
+}
+
+.recipe-form__import label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.recipe-form__import-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.recipe-form__import-row input {
+  flex: 1 1 200px;
+  min-width: 0;
+  background: var(--paper-dim);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+}
+
+.recipe-form__hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.recipe-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.recipe-form__field label,
+.recipe-form__fieldset legend {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.recipe-form__field input,
+.recipe-form__field textarea,
+.recipe-form__newtag input,
+.recipe-form__paso input,
+.recipe-form__ingrediente input,
+.recipe-form__ingrediente select {
+  background: var(--paper-dim);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.6rem;
+  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-family: var(--font-body);
+  min-width: 0;
+}
+
+/* Select de unidad del formulario de receta (issue #251): rellena su
+   celda del grid (1.4fr 0.7fr 0.9fr auto y las dos columnas de móvil)
+   sin desbordarla; el min-content del select (la opción más ancha, p.
+   ej. una unidad legada larga de texto libre) lo contienen min-width: 0
+   de la regla agrupada y este width: 100% (patrón .ing-combo .ing-nombre). */
+.recipe-form__ingrediente select {
+  width: 100%;
+}
+
+.recipe-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.recipe-form__row .recipe-form__field {
+  flex: 1 1 200px;
+}
+
+.recipe-form__fieldset {
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.7rem;
+  margin: 0;
+  min-width: 0;
+}
+
+.recipe-form__fieldset[disabled] {
+  opacity: 0.75;
+}
+
+.recipe-form__ingrediente {
+  display: grid;
+  /* Issue #240: sin columna de categoría — el nombre es un combobox
+     sobre el catálogo y la categoría viene de ahí. */
+  grid-template-columns: 1.4fr 0.7fr 0.9fr auto;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+  min-width: 0;
+}
+
+/* Combobox de ingrediente del formulario de receta (issue #240):
+   input con buscador + desplegable con las opciones del catálogo.
+   El desplegable se posiciona bajo el campo (absolute sobre la fila)
+   y hace de "nativo" dentro del modal: al hacer scroll del formulario
+   se desplaza con el contenido. */
+.ing-combo {
+  position: relative;
+  min-width: 0;
+}
+
+.ing-combo .ing-nombre {
+  width: 100%;
+  padding-right: 1.9rem;
+  text-overflow: ellipsis;
+}
+
+.ing-combo__toggle {
+  position: absolute;
+  right: 0.1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  /* Tinta plena (no --ink-soft): sobre el fondo del input (--paper-dim)
+     el --ink-soft del modo oscuro daba ≈ 2.4:1, por debajo del 3:1 AA
+     para componentes gráficos (hallazgo de QA, issue #240). */
+  color: var(--ink);
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0.35rem 0.45rem;
+  cursor: pointer;
+}
+
+.ing-combo__list {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 0.2rem 0;
+  list-style: none;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.ing-combo__list [role="option"] {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  cursor: pointer;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.ing-combo__list [role="option"]:hover,
+.ing-combo__list [role="option"].is-active {
+  background: var(--teal-alpha-18);
+  color: var(--ink);
+}
+
+.ing-combo__list .ing-combo__empty {
+  /* Tinta plena (no --ink-soft): el --ink-soft del modo oscuro sobre
+     --paper daba ≈ 2.8:1, por debajo del 4.5:1 AA para texto (hallazgo
+     de QA, issue #240); en negro puro un override lo devuelve a papel. */
+  color: var(--ink);
+  cursor: default;
+}
+
+.ing-combo__list .ing-combo__empty:hover,
+.ing-combo__list .ing-combo__empty.is-active {
+  background: none;
+}
+
+.recipe-form__ingredientes-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.recipe-form__paso {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.recipe-form__paso-num {
+  flex-shrink: 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.recipe-form__paso input {
+  flex: 1;
+}
+
+.recipe-form__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.recipe-form__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--paper-dim);
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.recipe-form__chip.is-checked {
+  background: var(--teal-reel);
+  border-color: var(--teal-reel);
+  color: var(--white);
+}
+
+[data-theme="black"] .recipe-form__chip.is-checked {
+  background: var(--teal-reel-dark);
+  border-color: var(--teal-reel-dark);
+  color: var(--ink);
+}
+
+[data-theme="black"] .ingredients-filter__all.is-checked,
+[data-theme="black"] .ingredients-filter__item.is-checked {
+  background: var(--games-dark);
+  color: var(--ink);
+}
+
+.recipe-form__chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.recipe-form__newtag {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.recipe-form__newtag input {
+  flex: 1 1 180px;
+}
+
+.recipe-form__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* Responsividad del formulario: en móvil las filas de ingrediente
+   pasan a dos columnas (nunca desbordan el viewport); el combobox
+   ocupa la fila entera para que el desplegable tenga todo el ancho. */
+@media (max-width: 560px) {
+  .recipe-form__ingrediente {
+    grid-template-columns: 1fr 1fr;
+  }
+  .recipe-form__ingrediente .ing-combo {
+    grid-column: 1 / -1;
+  }
+  .recipe-form__ingrediente .ing-remove {
+    justify-self: start;
+  }
+}
+
+/* --- Vista de receta en modo lectura (issue #236) --- */
+
+/* La ventana de lectura no es el formulario con campos deshabilitados:
+   es una vista de texto propia (foto, nombre como título, etiquetas,
+   descripción, porciones, listas de ingredientes e instrucciones y
+   enlaces). Sin recuadros ni nombres de campo. */
+
+.recipe-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.recipe-view__photo {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  display: block;
+}
+
+.recipe-view__title {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+}
+
+.recipe-view__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+/* Etiquetas de alérgenos y de tipo de plato con colores propios para
+   que no se confundan (issue #236). Píldoras rellenas con pares de
+   contraste AA: teal + texto blanco ≈ 6.7:1 y ocre oscuro + texto
+   blanco ≈ 5.2:1 (≥ 4.5:1). El estilo translúcido (teal-alpha-18) no
+   vale aquí: el ocre sobre papel (≈ 4.32:1) no alcanzaría el umbral
+   de texto. En negro puro se usan las variantes claras con texto tinta
+   (bloque más abajo). Las tarjetas de recetas comparten estos mismos
+   colores por tipo (issue #236, iteración): los modificadores de
+   .recipe-card__tag se agrupan con los de la vista para tener una
+   sola fuente de verdad por regla. */
+.recipe-view__tag {
+  font-size: 0.78rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  overflow-wrap: break-word;
+}
+
+.recipe-view__tag--alergeno,
+.recipe-card__tag--alergeno {
+  background: var(--teal-reel);
+  color: var(--white);
+}
+
+.recipe-view__tag--tipo,
+.recipe-card__tag--tipo {
+  background: var(--ochre-spine-dark);
+  color: var(--white);
+}
+
+.recipe-view__descripcion {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+/* Porciones en tinta plena: --ink-soft (#948a76) sobre papel en el
+   tema Oscuro solo da ≈ 2.6:1 (no alcanza AA), así que el texto
+   secundario de la vista de lectura usa la tinta del contenido. */
+.recipe-view__meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.recipe-view__section {
+  min-width: 0;
+}
+
+.recipe-view__heading {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.recipe-view__list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  /* Las <ul> de ingredientes y enlaces no llevan viñetas: quitar el
+     padding-inline-start por defecto (~40px) que dejaría un hueco
+     huérfano; la numeración la aporta solo el <ol> de instrucciones. */
+  list-style: none;
+  padding-left: 0;
+}
+
+.recipe-view__ingrediente {
+  display: flex;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.recipe-view__ing-nombre {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.recipe-view__ing-cantidad {
+  flex-shrink: 0;
+  max-width: 55%;
+  margin-left: auto;
+  text-align: right;
+  overflow-wrap: break-word;
+}
+
+/* Las instrucciones son un <ol> nativo: recuperar display block para
+   que los ::marker de numeración se rendericen (un contenedor flex
+   blockifica los <li> y los números desaparecen, verificado en QA).
+   Se restaura la viñeta decimal y el padding que el reset de
+   .recipe-view__list quitó, para que la numeración se vea. */
+.recipe-view__pasos {
+  display: block;
+  list-style: decimal;
+  padding-left: 1.3rem;
+}
+
+.recipe-view__paso {
+  overflow-wrap: break-word;
+}
+
+.recipe-view__paso + .recipe-view__paso {
+  margin-top: 0.3rem;
+}
+
+.recipe-view__links {
+  list-style: none;
+}
+
+.recipe-view__link {
+  color: var(--teal-reel);
+  overflow-wrap: break-word;
+}
+
+.recipe-view__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* Responsividad de la vista de lectura: en móvil la cantidad larga
+   ("250 mililitros") baja a su propia línea en lugar de apretar el
+   nombre (nunca desborda el viewport). */
+@media (max-width: 560px) {
+  .recipe-view__ingrediente {
+    flex-wrap: wrap;
+  }
+  .recipe-view__ing-cantidad {
+    margin-left: 0;
+    max-width: 100%;
+    text-align: left;
+  }
+}
+
+/* =========================================================
+   Sección de gimnasio (issue #62): Entrenos y Ejercicios.
+   Vista de primer nivel hermana de recipes-view.
+   ========================================================= */
+
+/* --- Vista y cabecera (patrón recipes-view, issue #208) --- */
+
+.gym-view {
+  /* Padding superior: hueco para la cabecera global fija (--header-h)
+     + 1rem de aire (issue #206). Padding inferior: hueco para la
+     barra de pestañas fija (--tabs-bar-h + margen seguro) + 1.5rem,
+     mismo patrón que .recipes-view (issue #208). */
+  padding: calc(var(--header-h) + 1rem) 1.25rem
+           calc(var(--tabs-bar-h) + env(safe-area-inset-bottom, 0px) + 1.5rem);
+  /* Ancho alineado con #app y .recipes-view (max-width 980px). */
+  max-width: 980px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .gym-view {
+    padding: calc(var(--header-h) + var(--tabs-bar-h) + 1rem) 1.25rem 4rem;
+  }
+}
+
+/* --- Selector de unidad de peso (kg/lbs, issue #62) --- */
+
+/* Fila bajo las pestañas, visible en toda la sección. El select es
+   una píldora compacta (patrón de .recipes-filter__btn: fondo
+   --ink-raised y texto --paper, invertidos en la familia clara). */
+.gym-units {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.gym-units label {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.gym-units select {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  min-width: 0;
+}
+
+/* --- Barra de herramientas de las pestañas (patrón .recipes-toolbar) --- */
+
+.gym-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* --- Grids de entrenos y catálogo de ejercicios --- */
+
+.gym-workouts-grid,
+.gym-exercises-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: 0.9rem;
+}
+
+/* --- Tarjetas (patrón .recipe-card, issue #234) --- */
+
+/* Toda la tarjeta es el botón: click (o Enter/Espacio) abre el
+   detalle en modo lectura. Mismo armazón para entrenos y ejercicios. */
+.gym-workout-card,
+.gym-exercise-card {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  overflow-wrap: break-word;
+  cursor: pointer;
+  text-align: left;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.gym-workout-card:hover,
+.gym-exercise-card:hover {
+  box-shadow: var(--shadow-pop);
+}
+
+.gym-workout-card:focus-visible,
+.gym-exercise-card:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.gym-card__title {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.gym-card__meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+/* --- Chip de grupo muscular --- */
+
+.gym-muscle-chip {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ink-raised);
+  color: var(--paper);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.5rem;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  align-self: flex-start;
+}
+
+/* --- Resumen de periodo (issue #269) --- */
+
+/* Selector de periodo: chips tipo .friend-chip + recuadro del rango
+   libre, en línea con salto en pantallas estrechas. */
+.gym-summary-selector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  min-width: 0;
+}
+
+/* Chips con el armazón de .friend-chip: borde sutil, píldora, sin
+   fondo. .is-active invierte a superficie papel; el override de
+   negro puro lo cubre el selector agrupado que ya incluye
+   .friend-chip.is-active (misma regla, mismo armazón). */
+.gym-summary-chip {
+  background: transparent;
+  border: 1px solid var(--paper-alpha-30);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  min-width: 0;
+}
+.gym-summary-chip.is-active {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+
+/* Recuadro del rango libre (issue #269): un ÚNICO control para
+   elegir desde/hasta (iteración 3 del comentario del usuario). El
+   trigger es el recuadro visible — etiqueta + rango ya elegido — y
+   al pulsarlo se abre el calendario donde el primer click fija
+   «desde» y el segundo «hasta»; oculto salvo con la opción «Rango»
+   (controla el atributo hidden js/gym.js). */
+.gym-summary-range {
+  position: relative;
+  min-width: 0;
+}
+
+.gym-summary-range__trigger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  background: var(--paper-dim);
+  color: var(--ink);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+.gym-summary-range__trigger[aria-expanded="true"] {
+  /* --games (no --ink-soft): el suave da ~2.45:1 sobre --paper-dim en
+     la familia oscura y el borde es un componente gráfico (3:1); el
+     override de Negro puro lo cubre el selector agrupado de abajo. */
+  border-color: var(--games);
+}
+
+.gym-summary-range__label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.gym-summary-range__value {
+  /* --ink (no --ink-soft): sobre la superficie nueva --paper-dim el
+     suave daría ~2.45:1 en la familia oscura (regla 4 de
+     AGENTS.md); el override de Negro puro lo cubre el selector
+     agrupado de abajo. */
+  color: var(--ink);
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+/* Calendario del rango (popover): una única caja donde elegir las
+   dos fechas (primer click desde, segundo hasta). Superficie papel
+   con sombra de tarjeta; se posiciona bajo el trigger y nunca más
+   ancho que la pantalla (en móvil pasa a flujo normal). */
+.gym-summary-range__popover {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  z-index: 30;
+  min-width: 300px;
+  max-width: calc(100vw - 1.5rem);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 0.7rem;
+}
+
+.gym-summary-range__cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  min-width: 0;
+}
+.gym-summary-range__cal-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: break-word;
+  min-width: 0;
+  text-align: center;
+}
+.gym-summary-range__cal-nav {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+.gym-summary-range__cal-nav:hover {
+  background: var(--paper-dim);
+}
+
+.gym-summary-range__cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 2px;
+}
+.gym-summary-range__cal-weekday {
+  text-align: center;
+  font-size: 0.7rem;
+  /* --ink (no --ink-soft): sobre la superficie --paper del popover el
+     suave daría ~2.84:1 en la familia oscura (regla 4 de AGENTS.md);
+     el override de Negro puro la cubre el selector agrupado de abajo. */
+  color: var(--ink);
+  padding: 0.2rem 0;
+  min-width: 0;
+}
+
+/* Rejilla de días: 7 columnas de ancho igual (en móvil caben en
+   360 px) y filas con altura fija para no saltar al navegar. */
+.gym-summary-range__cal-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.gym-summary-range__cal-blank {
+  height: 2.1rem;
+}
+.gym-summary-range__day {
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  height: 2.1rem;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+.gym-summary-range__day:hover {
+  background: var(--paper-dim);
+}
+/* El hover no puede tapar el estado de extremo del rango: el día
+   seleccionado conserva su fondo en las cuatro familias (especificidad
+   superior a .gym-summary-range__day:hover; el hover de Negro puro lo
+   cubre el selector agrupado de abajo). */
+.gym-summary-range__day--selected:hover {
+  background: var(--games);
+}
+.gym-summary-range__day--today {
+  /* --games (no --ink-soft): el borde es un componente gráfico (3:1)
+     y el suave da ~2.84:1 sobre --paper en la familia oscura. */
+  border-color: var(--games);
+}
+.gym-summary-range__day--selected {
+  background: var(--games);
+  color: var(--paper);
+  font-weight: 600;
+}
+/* Días intermedios del rango: tinte violeta (--games al 22 %, no hay
+   variable alfa del acento; mismo valor en las cuatro familias) con
+   el texto en --ink, muy por encima de AA en todas ellas. */
+.gym-summary-range__day--in-range {
+  background: rgba(122, 90, 158, 0.22);
+  color: var(--ink);
+}
+
+.gym-summary-range__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+/* En pantallas estrechas y tablets (≤767 px; la banda 540–680 px con
+   el popover absoluto desbordaba el borde derecho de la página) el
+   popover pasa a flujo normal — nada de posicionamiento absoluto, no
+   puede desbordar — y el recuadro ocupa toda la fila del selector. */
+@media (max-width: 767px) {
+  .gym-summary-range {
+    flex: 1 1 100%;
+  }
+  .gym-summary-range__popover {
+    position: static;
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* Cabecera del rango pintado («Periodo: DD/MM/YYYY – DD/MM/YYYY»). */
+.gym-summary-period {
+  margin: 0 0 0.9rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  overflow-wrap: break-word;
+}
+
+/* Tarjetas de totales: patrón .stat-tile/.friend-card (superficie
+   papel + sombra de tarjeta); el negro puro lo cubre el selector
+   agrupado que ya las incluye. */
+.gym-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.gym-summary-card {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.gym-summary-card__label {
+  /* --ink (no --ink-soft): el suave daría ~2.45:1 sobre --paper en la
+     familia oscura (regla 4 de AGENTS.md); mismo criterio que el
+     texto del recuadro del rango. La jerarquía la mantienen
+     tamaño/peso (0.85rem normal vs 1.4rem bold del valor). */
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.gym-summary-card__value {
+  font-size: 1.4rem;
+  font-weight: bold;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+/* Título de sección del resumen («Por grupos musculares»,
+   «Por ejercicio»): misma escala que los títulos de grupo del
+   resto de la web, con salto de palabra en pantallas estrechas. */
+.gym-summary-section-title {
+  margin: 1.1rem 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+/* Desglose por ejercicio y por grupos musculares: tablas con scroll
+   horizontal propio (el de página queda libre, regla 2 de
+   AGENTS.md) y bordes con la misma variable que usan el resto de
+   superficies de Gimnasio. */
+.gym-summary-table-wrap {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.gym-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.gym-summary-table th,
+.gym-summary-table td {
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--paper-line);
+  min-width: 0;
+}
+
+.gym-summary-table th {
+  color: var(--ink-soft);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Celda de nombre: nombres largos se ajustan a su contenedor. */
+.gym-summary-table td:first-child {
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.gym-summary-table .gym-muscle-chip {
+  margin-left: 0.4rem;
+}
+
+/* Diferencia de peso con color semántico (issue #269, iteración 5):
+   verde si aumentó (+), rojo si bajó (−) y color normal de la celda
+   si es cero (o sin pesos, «—»). Mismo patrón documentado que
+   .shopping-line__pkgreset (issue #225): en la familia oscura los
+   acentos base no llegan a AA 4.5:1 sobre --ink (--stamp #a63b2e
+   ≈ 2.85:1 y --teal-reel #2b6459 ≈ 2.66:1), así que se hardcodean
+   variantes claras con su contraste anotado; la familia clara usa
+   los acentos base (ambos AA sobre --paper-dim/--paper). El cero no
+   lleva clase: hereda --paper (oscuro) / --ink (claro), «blanco
+   como está ahora» de la iteración anterior. */
+.gym-summary-table__diff--up {
+  /* #4f9c8e ≈ 5.6:1 sobre --ink y ≈ 6.5:1 sobre #000 (AA) */
+  color: #4f9c8e;
+}
+.gym-summary-table__diff--down {
+  /* #d16a59 ≈ 5.1:1 sobre --ink y ≈ 5.9:1 sobre #000 (AA) */
+  color: #d16a59;
+}
+[data-theme="light"] .gym-summary-table__diff--up,
+[data-theme="white"] .gym-summary-table__diff--up {
+  /* --teal-reel ≈ 6.0:1 sobre --paper-dim (AA) */
+  color: var(--teal-reel);
+}
+[data-theme="light"] .gym-summary-table__diff--down,
+[data-theme="white"] .gym-summary-table__diff--down {
+  /* --stamp ≈ 5.6:1 sobre --paper-dim (AA) */
+  color: var(--stamp);
+}
+
+/* --- Modal de entreno: constructor de ejercicios --- */
+
+.gym-modal__title {
+  margin: 0 0 0.8rem;
+  font-size: 1.05rem;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+/* Etiquetas y valores de la vista de lectura (patrón
+   .ingredient-modal__field / __label / __text). */
+.gym-modal__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.gym-modal__text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.gym-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.7rem;
+  min-width: 0;
+}
+
+.gym-form__field label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.gym-form__field input,
+.gym-form__field select,
+.gym-form__field textarea {
+  background: var(--paper-dim);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.6rem;
+  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-family: var(--font-body);
+  min-width: 0;
+  width: 100%;
+}
+
+.gym-form__field textarea {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+/* Bloque de un ejercicio dentro del constructor del entreno: panel
+   con el nombre/selección arriba y la tabla de series debajo. */
+.gym-exercise-block {
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.6rem;
+  margin-bottom: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.gym-exercise-block__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.gym-exercise-block__name {
+  margin: 0;
+  font-size: 0.95rem;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.gym-exercise-block select,
+.gym-exercise-block input[type="text"] {
+  background: var(--paper-dim);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.6rem;
+  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-family: var(--font-body);
+  min-width: 0;
+  width: 100%;
+}
+
+/* --- Tabla de series (peso × repeticiones) --- */
+
+/* Filas en edición: dos inputs (peso y reps) + botón de quitar. En
+   lectura se reutiliza la misma fila con spans (la tercera columna
+   queda vacía), para que el contenido ajuste igual en móvil. */
+.gym-series-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.gym-series-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.9rem;
+}
+
+.gym-series-row input {
+  background: var(--paper-dim);
+  color: var(--ink);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.55rem;
+  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-family: var(--font-body);
+  min-width: 0;
+  width: 100%;
+}
+
+.gym-series-row span {
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+/* Cabecera de la tabla de series (etiquetas Peso/Repeticiones, #265):
+   misma rejilla que las filas para alinear las columnas; texto
+   pequeño y atenuado que no compite con los inputs. Sin overrides de
+   tema: usa var(--ink-soft), ya cubierta en las cuatro familias. */
+.gym-series-row--head {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 0.35rem;
+}
+
+.gym-series-row--head span:last-child {
+  visibility: hidden;
+}
+
+/* Botones del constructor: añadir serie (ghost con borde punteado) y
+   quitar serie/ejercicio (texto rojo). */
+.gym-add-series-btn {
+  background: none;
+  border: 1px dashed var(--paper-line);
+  border-radius: 999px;
+  color: var(--ink-soft);
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.gym-add-series-btn:hover {
+  border-color: var(--ink-soft);
+}
+
+/* Fila de botones del constructor (añadir ejercicio / nuevo ejercicio
+   y añadir serie / duplicar serie): en línea, con salto en pantallas
+   estrechas. Sin overrides de tema: reutiliza .btn y
+   .gym-add-series-btn (ya cubiertos en las cuatro familias). */
+.gym-block-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.gym-remove-btn {
+  background: none;
+  border: none;
+  color: var(--stamp);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--radius);
+}
+
+.gym-remove-btn:hover {
+  background: var(--ink-alpha-10);
+}
+
+/* Aviso del constructor cuando el catálogo de ejercicios está vacío
+   (con botón que abre el modal de alta de ejercicio). */
+.gym-empty-hint {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  overflow-wrap: break-word;
+}
+
+.gym-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+/* --- Overrides de la familia clara (Claro / Blanco puro) --- */
+
+[data-theme="light"] .recipe-card,
+[data-theme="white"] .recipe-card {
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+}
+
+[data-theme="light"] .ingredient-group,
+[data-theme="white"] .ingredient-group,
+[data-theme="light"] .ingredient-card,
+[data-theme="white"] .ingredient-card,
+[data-theme="light"] .ingredients-filter__panel,
+[data-theme="white"] .ingredients-filter__panel,
+[data-theme="light"] .recipes-filter__panel,
+[data-theme="white"] .recipes-filter__panel,
+[data-theme="light"] .menu-grid__cell,
+[data-theme="white"] .menu-grid__cell,
+[data-theme="light"] .menu-weekly,
+[data-theme="white"] .menu-weekly,
+[data-theme="light"] .shopping-extra-form,
+[data-theme="white"] .shopping-extra-form,
+[data-theme="light"] .shopping-group,
+[data-theme="white"] .shopping-group {
+  background: var(--white);
+  border-color: var(--ink-alpha-15);
+}
+
+/* La píldora del filtro usa --ink-raised como fondo y --paper como
+   texto (como .sort-select de ocio): en la familia clara se invierte. */
+[data-theme="light"] .ingredients-filter__btn,
+[data-theme="white"] .ingredients-filter__btn,
+[data-theme="light"] .recipes-filter__btn,
+[data-theme="white"] .recipes-filter__btn,
+[data-theme="light"] .gym-units select,
+[data-theme="white"] .gym-units select,
+[data-theme="light"] .gym-muscle-chip,
+[data-theme="white"] .gym-muscle-chip {
+  color: var(--ink);
+}
+
+/* Píldoras de la barra del menú (issue #220): mismo patrón que
+   .sort-select en la familia clara — el texto pasa a --ink sobre el
+   fondo claro. El :not(.btn--danger) deja intacto el color peligro
+   de la píldora de borrar semana en claro. */
+[data-theme="light"] .btn--pill:not(.btn--danger),
+[data-theme="white"] .btn--pill:not(.btn--danger) {
+  color: var(--ink);
+}
+
+[data-theme="light"] .btn--pill:not(.btn--danger):hover,
+[data-theme="white"] .btn--pill:not(.btn--danger):hover {
+  background: var(--ink-alpha-10);
+  color: var(--ink);
+}
+
+/* Tarjeta de receta de las celdas en la familia clara (issue #242,
+   iteración): el tinte de papel de la base (--paper-alpha-10) es
+   blanco translúcido en Claro/Blanco puro y quedaría invisible sobre
+   la celda blanca; vuelve al tinte de tinta, patrón del hover de
+   .btn--pill en la familia clara. */
+[data-theme="light"] .menu-meal__card,
+[data-theme="white"] .menu-meal__card {
+  background: var(--ink-alpha-10);
+}
+
+/* ✕ de las tarjetas del menú en la familia clara (issue #242,
+   iteración): la base usa el rojo claro #d16a59 pensado para el chip
+   oscuro; sobre el chip claro vuelve al --stamp (≈ 5.3:1, AA), patrón
+   de .shopping-line__remove en la familia clara. */
+[data-theme="light"] .menu-meal__remove,
+[data-theme="white"] .menu-meal__remove {
+  color: var(--stamp);
+}
+
+/* Distintivo de comensales en la familia clara (issue #242,
+   iteración): en Claro/Blanco puro el papel translúcido de la base
+   es blanco y quedaría invisible sobre la tarjeta clara; vuelve a la
+   tinta suave (5.93:1, AA), patrón agrupado de .menu-meal__card. */
+[data-theme="light"] .menu-meal__comensales,
+[data-theme="white"] .menu-meal__comensales {
+  color: var(--ink-soft);
+}
+
+/* Campo de búsqueda del buscador en la familia clara: la base ya es
+   --paper-dim/--ink (misma fuente de verdad que el resto de inputs
+   del modal); el override solo refuerza el borde como los demás
+   campos agrupados. */
+[data-theme="light"] .menu-comensales input,
+[data-theme="white"] .menu-comensales input,
+[data-theme="light"] .recipe-pick__search,
+[data-theme="white"] .recipe-pick__search,
+[data-theme="light"] .recipe-pick__field select,
+[data-theme="white"] .recipe-pick__field select,
+[data-theme="light"] .ingredient-modal__field input,
+[data-theme="white"] .ingredient-modal__field input,
+[data-theme="light"] .ingredient-modal__field select,
+[data-theme="white"] .ingredient-modal__field select,
+[data-theme="light"] .shopping-extra-form__row input,
+[data-theme="white"] .shopping-extra-form__row input,
+[data-theme="light"] .shopping-extra-form__row select,
+[data-theme="white"] .shopping-extra-form__row select,
+[data-theme="light"] .recipe-form__ingrediente select,
+[data-theme="white"] .recipe-form__ingrediente select,
+[data-theme="light"] .gym-form__field input,
+[data-theme="white"] .gym-form__field input,
+[data-theme="light"] .gym-form__field select,
+[data-theme="white"] .gym-form__field select,
+[data-theme="light"] .gym-form__field textarea,
+[data-theme="white"] .gym-form__field textarea,
+[data-theme="light"] .gym-exercise-block select,
+[data-theme="white"] .gym-exercise-block select,
+[data-theme="light"] .gym-exercise-block input[type="text"],
+[data-theme="white"] .gym-exercise-block input[type="text"],
+[data-theme="light"] .gym-series-row input,
+[data-theme="white"] .gym-series-row input {
+  background: var(--paper-dim);
+  color: var(--ink);
+  border-color: var(--ink-alpha-20);
+}
+
+/* Píldora ghost y ✕ de la lista de la compra en la familia clara:
+   el texto pasa a --ink y el hover a un tinte de tinta (patrón de
+   .btn--pill de la issue #220). */
+[data-theme="light"] .shopping-btn--ghost,
+[data-theme="white"] .shopping-btn--ghost { color: var(--ink); }
+[data-theme="light"] .shopping-btn--ghost:hover,
+[data-theme="white"] .shopping-btn--ghost:hover { background: var(--ink-alpha-10); }
+[data-theme="light"] .shopping-line__remove:hover,
+[data-theme="white"] .shopping-line__remove:hover { background: var(--ink-alpha-10); }
+[data-theme="light"] .shopping-line__remove,
+[data-theme="white"] .shopping-line__remove { color: var(--stamp); }
+
+/* Overrides de la familia oscura en negro puro (mismas superficies
+   que el resto de la app: --ink-raised con texto papel). */
+[data-theme="black"] .recipe-card {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+
+[data-theme="black"] .recipe-card__badge {
+  background: var(--ochre-spine);
+  color: var(--ink);
+}
+
+[data-theme="black"] .recipe-card__meta,
+[data-theme="black"] .ingredient-group__title,
+[data-theme="black"] .ingredients-count,
+[data-theme="black"] .ingredient-modal__used,
+[data-theme="black"] .ingredient-modal__cat-hint,
+[data-theme="black"] .ingredient-modal__label,
+[data-theme="black"] .ingredient-modal__text,
+[data-theme="black"] .menu-weekly__hint,
+[data-theme="black"] .menu-weekly__empty,
+[data-theme="black"] .shopping-line__qty,
+[data-theme="black"] .shopping-deleted,
+[data-theme="black"] .shopping-excluded,
+[data-theme="black"] .shopping-hint,
+[data-theme="black"] .menu-comensales,
+[data-theme="black"] .menu-grid__cell--head,
+[data-theme="black"] .menu-grid__cell--day small,
+[data-theme="black"] .recipe-form__hint,
+[data-theme="black"] .recipe-form__paso-num {
+  color: var(--ink-soft);
+}
+
+/* Tarjetas y panel del filtro: superficies de papel → superficies
+   oscuras (patrón de las tarjetas de receta en negro puro). */
+[data-theme="black"] .ingredient-card {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+
+[data-theme="black"] .ingredients-filter__panel {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+
+[data-theme="black"] .ingredients-filter__all,
+[data-theme="black"] .ingredients-filter__item {
+  color: var(--paper);
+}
+
+[data-theme="black"] .ingredients-filter__item:hover,
+[data-theme="black"] .ingredients-filter__all:hover {
+  background: var(--paper-alpha-10);
+}
+
+/* En negro puro el hover genérico (--paper-alpha-10 sobre fondo oscuro)
+   ganaría al .is-checked y dejaría el texto --ink ilegible: el hover de
+   un ítem marcado mantiene el fondo violeta oscuro. */
+[data-theme="black"] .ingredients-filter__all.is-checked:hover,
+[data-theme="black"] .ingredients-filter__item.is-checked:hover {
+  background: var(--games-dark);
+}
+
+/* Filtro de Recetas (issue #234): en negro puro el panel usa superficie
+   oscura (--ink-raised) y texto papel, como el filtro de Ingredientes.
+   El hover genérico (--paper-alpha-10) ganaría al .is-checked y dejaría
+   el texto --white ilegible: el hover de un ítem marcado mantiene el
+   ocre (--ochre-spine-dark es la variante clara #c99a4e en negro puro
+   con texto casi negro, contraste ≈ 7.4:1). */
+[data-theme="black"] .recipes-filter__panel {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+
+[data-theme="black"] .recipes-filter__all,
+[data-theme="black"] .recipes-filter__item {
+  color: var(--paper);
+}
+
+[data-theme="black"] .recipes-filter__item:hover,
+[data-theme="black"] .recipes-filter__all:hover {
+  background: var(--paper-alpha-10);
+}
+
+[data-theme="black"] .recipes-filter__all.is-checked:hover,
+[data-theme="black"] .recipes-filter__item.is-checked:hover {
+  background: var(--ochre-spine-dark);
+}
+
+[data-theme="black"] .ingredient-modal__link {
+  color: var(--teal-reel-dark);
+}
+
+[data-theme="black"] .ingredient-modal__field input,
+[data-theme="black"] .ingredient-modal__field select {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+/* Número de comensales del buscador en negro puro: la base usa
+   --paper-dim/--ink, que en este tema son casi negros (texto
+   invisible ≈ 1.07:1); se invierte como los demás campos de
+   formulario (patrón de ingredient-modal__field). */
+[data-theme="black"] .recipe-pick__comensales input {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+/* Campo de búsqueda del buscador en negro puro: sin override, la
+   base (--ink-raised) quedaría con el mismo fondo que el modal
+   (también --ink-raised en este tema), y el campo no se distinguiría
+   del modal; se usa el patrón de los demás inputs (--ink + borde
+   claro), mismo bloque que .recipe-pick__comensales input. */
+[data-theme="black"] .recipe-pick__search {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+/* Selectores del destino (día / comida) en negro puro: la base usa
+   --paper-dim/--ink, casi negros en este tema (texto invisible ≈
+   1.07:1 sobre el modal #111); se invierten como los demás campos,
+   mismo bloque que .recipe-pick__search. */
+[data-theme="black"] .recipe-pick__field select {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+/* Etiquetas del selector y aviso de «Toda la semana» en negro puro:
+   la base usa --ink (#000) y quedaría invisible sobre el modal
+   oscuro; papel, patrón de .recipe-pick__empty. */
+[data-theme="black"] .recipe-pick__field,
+[data-theme="black"] .recipe-pick__week-hint {
+  color: var(--paper);
+}
+
+/* Mensaje de lista vacía del buscador en negro puro: la base usa
+   --ink (la tinta del contenido), que en este tema es #000 y quedaría
+   invisible sobre el modal oscuro (--ink-raised): vuelve a papel,
+   patrón de .recipe-view__meta en negro puro. */
+[data-theme="black"] .recipe-pick__empty {
+  color: var(--paper);
+}
+
+/* Tarjeta del buscador en negro puro (issue #242, iteración): la base
+   (familia clara sobre el modal papel del tema Oscuro) usa
+   --paper-dim/--ink, casi negros en este tema (texto invisible ≈
+   1.07:1 sobre el fondo #111); vuelve al chip oscuro con texto papel,
+   patrón de .recipe-card en negro puro. El hover conserva el acento
+   en la variante clara del teal (#4f9c8e ≈ 6.6:1). */
+[data-theme="black"] .recipe-pick__card {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+[data-theme="black"] .recipe-pick__card:hover,
+[data-theme="black"] .recipe-pick__card:focus-visible {
+  border-color: var(--teal-reel-dark);
+}
+
+/* Píldoras de filtro del buscador en negro puro: misma inversión que
+   la tarjeta (la base clara sería texto #000 sobre fondo #111). */
+[data-theme="black"] .recipe-pick .recipes-filter__btn {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+/* Fila de comensales de la tarjeta en negro puro: la base usa --ink
+   (#000) y quedaría invisible sobre la tarjeta oscura; tinta suave
+   clara, patrón de .menu-weekly__hint (≈ 6.2:1, AA). */
+[data-theme="black"] .recipe-pick__comensales {
+  color: var(--ink-soft);
+}
+
+/* Placeholder del campo de búsqueda en negro puro: la base usa --ink
+   (#000) y sería invisible sobre el campo también --ink (#000);
+   tinta suave clara (#948a76 ≈ 6.2:1, AA). */
+[data-theme="black"] .recipe-pick__search::placeholder {
+  color: var(--ink-soft);
+}
+
+[data-theme="black"] .recipe-form__import {
+  background: var(--paper-alpha-10);
+  border-color: var(--paper-alpha-20);
+}
+
+[data-theme="black"] .recipe-form__field input,
+[data-theme="black"] .recipe-form__field textarea,
+[data-theme="black"] .recipe-form__newtag input,
+[data-theme="black"] .recipe-form__paso input,
+[data-theme="black"] .recipe-form__ingrediente input,
+[data-theme="black"] .recipe-form__ingrediente select {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+/* Combobox de ingrediente en negro puro (issue #240): el desplegable
+   usa superficie oscura (--ink-raised) y texto papel, patrón de los
+   paneles de filtro; el hover/is-active un tinte claro translúcido
+   (--paper-alpha-10, texto papel sobre él ≈ AA). */
+[data-theme="black"] .ing-combo__list {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+[data-theme="black"] .ing-combo__list [role="option"]:hover,
+[data-theme="black"] .ing-combo__list [role="option"].is-active {
+  background: var(--paper-alpha-10);
+  color: var(--paper);
+}
+
+[data-theme="black"] .ing-combo__toggle {
+  color: var(--paper);
+}
+
+/* El mensaje «Sin coincidencias…» vuelve a papel en negro puro (el
+   --ink base sería tinta #000 sobre la superficie oscura del listado). */
+[data-theme="black"] .ing-combo__list .ing-combo__empty {
+  color: var(--paper);
+}
+
+[data-theme="black"] .recipe-form__chip {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+[data-theme="black"] .recipe-form__fieldset {
+  border-color: var(--paper-alpha-20);
+}
+
+/* Vista de receta en modo lectura (issue #236) en negro puro: las
+   píldoras de etiquetas usan las variantes claras (teal #4f9c8e ≈
+   6.6:1 y ocre #c99a4e ≈ 7.4:1 sobre tinta) con texto casi negro
+   (--ink), patrón de .recipe-form__chip.is-checked; los enlaces la
+   variante clara del teal como .ingredient-modal__link. Las tarjetas
+   de recetas comparten los mismos pares (selectores agrupados). */
+[data-theme="black"] .recipe-view__tag--alergeno,
+[data-theme="black"] .recipe-card__tag--alergeno {
+  background: var(--teal-reel-dark);
+  color: var(--ink);
+}
+
+[data-theme="black"] .recipe-view__tag--tipo,
+[data-theme="black"] .recipe-card__tag--tipo {
+  background: var(--ochre-spine-dark);
+  color: var(--ink);
+}
+
+[data-theme="black"] .recipe-view__link {
+  color: var(--teal-reel-dark);
+}
+
+/* En negro puro la tinta es #000 sobre la superficie del modal
+   (--ink-raised): el texto secundario vuelve a papel como el resto. */
+[data-theme="black"] .recipe-view__meta {
+  color: var(--paper);
+}
+
+[data-theme="black"] .recipe-form__import-row input {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+/* Tarjeta de receta de las celdas en negro puro: el tinte translúcido
+   de papel de la base ya funciona sobre la celda oscura; se reafirma
+   para agruparlo con el resto de superficies del tema. El hover/focus
+   conserva el acento en la variante clara del teal (patrón de
+   .recipe-pick__card en negro puro). */
+[data-theme="black"] .menu-meal__card {
+  background: var(--paper-alpha-10);
+}
+
+[data-theme="black"] .menu-meal__card:hover,
+[data-theme="black"] .menu-meal__card:focus-visible {
+  border-color: var(--teal-reel-dark);
+}
+
+/* Negro puro: mismo marcado hover con sombra interior; el fondo del
+   swipe nunca se transparenta (issue #225, iteración 3). */
+[data-theme="black"] .shopping-line-wrap:hover .shopping-line__content {
+  box-shadow: inset 0 0 0 999px var(--paper-alpha-10);
+}
+
+[data-theme="black"] .shopping-line-wrap--hogar .shopping-line__content {
+  border-left-color: var(--ochre-spine);
+}
+
+/* En negro puro los inputs del form de ítem extra vuelven a --ink:
+   la píldora base (--ink-raised) quedaría sin límite sobre el
+   propio --ink-raised del formulario (patrón de ingredient-modal__field).
+   .shopping-btn--ghost y .shopping-line__remove:hover no necesitan
+   override: la base ya funciona en negro puro. */
+[data-theme="black"] .shopping-extra-form__row input,
+[data-theme="black"] .shopping-extra-form__row select,
+[data-theme="black"] .shopping-extra-form__row .ing-combo .ing-nombre { background: var(--ink); }
+
+/* Checkboxes de la lista de la compra en negro puro: el acento rojo
+   pasa a la variante clara (--stamp-dark #cf6655) para mantener el
+   umbral gráfico 3:1 sobre negro (patrón de episode-checkbox). */
+[data-theme="black"] .shopping-line__main input[type="checkbox"] {
+  accent-color: var(--stamp-dark);
+}
+
+/* --- Gimnasio (issue #62) en negro puro --- */
+
+/* Las tarjetas pasan a la superficie oscura levantada (mismo patrón
+   que .recipe-card en negro puro: texto papel sobre --ink-raised). */
+[data-theme="black"] .gym-workout-card,
+[data-theme="black"] .gym-exercise-card {
+  background: var(--ink-raised);
+  color: var(--paper);
+}
+
+/* Los inputs/selects/textareas del modal de gimnasio vuelven a --ink
+   con texto papel (la base --paper-dim sería gris #111 casi igual a
+   la superficie del modal; patrón de .ingredient-modal__field). El
+   recuadro del rango del Resumen y su calendario (issue #269)
+   siguen el mismo patrón: en negro puro la superficie pasa a tinta
+   (--ink) y el texto a papel. */
+[data-theme="black"] .gym-form__field input,
+[data-theme="black"] .gym-form__field select,
+[data-theme="black"] .gym-form__field textarea,
+[data-theme="black"] .gym-exercise-block select,
+[data-theme="black"] .gym-exercise-block input[type="text"],
+[data-theme="black"] .gym-series-row input,
+[data-theme="black"] .gym-summary-range__trigger,
+[data-theme="black"] .gym-summary-range__popover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+
+/* Textos interiores del recuadro del rango y del calendario en negro
+   puro: con el fondo invertido a --ink, la etiqueta, el rango
+   elegido, el título del mes, la navegación y los días pasan a papel
+   (el --ink-soft base quedaría negro sobre negro). */
+[data-theme="black"] .gym-summary-range__label,
+[data-theme="black"] .gym-summary-range__value,
+[data-theme="black"] .gym-summary-range__cal-title,
+[data-theme="black"] .gym-summary-range__cal-weekday,
+[data-theme="black"] .gym-summary-range__cal-nav,
+[data-theme="black"] .gym-summary-range__day {
+  color: var(--paper);
+}
+
+/* Hover del calendario en negro puro: tinte claro sobre la
+   superficie oscura (--paper-dim #111 sería invisible). */
+[data-theme="black"] .gym-summary-range__cal-nav:hover,
+[data-theme="black"] .gym-summary-range__day:hover {
+  background: var(--paper-alpha-10);
+}
+
+/* Extremos del rango en negro puro: acento en su variante clara y
+   texto tinta (la variante base #7a5a9e con texto papel daría
+   ~2:1); los días intermedios usan un tinte claro neutro porque el
+   violeta al 22 % sobre negro casi no se ve. El hover conserva el
+   estado de extremo (regla posterior a la del hover genérico). */
+[data-theme="black"] .gym-summary-range__day--selected {
+  background: var(--games-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .gym-summary-range__day--selected:hover {
+  background: var(--games-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .gym-summary-range__day--in-range {
+  background: var(--paper-alpha-14);
+  color: var(--paper);
+}
+
+/* El trigger abierto marca su borde con el acento claro. */
+[data-theme="black"] .gym-summary-range__trigger[aria-expanded="true"] {
+  border-color: var(--games-dark);
+}
+
+/* El panel del ejercicio del constructor usa el borde claro del
+   resto de superficies en negro puro. */
+[data-theme="black"] .gym-exercise-block {
+  border-color: var(--paper-alpha-20);
+}
+
+/* El botón «+ Añadir serie» (borde punteado y texto suave) y el chip
+   de grupo muscular conservan su contraste sobre negro: texto papel. */
+[data-theme="black"] .gym-add-series-btn {
+  color: var(--paper);
+}
+
+[data-theme="black"] .gym-muscle-chip {
+  color: var(--paper);
+}

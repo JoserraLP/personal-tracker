@@ -1,0 +1,2132 @@
+/* =========================================================
+   OCIO — estilos específicos de la sección de pelis, series y
+   libros (buscador, tarjetas, vista de lista, temporadas y
+   episodios, historial de visionados/lecturas, formularios...).
+   Los tokens de color/tipografía (variables --ink, --paper, etc.)
+   se definen en css/styles.css, que se carga siempre junto a este
+   archivo, así que están disponibles aquí también.
+   ========================================================= */
+
+/* Issue #92: nunca zoom automático al enfocar. iOS Safari y Android Chrome
+   hacen zoom si el font-size del campo es < 16px. Todos los campos >= 16px. */
+input, textarea, select { font-size: 16px; }
+
+/* Issue #275: nunca zoom por doble toque en interacciones.
+   touch-action: manipulation mantiene el panning y el pinch zoom
+   (accesibilidad: no deshabilita el zoom manual, ADR-042/ADR-016). */
+button, a, input, select, textarea { touch-action: manipulation; }
+
+/* =========================================================
+   Botones con los colores de acento de ocio (pelis/series vs libros)
+   ========================================================= */
+
+.btn--accent-media {
+  background: var(--teal-reel);
+  color: var(--paper);
+}
+.btn--accent-media:hover {
+  background: var(--teal-reel-dark);
+}
+
+.btn--accent-books {
+  background: var(--ochre-spine);
+  color: var(--ink);
+}
+.btn--accent-books:hover {
+  background: var(--ochre-spine-dark);
+  color: var(--paper);
+}
+
+.btn--accent-games {
+  background: var(--games);
+  color: var(--paper);
+}
+.btn--accent-games:hover {
+  background: var(--games-dark);
+}
+
+/* =========================================================
+   Modal de confirmación al añadir libro (cover picker +
+   description selector)
+   ========================================================= */
+
+.book-confirm__editions {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin: 0 0 0.8rem;
+}
+
+.cover-picker {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.3rem 0;
+  scrollbar-width: thin;
+}
+
+.cover-picker__item {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+.cover-picker__item:hover {
+  opacity: 0.85;
+}
+.cover-picker__item.is-selected {
+  opacity: 1;
+  border-color: var(--ochre-spine);
+}
+
+.cover-picker__item img {
+  width: 80px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 2px;
+  display: block;
+  background: var(--paper-dim);
+}
+
+.desc-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.desc-picker__item {
+  background: var(--white);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.desc-picker__item:hover {
+  background: var(--paper-dim);
+}
+.desc-picker__item.is-selected {
+  border-color: var(--ochre-spine);
+  background: var(--ochre-alpha-08);
+}
+
+.desc-picker__text {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--ink);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+
+/* =========================================================
+   Estantería / biblioteca personal
+   ========================================================= */
+
+.filter-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
+  /* Barra de desplazamiento oculta (issue #118): el scroll horizontal
+     sigue funcionando, pero no se muestra la barra (comentario del
+     usuario: en móvil no debe aparecer). */
+  scrollbar-width: none;
+}
+.filter-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  background: transparent;
+  border: 1px solid var(--paper-alpha-30);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.chip.is-active {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+/* Filtros de la biblioteca: mismo tamaño y fuente que el select de
+   orden (issue #118). Scoped para no afectar al .chip del buscador
+   global (css/styles.css .global-search__item-status.chip). */
+.library-controls .chip { font-size: 1rem; }
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+  gap: 1rem;
+}
+
+.empty-state {
+  color: var(--ink-soft);
+  font-style: italic;
+  padding: 1.4rem 0.2rem;
+  border-top: 1px dashed var(--paper-alpha-20);
+  margin-top: 0.6rem;
+}
+
+/* Línea de atribución al final de cada biblioteca (p. ej. datos de
+   videojuegos vía IGDB en ocio/videojuegos.html). */
+.library-credit {
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  margin: 0.8rem 0 0;
+  text-align: right;
+}
+.library-credit a {
+  color: var(--ink-soft);
+  text-decoration: underline;
+}
+.library-credit a:hover {
+  color: var(--ink);
+}
+
+/* Ficha / entrada de la biblioteca, con borde perforado tipo ticket */
+.item-card {
+  position: relative;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  border: none;
+  padding: 0;
+  min-width: 0;
+}
+
+.item-card__cover-wrap {
+  position: relative;
+}
+
+.item-card__cover {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+  background: var(--paper-dim);
+}
+
+.item-card__stamp {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  background: var(--paper-alpha-92);
+  transform: rotate(-6deg);
+}
+
+.item-card__stamp--pendiente { color: var(--stamp-dark); }
+.item-card__stamp--en_curso { color: var(--teal-reel-dark); }
+.item-card__stamp--completado { color: var(--ochre-spine-dark); }
+
+/* Perforación estilo entrada de cine entre la portada y el cuerpo */
+.item-card__perforation {
+  position: relative;
+  height: 12px;
+  background:
+    radial-gradient(circle 6px at 0 50%, var(--ink) 99%, transparent 100%),
+    radial-gradient(circle 6px at 100% 50%, var(--ink) 99%, transparent 100%);
+  background-color: var(--paper);
+}
+.item-card__perforation::after {
+  content: "";
+  position: absolute;
+  inset: 5px 10px auto;
+  border-top: 1.5px dashed var(--paper-line);
+}
+
+.item-card__body {
+  padding: 0.65rem 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.item-card__title {
+  font-weight: 600;
+  font-size: 0.88rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.item-card__meta {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-card__rating {
+  margin-top: auto;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  color: var(--ochre-spine-dark);
+}
+
+.item-card__btn {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+.item-card__btn:focus-visible {
+  outline-offset: -3px;
+}
+
+
+/* =========================================================
+   Contenido de los modales de ocio (detalle de peli/serie/libro,
+   edición, alta manual)
+   ========================================================= */
+
+.modal-detail__header {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* El wrapper de texto del detalle es hijo de flex: sin min-width: 0
+   un título largo sin espacios desbordaría el modal */
+.modal-detail__header > div {
+  min-width: 0;
+}
+
+.modal-detail__cover {
+  width: 92px;
+  height: 138px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--paper-dim);
+  flex-shrink: 0;
+}
+
+.modal-detail__title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  margin: 0 0 0.2rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.modal-detail__meta {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.field-group {
+  margin-bottom: 0.95rem;
+}
+
+.field-group label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  margin-bottom: 0.3rem;
+}
+
+.field-group select,
+.field-group textarea,
+.field-group input[type="number"] {
+  width: 100%;
+  border: 1px solid var(--paper-line);
+  background: var(--white);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.6rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.field-group textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.rating-picker {
+  display: flex;
+  gap: 0.3rem;
+}
+.rating-picker button {
+  background: transparent;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  width: 34px;
+  height: 34px;
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+}
+.rating-picker button.is-active {
+  background: var(--ochre-spine);
+  border-color: var(--ochre-spine);
+  color: var(--ink);
+}
+/* Media estrella (issue #276): el botón afectado se pinta igual que un
+   botón activo (mismas variables de tema, sin overrides extra) y su
+   contenido pasa a «½». */
+.rating-picker button.is-half {
+  background: var(--ochre-spine);
+  border-color: var(--ochre-spine);
+  color: var(--ink);
+}
+
+/* Media de valoración de episodios junto al picker de la serie (issue #80) */
+.episode-average {
+  display: block;
+  margin-top: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+/* Sin episodios valorados la media no se muestra: display:block del
+   elemento vencería al [hidden] del navegador, así que se fuerza. */
+.episode-average[hidden] {
+  display: none;
+}
+.episode-average strong { color: var(--ink); }
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+}
+
+/* =========================================================
+   Progreso de series: banner, temporadas y episodios
+   ========================================================= */
+
+.progress-banner {
+  background: var(--paper-dim);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.progress-banner .next-line {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.progress-bar-track {
+  height: 6px;
+  background: var(--ink-alpha-15);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--teal-reel);
+  transition: width 0.25s ease;
+}
+
+.progress-count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.seasons-list {
+  margin-bottom: 1.1rem;
+  border: none;
+  border-radius: var(--radius);
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.season-block + .season-block {
+  border-top: 1px solid var(--paper-line);
+}
+
+.season-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--paper-dim);
+}
+
+.season-toggle {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.season-chevron {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.season-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.season-count {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.season-episodes {
+  padding: 0.3rem 0.6rem 0.6rem;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+}
+
+.episode-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.3rem;
+  font-size: 0.82rem;
+  border-bottom: 1px dashed var(--ink-alpha-08);
+}
+.episode-row:last-child {
+  border-bottom: none;
+}
+
+.episode-row__main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.episode-row__num {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+.episode-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.episode-row.is-watched .episode-row__name {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+}
+
+.episode-loading {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  padding: 0.4rem 0.2rem;
+  margin: 0;
+}
+
+.item-card__progress {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--teal-reel-dark);
+}
+
+
+/* =========================================================
+   Controles de la estantería: filtros + orden
+   ========================================================= */
+
+.library-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+  max-width: 100%;
+}
+
+.library-controls__aux {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-shrink: 0;
+}
+
+.sort-select {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 1rem;
+  font-family: var(--font-body);
+}
+
+
+/* =========================================================
+   Historial de visionados (pelis) y lecturas (libros)
+   ========================================================= */
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.log-empty {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  margin: 0 0 0.6rem;
+}
+
+.log-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
+  background: var(--white);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.35rem 0.5rem;
+  font-size: 0.82rem;
+}
+
+.log-row input[type="date"] {
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--ink);
+  flex: 1 1 108px;
+  min-width: 0;
+}
+
+.log-row input[type="number"] {
+  border: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--ink);
+  flex: 0 1 4.5rem;
+  width: 4.5rem;
+  min-width: 0;
+}
+
+.log-row .btn {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.log-row__arrow {
+  color: var(--ink-soft);
+}
+
+.log-row__reading {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.log-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.log-add-row input[type="date"] {
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  background: var(--white);
+  color: var(--ink);
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+
+/* =========================================================
+   Banner de finalización + historial de revisionados (series)
+   ========================================================= */
+
+.completion-banner {
+  background: var(--ochre-spine);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 1.1rem;
+}
+
+.completion-banner p {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+}
+
+.completion-dates {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+.rewatch-history {
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  margin-top: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.rewatch-history summary {
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.rewatch-history ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  font-family: var(--font-mono);
+}
+
+
+/* =========================================================
+   Fecha por episodio
+   ========================================================= */
+
+.episode-row input.episode-date {
+  margin-left: auto;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  padding: 0.15rem 0.3rem;
+  width: min(150px, 100%);
+}
+.episode-row input.episode-date:disabled {
+  opacity: 0.35;
+  background: transparent;
+  border-color: transparent;
+}
+
+
+/* =========================================================
+   Sellos de estado: standby / abandonado
+   ========================================================= */
+
+.item-card__stamp--standby {
+  color: var(--ink-soft);
+}
+.item-card__stamp--abandonado {
+  color: var(--stamp-dark);
+  text-decoration: line-through;
+}
+
+
+/* =========================================================
+   Acciones de estado (pausar / abandonar / retomar)
+   ========================================================= */
+
+.status-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.1rem;
+}
+
+.standby-banner {
+  background: var(--paper-dim);
+  border: 1px dashed var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 1.1rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+
+/* =========================================================
+   Saga/collection banner (modal de película)
+   ========================================================= */
+
+.saga-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  background: var(--paper-dim);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.saga-banner__label {
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+
+/* =========================================================
+   Formulario de alta manual
+   ========================================================= */
+
+.manual-form .field-group input[type="text"],
+.manual-form .field-group input[type="number"],
+.manual-form .field-group input[type="url"] {
+  width: 100%;
+  border: 1px solid var(--paper-line);
+  background: var(--white);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.6rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+
+/* =========================================================
+   Modal selector de saga (checklist de películas)
+   ========================================================= */
+
+.view-toggle {
+  display: flex;
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.view-toggle__btn {
+  background: transparent;
+  color: var(--ink-soft);
+  border: none;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.view-toggle__btn.is-active {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+
+/* =========================================================
+   Colores de fondo por estado (tarjetas y filas)
+   ========================================================= */
+
+.item-card--en_curso { background: var(--bg-state-en_curso); }
+.item-card--completado { background: var(--bg-state-completado); }
+.item-card--standby { background: var(--bg-state-standby); }
+.item-card--abandonado { background: var(--bg-state-abandonado); }
+
+.item-card--en_curso .item-card__body,
+.item-card--completado .item-card__body,
+.item-card--standby .item-card__body,
+.item-card--abandonado .item-card__body {
+  background: transparent;
+}
+
+.item-card__upcoming {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--stamp-dark);
+  background: var(--stamp-alpha-12);
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.item-card__upcoming--unreleased {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Ítem sin estrenar (sin fecha de estreno o con fecha futura): rayas
+   entre el color de "Viendo" y el de "Abandonada", para que se
+   distinga de un vistazo sin necesitar leer la insignia. Va después
+   de los colores de estado para que gane sobre el fondo plano de
+   item-card--en_curso, etc. */
+.item-card--unreleased {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bg-state-en_curso) 0px,
+    var(--bg-state-en_curso) 14px,
+    var(--bg-state-abandonado) 14px,
+    var(--bg-state-abandonado) 28px
+  );
+}
+.item-card--unreleased .item-card__body {
+  background: transparent;
+}
+
+/* =========================================================
+   Vista de lista
+   ========================================================= */
+
+.library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.list-row {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--teal-reel);
+  touch-action: pan-y;
+}
+
+.list-row__swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--paper);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+.list-row__content {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: var(--paper);
+  border-radius: var(--radius);
+  transition: transform 0.2s ease;
+  box-shadow: var(--shadow-card);
+}
+.list-row.is-dragging .list-row__content {
+  transition: none;
+}
+
+.list-row--pendiente .list-row__content { background: var(--paper); }
+.list-row--en_curso .list-row__content { background: var(--bg-state-en_curso); }
+.list-row--completado .list-row__content { background: var(--bg-state-completado); }
+.list-row--standby .list-row__content { background: var(--bg-state-standby); }
+.list-row--abandonado .list-row__content { background: var(--bg-state-abandonado); }
+
+/* Ítem sin estrenar (vista de lista): mismas rayas que en la
+   cuadrícula. Va después de los colores de estado para que gane sobre
+   el fondo plano. */
+.list-row--unreleased .list-row__content {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bg-state-en_curso) 0px,
+    var(--bg-state-en_curso) 14px,
+    var(--bg-state-abandonado) 14px,
+    var(--bg-state-abandonado) 28px
+  );
+}
+
+.list-row__open {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.7rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--ink);
+  min-width: 0;
+}
+
+.list-row__cover {
+  width: 44px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: var(--paper-dim);
+}
+
+.list-row__info {
+  min-width: 0;
+  flex: 1;
+}
+
+.list-row__title {
+  font-weight: 600;
+  font-size: 0.88rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.list-row__meta {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.list-row__progress {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--teal-reel-dark);
+  margin-top: 0.15rem;
+}
+
+.list-row__stamp.item-card__stamp {
+  position: static;
+  transform: none;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.list-row__action {
+  flex-shrink: 0;
+  width: 96px;
+  border: none;
+  border-left: 1px dashed var(--paper-line);
+  background: var(--teal-reel);
+  color: var(--paper);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.4rem;
+}
+.list-row__action:hover {
+  background: var(--teal-reel-dark);
+}
+.list-row__action:disabled {
+  opacity: 0.6;
+}
+
+@media (max-width: 480px) {
+  .list-row__meta,
+  .list-row__progress {
+    display: block;
+  }
+  /* En móvil los autores/envuelve de las tarjetas pueden ocupar
+     hasta 2 líneas (en desktop conservan ellipsis + title, ADR-003) */
+  .item-card__meta {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .list-row__action {
+    width: 76px;
+    font-size: 0.66rem;
+  }
+}
+
+
+/* =========================================================
+   Temporadas y episodios: rediseño para que no parezca una
+   lista HTML suelta
+   ========================================================= */
+
+.season-block {
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--white);
+  box-shadow: 0 2px 6px var(--ink-alpha-06);
+}
+.season-block + .season-block {
+  border-top: 1px solid var(--paper-line);
+}
+
+.episode-row {
+  border-bottom: 1px solid var(--ink-alpha-06);
+  padding: 0.45rem 0.3rem;
+}
+.episode-row.is-watched {
+  background: var(--teal-alpha-06);
+}
+
+.episode-checkbox-wrap {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: inline-flex;
+}
+.episode-checkbox-wrap input.episode-checkbox {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.episode-checkbox-visual {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--paper-line);
+  border-radius: 50%;
+  background: var(--white);
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.episode-checkbox-visual::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--paper);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  opacity: 0;
+}
+.episode-checkbox:checked ~ .episode-checkbox-visual {
+  background: var(--teal-reel);
+  border-color: var(--teal-reel);
+}
+.episode-checkbox:checked ~ .episode-checkbox-visual::after {
+  opacity: 1;
+}
+
+/* Contador de visualizaciones (issue #133): con times > 1 el
+   círculo muestra el nº de veces en lugar del tick */
+.episode-checkbox:checked ~ .episode-checkbox-visual[data-count]::after {
+  content: attr(data-count);
+  opacity: 1;
+  border: none;
+  transform: none;
+  width: auto;
+  height: auto;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--paper);
+}
+
+.episode-row__future {
+  color: var(--stamp-dark);
+  font-style: italic;
+  font-size: 0.68rem;
+}
+
+
+/* =========================================================
+   Valoración por episodio
+   ========================================================= */
+
+/* Segunda fila del episodio (issue #133): fecha y valoración, alineadas
+   con el checkbox (mismo sangrado que usaba antes .episode-rating). */
+.episode-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding-left: 30px;
+}
+.episode-row__meta .episode-date {
+  flex-shrink: 0;
+}
+
+.episode-rating {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.episode-rating__star {
+  background: transparent;
+  border: none;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--paper-line);
+  padding: 0.1rem;
+}
+.episode-rating__star.is-active {
+  color: var(--ochre-spine);
+}
+/* Media estrella de episodio (issue #276): mismo acento que la activa
+   (mismas variables de tema), distingue con el glifo «½». */
+.episode-rating__star.is-half {
+  color: var(--ochre-spine);
+}
+.episode-rating__star:disabled {
+  opacity: 0.5;
+}
+
+
+/* =========================================================
+   Información ampliada (duración, reparto, sinopsis...)
+   ========================================================= */
+
+.extra-info {
+  background: var(--paper-dim);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 1.1rem;
+}
+
+.extra-info__line {
+  font-size: 0.78rem;
+  margin: 0 0 0.3rem;
+  color: var(--ink);
+}
+.extra-info__line:last-child {
+  margin-bottom: 0;
+}
+
+.extra-info__overview {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0.3rem 0 0;
+}
+
+/* Estado de los detalles de ficha bajo demanda (issue #200): mientras
+   la API devuelve la sinopsis/reparto o si la red falla, se muestra
+   una línea informativa en lugar de un bloque vacío (degradación
+   elegante a «solo tarjeta»). */
+.extra-info__loading {
+  font-size: 0.78rem;
+  font-style: italic;
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+/* Temporadas en la vista previa de búsqueda (issue #22) */
+.preview-seasons {
+  margin: 0.7rem 0;
+}
+
+.preview-seasons__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+
+.preview-seasons__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.preview-seasons__row {
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.preview-seasons__total {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  margin: 0.45rem 0 0;
+}
+
+.edit-info-btn {
+  margin-bottom: 1rem;
+}
+
+
+/* =========================================================
+   Puntuación de la comunidad (TMDB)
+   ========================================================= */
+
+/* Contenedor de puntuaciones en tarjetas (estrellas + TMDB) */
+.item-card__ratings {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+
+/* Distintivo comunitario */
+.community-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.community-rating__label {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--teal-reel);
+  color: var(--paper);
+  border-radius: 2px;
+  padding: 0.08rem 0.3rem;
+  line-height: 1.4;
+}
+
+.community-rating__value {
+  font-weight: 700;
+  color: var(--teal-reel-dark);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+/* Variante compacta para filas de episodio (issue #45) */
+.community-rating--sm {
+  gap: 0.25rem;
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+.community-rating--sm .community-rating__label {
+  font-size: 0.5rem;
+  padding: 0.05rem 0.25rem;
+}
+.community-rating--sm .community-rating__value {
+  font-size: 0.7rem;
+}
+
+/* Versión «sin datos» en modales */
+.community-rating--empty {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  font-family: var(--font-body);
+}
+
+/* Fila de puntuaciones en modales (debajo del título/metadatos) */
+.modal-detail__ratings {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+
+/* =========================================================
+   Ventana de valoración emergente (issue #21): cabecera con
+   portada pequeña, línea de episodio, nota de comunidad y
+   picker de estrellas compacto
+   ========================================================= */
+
+.rating-modal__header {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  margin-bottom: 0.8rem;
+}
+
+.rating-modal__cover {
+  width: 52px;
+  height: 78px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--paper-dim);
+  flex-shrink: 0;
+}
+
+.rating-modal__info {
+  min-width: 0;
+}
+
+.rating-modal__title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.15rem;
+  line-height: 1.2;
+}
+
+.rating-modal__subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.rating-modal__stars {
+  margin-bottom: 0.95rem;
+}
+
+/* Picker compacto para la ventana pequeña */
+.rating-picker--small button {
+  width: 30px;
+  height: 30px;
+  font-size: 0.85rem;
+}
+
+/* Fila de acciones: wrap para que el botón «Deshacer» (issue #136)
+   no desborde en móvil (responsividad obligatoria) */
+.rating-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+}
+
+/* Cuerpo del diálogo de acciones de episodio ya visto (issue #133) */
+.eam-body {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+
+/* =========================================================
+   Botón de tráiler (YouTube)
+   ========================================================= */
+
+.trailer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--teal-reel);
+  color: var(--paper);
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem 0.25rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 1.1rem;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.trailer-btn:hover {
+  background: var(--teal-reel-dark);
+  color: var(--paper);
+  text-decoration: none;
+}
+
+.trailer-btn:active {
+  transform: translateY(1px);
+}
+
+.trailer-btn__icon {
+  font-size: 0.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.trailer-btn__label {
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   Ficha de solo lectura (amigos)
+   ========================================================= */
+
+.read-only-badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  background: var(--paper-dim);
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+/* =========================================================
+   Modal selector de saga (checklist de películas)
+   ========================================================= */
+
+.saga-subtitle {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin: 0 0 0.8rem;
+}
+
+.saga-list {
+  max-height: 340px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: 0.4rem;
+  background: #fff;
+}
+
+.saga-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.saga-row:hover {
+  background: var(--paper-dim);
+}
+
+.saga-row input[type="checkbox"] {
+  accent-color: var(--teal-reel);
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.saga-row__cover {
+  width: 36px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: var(--paper-dim);
+}
+
+.saga-row__title {
+  flex: 1;
+  font-size: 0.82rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saga-row__year {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+
+.saga-count {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  text-align: right;
+  margin: 0 0 0.2rem;
+}
+
+/* =========================================================
+   Móvil: evitar que iOS haga zoom automático al enfocar los
+   campos propios de ocio (Safari hace zoom si el font-size es
+   menor de 16px)
+   ========================================================= */
+
+@media (max-width: 768px) {
+  .field-group input,
+  .field-group select,
+  .field-group textarea,
+  .manual-form input,
+  .log-row input[type="date"],
+  .log-add-row input[type="date"],
+  .episode-row input.episode-date,
+  .sort-select {
+    font-size: 16px;
+  }
+  .library-controls__aux {
+    flex-basis: 100%;
+  }
+}
+
+/* =========================================================
+   Plataformas de streaming (watch providers de TMDB)
+   ========================================================= */
+
+.watch-providers {
+  background: var(--paper-dim);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 1.1rem;
+}
+
+.watch-providers__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.watch-providers--empty .watch-providers__title {
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.watch-providers__group {
+  margin-bottom: 0.45rem;
+}
+.watch-providers__group:last-child {
+  margin-bottom: 0;
+}
+
+.watch-providers__type-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.watch-providers__logos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.watch-provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.7rem;
+}
+
+.watch-provider__logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  object-fit: contain;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.watch-provider__name {
+  color: var(--ink);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.watch-providers__link {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: var(--teal-reel);
+  margin-top: 0.35rem;
+  text-decoration: underline;
+}
+.watch-providers__link:hover {
+  color: var(--teal-reel-dark);
+}
+
+/* =========================================================
+   Plataformas jugables de videojuegos (IGDB)
+   ========================================================= */
+
+.game-platforms {
+  background: var(--paper-dim);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 1.1rem;
+}
+
+.game-platforms__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.game-platforms__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Sin white-space: nowrap a propósito: nombres largos como
+   "PC (Microsoft Windows)" deben poder partirse (responsividad) */
+.game-platform {
+  display: inline-flex;
+  align-items: center;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+/* =========================================================
+   Recomendaciones TMDB (contenido similar)
+   ========================================================= */
+
+.recommendations {
+  margin: 1.2rem 0 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--paper-line);
+}
+
+.recommendations__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin: 0 0 0.7rem;
+}
+
+.recommendations__scroll {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.recommendations__scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.recommendations__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.recommendations__scroll::-webkit-scrollbar-thumb {
+  background: var(--paper-line);
+  border-radius: 4px;
+}
+
+.rec-card {
+  flex: 0 0 110px;
+  scroll-snap-align: start;
+  background: var(--paper-dim);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.rec-card__cover {
+  width: 100%;
+  height: 155px;
+  object-fit: cover;
+  background: var(--paper-dim);
+}
+
+.rec-card__body {
+  padding: 0.4rem 0.45rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.rec-card__title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rec-card__year {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--ink-soft);
+}
+
+.rec-card .rec-card__add,
+.saga-card .saga-card__add {
+  margin-top: auto;
+  width: 100%;
+  font-size: 0.7rem;
+  padding: 0.3rem 0.2rem;
+  min-height: 26px;
+}
+
+/* Hover state for desktops */
+@media (hover: hover) {
+  .rec-card:hover {
+    box-shadow: var(--shadow-card);
+  }
+}
+
+/* =========================================================
+   Otras películas de la saga (modal de película, issue #280)
+   Mismo aspecto que las recomendaciones: tarjetas deslizables
+   en horizontal usando .recommendations__scroll y .rec-card.
+   ========================================================= */
+
+.saga-movies {
+  margin: 0.4rem 0 1.2rem;
+}
+
+.saga-movies__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin: 0 0 0.6rem;
+}
+
+/* Tarjeta de saga como botón de vista previa (issue #280, iteración):
+   al pulsarla se abre la información de la película antes de
+   añadirla. El botón .saga-card__open ocupa todo el cuerpo de la
+   tarjeta (flex: 1) y el botón "Añadir" (.saga-card__add) queda como
+   hermano, anclado abajo con margin-top: auto. Los estilos del cuerpo
+   (.rec-card__body) se heredan por clase, ahora sobre span (phrasing
+   content dentro del button). Las tarjetas de recomendación pulsables
+   (.rec-card--openable/.rec-card__open/.rec-card__hint) comparten
+   exactamente estos estilos (issue #280, segunda iteración): una sola
+   fuente de verdad por regla, selectores agrupados. */
+.saga-card__open,
+.rec-card__open {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.saga-card .rec-card__cover,
+.rec-card--openable .rec-card__cover {
+  display: block; /* evita el gap de baseline de la img inline dentro del button */
+}
+
+.saga-card__hint,
+.rec-card__hint {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  /* Contraste AA en la familia oscura por defecto (regla 4 AGENTS.md):
+     --ink-soft (#948a76) sobre --paper-dim (#e3dac4) = 2.45:1, insuficiente;
+     #5f5849 ≈ 5.1:1. Negro puro y familia clara sí cumplen con
+     --ink-soft (6.2 / 5.2 / 5.9:1), por eso se restaura ahí. */
+  color: #5f5849;
+  text-decoration: underline;
+}
+
+[data-theme="black"] .saga-card__hint,
+[data-theme="light"] .saga-card__hint,
+[data-theme="white"] .saga-card__hint,
+[data-theme="black"] .rec-card__hint,
+[data-theme="light"] .rec-card__hint,
+[data-theme="white"] .rec-card__hint {
+  color: var(--ink-soft);
+}
+
+.saga-card__open:focus-visible,
+.rec-card__open:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   Foco visible para componentes específicos de ocio
+   ========================================================= */
+
+.view-toggle__btn:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: -1px;
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.season-mark-all:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.episode-rating__star:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.cover-picker__item:focus-visible {
+  outline: 2px solid var(--ochre-spine);
+  outline-offset: 2px;
+}
+
+.desc-picker__item:focus-visible {
+  outline: 2px solid var(--ochre-spine);
+  outline-offset: 2px;
+}
+
+.saga-row:focus-within {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.sort-select:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.trailer-btn:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   Ajustes puntuales de la familia clara (light y white, ocio)
+   La mayoría de los componentes de ocio heredan las variables
+   ya invertidas en css/styles.css; aquí solo se corrigen los
+   que usan --paper como color de texto o --ink como fondo.
+   ========================================================= */
+
+[data-theme="light"] .sort-select,
+[data-theme="white"] .sort-select {
+  color: var(--ink);
+}
+
+/* La perforación tipo "entrada de cine" agujerea la tarjeta
+   dejando ver el fondo de la página, que en la familia clara
+   (light/white) es --paper-dim (crema o blanco puro), no la
+   tinta oscura */
+[data-theme="light"] .item-card__perforation,
+[data-theme="white"] .item-card__perforation {
+  background:
+    radial-gradient(circle 6px at 0 50%, var(--paper-dim) 99%, transparent 100%),
+    radial-gradient(circle 6px at 100% 50%, var(--paper-dim) 99%, transparent 100%);
+  background-color: var(--paper);
+}
+
+/* =========================================================
+   Ajustes puntuales del modo negro puro (issues #43 y #165,
+   ocio)
+   Igual que la familia clara corrige los elementos que usan
+   --ink como fondo o --paper como texto (aquí en negro puro
+   el papel también es texto), la familia oscura del negro
+   puro invierte las superficies que usaban --paper como
+   fondo. Los estados de las tarjetas usan las variantes
+   oscuras de --bg-state-* (definidas en el bloque de
+   variables) y los sellos de las tarjetas se mantienen
+   claros con sus hex originales para conservar el contraste
+   del texto oscuro sobre el sello claro.
+   ========================================================= */
+
+/* Superficies de papel → superficies oscuras (borde sutil:
+   en negro puro la sombra sobre fondo negro no separa) */
+[data-theme="black"] .chip.is-active,
+[data-theme="black"] .item-card,
+[data-theme="black"] .season-episodes,
+[data-theme="black"] .view-toggle__btn.is-active,
+[data-theme="black"] .list-row__content,
+[data-theme="black"] .saga-list,
+[data-theme="black"] .watch-provider,
+[data-theme="black"] .game-platform {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+
+/* Logo de proveedor de streaming: el fondo blanco pasaba a
+   superficie oscura como el chip que lo contiene */
+[data-theme="black"] .watch-provider__logo {
+  background: var(--ink-raised);
+}
+
+/* Perforación tipo "entrada de cine": agujeros con el fondo
+   oscuro de la página (--ink), no papel */
+[data-theme="black"] .item-card__perforation {
+  background:
+    radial-gradient(circle 6px at 0 50%, var(--ink) 99%, transparent 100%),
+    radial-gradient(circle 6px at 100% 50%, var(--ink) 99%, transparent 100%);
+  background-color: var(--ink-raised);
+}
+
+/* Estados de tarjeta: variantes oscuras (mismo matiz semántico,
+   texto papel sobre fondo oscuro) */
+[data-theme="black"] .item-card--en_curso { background: var(--bg-state-en_curso); }
+[data-theme="black"] .item-card--completado { background: var(--bg-state-completado); }
+[data-theme="black"] .item-card--standby { background: var(--bg-state-standby); }
+[data-theme="black"] .item-card--abandonado { background: var(--bg-state-abandonado); }
+[data-theme="black"] .item-card--unreleased {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bg-state-en_curso) 0px,
+    var(--bg-state-en_curso) 14px,
+    var(--bg-state-abandonado) 14px,
+    var(--bg-state-abandonado) 28px
+  );
+}
+
+/* Filas de la vista de lista: mismos estados oscuros (misma
+   especificidad que la fila base, por eso se redeclaran aquí) */
+[data-theme="black"] .list-row--en_curso .list-row__content { background: var(--bg-state-en_curso); }
+[data-theme="black"] .list-row--completado .list-row__content { background: var(--bg-state-completado); }
+[data-theme="black"] .list-row--standby .list-row__content { background: var(--bg-state-standby); }
+[data-theme="black"] .list-row--abandonado .list-row__content { background: var(--bg-state-abandonado); }
+[data-theme="black"] .list-row--unreleased .list-row__content {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bg-state-en_curso) 0px,
+    var(--bg-state-en_curso) 14px,
+    var(--bg-state-abandonado) 14px,
+    var(--bg-state-abandonado) 28px
+  );
+}
+
+/* Texto que usaba tinta sobre superficies ahora oscuras */
+[data-theme="black"] .list-row__open,
+[data-theme="black"] .season-toggle,
+[data-theme="black"] .episode-average strong,
+[data-theme="black"] .rewatch-history summary,
+[data-theme="black"] .saga-banner__label,
+[data-theme="black"] .desc-picker__text,
+[data-theme="black"] .extra-info__line,
+[data-theme="black"] .extra-info__loading,
+[data-theme="black"] .watch-provider__name {
+  color: var(--paper);
+}
+
+/* Entradas de formulario (--white pasó a oscuro en el bloque de
+   variables): texto papel sobre fondo oscuro */
+[data-theme="black"] .field-group select,
+[data-theme="black"] .field-group textarea,
+[data-theme="black"] .field-group input[type="text"],
+[data-theme="black"] .field-group input[type="number"],
+[data-theme="black"] .field-group input[type="url"],
+[data-theme="black"] .log-add-row input[type="date"],
+[data-theme="black"] .log-add-row input[type="text"],
+[data-theme="black"] .log-row input[type="date"],
+[data-theme="black"] .log-row input[type="number"],
+[data-theme="black"] .episode-row input.episode-date,
+[data-theme="black"] .manual-form .field-group input {
+  color: var(--paper);
+}
+
+/* Acentos de la familia oscura sobre superficies oscuras:
+   variantes claras (los sellos de las tarjetas se mantienen
+   claros y usan los hex originales, regla siguiente) */
+[data-theme="black"] .item-card__rating,
+[data-theme="black"] .episode-rating__star.is-active,
+[data-theme="black"] .episode-rating__star.is-half {
+  color: var(--ochre-spine-dark);
+}
+[data-theme="black"] .item-card__upcoming,
+[data-theme="black"] .episode-row__future {
+  color: var(--stamp-dark);
+}
+[data-theme="black"] .item-card__progress,
+[data-theme="black"] .list-row__progress,
+[data-theme="black"] .community-rating__value,
+[data-theme="black"] .watch-providers__link,
+[data-theme="black"] .watch-providers__link:hover {
+  color: var(--teal-reel-dark);
+}
+
+/* Hover de botones con acento (fondo claro + tinta oscura):
+   las variantes claras de los acentos como fondo mantienen
+   contraste AA con la tinta negra (QA issue #165) */
+[data-theme="black"] .btn--accent-media:hover,
+[data-theme="black"] .trailer-btn:hover,
+[data-theme="black"] .list-row__action:hover {
+  background: var(--teal-reel-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .btn--accent-books:hover {
+  background: var(--ochre-spine-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .btn--accent-games:hover {
+  background: var(--games-dark);
+  color: var(--ink);
+}
+
+/* Checkbox de episodio marcado: variante clara del acento para el
+   umbral gráfico 3:1 sobre la superficie oscura */
+[data-theme="black"] .episode-checkbox:checked ~ .episode-checkbox-visual {
+  background: var(--teal-reel-dark);
+  border-color: var(--teal-reel-dark);
+}
+
+/* Sellos de tarjeta: se mantienen sobre papel claro; conservan los
+   hex originales del modo oscuro para el contraste oscuro-sobre-claro */
+[data-theme="black"] .item-card__stamp--pendiente { color: #7e2c22; }
+[data-theme="black"] .item-card__stamp--en_curso { color: #1c4a41; }
+[data-theme="black"] .item-card__stamp--completado { color: #8f6522; }
+[data-theme="black"] .item-card__stamp--abandonado { color: #7e2c22; }

@@ -1,0 +1,25 @@
+{
+  "title": "Arreglar modo claro/oscuro: contraste, diferencia visual y legibilidad en modo claro",
+  "description": "El modo claro actual apenas se diferencia del modo oscuro porque --ink (color de fondo principal) sigue siendo oscuro (#1e1b16 vs #171512 en modo oscuro). El body y los elementos principales (auth-screen, profile-view, etc.) usan background: var(--ink), por lo que el fondo permanece prácticamente igual. El modo claro debe tener un fondo realmente claro (crema/gris muy claro) y el texto debe ser oscuro. La semántica de --ink y --paper entra en conflicto porque el body usa --ink como fondo y --paper como texto, mientras que las tarjetas usan --paper como fondo y --ink como texto. Esto hace que un único par de variables no pueda servir correctamente a ambos modos. Se necesita redefinir por completo la paleta del modo claro y añadir los overrides necesarios para que todos los elementos se vean correctamente.",
+  "status": "published",
+  "acceptance criteria": [
+    "El modo claro tiene un fondo realmente claro (∼#f5f0e8) en lugar del fondo oscuro actual",
+    "El texto en modo claro es oscuro (∼#2c2822) con contraste suficiente (WCAG AA)",
+    "Los elementos de tarjeta (item-card, modal, settings-card, etc.) tienen fondo blanco en modo claro",
+    "Los botones, inputs, selects y tabs se ven correctamente en modo claro",
+    "El interruptor de tema (header + settings) sigue funcionando y persistiendo la preferencia",
+    "El buscador global se ve correctamente en modo claro",
+    "El feed de actividad, perfil, estadísticas y amigos se ven correctamente en modo claro",
+    "El modo oscuro existente no sufre regresiones",
+    "Todos los elementos de la interfaz son legibles con suficiente contraste en ambos modos"
+  ],
+  "definition of done": [
+    "Paleta de colores del modo claro completamente redefinida con fondo claro y texto oscuro",
+    "Overrides CSS añadidos para body, html, auth-screen, profile-view, tabs, inputs, global-search y otros elementos que usan --ink/--paper como fondo",
+    "Verificación visual de que todos los componentes se ven bien en modo claro",
+    "Verificación de que el modo oscuro sigue funcionando exactamente igual que antes",
+    "Variables alpha y sombras ajustadas para el modo claro",
+    "Modo oscuro no modificado (sin regresiones)",
+    "Documentación ADR del cambio completada"
+  ]
+}

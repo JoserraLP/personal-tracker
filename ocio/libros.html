@@ -1,0 +1,30 @@
+<!--
+  Contenido de la pestaña "Libros". Se inyecta dentro de
+  <section id="panel-books"> (ver ocio/series.html para la explicación).
+-->
+<div class="library-controls">
+  <div class="filter-chips" data-scope="books">
+    <button class="chip is-active" data-status="todos">Todos</button>
+    <button class="chip" data-status="pendiente">Pendiente</button>
+    <button class="chip" data-status="en_curso">Leyendo</button>
+    <button class="chip" data-status="completado">Leído</button>
+    <button class="chip" data-status="standby">Standby</button>
+    <button class="chip" data-status="abandonado">Abandonado</button>
+  </div>
+  <div class="library-controls__aux">
+    <select class="sort-select" data-scope="books">
+      <option value="añadido">Actividad reciente</option>
+      <option value="fecha">Fecha de lectura</option>
+      <option value="alfabetico">Alfabético</option>
+      <option value="anio">Año de publicación</option>
+    </select>
+    <div class="view-toggle" data-scope="books">
+      <button type="button" class="view-toggle__btn is-active" data-view="grid" aria-label="Vista en cuadrícula">▦</button>
+      <button type="button" class="view-toggle__btn" data-view="list" aria-label="Vista en lista">☰</button>
+    </div>
+  </div>
+</div>
+<div id="library-books" class="library-grid"></div>
+<p id="empty-books" class="empty-state hidden">
+  Tu biblioteca está vacía. Busca un libro arriba y pulsa «Añadir».
+</p>

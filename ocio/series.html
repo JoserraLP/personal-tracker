@@ -1,0 +1,32 @@
+<!--
+  Contenido de la pestaña "Series". app.js lo carga con fetch() y lo
+  inyecta dentro de <section id="panel-tv">. El propio <section> (con su
+  id, clases y data-type-group) vive en index.html; aquí solo va lo de
+  dentro, para que se pueda mantener por separado.
+-->
+<div class="library-controls">
+  <div class="filter-chips" data-scope="tv">
+    <button class="chip" data-status="todos">Todos</button>
+    <button class="chip" data-status="pendiente">Pendiente</button>
+    <button class="chip is-active" data-status="en_curso">Viendo</button>
+    <button class="chip" data-status="completado">Vista</button>
+    <button class="chip" data-status="standby">Standby</button>
+    <button class="chip" data-status="abandonado">Abandonada</button>
+  </div>
+  <div class="library-controls__aux">
+    <select class="sort-select" data-scope="tv">
+      <option value="añadido">Actividad reciente</option>
+      <option value="fecha">Fecha de visionado</option>
+      <option value="alfabetico">Alfabético</option>
+      <option value="anio">Año de estreno</option>
+    </select>
+    <div class="view-toggle" data-scope="tv">
+      <button type="button" class="view-toggle__btn" data-view="grid" aria-label="Vista en cuadrícula">▦</button>
+      <button type="button" class="view-toggle__btn is-active" data-view="list" aria-label="Vista en lista">☰</button>
+    </div>
+  </div>
+</div>
+<div id="library-tv" class="library-grid"></div>
+<p id="empty-tv" class="empty-state hidden">
+  Aún no hay nada aquí. Busca una serie arriba y pulsa «Añadir».
+</p>
