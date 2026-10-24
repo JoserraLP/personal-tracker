@@ -1,5 +1,9 @@
 # ADR-044: Hub de previews en /dev y reestructuración del despliegue multi-rama (issue #103)
 
+> **OBSOLETO (ADR-106, 2026-10-24)**: el hub de previews y todo el
+> despliegue multi-rama desaparecieron con el cambio a "solo main"
+> (workflow `deploy-pages.yml`). Se conserva como histórico.
+
 ## Estado
 Aceptado
 

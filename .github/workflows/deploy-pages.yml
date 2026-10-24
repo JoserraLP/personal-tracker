@@ -1,0 +1,48 @@
+name: deploy-pages
+
+# Despliegue de GitHub Pages: SOLO la rama `main`.
+#
+# Regla del proyecto (AGENTS.md: PRs contra dev; la promoción dev →
+# main la hace el usuario): el código publicado en producción es
+# exactamente el de `main`, tras cada merge a `main`. No hay
+# despliegues por rama, ni endpoints de `dev`, ni previews de
+# features (sustituye al workflow deploy-all-branches, véase
+# ADR-106; ADR-036/ADR-041 quedan obsoletos a este respecto).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Una sola ejecución a la vez para Pages; si llega otra, se cancela.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Subir artefacto de Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Desplegar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
