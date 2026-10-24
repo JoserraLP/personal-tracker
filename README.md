@@ -184,38 +184,13 @@ de restricción por dominio explicado más abajo en «Solución de problemas».
    "Deployment branches" → patrón `**/*`, que cubre cualquier jerarquía).
    Sin ese patrón, los despliegues desde ramas como `feature/...` se
    rechazan con un error de "environment protection rules".
-3. El workflow `.github/workflows/deploy-all-branches.yml` despliega
-   **todas las ramas** en cada push de cualquier rama: cada push reconstruye
-   el sitio con todas las ramas.
-   - La rama `main` se sirve en la raíz:
-     `https://tu-usuario.github.io/nombre-del-repo/`.
-   - La ruta `/dev/` es el **hub de previews**: una página índice simple,
-     auto-generada en cada despliegue, con enlaces a todas las ramas
-     no-default (incluida `dev`) y a la raíz. Se regenera en cada build:
-     las ramas nuevas aparecen automáticamente y las borradas desaparecen.
-   - Cada rama no-default se sirve en su propio subdirectorio bajo el hub,
-     con el nombre de la rama (saneado y manteniendo jerarquías, p. ej.
-     `feature/mi-cambio`):
-     `https://tu-usuario.github.io/nombre-del-repo/dev/<rama>/`. La propia
-     rama `dev` se sirve en `/dev/dev/`. Es un preview completo y
-     funcional: cada rama tiene su propia web con su service worker,
-     manifest y assets funcionando desde su base.
-   - Las ramas cuyo nombre empieza por `no-deploy/` (p. ej.
-     `no-deploy/feat/...`) quedan **excluidas del despliegue**: no se
-     sirven en el hub de previews y un push a una de ellas **no dispara
-     el workflow** (no consume minutos de Actions). Es útil para
-     conservar ramas que no vas a fusionar: renómbrala con ese prefijo
-     (p. ej. `feat/...` → `no-deploy/feat/...`) y, al borrar la rama
-     original, su preview desaparece del hub en el siguiente despliegue.
-   Nota: los previews de las ramas abiertas se actualizan con cada merge a
-   `dev`/`main`, no con cada push de la propia rama; para forzar la
-   actualización de un preview sin merge, usa el paso 4.
-4. Para **re-desplegar manualmente** (p. ej. después de cambiar el
-   workflow, o para forzar la actualización de un preview sin merge):
-   pestaña Actions → `deploy-all-branches` → "Run workflow".
-5. Al **borrar una rama**, el sitio se reconstruye automáticamente y su
-   subdirectorio desaparece del despliegue (borrar un tag no reconstruye
-   el sitio).
+3. El workflow `.github/workflows/deploy-pages.yml` despliega **solo la
+   rama `main` en cada push/merge a `main`** (ADR-106): la web publicada
+   en `https://tu-usuario.github.io/nombre-del-repo/` es siempre la
+   última versión fusionada en `main`. Las otras ramas (dev y
+   features) NO se publican: solo despliegan en local para pruebas.
+4. Para **re-desplegar manualmente**: pestaña Actions →
+   `deploy-pages` → "Run workflow".
 6. **(Opcional) Resolución automática de issues** — el workflow
    `.github/workflows/auto-resolve-issues.yml` lanza una sesión de
    OpenCode (agente `sdd-master`, modelo DeepSeek V4 Flash Free, variante
@@ -227,8 +202,8 @@ de restricción por dominio explicado más abajo en «Solución de problemas».
    **ya no se dispara al fusionar PRs**. Si no quedan issues, el
    workflow termina sin lanzar sesión ("servidor apagado").
    Tras cada sesión exitosa se relanza automáticamente el despliegue de
-   Pages (`deploy-all-branches`), de modo que las ramas nuevas quedan
-   publicadas aunque el push lo haga la action con el token del bot.
+   Pages (`deploy-pages`), de modo que la versión de `main` queda
+   publicada aunque el push lo haga la action con el token del bot.
    Requiere que
    el workflow esté en la rama por defecto (`main`): se activa en
    producción tras la promoción `dev` → `main`. Prueba manual desde la

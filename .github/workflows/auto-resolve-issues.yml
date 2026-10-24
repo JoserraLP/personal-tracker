@@ -43,7 +43,7 @@ name: auto-resolve-issues
 #     por el propietario (extensión de la issue #245 a todo el flujo). El
 #     PAT del job (GH_TOKEN del env) se reserva para los pasos que requieren
 #     actions: write fuera de la sesión (relanzamiento con gh workflow run y
-#     dispatch de deploy-all-branches).
+#     dispatch de deploy-pages).
 #
 # "Apagar el servidor" = cuando el selector devuelve NONE (no quedan issues
 # elegibles), el workflow termina sin lanzar ninguna sesión.
@@ -89,7 +89,7 @@ permissions:
   contents: write      # commits/push del agente (flujo SDD: rama + PR)
   pull-requests: write # creación de la PR por el publisher
   issues: write        # labels (set-state) y comentarios
-  actions: write       # lanzar workflow_dispatch de deploy-all-branches tras sesión exitosa
+  actions: write       # lanzar workflow_dispatch de deploy-pages tras sesión exitosa
 
 # Varias sesiones en cola, una a la vez (issue #226): queue: max encola hasta
 # 100 runs del grupo y se ejecutan en orden; cancel-in-progress: false NUNCA
@@ -375,7 +375,7 @@ jobs:
         # usa GH_TOKEN, usa las credenciales de actions/checkout). El PAT
         # del job sigue para los pasos que requieren actions: write fuera
         # del alcance de la sesión (relanzamiento con gh workflow run y
-        # dispatch de deploy-all-branches).
+        # dispatch de deploy-pages).
         env:
           GH_TOKEN: ${{ github.token }}
           SESSION_MODEL: ${{ vars.SESSION_MODEL }}
@@ -494,14 +494,14 @@ jobs:
             return_to_queue "La sesión automática de SDD falló tras $((MAX_RELAUNCHES + 1)) intentos"
           fi
 
-      - name: Disparar despliegue deploy-all-branches (workflow_dispatch)
+      - name: Disparar despliegue deploy-pages (workflow_dispatch)
         if: steps.candidate.outputs.selected != 'NONE' && inputs.dry_run != 'true'
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_GIT_TOKEN }}
         run: |
-          echo "Lanzando deploy-all-branches (dispatch) para reconstruir Pages con las nuevas ramas..."
-          gh workflow run deploy-all-branches.yml
-          echo "Dispatch enviado: revisa el run de deploy-all-branches en la pestaña Actions."
+          echo "Lanzando deploy-pages (dispatch) para publicar esta versión de main..."
+          gh workflow run deploy-pages.yml
+          echo "Dispatch enviado: revisa el run de deploy-pages en la pestaña Actions."
 
       - name: Resumen
         if: always()

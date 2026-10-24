@@ -1,5 +1,9 @@
 # ADR-041: Revisión de triggers del workflow deploy-all-branches (issue #98)
 
+> **OBSOLETO (ADR-106, 2026-10-24)**: el workflow que este ADR revisaba
+> (deploy-all-branches) fue eliminado al pasar a publicar solo `main`
+> (`deploy-pages.yml`). Se conserva como histórico.
+
 ## Estado
 Aceptado
 
