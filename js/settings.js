@@ -16,7 +16,6 @@ const DEFAULT_SETTINGS = {
     new_episode: true,
     series_premiere: true,
     game_release: true,
-    friend_activity: true,
     device_push: false,
   },
   // Unidad de peso de la sección de Gimnasio (issue #62): "kg" | "lbs".
@@ -200,7 +199,6 @@ export function renderSettings(ctx) {
     "notif-new-episode": "new_episode",
     "notif-series-premiere": "series_premiere",
     "notif-game-release": "game_release",
-    "notif-friend-activity": "friend_activity",
     "notif-device": "device_push",
   };
 
@@ -349,7 +347,6 @@ function wireNotificationToggles(ctx) {
     "notif-new-episode": "new_episode",
     "notif-series-premiere": "series_premiere",
     "notif-game-release": "game_release",
-    "notif-friend-activity": "friend_activity",
   };
 
   Object.entries(map).forEach(([id, key]) => {

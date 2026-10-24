@@ -6,11 +6,10 @@
 
 import { normalizeEntry } from "./tv-progress.js";
 import { STATUS_LABELS_NEUTRAL } from "./constants.js";
-import * as ui from "./ui.js";
 import { setupExportBackup } from "./export-backup.js";
 import { setupExportIcs } from "./export-ics.js";
+import { setupTvTimeImport } from "./tvtime-import.js";
 import { renderSettings, normalizeTabKey } from "./settings.js";
-import { buildGlobalFeed } from "./activity-feed.js";
 import { logout } from "./firebase.js";
 import { trapFocus } from "./focus-utils.js";
 import { navigate, parseHash, getLastOcioKey, getLastRecipesTab, getLastGymTab, getLastSection } from "./router.js";
@@ -304,161 +303,21 @@ function renderStats(filter, ctx) {
 export function setupProfile(ctx) {
   const profileSubtabs = document.querySelectorAll(".profile-subtab");
   const statsSection = document.getElementById("profile-section-stats");
-  const friendsSection = document.getElementById("profile-section-friends");
-  const activitySection = document.getElementById("profile-section-activity");
   const settingsSection = document.getElementById("profile-section-settings");
-  const friendsListEl = document.getElementById("friends-list");
-  const friendDetailEl = document.getElementById("friend-detail");
-  const friendDetailNameEl = document.getElementById("friend-detail-name");
   const statsPeriodWrap = document.querySelector(".stats-period");
-  const activityFeedContainer = document.getElementById("activity-feed-container");
-  const activityFeedLoading = document.getElementById("activity-feed-loading");
   const statsPeriodSelect = document.getElementById("stats-period-select");
   const statsRangeFields = document.getElementById("stats-range-fields");
   const statsRangeStart = document.getElementById("stats-range-start");
   const statsRangeEnd = document.getElementById("stats-range-end");
-
-  // Estado de la vista de detalle de amigo (pestañas y filtros en memoria)
-  const friendData = { movies: [], tv: [], books: [], games: [] };
-  const friendFilters = { movies: "todos", tv: "todos", books: "todos", games: "todos" };
-  let friendActiveTab = "movies";
-  let currentFriendName = "";
-  let currentFriendUid = "";
-
-  // Clic en una tarjeta de amigo (UI): solo navega. El router hace el
-  // resto vía onRoute → openProfileSection(friends, {friendUid}) →
-  // openFriendByUid, así no hay doble apertura ni fetchs repetidos.
-  function openFriendCard(profile) {
-    navigate({ section: "perfil", profileSection: "friends", uid: profile.uid });
-  }
-
-  async function loadFriendsList() {
-    friendsListEl.innerHTML = `<p class="empty-state">Cargando…</p>`;
-    try {
-      const profiles = await ctx.getAllUserProfiles();
-      ui.renderFriendsList(friendsListEl, profiles, ctx.getCurrentUser().uid, openFriendCard);
-      return profiles;
-    } catch (err) {
-      friendsListEl.innerHTML = `<p class="empty-state">No se pudo cargar la lista de amigos.</p>`;
-      return [];
-    }
-  }
-
-  // Abre el detalle de un amigo a partir de su uid (deep-link
-  // #/perfil/amigos/<uid>, issue #59). Reutiliza la misma carga de
-  // perfiles que la lista para no duplicar fetchs; si el amigo ya no
-  // está disponible (o el uid no existe), se queda en la lista.
-  async function openFriendByUid(uid) {
-    let profiles = [];
-    try {
-      profiles = await ctx.getAllUserProfiles();
-      ui.renderFriendsList(friendsListEl, profiles, ctx.getCurrentUser().uid, openFriendCard);
-    } catch (err) {
-      profiles = [];
-    }
-    const profile = profiles.find((p) => p.uid === uid);
-    // La URL manda: si entre la carga y apertura el usuario navegó a
-    // otro amigo (o a otra sección), ya no abrimos este uid. Evita la
-    // carrera de clics rápidos (tarjeta A → tarjeta B en marcha).
-    if (profile && parseHash().uid === uid) {
-      await openFriend(profile);
-    } else if (profile) {
-      // La ruta cambió a otro uid: la navegación más reciente se
-      // encargará de abrir al amigo correcto; esta apertura caduca.
-      return;
-    } else {
-      // Sin amigo para ese uid: normalizar la URL a la lista de
-      // amigos y dejar la lista visible (ya la hemos renderizado).
-      navigate({ section: "perfil", profileSection: "friends" }, { replace: true });
-    }
-  }
-
-  function renderFriendTab(tabKey) {
-    const status = friendFilters[tabKey];
-    const filtered =
-      status === "todos" ? friendData[tabKey] : friendData[tabKey].filter((item) => item.status === status);
-    ui.renderFriendTab(
-      tabKey,
-      filtered,
-      (item) => ui.openReadOnlyModal(item, currentFriendName),
-      status === "todos" ? undefined : "No hay nada con ese estado."
-    );
-  }
-
-  function setFriendTab(tabKey) {
-    document.querySelectorAll(".friend-subtab").forEach((btn) => {
-      const isActive = btn.dataset.friendTab === tabKey;
-      btn.classList.toggle("is-active", isActive);
-      btn.setAttribute("aria-selected", String(isActive));
-    });
-    ["movies", "tv", "books", "games"].forEach((key) => {
-      document.getElementById("friend-panel-" + key).classList.toggle("hidden", key !== tabKey);
-    });
-    friendActiveTab = tabKey;
-    renderFriendTab(tabKey);
-  }
-
-  function setFriendFilter(tabKey, status) {
-    friendFilters[tabKey] = status;
-    document.querySelectorAll(`#friend-panel-${tabKey} .friend-chip`).forEach((chip) => {
-      const isActive = chip.dataset.status === status;
-      chip.classList.toggle("is-active", isActive);
-      chip.setAttribute("aria-pressed", String(isActive));
-    });
-    renderFriendTab(tabKey);
-  }
-
-  async function openFriend(profile) {
-    const requestedUid = profile.uid;
-    friendsListEl.classList.add("hidden");
-    friendDetailEl.classList.remove("hidden");
-    friendDetailNameEl.textContent = profile.displayName || profile.email || "Amigo";
-    currentFriendName = profile.displayName || profile.email || "tu amigo";
-    currentFriendUid = profile.uid;
-    // Reset de pestaña y filtros al abrir cualquier amigo
-    friendData.movies = [];
-    friendData.tv = [];
-    friendData.books = [];
-    friendData.games = [];
-    friendFilters.movies = "todos";
-    friendFilters.tv = "todos";
-    friendFilters.books = "todos";
-    friendFilters.games = "todos";
-    document.querySelectorAll(".friend-chip").forEach((chip) => {
-      const isAll = chip.dataset.status === "todos";
-      chip.classList.toggle("is-active", isAll);
-      chip.setAttribute("aria-pressed", String(isAll));
-    });
-    setFriendTab("movies");
-    document.getElementById("friend-movies").innerHTML = `<p class="empty-state">Cargando…</p>`;
-    try {
-      const [movies, series, books, games] = await Promise.all([
-        ctx.getItemsOnce(profile.uid, "movie"),
-        ctx.getItemsOnce(profile.uid, "tv"),
-        ctx.getItemsOnce(profile.uid, "book"),
-        ctx.getItemsOnce(profile.uid, "game"),
-      ]);
-      if (requestedUid !== currentFriendUid) return;
-      friendData.movies = movies;
-      friendData.tv = series;
-      friendData.books = books;
-      friendData.games = games;
-      renderFriendTab(friendActiveTab);
-    } catch (err) {
-      if (requestedUid !== currentFriendUid) return;
-      document.getElementById("friend-" + friendActiveTab).innerHTML = `<p class="empty-state">No se pudo cargar.</p>`;
-    }
-  }
 
   /* ---------- Apertura de secciones del perfil ---------- */
 
   // Abre una sección del perfil. Cuando la llamada viene del router
   // (fromRouter: true, p. ej. recarga directa en #/perfil/...) NO se
   // vuelve a navegar (evita bucle); desde la UI sí se sincroniza la
-  // URL con navigate(). friendUid solo se usa en la sección de
-  // amigos: abre el detalle de ese amigo concreto (deep-link).
+  // URL con navigate().
   function openProfileSection(section, ctx, opts = {}) {
-    const { fromRouter = false, friendUid = null } = opts;
+    const { fromRouter = false } = opts;
     if (!fromRouter) {
       // Navegación por la UI: el hash se sincroniza (navigate() no-op
       // si ya estamos en la ruta canónica, así no hay doble ejecución).
@@ -472,8 +331,6 @@ export function setupProfile(ctx) {
       b.setAttribute("aria-selected", String(isActive));
     });
     statsSection.classList.toggle("hidden", section !== "stats");
-    friendsSection.classList.toggle("hidden", section !== "friends");
-    if (activitySection) activitySection.classList.toggle("hidden", section !== "activity");
     if (settingsSection) settingsSection.classList.toggle("hidden", section !== "settings");
     statsPeriodWrap.classList.toggle("hidden", section !== "stats");
     if (section === "stats") {
@@ -482,18 +339,6 @@ export function setupProfile(ctx) {
           renderStats(getCurrentStatsFilter(), ctx);
         });
       });
-    } else if (section === "friends") {
-      friendDetailEl.classList.add("hidden");
-      friendsListEl.classList.remove("hidden");
-      if (friendUid) {
-        // Deep-link con amigo: la lista se muestra y además se abre
-        // el detalle de ese amigo cuando estén sus datos.
-        openFriendByUid(friendUid);
-      } else {
-        loadFriendsList();
-      }
-    } else if (section === "activity") {
-      loadActivityFeed();
     } else if (section === "settings" && ctx) {
       renderSettings(ctx);
     }
@@ -605,76 +450,11 @@ export function setupProfile(ctx) {
   // Inicializar botones de exportación/importación de datos
   setupExportBackup(ctx);
   setupExportIcs(ctx);
-
-  async function loadActivityFeed() {
-    if (!activityFeedContainer || !activityFeedLoading) return;
-    activityFeedLoading.classList.remove("hidden");
-    activityFeedContainer.innerHTML = "";
-    try {
-      const profiles = await ctx.getAllUserProfiles();
-      const myUid = ctx.getCurrentUser().uid;
-      const others = profiles.filter((p) => p.uid !== myUid);
-
-      // Cargar items de cada amigo en paralelo
-      const friendsData = await Promise.all(
-        others.map(async (profile) => {
-          try {
-            const [movies, series, books, games] = await Promise.all([
-              ctx.getItemsOnce(profile.uid, "movie"),
-              ctx.getItemsOnce(profile.uid, "tv"),
-              ctx.getItemsOnce(profile.uid, "book"),
-              ctx.getItemsOnce(profile.uid, "game"),
-            ]);
-            return { profile, movies, series, books, games };
-          } catch {
-            return null;
-          }
-        })
-      );
-
-      const validFriendsData = friendsData.filter(Boolean);
-      const events = buildGlobalFeed(validFriendsData);
-
-      activityFeedLoading.classList.add("hidden");
-
-      if (events.length === 0) {
-        activityFeedContainer.innerHTML = `<p class="empty-state">Todavía no hay actividad reciente de tus amigos.</p>`;
-        return;
-      }
-
-      ui.renderActivityFeed(activityFeedContainer, events, (item, friendName) => {
-        ui.openReadOnlyModal(item, friendName);
-      });
-    } catch (err) {
-      activityFeedLoading.classList.add("hidden");
-      activityFeedContainer.innerHTML = `<p class="empty-state">No se pudo cargar la actividad de amigos.</p>`;
-    }
-  }
+  setupTvTimeImport(ctx);
 
   profileSubtabs.forEach((btn) => {
     btn.addEventListener("click", () => {
       navigate({ section: "perfil", profileSection: btn.dataset.section });
-    });
-  });
-
-  // «← Volver a amigos» desde el detalle: vuelve a la lista (la ruta
-  // canónica #/perfil/amigos se aplica vía router; al navegar sin
-  // friendUid el router abre la lista).
-  document.getElementById("btn-back-to-friends").addEventListener("click", () => {
-    navigate({ section: "perfil", profileSection: "friends" });
-  });
-
-  document.querySelectorAll(".friend-subtab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      setFriendTab(btn.dataset.friendTab);
-    });
-  });
-
-  document.querySelectorAll(".friend-filters").forEach((group) => {
-    group.addEventListener("click", (e) => {
-      const chip = e.target.closest(".friend-chip");
-      if (!chip) return;
-      setFriendFilter(group.dataset.tab, chip.dataset.status);
     });
   });
 

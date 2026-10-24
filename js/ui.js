@@ -1,5 +1,5 @@
-// =============================================================
-// Renderizado del DOM. Este módulo no habla con Firebase ni con
+﻿// =============================================================
+// Renderizado del DOM. Este mÃ³dulo no habla con Firebase ni con
 // las APIs externas: recibe datos ya listos y devuelve HTML,
 // o dispara callbacks que app.js conecta con db.js / TMDB.
 // =============================================================
@@ -10,8 +10,6 @@ import { getNextEpisodeAirInfo, isItemUnreleased } from "./sorting.js";
 import { normalizeEntry, computeEpisodeAverageRating } from "./tv-progress.js";
 import { trapFocus } from "./focus-utils.js";
 import { unreleasedConfirmMessage, isUnreleasedDate, episodeUnreleasedMessage } from "./release.js";
-import { openEpisodeActionsModal } from "./episode-actions-modal.js";
-import { needsDetailFetch, loadItemDetails } from "./item-details.js";
 
 function scopeFor(type) {
   return type === "book" ? "book" : type === "game" ? "game" : "media";
@@ -31,7 +29,7 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
-// HTML para un distintivo de puntuación de la comunidad (TMDB, IGDB
+// HTML para un distintivo de puntuaciÃ³n de la comunidad (TMDB, IGDB
 // para videojuegos). Variante compacta (--sm) para filas de episodio
 // (issue #45).
 function communityRatingValueHtml(value, label = "TMDB") {
@@ -42,8 +40,8 @@ function communityRatingValueHtml(value, label = "TMDB") {
   </span>`;
 }
 
-// HTML para la puntuación de la comunidad (TMDB) en tarjetas compactas.
-// Devuelve cadena vacía si no hay datos (no ocupa espacio en la cuadrícula).
+// HTML para la puntuaciÃ³n de la comunidad (TMDB) en tarjetas compactas.
+// Devuelve cadena vacÃ­a si no hay datos (no ocupa espacio en la cuadrÃ­cula).
 function communityRatingHtml(item) {
   if (item.communityRating == null) return "";
   const label = item.type === "game" ? "IGDB" : "TMDB";
@@ -53,7 +51,7 @@ function communityRatingHtml(item) {
   );
 }
 
-// Para modales: siempre muestra una línea, ya sea la nota real o
+// Para modales: siempre muestra una lÃ­nea, ya sea la nota real o
 // un indicador de "Sin puntuaciones" cuando no hay datos de TMDB/IGDB.
 function communityRatingDisplay(item) {
   const label = item.type === "game" ? "IGDB" : "TMDB";
@@ -71,18 +69,18 @@ function communityRatingDisplay(item) {
   </div>`;
 }
 
-// HTML para el botón de tráiler de YouTube.
-// Devuelve cadena vacía si no hay URL de tráiler disponible.
+// HTML para el botÃ³n de trÃ¡iler de YouTube.
+// Devuelve cadena vacÃ­a si no hay URL de trÃ¡iler disponible.
 function trailerButtonHtml(item) {
   if (!item.trailerUrl) return "";
-  return `<a href="${escapeHtml(item.trailerUrl)}" target="_blank" rel="noopener noreferrer" class="trailer-btn" aria-label="Ver tráiler en YouTube">
-    <span class="trailer-btn__icon" aria-hidden="true">▶</span>
-    <span class="trailer-btn__label">Tráiler</span>
+  return `<a href="${escapeHtml(item.trailerUrl)}" target="_blank" rel="noopener noreferrer" class="trailer-btn" aria-label="Ver trÃ¡iler en YouTube">
+    <span class="trailer-btn__icon" aria-hidden="true">â–¶</span>
+    <span class="trailer-btn__label">TrÃ¡iler</span>
   </a>`;
 }
 
 function typeLabel(type) {
-  if (type === "movie") return "Película";
+  if (type === "movie") return "PelÃ­cula";
   if (type === "tv") return "Serie";
   if (type === "game") return "Videojuego";
   return "Libro";
@@ -96,20 +94,20 @@ export const PLACEHOLDER_COVER =
 
 /* ---------- Pantallas ---------- */
 
-// Placeholder de la barra de búsqueda global (issue #46): al entrar
+// Placeholder de la barra de bÃºsqueda global (issue #46): al entrar
 // se muestra "Mi Registro" y a los 3.5 s pasa al placeholder por
-// defecto. El timer se limpia al cerrar sesión. El placeholder por
-// defecto ya no menciona a los amigos: la búsqueda se acota a la
-// sección (issue #206) y solo se restaura en la pantalla de acceso.
-export const DEFAULT_SEARCH_PLACEHOLDER = "Buscar películas, series, libros y videojuegos...";
+// defecto. El timer se limpia al cerrar sesiÃ³n. El placeholder por
+// defecto ya no menciona a los amigos: la bÃºsqueda se acota a la
+// secciÃ³n (issue #206) y solo se restaura en la pantalla de acceso.
+export const DEFAULT_SEARCH_PLACEHOLDER = "Buscar pelÃ­culas, series, libros y videojuegos...";
 const SEARCH_BRAND_PLACEHOLDER = "Mi Registro";
 const SEARCH_PLACEHOLDER_SWITCH_MS = 3500;
 let searchPlaceholderTimer = null;
 
-// Placeholder y aria-label según la sección activa (issue #206): la
-// búsqueda superior se acota a la sección (Ocio / Perfil / Recetas).
+// Placeholder y aria-label segÃºn la secciÃ³n activa (issue #206): la
+// bÃºsqueda superior se acota a la secciÃ³n (Ocio / Perfil / Recetas).
 const SEARCH_PLACEHOLDER_BY_SECTION = {
-  ocio: "Buscar películas, series, libros y videojuegos...",
+  ocio: "Buscar pelÃ­culas, series, libros y videojuegos...",
   perfil: "Buscar amigos...",
   recetas: "Buscar recetas...",
   gimnasio: "Buscar en tu gimnasio...",
@@ -122,9 +120,9 @@ const SEARCH_ARIA_BY_SECTION = {
 };
 let currentSearchSection = "ocio";
 
-// Cambia el placeholder de la barra al navegar de sección (lo llama
+// Cambia el placeholder de la barra al navegar de secciÃ³n (lo llama
 // el onRoute de app.js). Corta el placeholder animado de bienvenida:
-// si el usuario cambia de sección durante los 3.5 s, el de la sección
+// si el usuario cambia de secciÃ³n durante los 3.5 s, el de la secciÃ³n
 // se muestra al momento.
 export function setSearchSection(section) {
   currentSearchSection = SEARCH_PLACEHOLDER_BY_SECTION[section] ? section : "ocio";
@@ -149,7 +147,7 @@ export function showAuthScreen() {
 
   document.getElementById("auth-screen").classList.remove("hidden");
   document.getElementById("app").classList.add("hidden");
-  // Cabecera global (issue #206): solo es visible con sesión iniciada
+  // Cabecera global (issue #206): solo es visible con sesiÃ³n iniciada
   document.getElementById("app-header")?.classList.add("hidden");
 }
 
@@ -160,7 +158,7 @@ export function showApp(user) {
   document.getElementById("app-header")?.classList.remove("hidden");
   document.getElementById("user-avatar").src = user.photoURL || PLACEHOLDER_COVER;
 
-  // Placeholder animado: "Mi Registro" → placeholder de la sección
+  // Placeholder animado: "Mi Registro" â†’ placeholder de la secciÃ³n
   const searchInput = getGlobalSearchInput();
   if (searchInput) {
     clearTimeout(searchPlaceholderTimer);
@@ -184,28 +182,28 @@ export function setAuthError(message) {
   el.classList.remove("hidden");
 }
 
-/* ---------- Vista previa de resultados de búsqueda (issue #22) ---------- */
+/* ---------- Vista previa de resultados de bÃºsqueda (issue #22) ---------- */
 
-// Muestra la información de un resultado de búsqueda en el modal de
-// detalle, como si ya estuviese añadido a la colección. El botón
-// "Añadir" delega en onAdd (que devuelve true si el alta fue exitosa,
+// Muestra la informaciÃ³n de un resultado de bÃºsqueda en el modal de
+// detalle, como si ya estuviese aÃ±adido a la colecciÃ³n. El botÃ³n
+// "AÃ±adir" delega en onAdd (que devuelve true si el alta fue exitosa,
 // para que el llamador cierre el modal). Si se pasa onEnrich, se
-// cargan los detalles ampliados (duración, reparto, sinopsis, rating,
-// tráiler) sin re-renderizar la estructura del modal. Si se pasa
-// onClose, se invoca en lugar de cerrar el modal desde el botón
-// "Cerrar", la ✕, el backdrop y la tecla Escape (lo usa la vista
-// previa de películas de la saga, issue #280, para restaurar la ficha
+// cargan los detalles ampliados (duraciÃ³n, reparto, sinopsis, rating,
+// trÃ¡iler) sin re-renderizar la estructura del modal. Si se pasa
+// onClose, se invoca en lugar de cerrar el modal desde el botÃ³n
+// "Cerrar", la âœ•, el backdrop y la tecla Escape (lo usa la vista
+// previa de pelÃ­culas de la saga, issue #280, para restaurar la ficha
 // que se estaba viendo).
 export function openSearchPreviewModal(item, { added = false, onAdd = null, onEnrich = null, onClose = null } = {}) {
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
   const metaLine =
     item.type === "book"
-      ? [item.author, item.year, item.pages ? `${item.pages} págs.` : null].filter(Boolean).join(" · ")
-      : [typeLabel(item.type), item.year].filter(Boolean).join(" · ");
+      ? [item.author, item.year, item.pages ? `${item.pages} pÃ¡gs.` : null].filter(Boolean).join(" Â· ")
+      : [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
   const editionsNote =
     item.type === "book" && item.editionsCount > 1
-      ? `<p class="book-confirm__editions">${item.editionsCount} ediciones — al añadir podrás elegir portada</p>`
+      ? `<p class="book-confirm__editions">${item.editionsCount} ediciones â€” al aÃ±adir podrÃ¡s elegir portada</p>`
       : "";
   const isBook = item.type === "book";
 
@@ -223,14 +221,14 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
       ${extraInfoHtml(item)}
       ${previewPagesHtml(item)}
       ${previewSeasonsHtml(item)}
-      ${onEnrich ? `<p class="extra-info__line" id="preview-loading">Cargando detalles…</p>` : ""}
+      ${onEnrich ? `<p class="extra-info__line" id="preview-loading">Cargando detallesâ€¦</p>` : ""}
     </div>
     ${isBook ? "" : `${communityRatingDisplay(item)}${trailerButtonHtml(item)}`}
     <div class="modal-actions">
       <button class="btn btn--outline" id="btn-preview-close">Cerrar</button>
       <button class="btn ${isBook ? "btn--accent-books" : "btn--accent-media"}"
               id="btn-preview-add" ${added ? "disabled" : ""}>
-        ${added ? "Ya añadido" : "Añadir"}
+        ${added ? "Ya aÃ±adido" : "AÃ±adir"}
       </button>
     </div>
   `;
@@ -245,9 +243,9 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
     addBtn.addEventListener("click", () => onAdd(item, addBtn));
   }
 
-  // Patrón estándar de apertura del proyecto. El cierre personalizado
-  // (onClose) se guarda en el modal para que backdrop, ✕ y Escape lo
-  // respeten igual que el botón "Cerrar" (issue #280, QA D3).
+  // PatrÃ³n estÃ¡ndar de apertura del proyecto. El cierre personalizado
+  // (onClose) se guarda en el modal para que backdrop, âœ• y Escape lo
+  // respeten igual que el botÃ³n "Cerrar" (issue #280, QA D3).
   modal._onClose = onClose || null;
   modal._previousActiveElement = document.activeElement;
   modal.classList.remove("hidden");
@@ -264,7 +262,7 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
       } catch (err) {
         // Fallo de red/API: no bloqueamos la vista previa
       }
-      // El hint de carga se elimina siempre (éxito o fallo)
+      // El hint de carga se elimina siempre (Ã©xito o fallo)
       if (loadingHint) loadingHint.remove();
 
       // Guardas: el modal pudo cerrarse o re-renderizarse mientras tanto
@@ -278,7 +276,7 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
       // Solo se re-renderiza el bloque de detalles, no la estructura
       previewDetailsEl.innerHTML = gamePlatformsHtml(item) + extraInfoHtml(item) + previewPagesHtml(item) + previewSeasonsHtml(item);
 
-      // Si llegaron rating de comunidad o tráiler nuevos, refrescar
+      // Si llegaron rating de comunidad o trÃ¡iler nuevos, refrescar
       // esos bloques (pueden no existir: p. ej. libros)
       if (details.communityRating !== undefined && details.communityRating !== prevRating) {
         const ratingsEl = content.querySelector(".modal-detail__ratings");
@@ -289,8 +287,8 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
         if (trailerEl) {
           trailerEl.outerHTML = trailerButtonHtml(item);
         } else {
-          // Los resultados de búsqueda nunca traen trailerUrl, así que
-          // el botón no existe en el render inicial: insertarlo antes
+          // Los resultados de bÃºsqueda nunca traen trailerUrl, asÃ­ que
+          // el botÃ³n no existe en el render inicial: insertarlo antes
           // de las acciones del modal
           const actions = content.querySelector(".modal-actions");
           if (actions) actions.insertAdjacentHTML("beforebegin", trailerButtonHtml(item));
@@ -307,14 +305,14 @@ function progressLine(item) {
     const log = item.watchLog || [];
     if (!log.length) return "";
     const last = log[log.length - 1];
-    return `Vista el ${formatDateEs(last)}${log.length > 1 ? ` · ×${log.length}` : ""}`;
+    return `Vista el ${formatDateEs(last)}${log.length > 1 ? ` Â· Ã—${log.length}` : ""}`;
   }
   if (item.type === "tv") {
     if (item.status === "standby") return "En pausa";
     if (item.status === "abandonado") return "Abandonada";
     if (item.status === "completado") {
       const times = (item.timesCompleted || 0) + 1;
-      return `Completa${times > 1 ? ` · ×${times}` : ""} · ${formatDateEs(item.lastWatchedAt)}`;
+      return `Completa${times > 1 ? ` Â· Ã—${times}` : ""} Â· ${formatDateEs(item.lastWatchedAt)}`;
     }
     if (item.nextEpisode) {
       return `Siguiente: T${item.nextEpisode.season}E${item.nextEpisode.episode}`;
@@ -329,7 +327,7 @@ function progressLine(item) {
     const last = log[log.length - 1];
     if (!last.finishedAt) return `Leyendo desde ${formatDateEs(last.startedAt)}`;
     const times = log.filter((e) => e.finishedAt).length;
-    return `Leído el ${formatDateEs(last.finishedAt)}${times > 1 ? ` · ×${times}` : ""}`;
+    return `LeÃ­do el ${formatDateEs(last.finishedAt)}${times > 1 ? ` Â· Ã—${times}` : ""}`;
   }
   if (item.type === "game") {
     if (item.status === "standby") return "En pausa";
@@ -339,52 +337,52 @@ function progressLine(item) {
     const last = log[log.length - 1];
     if (!last.finishedAt) return `Jugando desde ${formatDateEs(last.startedAt)}`;
     const times = log.filter((e) => e.finishedAt).length;
-    return `Jugado el ${formatDateEs(last.finishedAt)}${times > 1 ? ` · ×${times}` : ""}`;
+    return `Jugado el ${formatDateEs(last.finishedAt)}${times > 1 ? ` Â· Ã—${times}` : ""}`;
   }
   return "";
 }
 
 function metaLineFor(item) {
   return item.type === "book"
-    ? [item.author, item.year].filter(Boolean).join(" · ")
-    : [typeLabel(item.type), item.year].filter(Boolean).join(" · ");
+    ? [item.author, item.year].filter(Boolean).join(" Â· ")
+    : [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
 }
 
-// Etiqueta corta del botón/acción rápida (modo lista y swipe).
+// Etiqueta corta del botÃ³n/acciÃ³n rÃ¡pida (modo lista y swipe).
 function quickActionLabel(item) {
-  if (item.type === "movie") return "Vista ✓";
+  if (item.type === "movie") return "Vista âœ“";
   if (item.type === "tv") {
-    if (!item.nextEpisode) return "Completa ✓";
+    if (!item.nextEpisode) return "Completa âœ“";
     return `Ver T${item.nextEpisode.season}E${item.nextEpisode.episode}`;
   }
   if (item.type === "game") {
     const log = item.playLog || [];
     const isPlaying = log.length && !log[log.length - 1].finishedAt;
-    if (isPlaying) return "Terminar ✓";
-    if (log.length) return "Rejugar ↺";
-    return "Empezar ✓";
+    if (isPlaying) return "Terminar âœ“";
+    if (log.length) return "Rejugar â†º";
+    return "Empezar âœ“";
   }
   const log = item.readLog || [];
   const isReading = log.length && !log[log.length - 1].finishedAt;
-  if (isReading) return "Terminar ✓";
-  if (log.length) return "Releer ↺";
-  return "Empezar ✓";
+  if (isReading) return "Terminar âœ“";
+  if (log.length) return "Releer â†º";
+  return "Empezar âœ“";
 }
 
 function upcomingBadge(item) {
   if (!isItemUnreleased(item)) return "";
   const cls = "item-card__upcoming item-card__upcoming--unreleased";
   if (item.type === "movie") {
-    return `<div class="${cls}">Aún no estrenada${item.releaseDate ? ` · ${formatDateEs(item.releaseDate)}` : ""}</div>`;
+    return `<div class="${cls}">AÃºn no estrenada${item.releaseDate ? ` Â· ${formatDateEs(item.releaseDate)}` : ""}</div>`;
   }
   if (item.awaitingRelease && item.nextEpisode) { // serie sin estrenar (premiere)
-    return `<div class="${cls}">Aún no estrenada${item.firstAirDate ? ` · ${formatDateEs(item.firstAirDate)}` : ""}</div>`;
+    return `<div class="${cls}">AÃºn no estrenada${item.firstAirDate ? ` Â· ${formatDateEs(item.firstAirDate)}` : ""}</div>`;
   }
-  // Serie en curso con el próximo episodio sin estrenar. isItemUnreleased
+  // Serie en curso con el prÃ³ximo episodio sin estrenar. isItemUnreleased
   // garantiza que hay info, pero por seguridad si no la hay no se pinta.
   const info = getNextEpisodeAirInfo(item);
   if (!info) return "";
-  return `<div class="${cls}">Aún no estrenado · T${info.season}E${info.episode}${info.airDate ? ` · ${formatDateEs(info.airDate)}` : ""}</div>`;
+  return `<div class="${cls}">AÃºn no estrenado Â· T${info.season}E${info.episode}${info.airDate ? ` Â· ${formatDateEs(info.airDate)}` : ""}</div>`;
 }
 
 function renderGrid(gridEl, items, onOpen) {
@@ -417,7 +415,7 @@ function renderGrid(gridEl, items, onOpen) {
           </div>` : ""}
         </div>
         <button class="item-card__btn" data-index="${index}"
-                title="${escapeHtml(item.title)} — ${escapeHtml(metaLineFor(item))}"
+                title="${escapeHtml(item.title)} â€” ${escapeHtml(metaLineFor(item))}"
                 aria-label="Ver detalles de ${escapeHtml(item.title)}"></button>
       </article>`;
     })
@@ -435,7 +433,7 @@ function attachSwipe(row, content, onTrigger) {
   let dragging = false;
   let lock = null; // null | 'vertical' | 'horizontal'
   let startTouchId = null;
-  const lockThreshold = 10; // slop de decisión de dirección
+  const lockThreshold = 10; // slop de decisiÃ³n de direcciÃ³n
   const threshold = 70;
 
   row.addEventListener(
@@ -461,7 +459,7 @@ function attachSwipe(row, content, onTrigger) {
         e.touches[0];
       deltaX = touch.clientX - startX;
       const deltaY = touch.clientY - startY;
-      // Axis lock: al cruzar el slop se decide el eje y no se vuelve atrás.
+      // Axis lock: al cruzar el slop se decide el eje y no se vuelve atrÃ¡s.
       // El empate gana 'vertical' (el scroll siempre manda).
       if (
         lock === null &&
@@ -508,7 +506,7 @@ function renderList(gridEl, items, { onOpen, onQuickAction }) {
       const blockedClass = isItemUnreleased(item) ? " list-row--unreleased" : "";
       return `
       <div class="list-row list-row--${item.status}${blockedClass}" data-index="${index}">
-        <div class="list-row__swipe-bg">✓ ${escapeHtml(quickActionLabel(item))}</div>
+        <div class="list-row__swipe-bg">âœ“ ${escapeHtml(quickActionLabel(item))}</div>
         <div class="list-row__content">
           <button class="list-row__open" data-index="${index}"
                   aria-label="Ver detalles de ${escapeHtml(item.title)}">
@@ -562,9 +560,9 @@ export function renderLibrary(gridEl, emptyEl, items, viewMode, { onOpen, onQuic
 
 /* ---------- Campos comunes ---------- */
 
-// Normaliza una valoración a pasos de 0.5 (0, 0.5, 1, ... 5). Los
-// pickers admiten medias estrellas (issue #276), así que todo punto
-// de entrada pasa por aquí para sanear valores externos.
+// Normaliza una valoraciÃ³n a pasos de 0.5 (0, 0.5, 1, ... 5). Los
+// pickers admiten medias estrellas (issue #276), asÃ­ que todo punto
+// de entrada pasa por aquÃ­ para sanear valores externos.
 function normalizeRating(value) {
   const v = Number(value);
   if (!Number.isFinite(v)) return 0;
@@ -574,31 +572,31 @@ function normalizeRating(value) {
   return half;
 }
 
-// Etiqueta accesible de un botón del picker para el valor N (1-5).
+// Etiqueta accesible de un botÃ³n del picker para el valor N (1-5).
 function ratingButtonAriaLabel(n) {
   return n === 1 ? "1 estrella" : `${n} estrellas`;
 }
 
-// HTML informativo de las estrellas de un ítem (tarjetas y ficha de
-// solo lectura). Las medias estrellas se muestran como «½» tras las
-// completas (p. ej. 2.5 → «★★½») — issue #276.
+// HTML informativo de las estrellas de un Ã­tem (tarjetas y ficha de
+// solo lectura). Las medias estrellas se muestran como Â«Â½Â» tras las
+// completas (p. ej. 2.5 â†’ Â«â˜…â˜…Â½Â») â€” issue #276.
 export function ratingStarsHtml(rating) {
   const v = normalizeRating(rating);
   if (!v) return "";
-  const full = "★".repeat(Math.floor(v));
-  return v % 1 === 0 ? full : full + "½";
+  const full = "â˜…".repeat(Math.floor(v));
+  return v % 1 === 0 ? full : full + "Â½";
 }
 
 // HTML del picker de estrellas (1-5, con medias desde la issue #276).
 // idPrefix evita ids duplicados cuando hay varios pickers en pantalla
-// a la vez (p. ej. el de la ventana de valoración emergente, que usa
-// "rm-rating"). Un valor como 2.5 pinta «is-active» en 1-2 y la media
-// estrella («½») en el botón 3 (clase is-half).
+// a la vez (p. ej. el de la ventana de valoraciÃ³n emergente, que usa
+// "rm-rating"). Un valor como 2.5 pinta Â«is-activeÂ» en 1-2 y la media
+// estrella (Â«Â½Â») en el botÃ³n 3 (clase is-half).
 export function ratingPickerHtml(rating, idPrefix = "field-rating", extraHtml = "") {
   const value = normalizeRating(rating);
   return `
     <div class="field-group">
-      <label>Valoración</label>
+      <label>ValoraciÃ³n</label>
       <div class="rating-picker" id="${idPrefix}">
         ${[1, 2, 3, 4, 5]
           .map((n) => {
@@ -608,7 +606,7 @@ export function ratingPickerHtml(rating, idPrefix = "field-rating", extraHtml = 
               full ? "is-active" : ""
             }${half ? " is-half" : ""}" aria-label="${
               half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
-            }">${half ? "½" : n}</button>`;
+            }">${half ? "Â½" : n}</button>`;
           })
           .join("")}
       </div>
@@ -616,7 +614,7 @@ export function ratingPickerHtml(rating, idPrefix = "field-rating", extraHtml = 
     </div>`;
 }
 
-// Media de valoración de los episodios valorados de la serie (issue #80).
+// Media de valoraciÃ³n de los episodios valorados de la serie (issue #80).
 // Sin media: span oculto (placeholder que updateEpisodeAverage actualiza).
 function episodeAverageHtml(watched, idPrefix) {
   const avg = computeEpisodeAverageRating(watched);
@@ -636,9 +634,9 @@ function notesFieldHtml(notes) {
 }
 
 // Wiring del picker con medias estrellas (issue #276). Ciclo de
-// pulsación sobre el mismo botón N: 1er pulso → N; 2º pulso → N−0.5;
-// 3er pulso → 0 (quitar valoración, como antes). Devuelve un getter
-// con el valor seleccionado (0 o múltiplo de 0.5 entre 0.5 y 5).
+// pulsaciÃ³n sobre el mismo botÃ³n N: 1er pulso â†’ N; 2Âº pulso â†’ Nâˆ’0.5;
+// 3er pulso â†’ 0 (quitar valoraciÃ³n, como antes). Devuelve un getter
+// con el valor seleccionado (0 o mÃºltiplo de 0.5 entre 0.5 y 5).
 export function wireRatingAndGetValue(content, initialRating, idPrefix = "field-rating") {
   let selectedRating = normalizeRating(initialRating);
   const buttons = content.querySelectorAll(`#${idPrefix} button`);
@@ -649,7 +647,7 @@ export function wireRatingAndGetValue(content, initialRating, idPrefix = "field-
       const half = selectedRating === n - 0.5;
       b.classList.toggle("is-active", full && !half);
       b.classList.toggle("is-half", half);
-      b.textContent = half ? "½" : n;
+      b.textContent = half ? "Â½" : n;
       b.setAttribute(
         "aria-label",
         half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
@@ -695,8 +693,8 @@ function renderStandbyBanner(status, extraText, abandonLabel = "Abandonado/a") {
   if (status !== "standby" && status !== "abandonado") return "";
   const label = status === "standby" ? "En pausa" : abandonLabel;
   return `<div class="standby-banner"><span>${label}${
-    extraText ? " · " + escapeHtml(extraText) : ""
-  } — tu progreso se conserva.</span></div>`;
+    extraText ? " Â· " + escapeHtml(extraText) : ""
+  } â€” tu progreso se conserva.</span></div>`;
 }
 
 function wireStatusActions(content, handleStatusChange) {
@@ -707,7 +705,7 @@ function wireStatusActions(content, handleStatusChange) {
   const abandonBtn = content.querySelector("#btn-status-abandon");
   if (abandonBtn) {
     abandonBtn.addEventListener("click", () => {
-      if (!window.confirm("¿Marcar como abandonado? No se perderá tu progreso.")) return;
+      if (!window.confirm("Â¿Marcar como abandonado? No se perderÃ¡ tu progreso.")) return;
       handleStatusChange("abandonado");
     });
   }
@@ -717,16 +715,16 @@ function wireStatusActions(content, handleStatusChange) {
   }
 }
 
-// Información ampliada de TMDB (duración, género, director/creadores,
+// InformaciÃ³n ampliada de TMDB (duraciÃ³n, gÃ©nero, director/creadores,
 // reparto, sinopsis) o de la fuente de libros (sinopsis). No todos
-// los campos están siempre disponibles, así que cada línea es opcional.
+// los campos estÃ¡n siempre disponibles, asÃ­ que cada lÃ­nea es opcional.
 function extraInfoHtml(item) {
   const lines = [];
   const metaBits = [];
   if (item.runtime) metaBits.push(`${item.runtime} min`);
   if (item.episodeRuntime) metaBits.push(`~${item.episodeRuntime} min/episodio`);
   if (item.genres && item.genres.length) metaBits.push(item.genres.join(", "));
-  if (metaBits.length) lines.push(`<p class="extra-info__line">${escapeHtml(metaBits.join(" · "))}</p>`);
+  if (metaBits.length) lines.push(`<p class="extra-info__line">${escapeHtml(metaBits.join(" Â· "))}</p>`);
   if (item.director) {
     lines.push(`<p class="extra-info__line"><strong>Director:</strong> ${escapeHtml(item.director)}</p>`);
   }
@@ -752,10 +750,10 @@ function extraInfoHtml(item) {
       lines.push(`<p class="extra-info__line"><strong>Metacritic:</strong> ${escapeHtml(item.metacritic)}</p>`);
     }
     if (item.playtime) {
-      lines.push(`<p class="extra-info__line"><strong>Duración media:</strong> ~${escapeHtml(item.playtime)} horas</p>`);
+      lines.push(`<p class="extra-info__line"><strong>DuraciÃ³n media:</strong> ~${escapeHtml(item.playtime)} horas</p>`);
     }
     if (item.esrbName) {
-      lines.push(`<p class="extra-info__line"><strong>Clasificación:</strong> ${escapeHtml(item.esrbName)}</p>`);
+      lines.push(`<p class="extra-info__line"><strong>ClasificaciÃ³n:</strong> ${escapeHtml(item.esrbName)}</p>`);
     }
   }
   const overview = item.overview || item.description;
@@ -765,29 +763,29 @@ function extraInfoHtml(item) {
 }
 
 // Estado de los detalles de ficha bajo demanda (issue #200): si el
-// documento guarda solo la tarjeta (almacenamiento mínimo) y la ficha
-// aún está cargando —o la red falló— se muestra una línea informativa
-// en lugar de un bloque vacío (degradación elegante a «solo tarjeta»).
-// Los libros conservan la sinopsis en el documento y los ítems
+// documento guarda solo la tarjeta (almacenamiento mÃ­nimo) y la ficha
+// aÃºn estÃ¡ cargando â€”o la red fallÃ³â€” se muestra una lÃ­nea informativa
+// en lugar de un bloque vacÃ­o (degradaciÃ³n elegante a Â«solo tarjetaÂ»).
+// Los libros conservan la sinopsis en el documento y los Ã­tems
 // manuales no tienen API que consultar: nunca aplican.
 function detailStatusHtml(item) {
   if (item._detailsFailed) {
-    return `<p class="extra-info__loading">No se pudieron cargar los detalles (revisa tu conexión).</p>`;
+    return `<p class="extra-info__loading">No se pudieron cargar los detalles (revisa tu conexiÃ³n).</p>`;
   }
   if (!item.manual && item.externalId) {
     if ((item.type === "movie" || item.type === "tv") && !item.overview) {
-      return `<p class="extra-info__loading">Cargando detalles…</p>`;
+      return `<p class="extra-info__loading">Cargando detallesâ€¦</p>`;
     }
     if (item.type === "game" && !item.description) {
-      return `<p class="extra-info__loading">Cargando detalles…</p>`;
+      return `<p class="extra-info__loading">Cargando detallesâ€¦</p>`;
     }
   }
   return "";
 }
 
 // Bloque de temporadas para la vista previa de una serie: lista de
-// solo lectura (nº de episodios y fecha de emisión por temporada)
-// más el total. Vacío si no hay datos (sin seasonsMeta o vacío).
+// solo lectura (nÂº de episodios y fecha de emisiÃ³n por temporada)
+// mÃ¡s el total. VacÃ­o si no hay datos (sin seasonsMeta o vacÃ­o).
 function previewSeasonsHtml(item) {
   const seasons = item.seasonsMeta;
   if (!seasons || !seasons.length) return "";
@@ -795,8 +793,8 @@ function previewSeasonsHtml(item) {
     const name = s.name || `Temporada ${s.seasonNumber}`;
     const count = s.episodeCount || 0;
     const episodes = `${count} episodio${count === 1 ? "" : "s"}`;
-    const airDate = s.airDate ? ` · ${formatDateEs(s.airDate)}` : "";
-    return `<li class="preview-seasons__row">${escapeHtml(name)} · ${episodes}${airDate}</li>`;
+    const airDate = s.airDate ? ` Â· ${formatDateEs(s.airDate)}` : "";
+    return `<li class="preview-seasons__row">${escapeHtml(name)} Â· ${episodes}${airDate}</li>`;
   });
   const totalEpisodes = seasons.reduce((sum, s) => sum + (s.episodeCount || 0), 0);
   return `
@@ -805,29 +803,29 @@ function previewSeasonsHtml(item) {
       <ul class="preview-seasons__list">
         ${rows.join("")}
       </ul>
-      <p class="preview-seasons__total">${seasons.length} temporada${seasons.length === 1 ? "" : "s"} · ${totalEpisodes} episodio${totalEpisodes === 1 ? "" : "s"}</p>
+      <p class="preview-seasons__total">${seasons.length} temporada${seasons.length === 1 ? "" : "s"} Â· ${totalEpisodes} episodio${totalEpisodes === 1 ? "" : "s"}</p>
     </div>
   `;
 }
 
-// Línea de páginas de un libro para la vista previa. item.pages llega
-// como número desde la API (pageCount || null); vacío si no existe.
+// LÃ­nea de pÃ¡ginas de un libro para la vista previa. item.pages llega
+// como nÃºmero desde la API (pageCount || null); vacÃ­o si no existe.
 function previewPagesHtml(item) {
   if (!item.pages) return "";
-  return `<p class="extra-info__line"><strong>Páginas:</strong> ${item.pages}</p>`;
+  return `<p class="extra-info__line"><strong>PÃ¡ginas:</strong> ${item.pages}</p>`;
 }
 
 function editButtonHtml() {
-  return `<button type="button" class="btn btn--small btn--outline edit-info-btn" id="btn-edit-item">✎ Editar información</button>`;
+  return `<button type="button" class="btn btn--small btn--outline edit-info-btn" id="btn-edit-item">âœŽ Editar informaciÃ³n</button>`;
 }
 
-/* ---------- Alta / edición de información básica ---------- */
+/* ---------- Alta / ediciÃ³n de informaciÃ³n bÃ¡sica ---------- */
 
 function itemFormFields(type, values) {
   const isBook = type === "book";
   return `
     <div class="field-group">
-      <label for="form-title">Título *</label>
+      <label for="form-title">TÃ­tulo *</label>
       <input type="text" id="form-title" required value="${escapeHtml(values.title || "")}" />
     </div>
     ${
@@ -839,13 +837,13 @@ function itemFormFields(type, values) {
         : ""
     }
     <div class="field-group">
-      <label for="form-year">Año</label>
+      <label for="form-year">AÃ±o</label>
       <input type="number" id="form-year" min="0" max="2100" value="${escapeHtml(values.year || "")}" />
     </div>
     ${
       isBook
         ? `<div class="field-group">
-            <label for="form-pages">Páginas</label>
+            <label for="form-pages">PÃ¡ginas</label>
             <input type="number" id="form-pages" min="0" value="${values.pages || ""}" />
           </div>`
         : ""
@@ -862,7 +860,7 @@ export function openEditModal(item, { onSave, onCancel }) {
   const content = document.getElementById("modal-content");
 
   content.innerHTML = `
-    <h3 class="modal-detail__title" style="margin-bottom:1rem">Editar información</h3>
+    <h3 class="modal-detail__title" style="margin-bottom:1rem">Editar informaciÃ³n</h3>
     <form id="edit-form" class="manual-form">
       ${itemFormFields(item.type, item)}
       <div class="modal-actions">
@@ -903,12 +901,12 @@ export function openManualAddModal(type, onSubmit) {
 
   const titleText =
     type === "book"
-      ? "Añadir libro manualmente"
+      ? "AÃ±adir libro manualmente"
       : type === "tv"
-      ? "Añadir serie manualmente"
+      ? "AÃ±adir serie manualmente"
       : type === "game"
-      ? "Añadir videojuego manualmente"
-      : "Añadir película manualmente";
+      ? "AÃ±adir videojuego manualmente"
+      : "AÃ±adir pelÃ­cula manualmente";
 
   content.innerHTML = `
     <h3 class="modal-detail__title" style="margin-bottom:1rem">${titleText}</h3>
@@ -917,17 +915,17 @@ export function openManualAddModal(type, onSubmit) {
       ${
         type === "tv"
           ? `<div class="field-group">
-              <label for="manual-episodes">Número de episodios</label>
+              <label for="manual-episodes">NÃºmero de episodios</label>
               <input type="number" id="manual-episodes" min="1" value="10" />
             </div>
             <p class="log-empty">
-              Se asume una sola temporada con ese número de episodios.
+              Se asume una sola temporada con ese nÃºmero de episodios.
             </p>`
           : ""
       }
       <div class="modal-actions">
         <button type="button" class="btn btn--outline" id="btn-manual-cancel">Cancelar</button>
-        <button type="submit" class="btn btn--primary">Añadir</button>
+        <button type="submit" class="btn btn--primary">AÃ±adir</button>
       </div>
     </form>
   `;
@@ -993,7 +991,7 @@ function watchProvidersHtml(item) {
                  (wp.buy && wp.buy.length);
   if (!hasAny) {
     return `<div class="watch-providers watch-providers--empty">
-      <span class="watch-providers__title">Sin info. de streaming para este país</span>
+      <span class="watch-providers__title">Sin info. de streaming para este paÃ­s</span>
     </div>`;
   }
   return `
@@ -1008,7 +1006,7 @@ function watchProvidersHtml(item) {
 
 // Chips con las plataformas jugables de un videojuego (IGDB), para
 // que se vean como etiquetas y no como texto plano. Devuelve cadena
-// vacía si no hay plataformas (no ocupa espacio en el modal).
+// vacÃ­a si no hay plataformas (no ocupa espacio en el modal).
 function gamePlatformsHtml(item) {
   if (!item.platforms || !item.platforms.length) return "";
   return `
@@ -1025,17 +1023,17 @@ function gamePlatformsHtml(item) {
 /* ---------- Recomendaciones (contenido similar) ---------- */
 
 /**
- * Genera el HTML de la sección de recomendaciones.
+ * Genera el HTML de la secciÃ³n de recomendaciones.
  * @param {Array}  items       - Items recomendados [{externalId, type, title, year, coverUrl}]
- * @param {Set}    existingIds - Set de externalId ya añadidos para deshabilitar botones
- * @param {string} group       - "movie" o "tv" (para clases de botón)
- * @param {boolean} interactive - true si se deben mostrar botones "Añadir"
- * @param {Function} [onOpen]  - si es función, cada tarjeta pasa a ser
- *                               un botón pulsable que llama onOpen(rec)
+ * @param {Set}    existingIds - Set de externalId ya aÃ±adidos para deshabilitar botones
+ * @param {string} group       - "movie" o "tv" (para clases de botÃ³n)
+ * @param {boolean} interactive - true si se deben mostrar botones "AÃ±adir"
+ * @param {Function} [onOpen]  - si es funciÃ³n, cada tarjeta pasa a ser
+ *                               un botÃ³n pulsable que llama onOpen(rec)
  *                               para abrir la vista previa ampliada de
- *                               esa recomendación antes de añadirla
- *                               (issue #280, iteración)
- * @returns {string} HTML del bloque de recomendaciones, o cadena vacía
+ *                               esa recomendaciÃ³n antes de aÃ±adirla
+ *                               (issue #280, iteraciÃ³n)
+ * @returns {string} HTML del bloque de recomendaciones, o cadena vacÃ­a
  */
 function renderRecommendations(items, existingIds, group, interactive, onOpen) {
   if (!items || !items.length) return "";
@@ -1045,24 +1043,24 @@ function renderRecommendations(items, existingIds, group, interactive, onOpen) {
       const added = existingIds.has(rec.externalId);
       const btnHtml = interactive
         ? `<button class="btn btn--small ${accentClass} rec-card__add" data-rec-index="${index}" ${added ? "disabled" : ""}>
-             ${added ? "Añadido" : "Añadir"}
+             ${added ? "AÃ±adido" : "AÃ±adir"}
            </button>`
         : "";
       if (typeof onOpen === "function") {
-        // Tarjeta pulsable (issue #280, iteración): misma mecánica que
-        // las tarjetas de saga — el botón .rec-card__open envuelve
+        // Tarjeta pulsable (issue #280, iteraciÃ³n): misma mecÃ¡nica que
+        // las tarjetas de saga â€” el botÃ³n .rec-card__open envuelve
         // portada y texto (phrasing content, por eso .rec-card__body es
-        // span), y el botón "Añadir" queda como hermano, anclado abajo
-        // por el flex: 1 del botón open.
+        // span), y el botÃ³n "AÃ±adir" queda como hermano, anclado abajo
+        // por el flex: 1 del botÃ³n open.
         return `
         <div class="rec-card rec-card--openable" data-rec-index="${index}">
           <button type="button" class="rec-card__open" data-rec-index="${index}"
-                  aria-label="Ver información de ${escapeHtml(rec.title)}">
+                  aria-label="Ver informaciÃ³n de ${escapeHtml(rec.title)}">
             <img class="rec-card__cover" src="${rec.coverUrl || PLACEHOLDER_COVER}" alt="" loading="lazy" />
             <span class="rec-card__body">
               <span class="rec-card__title">${escapeHtml(rec.title)}</span>
               <span class="rec-card__year">${escapeHtml(rec.year || "")}</span>
-              <span class="rec-card__hint">Ver información</span>
+              <span class="rec-card__hint">Ver informaciÃ³n</span>
             </span>
           </button>
           ${btnHtml}
@@ -1082,7 +1080,7 @@ function renderRecommendations(items, existingIds, group, interactive, onOpen) {
 
   return `
     <div class="recommendations">
-      <h4 class="recommendations__title">Si te gustó esto, quizá te guste...</h4>
+      <h4 class="recommendations__title">Si te gustÃ³ esto, quizÃ¡ te guste...</h4>
       <div class="recommendations__scroll">
         ${cardsHtml}
       </div>
@@ -1090,22 +1088,22 @@ function renderRecommendations(items, existingIds, group, interactive, onOpen) {
 }
 
 /**
- * Genera el HTML de la sección «Otras películas de la saga» (issue
- * #280): las películas de la colección/saga a la que pertenece el
- * ítem abierto, en tarjetas con el mismo aspecto que las
+ * Genera el HTML de la secciÃ³n Â«Otras pelÃ­culas de la sagaÂ» (issue
+ * #280): las pelÃ­culas de la colecciÃ³n/saga a la que pertenece el
+ * Ã­tem abierto, en tarjetas con el mismo aspecto que las
  * recomendaciones. Reutiliza las clases de tarjeta de
  * renderRecommendations (.rec-card, .recommendations__scroll); el
- * botón usa .saga-card__add (clase propia, distinta de
+ * botÃ³n usa .saga-card__add (clase propia, distinta de
  * .rec-card__add, para no interferir con el wiring de
  * recomendaciones).
  * @param {Array}  sagaParts   - [{externalId, title, year, posterUrl}]
- * @param {Set}    existingIds - Set de externalId ya añadidos
- * @param {boolean} interactive - true si se muestran botones "Añadir"
- * @param {Function} [onOpen]  - si es función, cada tarjeta pasa a ser
- *                               un botón pulsable que llama onOpen(movie)
+ * @param {Set}    existingIds - Set de externalId ya aÃ±adidos
+ * @param {boolean} interactive - true si se muestran botones "AÃ±adir"
+ * @param {Function} [onOpen]  - si es funciÃ³n, cada tarjeta pasa a ser
+ *                               un botÃ³n pulsable que llama onOpen(movie)
  *                               para abrir la vista previa de esa
- *                               película antes de añadirla (issue #280)
- * @returns {string} HTML de la sección, o cadena vacía
+ *                               pelÃ­cula antes de aÃ±adirla (issue #280)
+ * @returns {string} HTML de la secciÃ³n, o cadena vacÃ­a
  */
 function renderSagaMovies(sagaParts, existingIds, interactive, onOpen) {
   if (!sagaParts || !sagaParts.length) return "";
@@ -1114,23 +1112,23 @@ function renderSagaMovies(sagaParts, existingIds, interactive, onOpen) {
       const added = existingIds.has(String(m.externalId));
       const btnHtml = interactive
         ? `<button class="btn btn--small btn--accent-media saga-card__add" data-saga-index="${index}" ${added ? "disabled" : ""}>
-             ${added ? "Añadida" : "Añadir"}
+             ${added ? "AÃ±adida" : "AÃ±adir"}
            </button>`
         : "";
       if (typeof onOpen === "function") {
-        // Tarjeta pulsable: el botón .saga-card__open envuelve portada
+        // Tarjeta pulsable: el botÃ³n .saga-card__open envuelve portada
         // y texto (phrasing content, por eso .rec-card__body es span),
-        // y el botón "Añadir" queda como hermano, anclado abajo por
-        // el flex: 1 del botón open (issue #280, iteración).
+        // y el botÃ³n "AÃ±adir" queda como hermano, anclado abajo por
+        // el flex: 1 del botÃ³n open (issue #280, iteraciÃ³n).
         return `
         <div class="rec-card saga-card" data-saga-index="${index}">
           <button type="button" class="saga-card__open" data-saga-index="${index}"
-                  aria-label="Ver información de ${escapeHtml(m.title)}">
+                  aria-label="Ver informaciÃ³n de ${escapeHtml(m.title)}">
             <img class="rec-card__cover" src="${m.posterUrl || PLACEHOLDER_COVER}" alt="" loading="lazy" />
             <span class="rec-card__body">
               <span class="rec-card__title">${escapeHtml(m.title)}</span>
               <span class="rec-card__year">${escapeHtml(m.year || "")}</span>
-              <span class="saga-card__hint">Ver información</span>
+              <span class="saga-card__hint">Ver informaciÃ³n</span>
             </span>
           </button>
           ${btnHtml}
@@ -1150,18 +1148,18 @@ function renderSagaMovies(sagaParts, existingIds, interactive, onOpen) {
 
   return `
     <div class="saga-movies">
-      <h4 class="saga-movies__title">Otras películas de la saga</h4>
+      <h4 class="saga-movies__title">Otras pelÃ­culas de la saga</h4>
       <div class="recommendations__scroll">
         ${cardsHtml}
       </div>
     </div>`;
 }
 
-/* ---------- Modal de detalle: películas ---------- */
+/* ---------- Modal de detalle: pelÃ­culas ---------- */
 
 function renderWatchLogRows(watchLog) {
   if (!watchLog || !watchLog.length) {
-    return `<p class="log-empty">Aún no la has visto.</p>`;
+    return `<p class="log-empty">AÃºn no la has visto.</p>`;
   }
   return `<div class="log-list">
     ${watchLog
@@ -1180,7 +1178,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
   const { onAddWatch, onUpdateWatch, onRemoveWatch, onSaveMeta, onDelete, onEdit, onAddSaga, onAddRecommendation, onAddSagaMovie, onOpenSagaMovie, onOpenRecommendation } = callbacks;
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
-  const metaLine = [typeLabel(item.type), item.year].filter(Boolean).join(" · ");
+  const metaLine = [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
 
   content.innerHTML = `
     <div class="modal-detail__header">
@@ -1201,7 +1199,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
     ${item.collectionId ? `
     <div class="saga-banner">
       <span class="saga-banner__label"><strong>Saga:</strong> ${escapeHtml(item.collectionName)}</span>
-      <button type="button" class="btn btn--small btn--accent-media" id="btn-add-saga">Añadir resto de la saga</button>
+      <button type="button" class="btn btn--small btn--accent-media" id="btn-add-saga">AÃ±adir resto de la saga</button>
     </div>
     ${renderSagaMovies(sagaParts, existingIds, !!onAddSagaMovie, onOpenSagaMovie)}` : ""}
 
@@ -1213,7 +1211,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
       <div class="log-add-row">
         <input type="date" id="field-new-watch-date" value="${todayISO()}" />
         <button type="button" class="btn btn--small btn--accent-media" id="btn-add-watch">
-          ${item.watchLog && item.watchLog.length ? "Añadir otro visionado" : "Marcar como vista"}
+          ${item.watchLog && item.watchLog.length ? "AÃ±adir otro visionado" : "Marcar como vista"}
         </button>
       </div>
     </div>
@@ -1229,8 +1227,8 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
 
   const getRating = wireRatingAndGetValue(content, item.rating);
   // Propaga todos los argumentos en el re-render (issue #280): tras
-  // marcar como vista, la sección de saga (y las recomendaciones)
-  // permanece, y el botón "Añadida" se mantiene gracias al Set
+  // marcar como vista, la secciÃ³n de saga (y las recomendaciones)
+  // permanece, y el botÃ³n "AÃ±adida" se mantiene gracias al Set
   // existingIds compartido.
   const rerender = () => openMovieModal(item, callbacks, recommendations, existingIds, sagaParts);
 
@@ -1243,7 +1241,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
     });
   }
 
-  // Wire recommendation "Añadir" buttons
+  // Wire recommendation "AÃ±adir" buttons
   if (onAddRecommendation) {
     content.querySelectorAll(".rec-card__add").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1254,7 +1252,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
     });
   }
 
-  // Wire saga "Añadir" buttons (issue #280). Clase propia
+  // Wire saga "AÃ±adir" buttons (issue #280). Clase propia
   // .saga-card__add para no interferir con las recomendaciones.
   if (onAddSagaMovie) {
     content.querySelectorAll(".saga-card__add").forEach((btn) => {
@@ -1266,8 +1264,8 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
     });
   }
 
-  // Wire saga card open preview (issue #280, iteración): pulsar la
-  // tarjeta muestra la información de la película antes de añadirla.
+  // Wire saga card open preview (issue #280, iteraciÃ³n): pulsar la
+  // tarjeta muestra la informaciÃ³n de la pelÃ­cula antes de aÃ±adirla.
   if (onOpenSagaMovie) {
     content.querySelectorAll(".saga-card__open").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1278,9 +1276,9 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
     });
   }
 
-  // Wire recommendation card open preview (issue #280, iteración):
-  // pulsar la tarjeta de recomendación también muestra la información
-  // ampliada antes de añadirla, igual que las tarjetas de saga.
+  // Wire recommendation card open preview (issue #280, iteraciÃ³n):
+  // pulsar la tarjeta de recomendaciÃ³n tambiÃ©n muestra la informaciÃ³n
+  // ampliada antes de aÃ±adirla, igual que las tarjetas de saga.
   if (onOpenRecommendation) {
     content.querySelectorAll(".rec-card__open").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1310,7 +1308,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
 
   content.querySelectorAll(".watch-remove").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!window.confirm("¿Quitar este visionado del historial?")) return;
+      if (!window.confirm("Â¿Quitar este visionado del historial?")) return;
       await onRemoveWatch(Number(btn.dataset.index));
       rerender();
     });
@@ -1335,8 +1333,8 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
 
 /* ---------- Modal selector de sagas ---------- */
 
-// Muestra un modal con checklist de películas de una saga para que
-// el usuario seleccione cuáles quiere añadir a su registro.
+// Muestra un modal con checklist de pelÃ­culas de una saga para que
+// el usuario seleccione cuÃ¡les quiere aÃ±adir a su registro.
 export function openSagaSelectionModal(collectionName, movies, callbacks) {
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
@@ -1354,14 +1352,14 @@ export function openSagaSelectionModal(collectionName, movies, callbacks) {
 
   content.innerHTML = `
     <h3 class="modal-detail__title" style="margin-bottom:0.3rem">${escapeHtml(collectionName)}</h3>
-    <p class="saga-subtitle">Selecciona las películas que quieras añadir:</p>
+    <p class="saga-subtitle">Selecciona las pelÃ­culas que quieras aÃ±adir:</p>
     <div class="saga-list" id="saga-list">
       ${renderList()}
     </div>
     <p class="saga-count" id="saga-count">Seleccionadas: ${movies.length}/${movies.length}</p>
     <div class="modal-actions">
       <button type="button" class="btn btn--outline" id="btn-saga-cancel">Cancelar</button>
-      <button type="button" class="btn btn--accent-media" id="btn-saga-confirm">Añadir seleccionadas</button>
+      <button type="button" class="btn btn--accent-media" id="btn-saga-confirm">AÃ±adir seleccionadas</button>
     </div>
   `;
 
@@ -1386,7 +1384,7 @@ export function openSagaSelectionModal(collectionName, movies, callbacks) {
       selectedIndices.push(Number(cb.dataset.index));
     });
     if (!selectedIndices.length) {
-      showToast("Selecciona al menos una película.");
+      showToast("Selecciona al menos una pelÃ­cula.");
       return;
     }
     callbacks.onConfirm(selectedIndices.map((i) => movies[i]));
@@ -1402,7 +1400,7 @@ export function openSagaSelectionModal(collectionName, movies, callbacks) {
 
 function renderReadLogRows(readLog) {
   if (!readLog || !readLog.length) {
-    return `<p class="log-empty">Aún no has empezado a leerlo.</p>`;
+    return `<p class="log-empty">AÃºn no has empezado a leerlo.</p>`;
   }
   return `<div class="log-list">
     ${readLog
@@ -1410,7 +1408,7 @@ function renderReadLogRows(readLog) {
         (entry, index) => `
         <div class="log-row">
           <input type="date" class="read-start" data-index="${index}" value="${entry.startedAt}" />
-          <span class="log-row__arrow">→</span>
+          <span class="log-row__arrow">â†’</span>
           ${
             entry.finishedAt
               ? `<input type="date" class="read-finish" data-index="${index}" value="${entry.finishedAt}" />`
@@ -1424,10 +1422,10 @@ function renderReadLogRows(readLog) {
 }
 
 // Historial de sesiones de juego de un videojuego (espejo del de
-// lecturas, con su propia semántica; issue #47).
+// lecturas, con su propia semÃ¡ntica; issue #47).
 function renderPlayLogRows(playLog) {
   if (!playLog || !playLog.length) {
-    return `<p class="log-empty">Aún no has empezado a jugarlo.</p>`;
+    return `<p class="log-empty">AÃºn no has empezado a jugarlo.</p>`;
   }
   return `<div class="log-list">
     ${playLog
@@ -1435,7 +1433,7 @@ function renderPlayLogRows(playLog) {
         (entry, index) => `
         <div class="log-row">
           <input type="date" class="play-start" data-index="${index}" value="${entry.startedAt}" />
-          <span class="log-row__arrow">→</span>
+          <span class="log-row__arrow">â†’</span>
           ${
             entry.finishedAt
               ? `<input type="date" class="play-finish" data-index="${index}" value="${entry.finishedAt}" />`
@@ -1462,7 +1460,7 @@ export function openBookModal(item, callbacks) {
   } = callbacks;
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
-  const metaLine = [item.author, item.year].filter(Boolean).join(" · ");
+  const metaLine = [item.author, item.year].filter(Boolean).join(" Â· ");
   const isReading =
     item.readLog && item.readLog.length && !item.readLog[item.readLog.length - 1].finishedAt;
 
@@ -1478,7 +1476,7 @@ export function openBookModal(item, callbacks) {
 
     ${extraInfoHtml(item)}
 
-    ${renderStandbyBanner(item.status, item.progress ? `página ${item.progress}` : "")}
+    ${renderStandbyBanner(item.status, item.progress ? `pÃ¡gina ${item.progress}` : "")}
     ${renderStatusActions(item.status)}
 
     <div class="field-group">
@@ -1493,7 +1491,7 @@ export function openBookModal(item, callbacks) {
     </div>
 
     <div class="field-group">
-      <label for="field-progress">Página actual</label>
+      <label for="field-progress">PÃ¡gina actual</label>
       <input type="number" min="0" id="field-progress" value="${item.progress ?? ""}" />
     </div>
 
@@ -1537,7 +1535,7 @@ export function openBookModal(item, callbacks) {
 
   content.querySelectorAll(".read-remove").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!window.confirm("¿Quitar esta lectura del historial?")) return;
+      if (!window.confirm("Â¿Quitar esta lectura del historial?")) return;
       await onRemoveEntry(Number(btn.dataset.index));
       rerender();
     });
@@ -1582,7 +1580,7 @@ export function openGameModal(item, callbacks) {
   } = callbacks;
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
-  const metaLine = [typeLabel(item.type), item.year].filter(Boolean).join(" · ");
+  const metaLine = [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
   const isPlaying =
     item.playLog && item.playLog.length && !item.playLog[item.playLog.length - 1].finishedAt;
 
@@ -1653,8 +1651,8 @@ export function openGameModal(item, callbacks) {
     });
   });
 
-  // Horas de una sesión: vacío se persiste como null (nunca undefined,
-  // Firestore lanza con updateDoc), valores inválidos se ignoran y el
+  // Horas de una sesiÃ³n: vacÃ­o se persiste como null (nunca undefined,
+  // Firestore lanza con updateDoc), valores invÃ¡lidos se ignoran y el
   // resto se redondea a 1 decimal (issue #174).
   content.querySelectorAll(".play-hours").forEach((input) => {
     input.addEventListener("change", async () => {
@@ -1674,7 +1672,7 @@ export function openGameModal(item, callbacks) {
 
   content.querySelectorAll(".play-remove").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!window.confirm("¿Quitar esta sesión del historial?")) return;
+      if (!window.confirm("Â¿Quitar esta sesiÃ³n del historial?")) return;
       await onRemoveEntry(Number(btn.dataset.index));
       rerender();
     });
@@ -1729,7 +1727,7 @@ function applyEpisodeRowState(row, entry) {
     const half = value === n - 0.5;
     s.classList.toggle("is-active", full && !half);
     s.classList.toggle("is-half", half);
-    s.textContent = half ? "½" : "★";
+    s.textContent = half ? "Â½" : "â˜…";
     s.setAttribute(
       "aria-label",
       half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
@@ -1745,7 +1743,7 @@ function renderSeasonBlock(s, watched) {
     <div class="season-block" data-season="${s.seasonNumber}" data-episode-count="${s.episodeCount}">
       <div class="season-header">
         <button class="season-toggle" data-season="${s.seasonNumber}">
-          <span class="season-chevron">▸</span>
+          <span class="season-chevron">â–¸</span>
           <span class="season-name">${escapeHtml(s.name)}</span>
           <span class="season-count">${watchedCount}/${s.episodeCount}</span>
         </button>
@@ -1769,7 +1767,7 @@ function renderEpisodeRows(episodes, seasonWatched, { manual = false } = {}) {
       const checked = Boolean(date);
       const times = checked ? Math.max(1, Number(entry.times) || 1) : 0;
       const future = !manual && isUnreleasedDate(e.airDate);
-      // Badge de nota TMDB: solo en series automáticas y cuando el episodio
+      // Badge de nota TMDB: solo en series automÃ¡ticas y cuando el episodio
       // tiene votos (episodeRating != null). Las series manuales no lo traen.
       const communityBadge =
         !manual && e.episodeRating != null
@@ -1783,8 +1781,8 @@ function renderEpisodeRows(episodes, seasonWatched, { manual = false } = {}) {
             <input type="checkbox" class="episode-checkbox" ${checked ? "checked" : ""}
                    aria-label="${
                      checked
-                       ? `E${e.episodeNumber} — ${escapeHtml(e.name)}: visto ${times} ${times === 1 ? "vez" : "veces"}. Pulsa para verlo de nuevo o desmarcarlo`
-                       : `Marcar E${e.episodeNumber} — ${escapeHtml(e.name)} como visto`
+                       ? `E${e.episodeNumber} â€” ${escapeHtml(e.name)}: visto ${times} ${times === 1 ? "vez" : "veces"}. Pulsa para verlo de nuevo o desmarcarlo`
+                       : `Marcar E${e.episodeNumber} â€” ${escapeHtml(e.name)} como visto`
                    }" />
             <span class="episode-checkbox-visual" aria-hidden="true"
                   ${times > 1 ? `data-count="${times}"` : ""}></span>
@@ -1793,7 +1791,7 @@ function renderEpisodeRows(episodes, seasonWatched, { manual = false } = {}) {
           <span class="episode-row__name">${escapeHtml(e.name)}${
         future
           ? ` <em class="episode-row__future">${
-              e.airDate ? `(sin estrenar · ${formatDateEs(e.airDate)})` : "(sin estrenar)"
+              e.airDate ? `(sin estrenar Â· ${formatDateEs(e.airDate)})` : "(sin estrenar)"
             }</em>`
           : ""
       }</span>
@@ -1810,7 +1808,7 @@ function renderEpisodeRows(episodes, seasonWatched, { manual = false } = {}) {
                   full ? "is-active" : ""
                 }${half ? " is-half" : ""}" data-value="${n}" aria-label="${
                   half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
-                }">${half ? "½" : "★"}</button>`;
+                }">${half ? "Â½" : "â˜…"}</button>`;
               })
               .join("")}
           </div>
@@ -1843,7 +1841,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
 
   const nextLine = progress.nextEpisode
     ? `Siguiente: T${progress.nextEpisode.season}E${progress.nextEpisode.episode}`
-    : "¡Serie completada!";
+    : "Â¡Serie completada!";
   const pct = progress.totalEpisodes
     ? Math.round((progress.totalWatched / progress.totalEpisodes) * 100)
     : 0;
@@ -1881,9 +1879,9 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
     ${
       item.status === "completado"
         ? `<div class="completion-banner">
-            <p>Has terminado esta serie${times > 1 ? ` (visionado nº ${times})` : ""}.</p>
+            <p>Has terminado esta serie${times > 1 ? ` (visionado nÂº ${times})` : ""}.</p>
             <p class="completion-dates">
-              Empezada: ${formatDateEs(item.firstWatchedAt)} · Terminada: ${formatDateEs(item.lastWatchedAt)}
+              Empezada: ${formatDateEs(item.firstWatchedAt)} Â· Terminada: ${formatDateEs(item.lastWatchedAt)}
             </p>
             <button type="button" class="btn btn--accent-media btn--small" id="btn-rewatch">
               Volver a verla desde el principio
@@ -1900,7 +1898,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
               ${item.history
                 .map(
                   (h) =>
-                    `<li>${formatDateEs(h.startedAt)} → ${formatDateEs(h.finishedAt)}</li>`
+                    `<li>${formatDateEs(h.startedAt)} â†’ ${formatDateEs(h.finishedAt)}</li>`
                 )
                 .join("")}
             </ul>
@@ -1924,7 +1922,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
   function updateBanner(newProgress) {
     const line = newProgress.nextEpisode
       ? `Siguiente: T${newProgress.nextEpisode.season}E${newProgress.nextEpisode.episode}`
-      : "¡Serie completada!";
+      : "Â¡Serie completada!";
     content.querySelector(".next-line").textContent = line;
     const newPct = newProgress.totalEpisodes
       ? Math.round((newProgress.totalWatched / newProgress.totalEpisodes) * 100)
@@ -1970,18 +1968,18 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       const airDate = row.dataset.airDate;
 
       checkbox.addEventListener("change", async () => {
-        // Estado REAL antes del clic (el navegador ya conmutó el checkbox)
+        // Estado REAL antes del clic (el navegador ya conmutÃ³ el checkbox)
         const currentEntry = normalizeEntry(
           (item.watched || {})[String(seasonNumber)]?.[String(episodeNumber)]
         );
         const wasWatched = Boolean(currentEntry && currentEntry.date);
 
-        // Episodio ya visto: preguntar qué hacer (verlo de nuevo o
+        // Episodio ya visto: preguntar quÃ© hacer (verlo de nuevo o
         // desmarcarlo) en lugar de desmarcar a secas (issue #133).
         if (wasWatched) {
-          // El diálogo captura document.activeElement al abrir, pero el
+          // El diÃ¡logo captura document.activeElement al abrir, pero el
           // checkbox se deshabilita antes (el navegador mueve el foco a
-          // body): guardamos el elemento activo previo aquí para
+          // body): guardamos el elemento activo previo aquÃ­ para
           // restaurar el foco a la casilla al cerrar (QA #133).
           const prevActive = document.activeElement;
           checkbox.checked = true; // restaurar al instante (sin parpadeo)
@@ -1989,7 +1987,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
           try {
             const choice = await openEpisodeActionsModal({
               title: item.title,
-              subtitle: `T${seasonNumber}E${episodeNumber} · ${row.dataset.episodeName || ""}`,
+              subtitle: `T${seasonNumber}E${episodeNumber} Â· ${row.dataset.episodeName || ""}`,
               times: currentEntry.times || 1,
             });
             let newProgress = null;
@@ -1998,8 +1996,8 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
             } else if (choice === "unmarked") {
               newProgress = await onSetEpisodeDate(seasonNumber, episodeNumber, null);
             }
-            // Repintado SIEMPRE derivado de item.watched (patrón issue #136):
-            // en el caso «cancelar» la fila vuelve a su estado real (inofensivo)
+            // Repintado SIEMPRE derivado de item.watched (patrÃ³n issue #136):
+            // en el caso Â«cancelarÂ» la fila vuelve a su estado real (inofensivo)
             // y no hay progreso nuevo que repintar en el banner.
             const entry2 = normalizeEntry(
               (item.watched || {})[String(seasonNumber)]?.[String(episodeNumber)]
@@ -2017,8 +2015,8 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
           return;
         }
 
-        // Episodio sin marcar: flujo actual (confirmación de sin estrenar
-        // y ventana de valoración posterior del lado de modal-handlers).
+        // Episodio sin marcar: flujo actual (confirmaciÃ³n de sin estrenar
+        // y ventana de valoraciÃ³n posterior del lado de modal-handlers).
         if (checkbox.checked && !item.manual && isUnreleasedDate(airDate)) {
           const msg = episodeUnreleasedMessage(item.title, seasonNumber, episodeNumber, airDate);
           if (!window.confirm(msg)) {
@@ -2031,8 +2029,8 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
         try {
           const newProgress = await onSetEpisodeDate(seasonNumber, episodeNumber, newDate);
           // Pintado DERIVADO de item.watched (no del checkbox pulsado):
-          // refleja también un posible «Deshacer» desde la ventana de
-          // valoración emergente (issue #136).
+          // refleja tambiÃ©n un posible Â«DeshacerÂ» desde la ventana de
+          // valoraciÃ³n emergente (issue #136).
           const entry2 = normalizeEntry(
             (item.watched || {})[String(seasonNumber)]?.[String(episodeNumber)]
           );
@@ -2063,14 +2061,14 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       starButtons.forEach((btn) => {
         btn.addEventListener("click", async () => {
           const value = Number(btn.dataset.value);
-          // Estado REAL del rating (patrón issue #136: derivar del dato,
+          // Estado REAL del rating (patrÃ³n issue #136: derivar del dato,
           // no del conteo visual de estrellas activas).
           const current = normalizeRating(
             normalizeEntry(
               (item.watched || {})[String(seasonNumber)]?.[String(episodeNumber)]
             )?.rating
           );
-          // Ciclo de medias estrellas (issue #276): N → N−0.5 → quitar.
+          // Ciclo de medias estrellas (issue #276): N â†’ Nâˆ’0.5 â†’ quitar.
           let newValue;
           if (current === value) newValue = value - 0.5;
           else if (current === value - 0.5) newValue = null;
@@ -2085,7 +2083,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
               const half = v === n - 0.5;
               b.classList.toggle("is-active", full && !half);
               b.classList.toggle("is-half", half);
-              b.textContent = half ? "½" : "★";
+              b.textContent = half ? "Â½" : "â˜…";
               b.setAttribute(
                 "aria-label",
                 half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
@@ -2111,20 +2109,20 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
 
       if (!isHidden) {
         block.classList.add("hidden");
-        chevron.textContent = "▸";
+        chevron.textContent = "â–¸";
         return;
       }
       block.classList.remove("hidden");
-      chevron.textContent = "▾";
+      chevron.textContent = "â–¾";
       if (block.dataset.loaded) return;
 
-      block.innerHTML = `<p class="episode-loading">Cargando episodios…</p>`;
+      block.innerHTML = `<p class="episode-loading">Cargando episodiosâ€¦</p>`;
       try {
         const episodes = await onExpandSeason(seasonNumber);
-        // Si el siguiente episodio del usuario está en esta temporada,
-        // guardamos su fecha de emisión (o null si TMDB no la tiene)
-        // para poder avisar del "no estrenado" sin más llamadas a la
-        // API. Fuego-y-olvido: un fallo aquí no rompe el modal.
+        // Si el siguiente episodio del usuario estÃ¡ en esta temporada,
+        // guardamos su fecha de emisiÃ³n (o null si TMDB no la tiene)
+        // para poder avisar del "no estrenado" sin mÃ¡s llamadas a la
+        // API. Fuego-y-olvido: un fallo aquÃ­ no rompe el modal.
         if (
           !item.manual &&
           onUpdateNextEpisodeAirDate &&
@@ -2160,7 +2158,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       const shouldMarkAll = btn.dataset.allWatched === "1";
 
       // Al marcar toda una temporada, contar los episodios sin estrenar
-      // (sin fecha oficial o con fecha futura) y pedir confirmación.
+      // (sin fecha oficial o con fecha futura) y pedir confirmaciÃ³n.
       // Las series manuales quedan excluidas: no tienen fechas reales.
       let unreleasedCount = 0;
       if (shouldMarkAll && !item.manual) {
@@ -2187,7 +2185,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       }
       if (unreleasedCount > 0) {
         const ok = window.confirm(
-          `«${item.title}» · Temporada ${seasonNumber}: ${unreleasedCount} episodio(s) sin estrenar (sin fecha oficial o con fecha futura). ¿Marcarlos todos igualmente como vistos?`
+          `Â«${item.title}Â» Â· Temporada ${seasonNumber}: ${unreleasedCount} episodio(s) sin estrenar (sin fecha oficial o con fecha futura). Â¿Marcarlos todos igualmente como vistos?`
         );
         if (!ok) return;
       }
@@ -2221,7 +2219,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
     rewatchBtn.addEventListener("click", async () => {
       if (
         !window.confirm(
-          `¿Volver a ver «${item.title}» desde el principio? Se guardará el visionado anterior en el historial.`
+          `Â¿Volver a ver Â«${item.title}Â» desde el principio? Se guardarÃ¡ el visionado anterior en el historial.`
         )
       ) {
         return;
@@ -2250,7 +2248,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
     onDelete();
   });
 
-  // Wire recommendation "Añadir" buttons
+  // Wire recommendation "AÃ±adir" buttons
   if (onAddRecommendation) {
     content.querySelectorAll(".rec-card__add").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -2261,9 +2259,9 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
     });
   }
 
-  // Wire recommendation card open preview (issue #280, iteración):
-  // pulsar la tarjeta de recomendación muestra la información ampliada
-  // antes de añadirla, igual que en la ficha de película.
+  // Wire recommendation card open preview (issue #280, iteraciÃ³n):
+  // pulsar la tarjeta de recomendaciÃ³n muestra la informaciÃ³n ampliada
+  // antes de aÃ±adirla, igual que en la ficha de pelÃ­cula.
   if (onOpenRecommendation) {
     content.querySelectorAll(".rec-card__open").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -2280,9 +2278,9 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
   modal._focusTrapCleanup = trapFocus(modal.querySelector(".modal__card"));
 }
 
-/* ---------- Modal de confirmación al añadir libro ---------- */
+/* ---------- Modal de confirmaciÃ³n al aÃ±adir libro ---------- */
 
-// Muestra un modal de selección cuando un libro tiene múltiples
+// Muestra un modal de selecciÃ³n cuando un libro tiene mÃºltiples
 // portadas o sinopsis (resultado de agrupar ediciones de Google Books).
 // Si no hay nada que elegir, llama directamente a onConfirm.
 export function openBookConfirmModal(item, { onConfirm, onCancel }) {
@@ -2298,7 +2296,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
     return;
   }
 
-  const metaLine = [item.author, item.year].filter(Boolean).join(" · ");
+  const metaLine = [item.author, item.year].filter(Boolean).join(" Â· ");
   const editionNote =
     item.editionsCount > 1
       ? `<p class="book-confirm__editions">${item.editionsCount} ediciones encontradas</p>`
@@ -2315,7 +2313,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
             .map(
               (url, i) => `
             <button type="button" class="cover-picker__item ${i === 0 ? "is-selected" : ""}" data-index="${i}">
-              <img src="${url}" alt="Edición ${i + 1}" loading="lazy" />
+              <img src="${url}" alt="EdiciÃ³n ${i + 1}" loading="lazy" />
             </button>`
             )
             .join("")}
@@ -2334,7 +2332,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
             .map(
               (desc, i) => `
             <button type="button" class="desc-picker__item ${i === 0 ? "is-selected" : ""}" data-index="${i}">
-              <p class="desc-picker__text">${escapeHtml(desc.length > 250 ? desc.slice(0, 250) + "…" : desc)}</p>
+              <p class="desc-picker__text">${escapeHtml(desc.length > 250 ? desc.slice(0, 250) + "â€¦" : desc)}</p>
             </button>`
             )
             .join("")}
@@ -2343,7 +2341,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
   }
 
   content.innerHTML = `
-    <h3 class="modal-detail__title" style="margin-bottom:0.5rem">Añadir libro</h3>
+    <h3 class="modal-detail__title" style="margin-bottom:0.5rem">AÃ±adir libro</h3>
     <div class="modal-detail__header" style="margin-bottom:0.5rem">
       <img class="modal-detail__cover" src="${item.coverUrl || PLACEHOLDER_COVER}" alt="" />
       <div>
@@ -2356,7 +2354,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
     ${descSelectorHtml}
     <div class="modal-actions">
       <button type="button" class="btn btn--outline" id="btn-confirm-cancel">Cancelar</button>
-      <button type="button" class="btn btn--accent-books" id="btn-confirm-add">Añadir</button>
+      <button type="button" class="btn btn--accent-books" id="btn-confirm-add">AÃ±adir</button>
     </div>
   `;
 
@@ -2396,7 +2394,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
     });
   });
 
-  // Si venimos de otro modal (p. ej. la preview de búsqueda), limpiar
+  // Si venimos de otro modal (p. ej. la preview de bÃºsqueda), limpiar
   // su focus trap antes de registrar el nuevo
   if (modal._focusTrapCleanup) modal._focusTrapCleanup();
 
@@ -2414,7 +2412,7 @@ export function closeModal() {
   // (issue #280, QA D3).
   modal._onClose = null;
 
-  // Restaurar foco al elemento que lo tenía antes de abrir
+  // Restaurar foco al elemento que lo tenÃ­a antes de abrir
   if (modal._previousActiveElement && typeof modal._previousActiveElement.focus === 'function') {
     modal._previousActiveElement.focus();
   }
@@ -2430,97 +2428,7 @@ export function closeModal() {
   document.getElementById("modal-content").innerHTML = "";
 }
 
-/* ---------- Ficha de solo lectura (para ver lo de un amigo) ---------- */
-
-export function openReadOnlyModal(item, ownerName) {
-  const modal = document.getElementById("item-modal");
-  const content = document.getElementById("modal-content");
-  const metaLine = metaLineFor(item);
-  const stars = ratingStarsHtml(item.rating);
-  const progress = progressLine(item);
-
-  content.innerHTML = `
-    <div class="modal-detail__header">
-      <img class="modal-detail__cover" src="${item.coverUrl || PLACEHOLDER_COVER}" alt="" />
-      <div>
-        <h3 class="modal-detail__title">${escapeHtml(item.title)}</h3>
-        <div class="modal-detail__meta">${escapeHtml(metaLine)}</div>
-      </div>
-    </div>
-    <p class="read-only-badge">👀 Viendo la ficha de ${escapeHtml(ownerName)} · solo lectura</p>
-
-    ${upcomingBadge(item)}
-    ${communityRatingDisplay(item)}
-    ${trailerButtonHtml(item)}
-    ${gamePlatformsHtml(item)}
-    ${watchProvidersHtml(item)}
-    ${extraInfoHtml(item)}
-
-    <div class="field-group">
-      <span class="item-card__stamp item-card__stamp--${item.status}" style="position:static;transform:none;display:inline-block;">
-        ${statusLabel(item.status, item.type)}
-      </span>
-    </div>
-
-    ${progress ? `<p class="extra-info__line">${escapeHtml(progress)}</p>` : ""}
-    ${stars ? `<p class="item-card__rating" style="font-size:1rem;">${stars}</p>` : ""}
-  `;
-
-  // Record previous focus and trap
-  modal._previousActiveElement = document.activeElement;
-  modal.classList.remove("hidden");
-  modal._focusTrapCleanup = trapFocus(modal.querySelector(".modal__card"));
-
-  // Ficha de amigo bajo demanda (issue #200): el documento del amigo
-  // puede guardar solo la tarjeta (almacenamiento mínimo). Los
-  // detalles se piden a la API del LECTOR (con caché de 24 h) y se
-  // re-renderiza la ficha; nunca se escribe en Firestore (solo
-  // lectura). Si falla la red, degrada a «solo tarjeta» y no se
-  // reintenta en esta sesión.
-  if (needsDetailFetch(item) && !item._detailsFailed) {
-    item._detailsFailed = false;
-    loadItemDetails(item).then((details) => {
-      if (!document.getElementById("item-modal")?.classList.contains("hidden")) {
-        if (!details) item._detailsFailed = true;
-        openReadOnlyModal(item, ownerName);
-      }
-    });
-  }
-}
-
-/* ---------- Amigos ---------- */
-
-export function renderFriendsList(container, profiles, myUid, onSelect) {
-  const others = profiles.filter((p) => p.uid !== myUid);
-  if (!others.length) {
-    container.innerHTML = `<p class="empty-state">Todavía no hay más gente registrada.</p>`;
-    return;
-  }
-  container.innerHTML = others
-    .map(
-      (p, index) => `
-      <button class="friend-card" data-index="${index}">
-        <img class="friend-card__avatar" src="${p.photoURL || PLACEHOLDER_COVER}" alt="Avatar de ${escapeHtml(p.displayName || p.email || 'amigo')}" />
-        <span class="friend-card__name">${escapeHtml(p.displayName || p.email || "Sin nombre")}</span>
-      </button>`
-    )
-    .join("");
-
-  container.querySelectorAll(".friend-card").forEach((btn) => {
-    btn.addEventListener("click", () => onSelect(others[Number(btn.dataset.index)]));
-  });
-}
-
-export function renderFriendTab(tabKey, items, onOpen, emptyMessage) {
-  const gridEl = document.getElementById("friend-" + tabKey);
-  if (!items.length) {
-    gridEl.innerHTML = `<p class="empty-state">${escapeHtml(emptyMessage || "Nada por aquí todavía.")}</p>`;
-    return;
-  }
-  renderGrid(gridEl, items, onOpen);
-}
-
-/* ---------- Notificaciones ---------- */
+/* ---------- Notificaciones (campana) ---------- */
 
 export function renderNotifications(listEl, badgeEl, emptyEl, notifications, { onDelete }) {
   const unread = notifications.filter((n) => !n.read).length;
@@ -2543,7 +2451,7 @@ export function renderNotifications(listEl, badgeEl, emptyEl, notifications, { o
       (n, index) => `
       <div class="notif-row ${n.read ? "" : "is-unread"}">
         <span class="notif-row__text">${escapeHtml(n.message)}</span>
-        <button type="button" class="notif-row__delete" data-index="${index}" aria-label="Borrar">✕</button>
+        <button type="button" class="notif-row__delete" data-index="${index}" aria-label="Borrar">âœ•</button>
       </div>`
     )
     .join("");
@@ -2577,11 +2485,11 @@ export function showToast(message) {
 }
 
 /**
- * Muestra un toast con mensaje y botón "Deshacer".
- * El toast NO se oculta automáticamente — el llamador controla su
- * ciclo de vida mediante el método `hide()` del objeto devuelto.
+ * Muestra un toast con mensaje y botÃ³n "Deshacer".
+ * El toast NO se oculta automÃ¡ticamente â€” el llamador controla su
+ * ciclo de vida mediante el mÃ©todo `hide()` del objeto devuelto.
  *
- * @param {string}   title   - Título del ítem que se eliminará
+ * @param {string}   title   - TÃ­tulo del Ã­tem que se eliminarÃ¡
  * @param {Function} onUndo  - Callback al hacer clic en "Deshacer"
  * @returns {{ hide: () => void }}
  */
@@ -2592,14 +2500,14 @@ export function showUndoToast(title, onUndo) {
 
   const toast = document.getElementById("toast");
   toast.innerHTML = `
-    <span>«${escapeHtml(title)}» se eliminará…</span>
+    <span>Â«${escapeHtml(title)}Â» se eliminarÃ¡â€¦</span>
     <button class="toast__btn">Deshacer</button>
   `;
   toast.classList.add("toast--undo");
   toast.classList.remove("hidden");
 
   const hide = () => {
-    if (undoState !== state) return; // Otro toast ya tomó el control
+    if (undoState !== state) return; // Otro toast ya tomÃ³ el control
     toast.classList.remove("toast--undo");
     toast.classList.add("hidden");
     toast.innerHTML = "";
@@ -2614,125 +2522,4 @@ export function showUndoToast(title, onUndo) {
   });
 
   return { hide };
-}
-
-/* ---------- Feed de actividad de amigos ---------- */
-
-const PLACEHOLDER_COVER_SMALL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='60'%3E%3Crect fill='%23333' width='40' height='60'/%3E%3Ctext x='20' y='35' text-anchor='middle' fill='%23777' font-size='10'%3EN/A%3C/text%3E%3C/svg%3E";
-
-/**
- * Renderiza el feed de actividad de amigos en un contenedor.
- * @param {Element} container - Elemento DOM donde renderizar
- * @param {Array<object>} events - Array de eventos de buildGlobalFeed()
- * @param {Function} onItemClick - Callback al hacer clic en un item (recibe el item)
- */
-export function renderActivityFeed(container, events, onItemClick) {
-  if (!events || events.length === 0) {
-    container.innerHTML = `<p class="empty-state">Todavía no hay actividad reciente de tus amigos.</p>`;
-    return;
-  }
-
-  // Agrupar por fecha
-  const groups = {};
-  events.forEach((ev) => {
-    const dateLabel = formatDateLabel(ev.date);
-    if (!groups[dateLabel]) groups[dateLabel] = [];
-    groups[dateLabel].push(ev);
-  });
-
-  // Ordenar grupos por fecha (las keys son "Hoy", "Ayer", o YYYY-MM-DD)
-  const groupKeys = Object.keys(groups).sort((a, b) => {
-    // Las fechas reales empiezan con dígito, los labels como "Hoy" van primero
-    const aIsDate = /^\d/.test(a);
-    const bIsDate = /^\d/.test(b);
-    if (!aIsDate && bIsDate) return -1;
-    if (aIsDate && !bIsDate) return 1;
-    if (!aIsDate && !bIsDate) return 0;
-    return b.localeCompare(a); // descendente para fechas
-  });
-
-  let html = "";
-  groupKeys.forEach((dateLabel) => {
-    html += `<div class="activity-group">
-      <div class="activity-group__header">${escapeHtml(dateLabel)}</div>
-      <div class="activity-group__items">`;
-
-    groups[dateLabel].forEach((ev, idx) => {
-      const item = ev.item || {};
-      const coverSrc = item.coverUrl || PLACEHOLDER_COVER_SMALL;
-      html += `
-        <div class="activity-event" data-event-index="${idx}" tabindex="0" role="button">
-          <div class="activity-event__cover-wrap">
-            <img class="activity-event__cover" src="${coverSrc}" alt="" loading="lazy" />
-          </div>
-          <div class="activity-event__body">
-            <div class="activity-event__text">
-              <strong>${escapeHtml(ev.friendName)}</strong>
-              ${escapeHtml(ev.label)}
-              <em>${escapeHtml(item.title || "sin título")}</em>
-              ${ev.detail ? `<span class="activity-event__detail">${escapeHtml(ev.detail)}</span>` : ""}
-            </div>
-            <div class="activity-event__meta">
-              <span class="activity-event__icon">${eventIcon(ev.type)}</span>
-            </div>
-          </div>
-        </div>`;
-    });
-
-    html += `</div></div>`;
-  });
-
-  container.innerHTML = html;
-
-  // Asignar click y teclado handlers usando el índice global
-  let globalIdx = 0;
-  container.querySelectorAll(".activity-event").forEach((el) => {
-    const eventData = events[globalIdx];
-    if (eventData && eventData.item && onItemClick) {
-      el.addEventListener("click", () => onItemClick(eventData.item, eventData.friendName));
-      el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onItemClick(eventData.item, eventData.friendName);
-        }
-      });
-    }
-    globalIdx++;
-  });
-}
-
-/**
- * Formatea una fecha YYYY-MM-DD como "Hoy", "Ayer" o "DD de Mes, YYYY".
- */
-function formatDateLabel(dateStr) {
-  if (!dateStr) return "";
-  // Usar la misma lógica que todayISO() para consistencia (fecha UTC)
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const yesterdayDate = new Date();
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
-
-  if (dateStr === todayStr) return "Hoy";
-  if (dateStr === yesterdayStr) return "Ayer";
-
-  const d = new Date(dateStr + "T12:00:00");
-  const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-  return `${d.getDate()} de ${months[d.getMonth()]}, ${d.getFullYear()}`;
-}
-
-/**
- * Devuelve un icono para el tipo de evento.
- */
-function eventIcon(type) {
-  const icons = {
-    movie_watched: "🎬",
-    series_started: "📺",
-    series_completed: "🏁",
-    series_episodes: "📺",
-    book_started: "📖",
-    book_finished: "📚",
-    game_started: "🎮",
-    game_finished: "🏆",
-  };
-  return icons[type] || "📌";
 }

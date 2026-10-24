@@ -41,8 +41,7 @@ import { MEDIA_ICONS, seenActionLabels } from "./constants.js";
 let isOpen = false;
 let highlightedIndex = -1;
 let flatResults = [];
-let cachedProfiles = null;
-let profilePromise = null;
+
 let searchCtx = null;
 
 // Contador de focus suprimidos (issue #206): al abrir el modal de una
@@ -169,19 +168,9 @@ function filterItems(items, query) {
     .map((r) => r.item);
 }
 
-function filterFriends(profiles, query) {
-  const q = query.toLowerCase().trim();
-  return profiles.filter((p) => {
-    const name = (p.displayName || p.name || "").toLowerCase();
-    const email = (p.email || "").toLowerCase();
-    return name.includes(q) || email.includes(q);
-  });
-}
-
 // Resultados de la sección activa (issue #206):
 // - ocio    → colección (películas/series/libros/videojuegos del
 //             usuario), sin amigos: el buscador ya no es global.
-// - perfil  → solo amigos.
 // - recetas → solo recetas (filtro local, searchRecipes de recipes.js).
 // - gimnasio → sin resultados aún (issue #62, v1: sin scope de
 //             búsqueda propia; devolver vacío evita caer a la rama
@@ -190,17 +179,14 @@ function filterFriends(profiles, query) {
 // refreshExternalResults.
 function collectionResults(trimmed) {
   if (!searchCtx) {
-    return { movies: [], tv: [], books: [], games: [], friends: [], recipes: [] };
+    return { movies: [], tv: [], books: [], games: [], recipes: [] };
   }
   const section = currentSection();
-  if (section === "perfil") {
-    return { friends: (cachedProfiles ? filterFriends(cachedProfiles, trimmed) : []).slice(0, 6) };
+  if (section === "perfil" || section === "gimnasio") {
+    return { movies: [], tv: [], books: [], games: [], recipes: [] };
   }
   if (section === "recetas") {
     return { recipes: searchRecipes(trimmed).slice(0, 6) };
-  }
-  if (section === "gimnasio") {
-    return { movies: [], tv: [], books: [], games: [], friends: [], recipes: [] };
   }
   const allItems = searchCtx.getAllItems();
   return {
@@ -241,9 +227,6 @@ function renderTypeButtons() {
 
 // Texto del hint según la sección activa (issue #206).
 function sectionHintText() {
-  if (currentSection() === "perfil") {
-    return "Escribe al menos 2 caracteres para buscar en tus amigos.";
-  }
   if (currentSection() === "recetas") {
     return "Escribe al menos 2 caracteres para buscar en tus recetas.";
   }
@@ -333,10 +316,10 @@ function renderExternalSection(group, query) {
 }
 
 function renderResults(results, query) {
-  const { movies = [], tv = [], books = [], games = [], friends = [], recipes = [] } = results;
+  const { movies = [], tv = [], books = [], games = [], recipes = [] } = results;
   const trimmed = query.trim();
 
-  const hasAny = movies.length || tv.length || books.length || games.length || friends.length || recipes.length;
+  const hasAny = movies.length || tv.length || books.length || games.length || recipes.length;
 
   if (!trimmed || trimmed.length < 2) {
     renderHint();
@@ -367,27 +350,24 @@ function renderResults(results, query) {
     tv: "Series",
     books: "Libros",
     games: "Videojuegos",
-    friends: "Amigos",
     recipes: "Recetas",
   };
 
   // Iconos de grupo: series/películas/libros/videojuegos usan los
   // mismos SVGs que las pestañas (MEDIA_ICONS, coloreados por CSS con
-  // --<key>); amigos conserva su emoji (issue #134) y recetas su
-  // plato (issue #206).
+  // --<key>) y recetas su plato (issue #206).
   const groupIcons = {
     movies: MEDIA_ICONS.movies,
     tv: MEDIA_ICONS.tv,
     books: MEDIA_ICONS.books,
     games: MEDIA_ICONS.games,
-    friends: "👤",
     recipes: "🍽️",
   };
 
   // Solo los grupos de la sección activa (issue #206)
   const section = currentSection();
   const groupKeys =
-    section === "perfil" ? ["friends"] : section === "recetas" ? ["recipes"] : ["movies", "tv", "books", "games"];
+    section === "recetas" ? ["recipes"] : ["movies", "tv", "books", "games"];
   let html = renderTypeButtons();
   const newFlat = [];
   let globalIdx = 0;
@@ -396,30 +376,16 @@ function renderResults(results, query) {
     const items = results[key];
     if (!items || !items.length) continue;
 
-    // Solo los grupos de medio llevan modificador de color; friends no
-    // (su emoji es la "👤" y no necesita acento, issue #134), y recipes
-    // tampoco (issue #206).
-    html += `<div class="global-search__group-title${key === "friends" || key === "recipes" ? "" : ` global-search__group-title--${key}`}">
+    // Solo los grupos de medio llevan modificador de color; recipes no
+    // (issue #206).
+    html += `<div class="global-search__group-title${key === "recipes" ? "" : ` global-search__group-title--${key}`}">
       <span>${groupIcons[key]}</span>
       <span>${groupLabels[key]}</span>
       <span class="global-search__group-badge">${items.length}</span>
     </div>`;
 
     for (const entry of items) {
-      if (key === "friends") {
-        // Resultado de amigo
-        const avatar = entry.photoURL || "";
-        const name = entry.displayName || entry.name || "Amigo";
-        const email = entry.email || "";
-        html += `<div class="global-search__friend" data-global-idx="${globalIdx}" tabindex="0">
-          <img class="global-search__friend-avatar" src="${escapeHtml(avatar)}" alt="" loading="lazy" />
-          <div class="global-search__friend-info">
-            <div class="global-search__friend-name">${escapeHtml(name)}</div>
-            <div class="global-search__friend-email">${escapeHtml(email)}</div>
-          </div>
-        </div>`;
-        newFlat.push({ kind: "collection", type: "friend", item: entry, group: key });
-      } else if (key === "recipes") {
+      if (key === "recipes") {
         // Resultado de receta (issue #206): abre el modal de la receta
         // en modo solo lectura. La portada pasa por safeCoverUrl como
         // la de los ítems de ocio (placeholder si falta o es inválida).
@@ -663,14 +629,6 @@ function navigateTo(result) {
     return;
   }
 
-  // Resultado de amigo (issue #206): el buscador del Perfil navega al
-  // detalle del amigo (misma ruta que la lista de amigos usa).
-  if (result.type === "friend") {
-    closeGlobalSearch();
-    navigate({ section: "perfil", profileSection: "friends", uid: result.item.uid });
-    return;
-  }
-
   // Resultado de receta (issue #206): abre el modal de la receta en
   // modo solo lectura. Se arma el contador de focus suprimidos: el
   // focus programático y el reenfoque de cierre del modal no deben
@@ -741,21 +699,6 @@ function openGlobalSearch() {
   // Al abrir con atajo de teclado (Ctrl+K, "/"), llevar el foco al
   // input; si ya estaba enfocado, el focus event no se repite.
   if (document.activeElement !== input) input.focus();
-
-  // Cachear perfiles de amigos al abrir. Solo en Perfil: la búsqueda
-  // de Ocio y Recetas ya no usa amigos (issue #206) y no hay que
-  // pagar la lectura de perfiles en cada sección.
-  if (!cachedProfiles && searchCtx && currentSection() === "perfil") {
-    if (!profilePromise) {
-      profilePromise = searchCtx.getAllUserProfiles().then((profiles) => {
-        cachedProfiles = profiles;
-        return profiles;
-      }).catch(() => {
-        cachedProfiles = [];
-        return [];
-      });
-    }
-  }
 }
 
 // Consulta de estado para otros módulos (issue #253): sidebar.js la
@@ -821,17 +764,11 @@ function highlightPrev() {
 function setHighlight(idx) {
   // Quitar highlight anterior
   resultsEl.querySelector(".global-search__item--highlighted")?.classList.remove("global-search__item--highlighted");
-  resultsEl.querySelector(".global-search__friend--highlighted")?.classList.remove("global-search__friend--highlighted");
 
   highlightedIndex = idx;
   const target = resultsEl.querySelector(`[data-global-idx="${idx}"]`);
   if (!target) return;
-
-  if (flatResults[idx] && flatResults[idx].type === "friend") {
-    target.classList.add("global-search__friend--highlighted");
-  } else {
-    target.classList.add("global-search__item--highlighted");
-  }
+  target.classList.add("global-search__item--highlighted");
   target.scrollIntoView({ block: "nearest" });
 }
 
@@ -952,10 +889,7 @@ export function setupGlobalSearch(ctx) {
     (e) => {
       const img = e.target;
       if (!(img instanceof HTMLImageElement)) return;
-      if (
-        !img.classList.contains("global-search__item-cover") &&
-        !img.classList.contains("global-search__friend-avatar")
-      ) {
+      if (!img.classList.contains("global-search__item-cover")) {
         return;
       }
       // Evitar bucle: si ya es el placeholder (data URI), no reasignar.
@@ -1014,25 +948,6 @@ async function performSearch(ctx) {
 
   // Nueva búsqueda: invalidar búsquedas externas en curso
   searchSeq++;
-
-  // Amigos desde la caché (solo en Perfil: la búsqueda se acota a la
-  // sección activa, issue #206)
-  if (!cachedProfiles && currentSection() === "perfil") {
-    if (!profilePromise) {
-      profilePromise = ctx.getAllUserProfiles().then((profiles) => {
-        cachedProfiles = profiles;
-        return profiles;
-      }).catch(() => {
-        cachedProfiles = [];
-        return [];
-      });
-    }
-    try {
-      cachedProfiles = await profilePromise;
-    } catch {
-      cachedProfiles = [];
-    }
-  }
 
   // Issue #149: si hay un catálogo activo y la query actual no tiene
   // estado (vuelo/caché/error) para esta query exacta, relanzar la

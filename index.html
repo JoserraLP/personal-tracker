@@ -19,8 +19,8 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=20261003" />
-  <link rel="stylesheet" href="ocio/ocio.css?v=20261003" />
+  <link rel="stylesheet" href="css/styles.css?v=20261004" />
+  <link rel="stylesheet" href="ocio/ocio.css?v=20261004" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
@@ -91,13 +91,13 @@
       <!-- Búsqueda global: input en la cabecera + dropdown de resultados
            anclado bajo la barra (js/global-search.js). Busca SOLO dentro
            de la sección activa (issue #206): Ocio (colecciones y
-           catálogo), Perfil (amigos) o Recetas (recetas). -->
+           catálogo) o Recetas (recetas). -->
       <div class="search-bar-wrap">
         <input
           id="global-search-input"
           type="search"
           class="global-search__input"
-          placeholder="Buscar películas, series, libros, videojuegos o amigos..."
+          placeholder="Buscar películas, series, libros o videojuegos..."
           autocomplete="off"
           aria-label="Buscar en tu registro de ocio"
         />
@@ -134,14 +134,6 @@
             <button type="button" class="profile-dropdown__item" role="menuitem" data-section="stats">
               <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg></span>
               <span>Estadísticas</span>
-            </button>
-            <button type="button" class="profile-dropdown__item" role="menuitem" data-section="friends">
-              <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg></span>
-              <span>Amigos</span>
-            </button>
-            <button type="button" class="profile-dropdown__item" role="menuitem" data-section="activity">
-              <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg></span>
-              <span>Actividad</span>
             </button>
             <button type="button" class="profile-dropdown__item" role="menuitem" data-section="settings">
               <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg></span>
@@ -242,7 +234,7 @@
     </footer>
   </div>
 
-  <!-- Vista de perfil / estadísticas / amigos (issue #206, iteración
+  <!-- Vista de perfil / estadísticas / ajustes (issue #206, iteración
        2026-08-11: en el perfil NO se muestra la cabecera global —el
        usuario prefiere la flecha de volver y las pestañas en la misma
        fila, como antes—; la cabecera global solo aparece en Ocio y
@@ -255,8 +247,6 @@
       </button>
       <div class="profile-subtabs" role="tablist" aria-label="Secciones del perfil">
         <button type="button" class="profile-subtab is-active" role="tab" aria-selected="true" aria-controls="profile-section-stats" data-section="stats">Estadísticas</button>
-        <button type="button" class="profile-subtab" role="tab" aria-selected="false" aria-controls="profile-section-friends" data-section="friends">Amigos</button>
-        <button type="button" class="profile-subtab" role="tab" aria-selected="false" aria-controls="profile-section-activity" data-section="activity">Actividad</button>
         <button type="button" class="profile-subtab" role="tab" aria-selected="false" aria-controls="profile-section-settings" data-section="settings">Ajustes</button>
       </div>
       <div class="stats-period">
@@ -297,78 +287,6 @@
             <canvas id="chart-platforms"></canvas>
           </div>
         </div>
-      </section>
-
-      <section id="profile-section-friends" class="hidden" role="tabpanel" aria-labelledby="profile-section-friends-heading">
-        <h2 id="profile-section-friends-heading" class="visually-hidden">Amigos</h2>
-        <div id="friends-list" class="friends-list"></div>
-
-        <div id="friend-detail" class="friend-detail hidden">
-          <button type="button" class="btn-link" id="btn-back-to-friends">← Todos los amigos</button>
-          <h2 id="friend-detail-name" class="friend-detail__name"></h2>
-
-          <div class="friend-subtabs" role="tablist" aria-label="Registro del amigo">
-            <button type="button" class="friend-subtab is-active" role="tab" id="friend-tab-movies"
-                    aria-selected="true" aria-controls="friend-panel-movies" data-friend-tab="movies">Películas</button>
-            <button type="button" class="friend-subtab" role="tab" id="friend-tab-tv"
-                    aria-selected="false" aria-controls="friend-panel-tv" data-friend-tab="tv">Series</button>
-            <button type="button" class="friend-subtab" role="tab" id="friend-tab-books"
-                    aria-selected="false" aria-controls="friend-panel-books" data-friend-tab="books">Libros</button>
-            <button type="button" class="friend-subtab" role="tab" id="friend-tab-games"
-                    aria-selected="false" aria-controls="friend-panel-games" data-friend-tab="games">Videojuegos</button>
-          </div>
-
-          <div class="friend-tabpanel" id="friend-panel-movies" role="tabpanel" aria-labelledby="friend-tab-movies">
-            <div class="friend-filters" role="group" aria-label="Filtrar películas por estado" data-tab="movies">
-              <button type="button" class="friend-chip is-active" data-status="todos" aria-pressed="true">Todos</button>
-              <button type="button" class="friend-chip" data-status="pendiente" aria-pressed="false">Pendiente</button>
-              <button type="button" class="friend-chip" data-status="completado" aria-pressed="false">Vista</button>
-            </div>
-            <div id="friend-movies" class="library-grid"></div>
-          </div>
-
-          <div class="friend-tabpanel hidden" id="friend-panel-tv" role="tabpanel" aria-labelledby="friend-tab-tv">
-            <div class="friend-filters" role="group" aria-label="Filtrar series por estado" data-tab="tv">
-              <button type="button" class="friend-chip is-active" data-status="todos" aria-pressed="true">Todos</button>
-              <button type="button" class="friend-chip" data-status="pendiente" aria-pressed="false">Pendiente</button>
-              <button type="button" class="friend-chip" data-status="en_curso" aria-pressed="false">Viendo</button>
-              <button type="button" class="friend-chip" data-status="completado" aria-pressed="false">Vista</button>
-              <button type="button" class="friend-chip" data-status="standby" aria-pressed="false">Standby</button>
-              <button type="button" class="friend-chip" data-status="abandonado" aria-pressed="false">Abandonada</button>
-            </div>
-            <div id="friend-tv" class="library-grid"></div>
-          </div>
-
-          <div class="friend-tabpanel hidden" id="friend-panel-books" role="tabpanel" aria-labelledby="friend-tab-books">
-            <div class="friend-filters" role="group" aria-label="Filtrar libros por estado" data-tab="books">
-              <button type="button" class="friend-chip is-active" data-status="todos" aria-pressed="true">Todos</button>
-              <button type="button" class="friend-chip" data-status="pendiente" aria-pressed="false">Pendiente</button>
-              <button type="button" class="friend-chip" data-status="en_curso" aria-pressed="false">Leyendo</button>
-              <button type="button" class="friend-chip" data-status="completado" aria-pressed="false">Leído</button>
-              <button type="button" class="friend-chip" data-status="standby" aria-pressed="false">Standby</button>
-              <button type="button" class="friend-chip" data-status="abandonado" aria-pressed="false">Abandonado</button>
-            </div>
-            <div id="friend-books" class="library-grid"></div>
-          </div>
-
-          <div class="friend-tabpanel hidden" id="friend-panel-games" role="tabpanel" aria-labelledby="friend-tab-games">
-            <div class="friend-filters" role="group" aria-label="Filtrar videojuegos por estado" data-tab="games">
-              <button type="button" class="friend-chip is-active" data-status="todos" aria-pressed="true">Todos</button>
-              <button type="button" class="friend-chip" data-status="pendiente" aria-pressed="false">Pendiente</button>
-              <button type="button" class="friend-chip" data-status="en_curso" aria-pressed="false">Jugando</button>
-              <button type="button" class="friend-chip" data-status="completado" aria-pressed="false">Jugado</button>
-              <button type="button" class="friend-chip" data-status="standby" aria-pressed="false">Standby</button>
-              <button type="button" class="friend-chip" data-status="abandonado" aria-pressed="false">Abandonado</button>
-            </div>
-            <div id="friend-games" class="library-grid"></div>
-          </div>
-        </div>
-      </section>
-
-      <section id="profile-section-activity" class="hidden" role="tabpanel" aria-labelledby="profile-section-activity-heading">
-        <h2 id="profile-section-activity-heading" class="visually-hidden">Actividad de amigos</h2>
-        <div id="activity-feed-container" class="activity-feed" aria-live="polite" aria-atomic="true"></div>
-        <p class="empty-state" id="activity-feed-loading">Cargando actividad…</p>
       </section>
 
       <section id="profile-section-settings" class="hidden" role="tabpanel" aria-labelledby="profile-section-settings-heading">
@@ -424,13 +342,6 @@
             </label>
           </div>
           <div class="settings-row">
-            <label for="notif-friend-activity">Actividad de amigos</label>
-            <label class="switch" aria-hidden="true">
-              <input type="checkbox" id="notif-friend-activity" class="switch__input" checked />
-              <span class="switch__slider"></span>
-            </label>
-          </div>
-          <div class="settings-row">
             <div class="settings-row__text">
               <label for="notif-device">Notificaciones en el dispositivo</label>
               <p class="settings-row__hint">Avisos del sistema cuando la web no está en primer plano.</p>
@@ -462,6 +373,10 @@
           <p class="settings-desc">Descarga un archivo .ics con los próximos episodios de tus series, los estrenos de películas pendientes y los lanzamientos de tus videojuegos, para importarlo en Google Calendar, Apple Calendar u otras aplicaciones.</p>
           <button type="button" class="btn btn--accent-media" id="btn-export-ics">
             Exportar calendario (.ics)
+          </button>
+          <p class="settings-desc">Importa tu historial completo de series desde el fichero JSON que exportas en la aplicación de TV Time. Se añadirán como series manuales, sin conexión a TMDB.</p>
+          <button type="button" class="btn btn--accent-books" id="btn-import-tvtime">
+            Importar desde TV Time
           </button>
         </div>
       </section>
@@ -852,7 +767,7 @@
        js/auto-hide-nav.js. -->
   <button type="button" id="btn-back-to-top" class="back-to-top" aria-label="Volver arriba">↑ <span>Volver arriba</span></button>
 
-  <script type="module" src="js/app.js?v=20261003"></script>
+  <script type="module" src="js/app.js?v=20261004"></script>
   <script type="module">
     import { registerSW } from './js/sw-register.js';
     if ('serviceWorker' in navigator) registerSW();
