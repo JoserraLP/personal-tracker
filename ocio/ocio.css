@@ -2130,3 +2130,158 @@ button, a, input, select, textarea { touch-action: manipulation; }
 [data-theme="black"] .item-card__stamp--en_curso { color: #1c4a41; }
 [data-theme="black"] .item-card__stamp--completado { color: #8f6522; }
 [data-theme="black"] .item-card__stamp--abandonado { color: #7e2c22; }
+
+/* =========================================================
+   Lista de deseos (pestaña «Compras», ADR-105). Estética igual a
+   las tarjetas de Ocio: --paper como superficie y --ink como
+   texto en TODAS las familias de tema (los modales claros/o oscuro
+   remapean las variables; no hacen falta overrides por familia).
+   ========================================================= */
+.wishlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  gap: 1rem;
+}
+
+.wishlist-card {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Card comprada: atenuada y con el título tachado (y sin sombra) */
+.wishlist-card--comprado {
+  opacity: 0.7;
+  box-shadow: none;
+  border: 1px dashed var(--paper-line);
+}
+
+.wishlist-card--comprado .wishlist-card__title {
+  text-decoration: line-through;
+}
+
+.wishlist-card__open {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.wishlist-card__photo {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+  background: var(--paper-dim);
+  color: var(--ink-soft);
+}
+
+.wishlist-card__body {
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.wishlist-card__title {
+  font-weight: 700;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+/* Precio en ocre oscuro: variante -dark para cumplir AA sobre papel
+   (la variante base es para superficies oscuras) */
+.wishlist-card__price {
+  font-family: var(--font-mono);
+  color: var(--ochre-spine-dark);
+  font-size: 0.9rem;
+}
+
+.wishlist-card__desc {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wishlist-card__url {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.wishlist-card__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.8rem;
+  border-top: 1px solid var(--paper-line);
+  margin-top: auto;
+}
+
+.wishlist-card__check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.wishlist-card__check input {
+  accent-color: var(--teal-reel);
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.wishlist-card__delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--ink-soft);
+  padding: 0.2rem;
+  border-radius: var(--radius);
+}
+
+.wishlist-card__delete:hover {
+  color: var(--stamp-dark);
+}
+
+.wishlist-card__open:focus-visible,
+.wishlist-card__delete:focus-visible,
+.wishlist-card__check input:focus-visible {
+  outline: 2px solid var(--teal-reel);
+  outline-offset: 2px;
+}
+
+.wishlist-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.wishlist-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

@@ -480,6 +480,8 @@
 [data-theme="black"] .tab--movies.is-active { box-shadow: inset 0 3px 0 var(--stamp-dark); }
 [data-theme="black"] .tab--books.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
 [data-theme="black"] .tab--games.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
+/* Pestaña Compras (ADR-105): variante clara del ocre (umbral 3:1) */
+[data-theme="black"] .tab--wishlist.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
 /* Pestañas de Recetas (issue #208): mismo patrón que las de Ocio,
    reutilizando los acentos de la paleta con sus variantes claras
    para el modo negro puro. */
@@ -1204,6 +1206,8 @@ body.is-back-to-top-visible .back-to-top {
 .tab--movies { --tab-accent: var(--stamp); }
 .tab--books { --tab-accent: var(--ochre-spine); }
 .tab--games { --tab-accent: var(--games); }
+/* Pestaña Compras (ADR-105): reutiliza el ocre de la paleta */
+.tab--wishlist { --tab-accent: var(--ochre-spine); }
 /* Pestañas de Recetas (issue #208): acentos de la paleta existente
    (ocre, verde y rojo), con sus variantes -dark para negro puro en
    los overrides de [data-theme="black"] (mismo patrón que Ocio). */

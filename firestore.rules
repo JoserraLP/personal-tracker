@@ -98,6 +98,14 @@ service cloud.firestore {
         allow write: if isAllowedUser() && isOwner(userId);
       }
 
+      // Lista de deseos (Compras): cosas que comprar con precio,
+      // descripción, URL y foto (por URL). A diferencia del registro
+      // de ocio, es una lista PRIVADA: solo el dueño la lee o
+      // escribe (nadie más la necesita).
+      match /wishlist/{itemId} {
+        allow read, write: if isAllowedUser() && isOwner(userId);
+      }
+
       // Las notificaciones son privadas: nadie más puede leerlas.
       match /notifications/{notifId} {
         allow read, write: if isAllowedUser() && isOwner(userId);

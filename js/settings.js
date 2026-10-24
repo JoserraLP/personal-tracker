@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS = {
   // cambia la presentación (y las entradas) en la interfaz.
   unidadPeso: "kg",
   visibleSections: { ocio: true, recetas: true, gimnasio: true },
-  visibleTabs: { resumen: true, series: true, peliculas: true, libros: true, recetas: true, ingredientes: true, menu: true, compra: true, entrenos: true, ejercicios: true },
+  visibleTabs: { resumen: true, series: true, peliculas: true, libros: true, compras: true, recetas: true, ingredientes: true, menu: true, compra: true, entrenos: true, ejercicios: true },
 };
 
 // Registro central de secciones y pestañas de la web (issue #97).
@@ -41,6 +41,7 @@ export const SECTION_REGISTRY = {
       peliculas: { label: "Películas", panelId: "panel-movies" },
       libros: { label: "Libros", panelId: "panel-books" },
       videojuegos: { label: "Videojuegos", panelId: "panel-games" },
+      compras: { label: "Compras", panelId: "panel-wishlist" },
     },
   },
   recetas: {

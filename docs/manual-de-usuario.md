@@ -33,6 +33,8 @@ en la web. Léelo por secciones según lo que necesites.
 20. [Instalar la web en tu teléfono](#20-instalar-la-web-en-tu-teléfono)
 21. [Problemas frecuentes](#21-problemas-frecuentes)
 
+Además: [Compras (lista de deseos)](#compras-lista-de-deseos)
+
 ---
 
 ## 1. Qué es Mi Registro
@@ -105,9 +107,9 @@ Nada más entrar verás:
     ([sección 3.2](#32-la-cabecera-y-las-pestañas-al-hacer-scroll)).
 - **Las pestañas** (en la barra fija bajo la cabecera en el ordenador
   y la tablet, o anclada abajo en el móvil): **Series**, **Películas**,
-  **Libros** y **Videojuegos**. Cada pestaña lleva un icono y tiene su
+  **Libros**, **Videojuegos** y **Compras**. Cada pestaña lleva un icono y tiene su
   propio color: **Series en verde**, **Películas en rojo**, **Libros en
-  ocre** y **Videojuegos en violeta**. La pestaña activa se marca con
+  ocre**, **Videojuegos en violeta** y **Compras en ocre**. La pestaña activa se marca con
   una franja de su color y un fondo claro. Pulsa una pestaña para ver
   tu lista de ese tipo, con sus filtros y su orden. Como la cabecera,
   la barra de pestañas se oculta al bajar por la lista y
@@ -450,6 +452,49 @@ sesiones adicionales. Cada sesión tiene además un campo opcional de
 **horas** (cuántas horas dedicaste en esa partida, en pasos de media
 hora); ese campo se usa para la estadística de **horas jugadas** de tu
 perfil (sección 15.1).
+
+## Compras (lista de deseos)
+
+En la barra de pestañas de Ocio tienes la pestaña **«Compras»**: tu
+lista de cosas que comprar, para apuntar lo que vayas queriendo (un
+monitor, un libro, lo que sea).
+
+### Añadir una cosa
+
+Pulsa **«Añadir cosa»** y rellena lo que quieras:
+
+- **Título** (obligatorio): lo único imprescindible.
+- **Precio** (opcional): un número; da igual si usas coma o punto
+  («12,99» o «12.99»). Se mostrará en euros en la tarjeta.
+- **URL del producto** (opcional): se abrirá en tu navegador… la web
+  también acepta dominios sin «https://» (escribe «www.dominio.com/x»
+  y la web completa la dirección).
+- **Foto** (opcional): un **enlace** a una imagen (por ejemplo, la
+  portada del producto en la tienda). Si no pones ninguna, la tarjeta
+  muestra un placeholder «Sin foto».
+- **Descripción** (opcional): notas o detalles del producto.
+
+Guarda y la tarjeta aparece en la lista.
+
+### Marcar como comprada
+
+Cada tarjeta tiene un interruptor **«Comprado»**: márcalo cuando la
+compres y el título se tachará (la tarjeta se queda atenuada) y se
+guarda la fecha en la que la compraste. Si te equivocas, desmárcalo y
+vuelve a estar «por comprar».
+
+Pulsa una tarjeta para **editar** todos sus campos o **🗑️** para
+borrarla (se te pedirá confirmación). Con las fichitas de arriba
+puedes filtrar: **Todas**, **Por comprar** o **Compradas**.
+
+### Cosas que conviene saber
+
+- La lista es **privada**: es solo para ti; nadie más la ve (a
+  diferencia de tu registro de ocio).
+- Puedes **ocultarla** en Ajustes → Secciones y pestañas, y volver a
+  mostrarla cuando quieras; tus datos no se borran.
+- Una cosa comprada se queda en la lista: bórrala cuando no la
+  quieras conservar más.
 
 ## 8. Recetas
 
@@ -1232,8 +1277,8 @@ Se llega desde **«Ajustes» en la parte de abajo de la barra lateral**
   Tu elección se guarda automáticamente y se mantiene la próxima vez
   que entres.
 - **Secciones y pestañas**: elige qué secciones y pestañas de la web
-  ves. Hoy hay tres secciones: **«Ocio»**, con sus cuatro pestañas
-  (**Series**, **Películas**, **Libros** y **Videojuegos**),
+  ves. Hoy hay tres secciones: **«Ocio»**, con sus cinco pestañas
+  (**Series**, **Películas**, **Libros**, **Videojuegos** y **Compras**),
   **«Recetas»**, con sus cuatro pestañas (**Recetas**, **Ingredientes**,
   **Menú** y **Compra**), y **«Gimnasio»**, con sus tres pestañas
   (**Resumen**, **Entrenos** y **Ejercicios**). Al **ocultar una pestaña**,

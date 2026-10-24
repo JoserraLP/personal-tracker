@@ -1,0 +1,27 @@
+<!--
+  Contenido de la pestaña "Compras" (lista de deseos). Se inyecta
+  dentro de <section id="panel-wishlist"> (ver ocio/series.html para
+  la explicación del sistema de partials). Cada tarjeta muestra la
+  foto (opcional), el título, el precio (opcional), la descripción
+  (opcional), un enlace al producto (opcional) y si ya está comprada.
+
+  IMPORTANTE: la barra de filtros usa .wishlist-filters (NO .filter-chips)
+  para no chocar con el wiring genérico de app.js (wirePanelControls),
+  que espera data-scope; privivamente js/wishlist.js los wirea.
+  Los chips reutilizan la clase base .chip de la web.
+-->
+<div class="wishlist-controls">
+  <div class="wishlist-filters" data-wishlist-scope="compras" role="group" aria-label="Filtrar la lista de compras">
+    <button class="chip wishlist-chip is-active" data-wishlist-filter="todos" aria-pressed="true">Todas</button>
+    <button class="chip wishlist-chip" data-wishlist-filter="pendiente" aria-pressed="false">Por comprar</button>
+    <button class="chip wishlist-chip" data-wishlist-filter="comprado" aria-pressed="false">Compradas</button>
+  </div>
+  <div class="library-controls__aux">
+    <button type="button" class="btn btn--accent-media" id="btn-wishlist-add">Añadir cosa</button>
+  </div>
+</div>
+<div id="wishlist-grid" class="wishlist-grid"></div>
+<p id="wishlist-empty" class="empty-state hidden">
+  Tu lista de cosas que comprar está vacía. Pulsa «Añadir cosa» para
+  registrar la primera.
+</p>

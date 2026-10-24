@@ -59,6 +59,7 @@ import { checkForUpdates } from "./daily-check.js";
 import { runStorageMigration } from "./migration.js";
 import { setupNotifications } from "./notifications-setup.js";
 import { setupProfile } from "./profile.js";
+import { setupWishlist } from "./wishlist.js";
 import { setupSettings, syncThemeToSettings, cleanupSettings, SECTION_REGISTRY, isSectionVisible, isTabVisible, getFirstVisibleTabKey, getFirstVisibleTabPanel, normalizeTabKey } from "./settings.js";
 import { setupGlobalSearch, refreshExternalResults } from "./global-search.js";
 import { setupSidebar, renderSidebar, setActiveSection } from "./sidebar.js";
@@ -73,12 +74,12 @@ import { setupGym, subscribeGymData, resetGymData } from "./gym.js";
 // ---------- Estado ----------
 
 let currentUser = null;
-let unsubscribeItems = { movies: null, tv: null, books: null, games: null };
+let unsubscribeItems = { movies: null, tv: null, books: null, games: null, wishlist: null };
 let unsubscribeNotifications = null;
 let unsubscribeRecipes = null; // recetas (recipes.js)
 let unsubscribeMenuData = null; // menús (menu.js)
 let unsubscribeGymData = null; // gimnasio (gym.js)
-const allItems = { movies: [], tv: [], books: [], games: [] };
+const allItems = { movies: [], tv: [], books: [], games: [], wishlist: [] };
 let notifications = [];
 
 const activeFilters = { movies: "todos", tv: "en_curso", books: "todos", games: "todos" };
@@ -88,7 +89,7 @@ const viewMode = { movies: "grid", tv: "list", books: "grid", games: "grid" };
 // Flags de snapshot recibido por grupo (lazy loading, issue #178):
 // ya no condicionan la comprobación diaria (lee de Firestore con
 // getItemsOnce), solo el repintado cuando un partial llega tarde.
-const groupReady = { movies: false, tv: false, books: false, games: false };
+const groupReady = { movies: false, tv: false, books: false, games: false, wishlist: false };
 let checksTriggered = false;
 
 // ---------- Contexto para módulos ----------
@@ -212,7 +213,7 @@ function maybeTriggerDailyCheck() {
 
 function stopAllSubscriptions() {
   Object.values(unsubscribeItems).forEach((fn) => fn && fn());
-  unsubscribeItems = { movies: null, tv: null, books: null, games: null };
+  unsubscribeItems = { movies: null, tv: null, books: null, games: null, wishlist: null };
   if (unsubscribeNotifications) unsubscribeNotifications();
   unsubscribeNotifications = null;
   if (unsubscribeRecipes) unsubscribeRecipes();
@@ -231,6 +232,12 @@ const GROUP_CONFIG = {
   tv: { type: "tv", error: "No se pudieron cargar tus series." },
   books: { type: "book", error: "No se pudieron cargar tus libros." },
   games: { type: "game", error: "No se pudieron cargar tus videojuegos." },
+  // La lista de deseos (Compras) no es un grupo de medios: su
+  // suscripción usa subscribeToWishlist (colección privada).
+  wishlist: {
+    custom: true,
+    error: "No se pudo cargar tu lista de compras.",
+  },
 };
 
 // Suscripción genérica de un grupo. Se envuelve con subscribeWithRetry
@@ -240,14 +247,20 @@ const GROUP_CONFIG = {
 function subscribeGroup(uid, groupKey) {
   const cfg = GROUP_CONFIG[groupKey];
   if (!cfg || unsubscribeItems[groupKey]) return;
+  const subscribeFn = cfg.custom
+    ? ({ onChange, onError }) => subscribeToWishlist(uid, onChange, onError)
+    : ({ onChange, onError }) => subscribeToItems(uid, cfg.type, onChange, onError);
   unsubscribeItems[groupKey] = subscribeWithRetry({
-    subscribe: ({ onChange, onError }) =>
-      subscribeToItems(uid, cfg.type, onChange, onError),
+    subscribe: subscribeFn,
     onChange: (items) => {
       allItems[groupKey] = items;
       groupReady[groupKey] = true;
-      renderLibraryFor(groupKey);
-      refreshExternalResults(createCtx());
+      if (groupKey === "wishlist" && wishlistApi) {
+        wishlistApi.setWishlistItems(items);
+      } else {
+        renderLibraryFor(groupKey);
+        refreshExternalResults(createCtx());
+      }
     },
     onError: (err) => {
       ui.showToast(cfg.error);
@@ -274,6 +287,7 @@ const PANEL_TO_GROUP = {
   "panel-movies": "movies",
   "panel-books": "books",
   "panel-games": "games",
+  "panel-wishlist": "wishlist",
 };
 
 // Inverso de PANEL_TO_GROUP: lo usa showPanelLoadError/retryPanelLoad
@@ -283,6 +297,7 @@ const GROUP_TO_PANEL = {
   movies: "panel-movies",
   books: "panel-books",
   games: "panel-games",
+  wishlist: "panel-wishlist",
 };
 
 // Partial ya inyectado por panel: cada pestaña carga su HTML solo la
@@ -416,8 +431,17 @@ async function loadOcioPartial(panelEl) {
     const html = await res.text();
     panelEl.innerHTML = panelLoadingHtml() + html;
     wirePanelControls(panelEl);
+    // La pestaña Compras (wishlist): su botón «Añadir» y sus chips
+    // viven en el partial; se wirean aquí (el setup no puede hacerlo
+    // en el arranque: el markup no existe todavía).
+    if (panelEl.id === "panel-wishlist" && wishlistApi) {
+      wishlistApi.wireControls();
+      if (groupReady.wishlist) wishlistApi.setWishlistItems(allItems.wishlist);
+    }
     const group = panelEl.dataset.typeGroup;
-    if (group && groupReady[group]) renderLibraryFor(group);
+    // "wishlist" se pinta con su propia API (setWishlistItems), no
+    // por renderLibraryFor (GRID_IDS no la cubre).
+    if (group && group !== "wishlist" && groupReady[group]) renderLibraryFor(group);
   } catch (err) {
     // Se retira del set de cargados para reintentar en la siguiente
     // activación (p. ej. tras arreglar el origen del fallo) o con el
@@ -485,6 +509,7 @@ async function init() {
     "panel-tv": document.getElementById("panel-tv"),
     "panel-books": document.getElementById("panel-books"),
     "panel-games": document.getElementById("panel-games"),
+    "panel-wishlist": document.getElementById("panel-wishlist"),
   };
   // Panel de Ocio actualmente activo (lo usa watchAuthState tras el
   // login para saber qué pestaña debe cargar partial y suscripción).
@@ -607,6 +632,7 @@ async function init() {
   let profileApi = null;
   let recipesApi = null;
   let gymApi = null;
+  let wishlistApi = null;
   const router = initRouter({
     onRoute: (route) => {
       // Búsqueda superior acotada a la sección (issue #206): el
@@ -722,6 +748,9 @@ async function init() {
   setupModalCloseListeners();
   setupNotifications(ctx);
   profileApi = setupProfile(ctx);
+  // Lista de deseos (Compras): wiring del botón «Añadir» y chips;
+  // la suscripción va por el flujo lazy de paneles (subscribeGroup).
+  wishlistApi = setupWishlist(ctx);
   // Sección de Recetas (issue #64): API de apertura para el router y
   // limpieza de menús al borrar una receta.
   recipesApi = setupRecipes({
