@@ -35,6 +35,7 @@ export const KEY_TO_PANEL = {
   peliculas: "panel-movies",
   libros: "panel-books",
   videojuegos: "panel-games",
+  compras: "panel-wishlist",
 };
 
 // Ruta por defecto de Ocio: la primera pestaña (Series).

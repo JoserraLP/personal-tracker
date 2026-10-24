@@ -411,3 +411,48 @@ export async function updateGymExercise(uid, exerciseId, changes) {
 export async function deleteGymExercise(uid, exerciseId) {
   return deleteDoc(doc(db, "users", uid, "gym-exercises", exerciseId));
 }
+
+/* ---------- Lista de deseos (Compras) ---------- */
+
+// Lista personal de cosas que comprar: título, descripción, precio
+// (opcional), URL del producto (opcional), foto por URL (opcional) y
+// si ya está comprada. Privat-collection patrón equal al resto:
+// sub en vivo con orden por fecha de creación desc.
+
+function wishlistRef(uid) {
+  return collection(db, "users", uid, "wishlist");
+}
+
+export function subscribeToWishlist(uid, onChange, onError) {
+  const q = query(wishlistRef(uid), orderBy("createdAt", "desc"));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items = [];
+      snapshot.forEach((docSnap) => items.push({ id: docSnap.id, ...docSnap.data() }));
+      onChange(items);
+    },
+    (error) => {
+      if (onError) onError(error);
+    }
+  );
+}
+
+export async function addWishlistItem(uid, item) {
+  return addDoc(wishlistRef(uid), {
+    ...item,
+    addedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateWishlistItem(uid, itemId, changes) {
+  return updateDoc(doc(db, "users", uid, "wishlist", itemId), {
+    ...changes,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteWishlistItem(uid, itemId) {
+  return deleteDoc(doc(db, "users", uid, "wishlist", itemId));
+}

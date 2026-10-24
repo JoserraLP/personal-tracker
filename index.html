@@ -19,8 +19,8 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=20261004" />
-  <link rel="stylesheet" href="ocio/ocio.css?v=20261004" />
+  <link rel="stylesheet" href="css/styles.css?v=20261005" />
+  <link rel="stylesheet" href="ocio/ocio.css?v=20261005" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
@@ -185,6 +185,19 @@
           <span>Cargando…</span>
         </div>
       </section>
+
+      <!-- Pestaña Compras (lista de deseos): cosas que comprar con
+           precio, descripción, URL, foto (por URL) y si está
+           comprado. Lista PRIVADA del usuario (firestore.rules),
+           independiente del registro de ocio. El esqueleto vive en
+           ocio/compras.html; el contenido lo renderiza
+           js/wishlist.js. -->
+      <section id="panel-wishlist" class="panel hidden" role="tabpanel" aria-labelledby="tab-wishlist" data-type-group="wishlist" data-ocio-src="ocio/compras.html" aria-live="polite" aria-atomic="true">
+        <div class="panel-loading" role="status" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Cargando…</span>
+        </div>
+      </section>
     </main>
 
     <!-- Barra de pestañas fija (issue #79): Series, Películas, Libros
@@ -225,6 +238,14 @@
             <path d="M15.5 11h.01M17.5 13h.01" />
           </svg>
           <span>Videojuegos</span>
+        </button>
+        <button class="tab tab--wishlist" id="tab-wishlist" role="tab" aria-selected="false" data-panel="panel-wishlist" aria-controls="panel-wishlist">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+            <line x1="3" x2="21" y1="6" y2="6" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg>
+          <span>Compras</span>
         </button>
       </div>
     </nav>
@@ -767,7 +788,7 @@
        js/auto-hide-nav.js. -->
   <button type="button" id="btn-back-to-top" class="back-to-top" aria-label="Volver arriba">↑ <span>Volver arriba</span></button>
 
-  <script type="module" src="js/app.js?v=20261004"></script>
+  <script type="module" src="js/app.js?v=20261005"></script>
   <script type="module">
     import { registerSW } from './js/sw-register.js';
     if ('serviceWorker' in navigator) registerSW();
