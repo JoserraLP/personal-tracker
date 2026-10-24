@@ -50,9 +50,6 @@ La web se encarga de completar sola los datos de cada título: portada,
 sinopsis, reparto, fechas de estreno, valoraciones de la comunidad, etc.
 Tú solo te ocupas de marcar lo que ves, lees y juegas.
 
-Está pensada para un grupo de amigos: cada uno tiene su propio registro,
-pero todos pueden verse entre sí (en modo lectura).
-
 ## 2. Cómo entrar
 
 1. Abre la dirección de la web en tu navegador (ordenador, tablet o móvil).
@@ -97,8 +94,8 @@ Nada más entrar verás:
     recetas...» en Recetas y «Buscar en tu gimnasio...» en Gimnasio.
   - A la derecha:
     - **Icono de campana**: tus notificaciones (más en [sección 15](#15-notificaciones)).
-    - **Tu foto**: pulsándola se abre un menú con las cuatro secciones de
-      tu perfil (**Estadísticas, Amigos, Actividad, Ajustes**) y la
+    - **Tu foto**: pulsándola se abre un menú con las dos secciones de
+      tu perfil (**Estadísticas, Ajustes**) y la
       opción **«Cerrar sesión»**. Desde aquí entras y sales del perfil:
       en las secciones de Recetas y de Gimnasio no hay botón de
       «volver» — la navegación siempre está en la cabecera.
@@ -387,7 +384,7 @@ En la ficha del libro:
   libro vuelve a quedar como estaba: si estabas leyendo, vuelve a
   «Leyendo», y la lectura terminada no se registra.
 - **«Página actual»**: anota por qué página vas. Se guarda en la ficha del
-  libro y la ven tus amigos en el feed de actividad.
+  libro.
 - **En pausa / Abandonar / Retomar**: como en las series, sin perder tu
   progreso.
 
@@ -1164,9 +1161,9 @@ estás mirando.
 ## 16. Tu perfil
 
 Pulsa **tu foto** (arriba a la derecha) para abrir el menú de perfil y
-elige la sección a la que quieras ir: **Estadísticas, Amigos, Actividad
-o Ajustes**. Cada opción del menú lleva su icono. Desde el mismo menú
-también puedes **cerrar sesión**.
+elige la sección a la que quieras ir: **Estadísticas o Ajustes**. Cada
+opción del menú lleva su icono. Desde el mismo menú también puedes
+**cerrar sesión**.
 El botón muestra únicamente tu foto, sin tu nombre, en cualquier
 dispositivo (móvil, tablet u ordenador).
 En tu perfil **no aparece la cabecera global** (barra lateral,
@@ -1174,23 +1171,17 @@ búsqueda y botón de perfil): arriba tienes la **flecha de volver** y
 las pestañas de tu perfil en la misma fila. La flecha te devuelve a la
 sección **Ocio**, **Recetas** o **Gimnasio** desde la que entraste al
 perfil, con la pestaña que tenías activa.
-Tu perfil tiene cuatro secciones:
+Tu perfil tiene dos secciones:
 
 ### 16.0 Compartir direcciones de tu perfil
 
 Igual que las pestañas de [sección 3.1](#31-compartir-direcciones-y-volver-a-las-pestañas),
 cada sección del perfil tiene su propia dirección web, que termina en
-`#/perfil/estadisticas` (Estadísticas), `#/perfil/amigos` (Amigos),
-`#/perfil/actividad` (Actividad) o `#/perfil/ajustes` (Ajustes). Puedes
-copiarla desde la barra de direcciones, guardarla en favoritos o
+`#/perfil/estadisticas` (Estadísticas) o `#/perfil/ajustes` (Ajustes).
+Puedes copiarla desde la barra de direcciones, guardarla en favoritos o
 compartirla: al abrirla, la web te lleva directo a esa sección del
 perfil. La dirección antigua `#/perfil/datos` sigue funcionando y abre
 Ajustes.
-
-Además, la ficha de un amigo tiene su propia dirección:
-`#/perfil/amigos/<identificador del amigo>`. Si la abres en cualquier
-momento, verás directamente el registro de ese amigo. Si el amigo ya
-no está disponible, la web te deja en la lista de amigos.
 
 Entrar con una dirección de perfil sin sesión iniciada abre primero la
 pantalla de entrada; al iniciar sesión, la web te lleva a la sección
@@ -1218,38 +1209,7 @@ Debajo hay cinco gráficas:
 - **Géneros**: los 6 géneros más jugados en el periodo.
 - **Plataformas**: las 6 plataformas más jugadas en el periodo.
 
-### 16.2 Amigos
-
-Aquí ves a **todas las personas registradas** (con su foto y su nombre).
-Pulsa en una para ver **su registro en modo solo lectura**. Para que la
-lista no sea interminable, el registro se organiza **por pestañas**:
-**Películas, Series, Libros y Videojuegos** (una a la vez, igual que en
-tu propio perfil).
-
-Bajo cada pestaña hay **filtros por estado** para ver solo lo que te
-interesa: en **películas** puedes elegir **Todos, Pendiente o Vista**;
-en **series**, **Todos, Pendiente, Viendo, Vista, Standby o Abandonada**;
-en **libros**, **Todos, Pendiente, Leyendo, Leído, Standby o Abandonado**;
-en **videojuegos**, **Todos, Pendiente, Jugando, Jugado, Standby o
-Abandonado**. Así no tienes que hacer scroll largo.
-
-Al cambiar de pestaña se **mantiene el filtro** que habías elegido. Si
-vuelves a la lista de amigos y entras de nuevo en un amigo, se
-**restablece** todo: pestaña **Películas** y filtro **Todos**.
-
-Lo que **no** verás de tus amigos: sus notas personales (siempre privadas),
-sus valoraciones episodio a episodio ni sus historiales completos.
-
-### 16.3 Actividad
-
-El **feed de actividad** de tus amigos, agrupado por días (Hoy, Ayer,
-fecha): «Vio la película…», «Empezó la serie…», «Vio episodios de…»,
-«Completó la serie…», «Está leyendo… (Pág. X de Y)», «Terminó de leer…»,
-«Está jugando…», «Terminó de jugar…».
-Pulsa en una actividad para ver la ficha del amigo. Si nadie ha hecho
-nada, verás «Todavía no hay actividad reciente de tus amigos.»
-
-### 16.4 Ajustes
+### 16.2 Ajustes
 
 Se explica completo en la [sección 17](#17-ajustes).
 
@@ -1296,7 +1256,6 @@ Se llega desde **«Ajustes» en la parte de abajo de la barra lateral**
   - Nuevos episodios de series
   - Estrenos de series
   - Estrenos de videojuegos
-  - Actividad de amigos
   - **Notificaciones en el dispositivo**: si la activas, los avisos
     anteriores también llegan como **notificaciones del sistema** (en la
     pantalla del teléfono o en el escritorio) cuando la web está abierta
@@ -1324,6 +1283,22 @@ Se llega desde **«Ajustes» en la parte de abajo de la barra lateral**
     lanzamientos pendientes de tus videojuegos**, para importarlo en Google
     Calendar, Apple Calendar o similar y tener todos los estrenos en tu
     agenda.
+  - **Importar desde TV Time**: si usabas la aplicación **TV Time**, puedes
+    traer tu historial completo. Coge en TV Time su export (un archivo JSON
+    con todas tus series) y pulsa este botón para escoger ese archivo: la
+    web te muestra un resumen (cuántas series y cuántos episodios vistos
+    trae) y al confirmar **añade todas las series a tu registro**, con los
+    episodios vistos en sus fechas originales. Ten en cuenta:
+    - Las series se importan **añadiendo**, sin borrar nada: si una serie
+      ya estaba en tu registro, quedará **duplicada** (borra tú la copia
+      vieja antes de importar si no la quieres duplicada).
+    - Las temporadas **especiales** (temporada 0) y los **favoritos** de
+      TV Time no se importan.
+    - Al venir de TV Time, las series se guardan **sin conexión al
+      catálogo** de TMDB: no verán estrenos/episodios nuevos ni mostrarán
+      sinopsis ni plataforma de streaming. Puedes eliminarlas y volver a
+      añadirlas desde la búsqueda del catálogo y tener entonces todas
+      sus funciones de nuevo.
 
 ## 18. ¿Cuándo se actualizan los datos?
 
@@ -1363,10 +1338,6 @@ Se llega desde **«Ajustes» en la parte de abajo de la barra lateral**
 - **Tu registro es tuyo**: solo tú puedes editar tus películas, series,
   libros, videojuegos y notas.
 - Tus **notas personales** son privadas: nadie más las ve.
-- Tus **amigos** pueden ver (no editar) tu registro completo: estados,
-  valoraciones, progreso y páginas de lectura.
-- Tu **perfil** (nombre y foto) es lo que ven los demás en la lista de
-  amigos y en el feed de actividad.
 - Los ajustes de notificaciones se guardan en tu dispositivo y también en
   tu cuenta.
 
@@ -1430,10 +1401,6 @@ Tranquilo: si acabas de marcarlo, pulsa **«Deshacer»** en la ventana de
 valoración que se abre al marcar y todo vuelve a estar como antes.
 También puedes desmarcar episodios, quitar visionados del historial y
 «Deshacer» cualquier borrado en los segundos posteriores.
-
-**No veo a un amigo nuevo**
-La lista de amigos es la de todos los usuarios registrados. Si la persona
-acaba de entrar por primera vez, aparecerá automáticamente.
 
 **La web me dice que un título «aún no se ha estrenado» y creo que no es así**
 Los datos de estreno vienen del catálogo (TMDB). Si crees que hay un

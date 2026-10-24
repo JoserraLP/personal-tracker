@@ -76,8 +76,6 @@ const GYM_PREFIX = "/gimnasio";
 // de Ocio; el id interno alimenta js/profile.js.
 const PROFILE_KEY_TO_SECTION = {
   estadisticas: "stats",
-  amigos: "friends",
-  actividad: "activity",
   // Legado (issue #135): la pestaña «Datos» se unificó en Ajustes,
   // pero #/perfil/datos sigue funcionando como alias y abre Ajustes.
   // NO reordenar: el inverso (Object.fromEntries) deja ganar a la
@@ -94,10 +92,6 @@ const PROFILE_SECTION_TO_KEY = Object.fromEntries(
 
 // Sección por defecto del perfil (Estadísticas) para sus aliases.
 const PROFILE_DEFAULT_KEY = "estadisticas";
-
-// Los uid de Firebase solo admiten [A-Za-z0-9._-] y acotan el
-// segmento de amigo en la URL (#/perfil/amigos/<uid>).
-const FIREBASE_UID_RE = /^[A-Za-z0-9._-]{1,128}$/;
 
 // Devuelve la clave de ruta de Ocio para un id de panel, o null si
 // no existe ninguna (data-human desconocido).
@@ -133,14 +127,10 @@ export function gymHashFor(tab = GYM_DEFAULT_TAB) {
   return safe === GYM_DEFAULT_TAB ? `#${GYM_PREFIX}` : `#${GYM_PREFIX}/${safe}`;
 }
 
-// Hash canónico de Perfil para una sección (id interno) y, si es la
-// sección de amigos, opcionalmente el uid. Un id desconocido cae a
-// la sección por defecto (Estadísticas).
-export function profileHashKey(profileSection, uid) {
+// Hash canónico de Perfil para una sección (id interno). Un id
+// desconocido cae a la sección por defecto (Estadísticas).
+export function profileHashKey(profileSection) {
   const token = PROFILE_SECTION_TO_KEY[profileSection] || PROFILE_DEFAULT_KEY;
-  if (token === "amigos" && uid) {
-    return `#${PROFILE_PREFIX}/amigos/${encodeURIComponent(uid)}`;
-  }
   return `#${PROFILE_PREFIX}/${token}`;
 }
 
@@ -210,26 +200,10 @@ export function parseHash(hash = location.hash) {
       return { section: "perfil", profileSection: "stats", default: true };
     }
     const profileSection = PROFILE_KEY_TO_SECTION[segments[1]];
-    // Token de sección desconocido → saneado a la sección por defecto.
-    if (!profileSection) {
+    // Token de sección desconocido o demasiados segmentos → saneado a
+    // la sección por defecto.
+    if (!profileSection || segments.length > 2) {
       return { section: "perfil", profileSection: "stats", default: true, invalid: true };
-    }
-    // #/perfil/amigos/<uid>: tercer segmento con el uid del amigo.
-    if (profileSection === "friends" && segments.length === 3) {
-      let uid = segments[2];
-      try {
-        uid = decodeURIComponent(uid);
-      } catch {
-        uid = "";
-      }
-      if (!FIREBASE_UID_RE.test(uid)) {
-        return { section: "perfil", profileSection: "friends", default: true, invalid: true };
-      }
-      return { section: "perfil", profileSection: "friends", uid };
-    }
-    // Demasiados segmentos (o amigos sin uid) → lista de amigos.
-    if (segments.length > 2) {
-      return { section: "perfil", profileSection, default: true, invalid: true };
     }
     return { section: "perfil", profileSection };
   }

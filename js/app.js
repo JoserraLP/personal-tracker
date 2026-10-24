@@ -15,7 +15,6 @@ import {
   addItem,
   upsertUserProfile,
   getUserProfile,
-  getAllUserProfiles,
   getItemsOnce,
   subscribeToNotifications,
   addNotification,
@@ -125,7 +124,6 @@ function createCtx() {
     deleteNotification,
     upsertUserProfile,
     getUserProfile,
-    getAllUserProfiles,
     getItemsOnce,
     getMovieDetails,
     getTvExtraDetails,
@@ -645,9 +643,8 @@ async function init() {
         document.getElementById("gym-view")?.classList.add("hidden");
         if (profileApi) {
           profileApi.openProfileSection(route.profileSection, ctx, {
-            fromRouter: true,
-            friendUid: route.uid || null,
-          });
+          fromRouter: true,
+        });
         }
       } else if (route.section === "recetas") {
         // Ruta de Recetas (issue #64): abre la sección con la pestaña
