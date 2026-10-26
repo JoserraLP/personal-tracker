@@ -49,7 +49,7 @@ export function validateWishlistDraft(title, priceText, url, photoUrl) {
   }
   const cleanPhoto = sanitizeUrl(photoUrl);
   if (photoUrl && photoUrl.trim() && !cleanPhoto && !sanitizeLooseUrl(photoUrl)) {
-    errors.push("La URL de la foto no es v�lida.");
+    errors.push("La URL de la foto no es válida.");
   }
 
   return {

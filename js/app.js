@@ -59,6 +59,7 @@ import { checkForUpdates } from "./daily-check.js";
 import { runStorageMigration } from "./migration.js";
 import { setupNotifications } from "./notifications-setup.js";
 import { setupProfile } from "./profile.js";
+import { initializeI18n } from "./i18n.js";
 import { setupWishlist } from "./wishlist.js";
 import { setupSettings, syncThemeToSettings, cleanupSettings, SECTION_REGISTRY, isSectionVisible, isTabVisible, getFirstVisibleTabKey, getFirstVisibleTabPanel, normalizeTabKey, applySteamCallback, loadSettings } from "./settings.js";
 import { parseSteamCallbackHash } from "./api-steam.js";
@@ -494,13 +495,22 @@ async function init() {
   syncThemeToSettings(getSavedTheme());
 
   // Retorno del login de Steam (ADR-108): si llegamos con el hash
-  // #/steam-callback?... el router no lo entiende, así que se procesa
+  // #/steam-callback?... el router no lo entiende, as� que se procesa
   // ANTES de creamos el router: guarda el SteamID vinculado y resetea
-  // el hash a una ruta neutra dentro de la misma página (sin recargo).
+  // el hash a una ruta neutra dentro de la misma p�gina (sin recargo).
   const steamCb = parseSteamCallbackHash(location.hash);
   if (steamCb) {
     applySteamCallback(location.hash);
     history.replaceState(null, "", location.pathname + location.search + "#/ocio");
+  }
+
+  // Idioma (ADR-110): aplica el idioma guardado y observa mutaciones
+  // para traducir los renders din|micos. Fail-open: sin DOM/lang no
+  // rompe el arranque.
+  try {
+    initializeI18n();
+  } catch (e) {
+    console.warn("No se pudo aplicar el idioma:", e);
   }
 
   const ctx = createCtx();

@@ -8,6 +8,7 @@ import { isNotificationSupported, getPermission, requestDevicePushPermission } f
 import { fetchOwnedSteamGames, sanitizeSteamId, steamProxyUrl, steamHoursLabel, steamLoginUrl, parseSteamCallbackHash } from "./api-steam.js";
 import { todayISO } from "./dates.js";
 import { showToast } from "./ui.js";
+import { getLang, setLang } from "./i18n.js";
 
 const STORAGE_KEY = "mi-registro-settings";
 const DEBOUNCE_MS = 2000;
@@ -196,6 +197,10 @@ export function renderSettings(ctx) {
     // Defensivo: un valor antiguo o inválido cae al modo oscuro.
     themeSelect.value = VALID_THEMES.includes(settings.theme) ? settings.theme : "dark";
   }
+
+  // Idioma (ADR-110): el select refleja el idioma activo.
+  const langSelect = document.getElementById("settings-lang-select");
+  if (langSelect) langSelect.value = getLang();
 
   // Mientras haya una sincronización en curso, el botón de sincronizar
   // permanece deshabilitado (también lo cubre el flag durante el clic).
@@ -575,10 +580,24 @@ export function setupSettings(ctx, { onVisibilityChange: onChange = null } = {})
   appCtx = ctx;
   ctxForSteam = ctx;
   wireThemeSelect(ctx);
+  wireLangSelect(ctx);
   wireNotificationToggles(ctx);
   wireSyncButton(ctx);
   wireVisibilityToggles(ctx);
   wireSteamIntegration(ctx);
+}
+
+// Wiring del select de idioma (ADR-110): persiste y reaplica la traducción
+// a TODO el document (incluye partials de Ocio ya cargados). Toast en el
+// idioma destino.
+function wireLangSelect(ctx) {
+  const select = document.getElementById("settings-lang-select");
+  if (!select) return;
+  select.addEventListener("change", () => {
+    const lang = setLang(select.value);
+    select.value = getLang();
+    ctx?.showToast?.(lang === "en" ? "Language set to English." : "Idioma cambiado a Español.");
+  });
 }
 
 // Contexto de la app capturado en setupSettings: lo usan setUnit y

@@ -1305,6 +1305,12 @@ Se llega desde **«Ajustes» en la parte de abajo de la barra lateral**
     blanco, en contraposición al negro puro.
   Tu elección se guarda automáticamente y se mantiene la próxima vez
   que entres.
+
+- **Apariencia > Idioma**: cambia el idioma de la interfaz entre
+  **Español** y **English**. Tu elección se guarda automáticamente y se
+  mantiene la próxima vez que entres (los mensajes puntuales de
+  avisos pueden seguir en español mientras se completa la
+  traducción).
 - **Secciones y pestañas**: elige qué secciones y pestañas de la web
   ves. Hoy hay tres secciones: **«Ocio»**, con sus cinco pestañas
   (**Series**, **Películas**, **Libros**, **Videojuegos** y **Compras**),
