@@ -2343,72 +2343,51 @@ button, a, input, select, textarea { touch-action: manipulation; }
 }
 
 /* =========================================================
-   ADR-109 — Ocio: tarjetas poster-forward estilo IMDb con
-   vidrio "Liquid Glass" (los tokens --glass-* viven en
-   css/styles.css, que se carga siempre junto a este archivo).
+   ADR-112 — Ocio: tarjetas poster-forward IMDb (planas)
    =========================================================
-   Las tarjetas pasan de "entrada de cine con perforación" a
-   "cartel de catálogo" IMDb: cover a sangre, chip de estado,
-   chip de valoración dorado auto-colored y cuerpo en vidrio.
-   La perforación se retira (display:none) y el radio sube.
-
-   CONTRASTE VERIFICADO EN LOS 4 TEMAS:
-   - dark: cuerpo vidrio oscuro (tinte papel ~7-14%), texto
-     --paper #f1ead9 sobre ~#1f1c18 → ~13:1; meta --ink-soft
-     #948a76 → ~6.2:1 (AA); chip dorado auto-colored → 10:1.
-   - black: igual sobre negro absoluto → ≥ 14:1.
-   - light/white: cuerpo vidrio blanco translúcido sobre papel
-     #f5f0e8, texto --ink #171512 → ~13:1; chip dorado con
-     tinta oscura → 10:1.
+   Los tokens viven en css/styles.css (que se carga siempre).
+   Superficie SÓLIDA por familia (sin backdrop-filter: se retira
+   el vidrio del ADR-109); el texto de la tarjeta pasa de la tinta de su familia
+   a la tinta de su familia. Estados re-afirmados al final.
    ========================================================= */
 
-:root {
-  /* vidrio de tarjeta: tinte de papel translúcido (familia
-     oscura) o blanco translúcido (familia clara) */
-  --glass-card: rgba(241, 234, 217, 0.07);
-  --glass-card-border: rgba(241, 234, 217, 0.16);
-}
-[data-theme="black"] {
-  --glass-card: rgba(241, 234, 217, 0.09);
-  --glass-card-border: rgba(241, 234, 217, 0.20);
-}
-[data-theme="light"],
-[data-theme="white"] {
-  --glass-card: rgba(255, 255, 255, 0.72);
-  --glass-card-border: rgba(23, 21, 18, 0.08);
-}
-
-/* Tarjeta: cartel de catálogo IMDb */
-.item-card,
-.item-card .item-card__perforation {
-  border-radius: var(--glass-radius);
-}
 .item-card {
-  background: var(--glass-card);
+  background: var(--ink-raised);
   color: var(--paper);
-  border: 1px solid var(--glass-card-border);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--paper-alpha-20);
+  border-radius: var(--radius-card);
+  box-shadow: none;
 }
 [data-theme="light"] .item-card,
 [data-theme="white"] .item-card {
+  background: var(--white);
   color: var(--ink);
-}
-.item-card__perforation {
-  display: none;
+  border-color: var(--ink-alpha-15);
 }
 .item-card__cover-wrap {
-  border-radius: var(--glass-radius) var(--glass-radius) 0 0;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
   overflow: hidden;
 }
 .item-card__cover {
   height: 210px;
 }
-/* Familias de estados: re-afirmadas DESPUÉS del vidrio base para
-   que las tarjetas con estado sigan con su tinte de estado
-   (los tokens --bg-state-* ya son adaptados por familia). */
-.item-card--pendiente { background: var(--glass-card); }
+.item-card__perforation {
+  display: none;
+}
+.item-card__title {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.item-card__meta {
+  color: var(--ink-soft);
+}
+
+/* Chip (sello) de estado: plana, borde a currentColor sin fondo */
+.item-card__stamp {
+  background: transparent;
+  transform: none;
+}
+.item-card--pendiente { background: var(--ink-raised); color: var(--paper); }
 .item-card--en_curso { background: var(--bg-state-en_curso); color: var(--ink); }
 .item-card--completado { background: var(--bg-state-completado); color: var(--ink); }
 .item-card--standby { background: var(--bg-state-standby); color: var(--ink); }
@@ -2420,38 +2399,17 @@ button, a, input, select, textarea { touch-action: manipulation; }
   color: var(--paper);
 }
 
-/* Chip de estado: vidrio pill con hairline (antes "sello"
-   con paper-alpha-92) */
-.item-card__stamp {
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border-strong);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  transform: none;
-}
-
-/* Título de tarjeta: peso un pelín mayor, sin recorte agresivo */
-.item-card__title {
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-/* Chip de valoración estilo IMDb: escudo dorado auto-colored
-   (siempre su propia tinta oscura encima; legible en los 4
-   temas sin tokens). Sin valoración la línea no pinta nada
-   extra: el chip solo envuelve el texto que ya existe. */
+/* Escudo de valoración estilo IMDb (auto-colored, 10:1) */
 .item-card__rating {
   margin-top: auto;
 }
-/* envolver no es posible sin tocar el markup: se estiliza la
-   línea entera como "escudo" compacto si tiene contenido */
 .item-card__rating:not(:empty) {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
   align-self: flex-start;
-  background: var(--imdb-gold);
-  color: var(--imdb-gold-ink);
+  background: var(--brand-gold);
+  color: var(--brand-gold-ink);
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 0.72rem;
@@ -2460,43 +2418,30 @@ button, a, input, select, textarea { touch-action: manipulation; }
   padding: 0.18rem 0.45rem;
 }
 
-/* Chip de contador ×N (ADR-107): vidrio pill con hairline */
+/* Chip contador ×N: píldora plana con hairline */
 .item-card__counter {
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border-strong);
+  background: var(--ink-raised);
+  border: 1px solid var(--paper-alpha-30);
   border-radius: 999px;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+}
+[data-theme="light"] .item-card__counter,
+[data-theme="white"] .item-card__counter {
+  background: var(--white);
+  border-color: var(--ink-alpha-15);
 }
 
-/* Filas y bloques: vidrio sutil, mismo aire (codigos de estado
-   list-row conservan su color de acento de grupo) */
-.list-row {
-  border-radius: var(--glass-radius);
-}
-.list-row .list-row__meta,
-.episode-row {
+/* Filas y bloques: planos con hairline, radio de catálogo */
+.list-row { border-radius: var(--radius-card); }
+.episode-row,
+.log-row {
   border-radius: 8px;
 }
 .progress-banner,
 .season-header {
-  border-radius: var(--glass-radius);
-  background: var(--glass-card);
-  border: 1px solid var(--glass-card-border);
+  border-radius: var(--radius-card);
+  background: var(--paper-dim);
 }
-.episode-row:hover {
-  background: var(--glass-card);
-}
-
-/* Controles de la biblioteca (chips de filtro, sort, vista): mi
-   mismo lenguaje de vidrio pill */
-.filter-chips .chip {
-  border-radius: 999px;
-}
-.chip.is-active {
-  border: 1px solid var(--glass-border-strong);
-}
-.view-toggle .view-toggle__btn,
-.sort-select {
-  border-radius: 999px;
+[data-theme="black"] .progress-banner,
+[data-theme="black"] .season-header {
+  background: var(--ink-raised);
 }
