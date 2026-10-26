@@ -21,7 +21,7 @@ const scopeURL = new URL(self.registration.scope);
 const scopePath = scopeURL.pathname;
 const resolved = (p) => new URL(p, scopeURL).toString();
 
-const CACHE_STATIC = 'mi-registro-v16-static';
+const CACHE_STATIC = 'mi-registro-v17-static';
 const CACHE_DYNAMIC = 'mi-registro-v11-dynamic';
 const DYNAMIC_MAX_ENTRIES = 100; // issue #200: la ficha bajo demanda cachea más imágenes (pósters/backdrops) en la caché dinámica
 
@@ -36,7 +36,7 @@ const STATIC_ASSETS = [
   './manifest.json',
   './css/styles.css?v=20261004',
   './css/ocio.css?v=20261004',
-  './js/app.js?v=20261029',
+  './js/app.js?v=20261029b',
   './js/router.js',
   './js/i18n.js',
   './js/ui.js',
@@ -85,11 +85,11 @@ const STATIC_ASSETS = [
   // Sección de gimnasio (issue #62)
   './js/gym.js',
   './resources/icon.png',
-  './ocio/series.html?v=20261029',
-  './ocio/peliculas.html?v=20261029',
-  './ocio/libros.html?v=20261029',
-  './ocio/videojuegos.html?v=20261029',
-  './ocio/compras.html?v=20261029',
+  './ocio/series.html?v=20261029b',
+  './ocio/peliculas.html?v=20261029b',
+  './ocio/libros.html?v=20261029b',
+  './ocio/videojuegos.html?v=20261029b',
+  './ocio/compras.html?v=20261029b',
 ];
 
 // -------------------------------------------------------------

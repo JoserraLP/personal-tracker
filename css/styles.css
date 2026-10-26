@@ -5946,181 +5946,144 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 /* =========================================================
-   ADR-109 — Re-estilización: aire IMDb + Apple "Liquid Glass"
-   (issues de identidad visual)
+   ADR-112 — Identidad visual IMDb (plana, sin vidrio)
    =========================================================
-   Dos capas sobre el armazón existente, SIN tocar las reglas
-   de arriba (esta sección gana por orden de aparición):
+   Re-skin completo referenciado a imdb.com: superficies SÓLIDAS
+   (nada de backdrop-filter/blur: se retira el "Liquid Glass" del
+   ADR-109), negro/casi negro en la familia oscura, dorado IMDb
+   como único acento de marca, tipografía de catálogo en
+   versalitas y tarjetas poster-forward con hairline.
 
-   1. "Liquid Glass" (iOS): superficies translúcidas con
-      backdrop-filter (blur + saturación), borde hairline claro,
-      brillo especular superior y radio grande. Solo se aplica a
-      la "cromática" (cabecera, barra de pestañas, drawer,
-      dropdowns, toast, tarjeta de acceso, botón flotante): los
-      formularios y modales de contenido conservan la superficie
-      de "ficha de biblioteca" (paper/white) porque su texto
-      asume esos fondos.
-   2. Aire IMDb: cabecera fija translúcida oscura tipo navbar
-      de cine, titulares de sección en versalitas con tracking,
-      tarjetas poster-forward limpias (sin perforación de
-      ticket) y chip de valoración dorado auto-colored (como el
-      escudo de valoración de IMDb: dorado con tinta oscura,
-      legible por contraste propio en los 4 modos).
-
-   Tokens --glass-* y --imdb-gold: valores por familia declarados
-   aquí abajo (uno por bloque [data-theme]); no hay hex sueltos
-   en cada regla. --imdb-gold #f5c518 es el amarillo de marca de
-   IMDb: NO usa variable de tema porque es auto-colored (siempre
-   lleva su tinta oscura encima, como el escudo de IMDb), y su
-   contraste como texto solo se usa sobre las superficies
-   oscuras (4.9:1 en dark, 12.9:1 en black).
+   CONTRASTE VERIFICADO EN LOS 4 TEMAS:
+   - dark: dorado #f5c518 sobre #171512 ≈ 8.9:1 y papel
+     #f1ead9 ≈ 13:1 (AAA); hairline papel 20 %.
+   - black: sobre #0a0a0a ≈ 10:1 (AAA).
+   - light/white: headings en --ink (el dorado sobre papel solo
+     1.7:1: como TEXTO está prohibido en la familia clara);
+     botón primario y escudo de valoración son auto-colored
+     (dorado con tinta oscura, 10:1) y valen en los 4 modos.
    ========================================================= */
 
 :root {
-  --glass-blur: 20px;
-  --glass-saturate: 170%;
-  --glass-radius: 14px;
-
-  /* Familia oscura (dark/black): tinta translúcida + hairline
-     de papel; texto papel (heredado de las reglas existentes) */
-  --glass-bg: rgba(33, 30, 25, 0.60);
-  --glass-bg-strong: rgba(26, 23, 19, 0.80);
-  --glass-border: rgba(241, 234, 217, 0.14);
-  --glass-border-strong: rgba(241, 234, 217, 0.24);
-  --glass-spec: linear-gradient(to bottom, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 55%);
-  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --page-glow: rgba(255, 255, 255, 0.045);
-
-  /* Chip de valoración estilo IMDb: auto-colored en los 4 temas */
-  --imdb-gold: #f5c518;
-  --imdb-gold-ink: #171512;
+  /* Dorado de marca IMDb: auto-colored (SIEMPRE lleva su tinta
+     oscura encima o va sobre superficie oscura); como texto SOLO
+     en la familia oscura (--heading). */
+  --brand-gold: #f5c518;
+  --brand-gold-ink: #171512;
+  --heading: var(--brand-gold);
+  --radius-card: 10px;
 }
-
-/* LSU negro puro (overrides movidos del bloque de tokens):
-   negro absoluto tras el vidrio --paper-line sigue hairline */
-[data-theme="black"] {
-  --glass-bg: rgba(0, 0, 0, 0.62);
-  --glass-bg-strong: rgba(0, 0, 0, 0.85);
-  --glass-border: rgba(241, 234, 217, 0.16);
-  --glass-border-strong: rgba(241, 234, 217, 0.28);
-}
-
-/* =========================================================
-   Familia clara (light/white): ADR-066 — la familia clara usa
-   --paper como superficie, así que el vidrio translúcido es
-   blanco y la tinta oscura; sombras y spec con alfa de tinta.
-   ========================================================= */
 [data-theme="light"],
 [data-theme="white"] {
-  --glass-bg: rgba(255, 255, 255, 0.58);
-  --glass-bg-strong: rgba(255, 255, 255, 0.80);
-  --glass-border: rgba(23, 21, 18, 0.10);
-  --glass-border-strong: rgba(23, 21, 18, 0.16);
-  --glass-spec: linear-gradient(to bottom, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 55%);
-  --glass-shadow: 0 8px 24px rgba(23, 21, 18, 0.14);
-  --page-glow: rgba(23, 21, 18, 0.03);
+  --heading: var(--ink);
 }
 
-/* Fallback sin backdrop-filter (navegadores viejos): la
-   translucidez se sube a casi opaca para que el vidrio siga
-   legible sin el desenfoque del fondo. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  :root {
-    --glass-bg: rgba(26, 23, 19, 0.93);
-    --glass-bg-strong: rgba(26, 23, 19, 0.97);
-  }
-  [data-theme="light"], [data-theme="white"] {
-    --glass-bg: rgba(255, 255, 255, 0.94);
-    --glass-bg-strong: rgba(255, 255, 255, 0.97);
-  }
-}
+/* ---------- Cromática sólida de catálogo ---------- */
 
-/* ---------- Cromática en vidrio ---------- */
-
-/* Cabecera fija: navbar translúcida de cine (el contenido pasa
-   por detrás y se desenfoca); hairline inferior. */
+/* Cabecera y barra de pestañas: barras planas con hairline.
+   Re-afirmadas por familia (los overrides claros previos ya se
+   quedan coherentes porque usan --paper-dim sólido). */
 .app-header,
 .tabs--bar {
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  background: var(--ink);
+  border-bottom: 1px solid var(--paper-alpha-30);
 }
-.app-header {
-  border-bottom: 1px solid var(--glass-border);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
-}
-@media (min-width: 768px) {
-  .app-header {
-    border-bottom: none;
-    box-shadow: none;
-  }
-  .tabs--bar {
-    border-bottom: 1px solid var(--glass-border);
-  }
-}
-/* Overrides existentes de la familia clara por esos selectores
-   (background sólido): re-vidriados aquí, con más especificidad
-   para conservar el orden visual. */
 [data-theme="light"] .app-header,
 [data-theme="white"] .app-header,
 [data-theme="light"] .tabs--bar,
 [data-theme="white"] .tabs--bar {
-  background: var(--glass-bg);
+  background: var(--paper-dim);
 }
 
-/* Drawer lateral: panel de vidrio casi opaco */
-.app-sidebar {
-  background: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-}
-
-/* Dropdowns y toast flotantes: vidrio + hairline + radio grande */
-.notif-dropdown,
-.profile-dropdown,
-.global-search__results,
-.toast {
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border-strong);
-  border-radius: var(--glass-radius);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-}
-
-/* Tarjeta de acceso ("Ficha de socio"): vidrio centrado flotante */
-.auth-screen .library-card {
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border-strong);
-  border-radius: calc(var(--glass-radius) * 2);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-}
-
-/* Botón flotante "Volver arriba" y chips palo: vidrio pill */
-.back-to-top,
-.btn--pill {
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  backdrop-filter: blur(var(--glass-blur));
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border-strong);
-}
-
-/* Vista de aire: la página respira mejor con un mínimo de
-   ambiente (rado en el borde superior como el foco de cine, con
-   page-glow por tema). No añade scroll: background fijo. */
-body {
-  background-image: radial-gradient(1100px 620px at 50% -180px, var(--page-glow), transparent 62%);
-  background-repeat: no-repeat;
-}
-
-/* Aire IMDb: titulares de sección en versalitas con tracking,
-   menos peso, sin serif (la revista de catálogo IMDb es sans). */
+/* Titulares de seccion: sans en versalitas con tracking, color
+   por familia (dorado en oscura, tinta en clara). */
 .app h2,
 .panel h2 {
   font-family: var(--font-body);
   text-transform: uppercase;
-  letter-spacing: 0.09em;
-  font-size: 1.02rem;
+  letter-spacing: 0.08em;
+  font-size: 1.05rem;
+  color: var(--heading);
+}
+
+/* Boton primario: escudo dorado de marca (10:1 en todas) */
+.btn--primary {
+  background: var(--brand-gold);
+  color: var(--brand-gold-ink);
+}
+.btn--primary:hover {
+  background: var(--ochre-spine);
+  color: var(--brand-gold-ink);
+}
+
+/* Dropdowns y toast: planos, hairline, radio de tarjeta */
+.notif-dropdown,
+.profile-dropdown,
+.global-search__results,
+.toast,
+.back-to-top {
+  background: var(--ink-raised);
+  border: 1px solid var(--paper-alpha-30);
+  border-radius: var(--radius-card);
+}
+[data-theme="light"] .notif-dropdown,
+[data-theme="white"] .notif-dropdown,
+[data-theme="light"] .profile-dropdown,
+[data-theme="white"] .profile-dropdown,
+[data-theme="light"] .global-search__results,
+[data-theme="white"] .global-search__results,
+[data-theme="light"] .toast,
+[data-theme="white"] .toast,
+[data-theme="light"] .back-to-top,
+[data-theme="white"] .back-to-top {
+  background: var(--white);
+  border-color: var(--ink-alpha-15);
+}
+
+/* Pantalla de acceso: ficha plana con la marca en dorado */
+.auth-screen .library-card {
+  background: var(--paper);
+  border: 1px solid var(--paper-line);
+  border-radius: calc(var(--radius-card) * 2);
+  box-shadow: var(--shadow-card);
+}
+.auth-screen .library-card__title {
+  color: var(--heading);
+}
+[data-theme="light"] .auth-screen .library-card__title {
+  color: var(--brand-gold-ink);
+  background: var(--brand-gold);
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+}
+.auth-screen .library-card__title {
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.auth-screen .library-card {
+  background: var(--ink-raised);
+  color: var(--paper);
+}
+[data-theme="light"] .auth-screen .library-card,
+[data-theme="white"] .auth-screen .library-card {
+  background: var(--white);
+}
+[data-theme="black"] .auth-screen .library-card {
+  background: var(--ink-raised);
+}
+
+/* Modales: superficie de ficha plana, radio de catálogo */
+.modal__card {
+  border-radius: var(--radius-card);
+  border: 1px solid var(--paper-alpha-30);
+}
+[data-theme="black"] .modal__card,
+[data-theme="black"] .notif-dropdown,
+[data-theme="black"] .profile-dropdown,
+[data-theme="black"] .global-search__results,
+[data-theme="black"] .toast,
+[data-theme="black"] .back-to-top {
+  border-color: var(--paper-alpha-20);
 }
