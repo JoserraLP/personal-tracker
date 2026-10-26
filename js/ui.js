@@ -6,6 +6,8 @@
 
 import { todayISO, formatDateEs } from "./dates.js";
 import { STATUS_LABELS } from "./constants.js";
+import { totalPlayHours } from "./game-log.js";
+import { steamHoursLabel } from "./api-steam.js";
 import { getNextEpisodeAirInfo, isItemUnreleased } from "./sorting.js";
 import { normalizeEntry, computeEpisodeAverageRating } from "./tv-progress.js";
 import { trapFocus } from "./focus-utils.js";
@@ -1599,6 +1601,9 @@ export function openGameModal(item, callbacks) {
   const metaLine = [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
   const isPlaying =
     item.playLog && item.playLog.length && !item.playLog[item.playLog.length - 1].finishedAt;
+  // Horas jugadas en la ficha (ADR-111): el total de las sesiones; la
+  // línea solo se muestra si hay horas que mostrar (puro + test).
+  const hoursLabel = steamHoursLabel(totalPlayHours(item));
 
   content.innerHTML = `
     <div class="modal-detail__header">
@@ -1606,6 +1611,7 @@ export function openGameModal(item, callbacks) {
       <div>
         <h3 class="modal-detail__title">${escapeHtml(item.title)}</h3>
         <div class="modal-detail__meta">${escapeHtml(metaLine)}</div>
+        ${hoursLabel ? `<div class="modal-detail__meta modal-detail__hours"><strong>${escapeHtml(hoursLabel)}</strong> jugadas</div>` : ""}
       </div>
     </div>
     ${editButtonHtml()}
