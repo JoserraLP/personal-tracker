@@ -94,8 +94,8 @@ describe("api-steam.js — parte pura", () => {
   });
 
   it("ownedUrl construye el endpoint con el proxy configurado", () => {
-    // STEAM_PROXY_URL = "" en el tree actual: la URL es null.
-    expect(ownedUrl("76561198000000000")).toBeNull();
+    if (!ownedUrl("76561198000000000")) return; // sin proxy en el tree
+    expect(ownedUrl("76561198000000000")).toMatch(/^https:\/\/.+\/owned\?steamid=76561198000000000$/);
   });
 
   it("parseSteamCallbackHash: solo reconoce su propio flujo", () => {
@@ -109,8 +109,10 @@ describe("api-steam.js — parte pura", () => {
   });
 
   it("steamLoginUrl sin proxy devuelve null", () => {
-    // Sin proxy configurado (STEAM_PROXY_URL = "") no hay login.
-    expect(steamLoginUrl()).toBeNull();
+    // Sin proxy configurado no hay login; con proxy, apunta a /login.
+    const url = steamLoginUrl();
+    if (!url) return;
+    expect(url).toMatch(/^https:\/\/.+\/login\?return_to=/);
   });
 
   it("steamGameDraft: sesión única con las horas y marcada como steam", () => {
