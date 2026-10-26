@@ -444,6 +444,14 @@ En la ficha del videojuego:
 - **En pausa / Abandonar / Retomar**: como en las series y los libros,
   sin perder tu historial de sesiones.
 
+### 7.5 Horas jugadas
+
+En la ficha de cada videojuego se muestra el **total de horas jugadas**
+debajo del título (p. ej. «34,7 h jugadas»). Es la suma de tus sesiones;
+si vinculas tu cuenta de Steam y aún no hay sesiones registradas, se usa
+el total que informa Steam. En el historial puedes poner las horas de
+cada sesión a mano y el total se actualiza al guardar.
+
 ### 7.4 Historial de sesiones
 
 En la ficha ves todas tus sesiones de juego: fecha de inicio → fecha de
