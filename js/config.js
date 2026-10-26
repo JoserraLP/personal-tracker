@@ -10,7 +10,7 @@
 // Versión de despliegue/caché. Se incrementa con scripts/bump-version.sh
 // y se usa para versionar las URLs de los assets (?v=...) de modo que
 // cada deploy invalide las cachés del service worker y del navegador.
-export const APP_VERSION = '20261007';
+export const APP_VERSION = '20261026';
 
 // Configuración de tu proyecto de Firebase
 // (Firebase console → Configuración del proyecto → Tus apps → SDK)
@@ -55,4 +55,4 @@ export const IGDB_PROXY_URL = "https://igdb-proxy.gonzalojh596.workers.dev";
 // cloudflare/steam-proxy/README.md). El secreto de la API de Steam
 // no se expone en la web: lo guarda el Worker. Si está vacío (""),
 // la tarjeta de Ajustes avisa y la integración no está disponible.
-export const STEAM_PROXY_URL = "";
+export const STEAM_PROXY_URL = "https://steam-proxy.joserralp.workers.dev";
