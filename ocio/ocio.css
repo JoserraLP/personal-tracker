@@ -2285,3 +2285,59 @@ button, a, input, select, textarea { touch-action: manipulation; }
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+/* =========================================================
+   Contadores «×N» de veces visto/leído/jugado (ADR-107) e
+   integración de Steam (card de Ajustes). Mismas variables de
+   tema que el resto: válidas en las 4 familias sin overrides.
+   ========================================================= */
+.item-card__counter {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  padding: 0.08rem 0.5rem;
+  width: fit-content;
+}
+
+.list-row__progress + .item-card__counter {
+  margin-top: 0.2rem;
+}
+
+.steam-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--paper-line);
+  min-width: 0;
+}
+
+.steam-row:last-child {
+  border-bottom: none;
+}
+
+.steam-row__info {
+  min-width: 0;
+}
+
+.steam-row__name {
+  font-weight: 700;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.steam-row__meta {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  overflow-wrap: break-word;
+}
+
+/* Hint del campo del contador, secundario */
+.field-hint {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
