@@ -54,6 +54,42 @@ export function ownedUrl(steamId) {
 }
 
 // -------------------------------------------------------------
+// Login OpenID ("Sign in through Steam", ADR-108)
+// -------------------------------------------------------------
+
+// URL de inicio de sesión por vinculación: el navegador va al
+// worker /login (que salta a Steam) y vuelve con el steamid
+// verificado a la web actual (hash #/steam-callback). Con proxy sin
+// configurar devuelve null.
+export function steamLoginUrl() {
+  const base = steamProxyUrl();
+  if (!base) return null;
+  // En entornos sin window (tests en Node) no hay de dónde volver.
+  if (typeof window === "undefined" || !window.location) return null;
+  const returnTo = window.location.origin + window.location.pathname;
+  return `${base.replace(/\/+$/, "")}/login?return_to=${encodeURIComponent(returnTo)}`;
+}
+
+/**
+ * Interpreta el hash de retorno `#/steam-callback?steamid=...` (o
+ * `...?error=verify`). Devuelve null si el hash no es de este flujo.
+ * @param {string} hash - location.hash actual.
+ */
+export function parseSteamCallbackHash(hash) {
+  const frag = (hash || "").replace(/^#\/?/, "");
+  if (!frag.startsWith("steam-callback")) return null;
+  try {
+    const query = frag.slice("steam-callback".length).replace(/^\??/, "");
+    const params = new URLSearchParams(query);
+    const steamid = sanitizeSteamId(params.get("steamid"));
+    if (steamid) return { steamid };
+    return { error: params.get("error") || "unknown" };
+  } catch {
+    return { error: "unknown" };
+  }
+}
+
+// -------------------------------------------------------------
 // Cliente (fetch al Worker)
 // -------------------------------------------------------------
 

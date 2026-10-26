@@ -1346,16 +1346,18 @@ Se llega desde **«Ajustes» en la parte de abajo de la barra lateral**
   minutos** (la web te avisa si lo intentas antes). No hace falta usarlo:
   la web ya lo comprueba sola a diario (ver siguiente sección).
 - **Integración de Steam**: trae tu biblioteca de Steam con las **horas
-  jugadas**. Pega tu **SteamID64** (los 17 dígitos de tu perfil, en la
-  URL) y pulsa «Buscar mis juegos de Steam»: ves cada juego con sus
-  horas y el día de la última partida, y con «Añadir» lo registras en
-  tu registro de videojuegos como ítem manual (con una sesión que
-  agrupa las horas de Steam, que suman en la estadística «horas
-  jugadas» del perfil). Condiciones: tu perfil de Steam debe tener los
-  **detalles del juego públicos**, el juego no puede estar ya añadido
-  (aparece marcado «Añadido ✓»), y hay que haber desplegado el proxy
-  (ver `cloudflare/steam-proxy/README.md`). **Epic Games** no ofrece
-  una API pública de biblioteca/horas, así que no se sincroniza.
+  jugadas**. Con un clic: pulsa **«Vincular mi cuenta de
+  Steam»**, inicia sesión en la ventana de Steam que se abre y vuelve
+  a la web: tu cuenta queda **vinculada** (desaparece el pegado
+  a mano del SteamID64 — se guarda como respaldo) y la web
+  **actualiza las horas cada día al entrar** (también con «Comprobar
+  estrenos»). Desde la vista de juegos puedes buscar y añadir cada
+  juego con su horas y el día de la última partda, con «Añadir».
+  Condiciones: tu perfil de Steam debe tener los detalles del juego
+  públicos; el juego ya añadido aparece marcado «Añadido ✓»; y hay
+  que haber desplegado el proxy (`cloudflare/steam-proxy/README.md`).
+  **Epic Games** no ofrece una API pública de biblioteca/horas, así
+  que no se sincroniza.
 - **Datos**: exporta, importa o descarga tus datos:
   - **Exportar copia de seguridad**: descarga un archivo con TODOS tus
     datos (películas, series, libros, videojuegos, perfil y

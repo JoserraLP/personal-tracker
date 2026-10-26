@@ -60,7 +60,7 @@ import { runStorageMigration } from "./migration.js";
 import { setupNotifications } from "./notifications-setup.js";
 import { setupProfile } from "./profile.js";
 import { setupWishlist } from "./wishlist.js";
-import { setupSettings, syncThemeToSettings, cleanupSettings, SECTION_REGISTRY, isSectionVisible, isTabVisible, getFirstVisibleTabKey, getFirstVisibleTabPanel, normalizeTabKey } from "./settings.js";
+import { setupSettings, syncThemeToSettings, cleanupSettings, SECTION_REGISTRY, isSectionVisible, isTabVisible, getFirstVisibleTabKey, getFirstVisibleTabPanel, normalizeTabKey, applySteamCallback, parseSteamCallbackHash, loadSettings } from "./settings.js";
 import { setupGlobalSearch, refreshExternalResults } from "./global-search.js";
 import { setupSidebar, renderSidebar, setActiveSection } from "./sidebar.js";
 import { initAutoHideNav } from "./auto-hide-nav.js";
@@ -491,6 +491,16 @@ async function init() {
   // Restaurar preferencia de tema antes de pintar nada
   setTheme(getSavedTheme());
   syncThemeToSettings(getSavedTheme());
+
+  // Retorno del login de Steam (ADR-108): si llegamos con el hash
+  // #/steam-callback?... el router no lo entiende, así que se procesa
+  // ANTES de creamos el router: guarda el SteamID vinculado y resetea
+  // el hash a una ruta neutra dentro de la misma página (sin recargo).
+  const steamCb = parseSteamCallbackHash(location.hash);
+  if (steamCb) {
+    applySteamCallback(location.hash);
+    history.replaceState(null, "", location.pathname + location.search + "#/ocio");
+  }
 
   const ctx = createCtx();
 

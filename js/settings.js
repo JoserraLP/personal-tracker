@@ -5,8 +5,9 @@
 
 import { syncNow, isSyncRunning } from "./daily-check.js";
 import { isNotificationSupported, getPermission, requestDevicePushPermission } from "./push.js";
-import { fetchOwnedSteamGames, sanitizeSteamId, steamProxyUrl, steamHoursLabel } from "./api-steam.js";
+import { fetchOwnedSteamGames, sanitizeSteamId, steamProxyUrl, steamHoursLabel, steamLoginUrl, parseSteamCallbackHash } from "./api-steam.js";
 import { todayISO } from "./dates.js";
+import { showToast } from "./ui.js";
 
 const STORAGE_KEY = "mi-registro-settings";
 const DEBOUNCE_MS = 2000;
@@ -179,6 +180,7 @@ function scheduleFirestoreSync(ctx) {
 export function cleanupSettings() {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = null;
+  ctxForSteam = null;
 }
 
 // ---- UI Rendering ----
@@ -304,8 +306,9 @@ function buildSectionsHTML(settings) {
 
 function renderSteamCard(settings) {
   const input = document.getElementById("steam-id-input");
+  const linked = sanitizeSteamId(settings.steamId);
   if (input) {
-    input.value = sanitizeSteamId(settings.steamId) ? sanitizeSteamId(settings.steamId) : "";
+    input.value = linked || "";
     // Persistencia del steamId con el mismo patrón del tema.
     if (!input.dataset.steamWired) {
       input.dataset.steamWired = "1";
@@ -319,8 +322,26 @@ function renderSteamCard(settings) {
   const proxyHint = document.getElementById("steam-proxy-hint");
   if (proxyHint) {
     proxyHint.textContent = steamProxyUrl()
-      ? "Cómo traer los juegos de Steam con sus horas jugadas."
+      ? (linked
+          ? `Cuenta vinculada con Steam (${linked}): 
+            la web actualiza las horas cada día al entrar.`
+          : "Vincula tu cuenta de Steam para traer tus juegos con las horas jugadas.")
       : "⚠ La integración no está configurada (falta la URL del proxy de Steam en el despliegue; ver cloudflare/steam-proxy/README.md).";
+  }
+  const linkBtn = document.getElementById("btn-steam-link");
+  if (linkBtn) {
+    linkBtn.textContent = linked ? "Re-vincular con Steam" : "Vincular mi cuenta de Steam";
+    if (!linkBtn.dataset.steamWired) {
+      linkBtn.dataset.steamWired = "1";
+      linkBtn.addEventListener("click", () => {
+        const url = steamLoginUrl();
+        if (!url) {
+          ctxForSteam?.showToast("Falta la URL del proxy de Steam (despliegue).");
+          return;
+        }
+        window.location.href = url;
+      });
+    }
   }
   // Recargar resultados: si el grupo ya está en memoria se repinta
   // limpio (los juegos nuevos los trae el botón de buscar).
@@ -404,7 +425,9 @@ function wireSteamIntegration(ctx) {
 // Alta de un juego de Steam en el registro: ítem manual con UNA
 // sesión de juego con las horas de Steam (suman a la estadística de
 // "horas jugadas" del perfil; la fecha es la del último juego o hoy).
-function steamGameDraft(g) {
+// La sesión lleva source: "steam" para que la pasada diaria la
+// reconozca y refresque sus horas. Exportado para tests.
+export function steamGameDraft(g) {
   const day = g.lastPlayedAt || todayISO();
   const hours = g.playtimeHours > 0 ? g.playtimeHours : null;
   return {
@@ -420,7 +443,7 @@ function steamGameDraft(g) {
     notes: "",
     steamAppId: g.appid,
     steamPlaytimeHours: g.playtimeHours,
-    playLog: [{ startedAt: day, finishedAt: day, hours }],
+    playLog: [{ startedAt: day, finishedAt: day, hours, source: "steam" }],
   };
 }
 
@@ -550,6 +573,7 @@ let onVisibilityChange = null;
 export function setupSettings(ctx, { onVisibilityChange: onChange = null } = {}) {
   onVisibilityChange = onChange;
   appCtx = ctx;
+  ctxForSteam = ctx;
   wireThemeSelect(ctx);
   wireNotificationToggles(ctx);
   wireSyncButton(ctx);
@@ -560,6 +584,39 @@ export function setupSettings(ctx, { onVisibilityChange: onChange = null } = {})
 // Contexto de la app capturado en setupSettings: lo usan setUnit y
 // setTheme para sincronizar con Firestore (patrón de scheduleFirestoreSync).
 let appCtx = null;
+// Contexto para la card de Steam (tokens/toast) — vuelve a null al
+// desuscribirse (mismo ciclo de vida).
+let ctxForSteam = null;
+
+// Guarda el SteamID vinculado (localStorage) — lo usan el flujo de
+// vinculación OpenID y el ajuste manual. Devuelve el settings guardado.
+export function saveSteamId(steamId) {
+  const s = loadSettings();
+  s.steamId = sanitizeSteamId(steamId);
+  saveSettings(s);
+  return s;
+}
+
+/**
+ * Procesa un retorno del login de Steam (#/steam-callback?...):
+ * guarda el steamid vinculado o informa del error. Lo llama app.js
+ * en el arranque ANTES del enrutamiento; devuelve true si el hash
+ * era de este flujo (la app debe ignorarlo y re-establecer el hash
+ * limpio).
+ * @param {string} hash - location.hash actual.
+ * @returns {boolean}
+ */
+export function applySteamCallback(hash) {
+  const callback = parseSteamCallbackHash(hash);
+  if (!callback) return false;
+  if (callback.steamid) {
+    saveSteamId(callback.steamid);
+    showToast(`Cuenta de Steam vinculada: ${callback.steamid}`);
+  } else {
+    showToast("No se pudo completar el inicio de sesión de Steam.");
+  }
+  return true;
+}
 
 // ---- Unidad de peso de Gimnasio (issue #62) ----
 
