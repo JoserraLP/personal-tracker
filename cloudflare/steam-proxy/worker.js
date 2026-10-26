@@ -84,7 +84,11 @@ export function validateReturnTo(returnTo, env) {
       return null;
     }
   }
-  return parsed.origin;
+  // Devuelve la URL COMPLETA (origin + path): el callback redirige a
+  // esta misma URL con #/steam-callback. Devolver solo el origin
+  // perdía el subdirectorio del deploy en GitHub Pages
+  // (/personal-tracker/) y caía en un 404 del dominio raíz.
+  return parsed.origin + parsed.pathname;
 }
 
 /**
