@@ -33,7 +33,8 @@ en la web. Léelo por secciones según lo que necesites.
 20. [Instalar la web en tu teléfono](#20-instalar-la-web-en-tu-teléfono)
 21. [Problemas frecuentes](#21-problemas-frecuentes)
 
-Además: [Compras (lista de deseos)](#compras-lista-de-deseos)
+Además: [Compras (lista de deseos)](#compras-lista-de-deseos) ·
+[Veces visto / leído / jugado (contadores)](#veces-visto--leído--jugado)
 
 ---
 
@@ -1112,6 +1113,34 @@ tus notas de episodios** (ver sección 13).
 En los videojuegos, la ficha incluye además el **historial de sesiones de
 juego** (más en [sección 7.4](#74-historial-de-sesiones)).
 
+## Veces visto / leído / jugado
+
+Cada título tiene un **contador** de las veces que lo has consumido:
+
+- **Película**: cuántas veces la has visto (cada «vista» del historial
+  suma 1; aparece como «×N»).
+- **Serie**: cuántas veces la has **completado** (el sello «Completa ·
+  ×N» suma también).
+- **Libro**: cuántas veces lo has leído hasta el final.
+- **Videojuego**: una sesión de juego es una "jugada" y suma 1.
+
+### Ver el contador
+
+Aparece como un chip **«×N»** en la tarjeta del título (cuadrícula y
+lista) y en el historial de la ficha se ven las sesiones que lo
+suman.
+
+### Corregir la cuenta a mano
+
+Si viste/leíste/jugaste algo y NO anotaste cada sesión (por ejemplo,
+releíste un libro dos veces del tirón), entra en su ficha → **Editar
+información** → caja **«Veces vista / completada / leído / jugada»**:
+
+- Pon el número real de veces y guarda: se mostrará ese número
+  (menos de lo ya registrado no se puede: no se engaña con la cuenta).
+- Si dejas la caja vacía, la cuenta vuelve a la automática del
+  historial.
+
 ## 13. Valoraciones con estrellas
 
 Puedes valorar de **1 a 5 estrellas**, incluidas las **medias estrellas**
@@ -1316,6 +1345,17 @@ Se llega desde **«Ajustes» en la parte de abajo de la barra lateral**
   web comprueba sola cada día). Solo puedes usarlo una vez cada **30
   minutos** (la web te avisa si lo intentas antes). No hace falta usarlo:
   la web ya lo comprueba sola a diario (ver siguiente sección).
+- **Integración de Steam**: trae tu biblioteca de Steam con las **horas
+  jugadas**. Pega tu **SteamID64** (los 17 dígitos de tu perfil, en la
+  URL) y pulsa «Buscar mis juegos de Steam»: ves cada juego con sus
+  horas y el día de la última partida, y con «Añadir» lo registras en
+  tu registro de videojuegos como ítem manual (con una sesión que
+  agrupa las horas de Steam, que suman en la estadística «horas
+  jugadas» del perfil). Condiciones: tu perfil de Steam debe tener los
+  **detalles del juego públicos**, el juego no puede estar ya añadido
+  (aparece marcado «Añadido ✓»), y hay que haber desplegado el proxy
+  (ver `cloudflare/steam-proxy/README.md`). **Epic Games** no ofrece
+  una API pública de biblioteca/horas, así que no se sincroniza.
 - **Datos**: exporta, importa o descarga tus datos:
   - **Exportar copia de seguridad**: descarga un archivo con TODOS tus
     datos (películas, series, libros, videojuegos, perfil y
