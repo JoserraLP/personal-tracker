@@ -23,6 +23,78 @@
 // =============================================================
 
 const STEAM_BASE = "https://api.steampowered.com";
+const STEAM_OPENID = "https://steamcommunity.com/openid/login";
+const OPENID_NS = "http://specs.openid.net/auth/2.0";
+
+// -------------------------------------------------------------
+// OpenID 2.0 de Steam (login "Sign in through Steam", ADR-108)
+// -------------------------------------------------------------
+// Es el modo estándar de Steam para que una web sepa QUÉ usuario es:
+// el navegador salta a Steam, el usuario inicia sesión TU cuenta de
+// Steam y Steam redirige de vuelta con la identidad firmada al
+// callback del Worker, que la VERIFICA servidor-a-servidor
+// (check_authentication) antes de aceptarla. El Worker no guarda
+// cuentas ni cookies: solo traduce el ida y vuelta y devuelve el
+// SteamID64 a la app por URL.
+
+/**
+ * URL de /callback del worker (la que Steam usa como return_to).
+ */
+export function callbackUrl(workerOrigin) {
+  return `${workerOrigin.replace(/\/+$/, "")}/callback`;
+}
+
+/**
+ * Construye la URL [auth-request de Steam con return_to hacia el callback
+ * del worker y recall final de la app. Puro, testeable.
+ * @param {string} workerOrigin - Origen del propio worker (https://…).
+ * @param {string} returnTo - URL de la app a la que volver DRM terminar el login.
+ */
+export function buildLoginRedirect(workerOrigin, returnTo) {
+  const params = new URLSearchParams({
+    "openid.ns": OPENID_NS,
+    "openid.mode": "checkid_setup",
+    "openid.return_to": `${callbackUrl(workerOrigin)}?return_to=${encodeURIComponent(returnTo)}`,
+    "openid.realm": workerOrigin.replace(/\/+$/, ""),
+    "openid.identity": `${OPENID_NS}/identifier_select`,
+    "openid.claimed_id": `${OPENID_NS}/identifier_select`,
+  });
+  return `${STEAM_OPENID}?${params.toString()}`;
+}
+
+/**
+ * Valida el return_to (la app a la que devolver el steamid): solo https
+ * y, si el worker define ALLOWED_ORIGIN, debe coincidir con su host.
+ * Devuelve el origin de la app (sin path:hz que docstreamulaş) o null.
+ */
+export function validateReturnTo(returnTo, env) {
+  if (!returnTo) return null;
+  let parsed;
+  try {
+    parsed = new URL(returnTo);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "https:") return null;
+  const allowed = env && env.ALLOWED_ORIGIN;
+  if (allowed) {
+    try {
+      if (new URL(allowed).host !== parsed.host) return null;
+    } catch {
+      return null;
+    }
+  }
+  return parsed.origin;
+}
+
+/**
+ * Extrae el SteamID64 de una identidad OpenID verificada
+ * ("https://steamcommunity.com/openid/id/7656119...").
+ */
+export function steamidFromIdentity(identity) {
+  const m = /^https:\/\/steamcommunity\.com\/openid\/id\/(\d{17})$/.exec(identity || "");
+  return m ? m[1] : null;
+}
 
 // -------------------------------------------------------------
 // CORS (idéntico patrón que el igdb-proxy)
@@ -123,6 +195,70 @@ export default {
           },
         }
       );
+    }
+
+    // GET /login?return_to=<url de la app>: arranca el login OpenID
+    // de Steam (redirige 302 a steamcommunity.com).
+    if (request.method === "GET" && url.pathname === "/login") {
+      const returnTo = validateReturnTo(url.searchParams.get("return_to"), env);
+      if (!returnTo) {
+        return new Response(
+          JSON.stringify({ error: "return_to ausente o no permitido (solo https y el origen de ALLOWED_ORIGIN si está configurado)." }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: buildLoginRedirect(url.origin, returnTo),
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
+    // GET /callback?return_to=<app>&openid.* → verificación
+    // check_authentication contra Steam y devolución del SteamID64
+    // a la app por fragmento (#/steam-callback?steamid=...).
+    if (request.method === "GET" && url.pathname === "/callback") {
+      const returnTo = validateReturnTo(url.searchParams.get("return_to"), env);
+      if (!returnTo) {
+        return new Response(
+          JSON.stringify({ error: "return_to ausente o no permitido." }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      try {
+        // check_authentication: Steam exige reenviar TODOS los parámetros
+        // openid.* con mode=check_authentication por POST.
+        const params = new URLSearchParams();
+        for (const [k, v] of url.searchParams) {
+          if (k.startsWith("openid.")) params.set(k, v);
+        }
+        params.set("openid.mode", "check_authentication");
+        const verifyRes = await fetch(STEAM_OPENID, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params.toString(),
+        });
+        const verifyText = await verifyRes.text();
+        const isValid = /is_valid\s*:\s*true/.test(verifyText);
+        const identity = url.searchParams.get("openid.identity") || "";
+        const steamid = isValid ? steamidFromIdentity(identity) : null;
+
+        if (!steamid) {
+          // Sin verificación válida: volver a la app con error.
+          return Response.redirect(`${returnTo}#/steam-callback?error=verify`, 302);
+        }
+        return Response.redirect(
+          `${returnTo}#/steam-callback?steamid=${encodeURIComponent(steamid)}`,
+          302
+        );
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 502,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
     }
 
     // GET /owned?steamid=<steamid64>

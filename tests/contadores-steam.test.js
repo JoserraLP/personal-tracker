@@ -6,7 +6,8 @@ import {
   counterBadgeText,
   sanitizeSeenCount,
 } from "../js/counter.js";
-import { steamHoursLabel, sanitizeSteamId, ownedUrl } from "../js/api-steam.js";
+import { steamHoursLabel, sanitizeSteamId, ownedUrl, parseSteamCallbackHash, steamLoginUrl } from "../js/api-steam.js";
+import { steamGameDraft } from "../js/settings.js";
 
 describe("counter.js — geometría de los historiales de veces", () => {
   it("película: cuenta los visionados del watchLog", () => {
@@ -95,5 +96,34 @@ describe("api-steam.js — parte pura", () => {
   it("ownedUrl construye el endpoint con el proxy configurado", () => {
     // STEAM_PROXY_URL = "" en el tree actual: la URL es null.
     expect(ownedUrl("76561198000000000")).toBeNull();
+  });
+
+  it("parseSteamCallbackHash: solo reconoce su propio flujo", () => {
+    expect(parseSteamCallbackHash("#/steam-callback?steamid=76561198000000000")).toEqual({
+      steamid: "76561198000000000",
+    });
+    expect(parseSteamCallbackHash("#/steam-callback?error=verify")).toEqual({ error: "verify" });
+    expect(parseSteamCallbackHash("#/steam-callback?steamid=abc")).toEqual({ error: "unknown" });
+    expect(parseSteamCallbackHash("#/ocio/series")).toBeNull();
+    expect(parseSteamCallbackHash("")).toBeNull();
+  });
+
+  it("steamLoginUrl sin proxy devuelve null", () => {
+    // Sin proxy configurado (STEAM_PROXY_URL = "") no hay login.
+    expect(steamLoginUrl()).toBeNull();
+  });
+
+  it("steamGameDraft: sesión única con las horas y marcada como steam", () => {
+    const draft = steamGameDraft({ appid: 440, name: "Team Fortress 2", playtimeHours: 34.7, lastPlayedAt: "2026-10-20" });
+    expect(draft).toMatchObject({
+      type: "game",
+      title: "Team Fortress 2",
+      steamAppId: 440,
+      steamPlaytimeHours: 34.7,
+      status: "completado",
+    });
+    expect(draft.playLog).toEqual([
+      { startedAt: "2026-10-20", finishedAt: "2026-10-20", hours: 34.7, source: "steam" },
+    ]);
   });
 });

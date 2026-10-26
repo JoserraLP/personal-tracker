@@ -18,10 +18,11 @@
 // =============================================================
 
 import { isNextEpisodeUnreleased, getNextEpisodeAirInfo } from "./sorting.js";
-import { getNotificationPrefs } from "./settings.js";
+import { getNotificationPrefs, loadSettings } from "./settings.js";
 import { isUnreleasedDate } from "./release.js";
 import { normalizeEntry } from "./tv-progress.js";
 import { subtractDays } from "./dates.js";
+import { sanitizeSteamId, fetchOwnedSteamGames } from "./api-steam.js";
 
 // Cooldown entre sincronizaciones manuales (30 minutos).
 const MANUAL_SYNC_COOLDOWN_MS = 30 * 60 * 1000;
@@ -496,6 +497,43 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
       } catch (err) {
         console.error("No se pudo comprobar el lanzamiento de", g.title, err);
       }
+    }
+
+    // Steam (ADR-108): con la cuenta vinculada, refrescar las horas
+    // jugadas de los juegos del registro que vinieron de Steam. NO se
+    // auto-alta nada nuevo (evita inundar el registro con toda la
+    // biblioteca; el alta es manual desde Ajustes). Fail-open y
+    // silencioso para el flujo principal: un fallo de Steam no
+    // aborta la pasada ni toca el lastReleaseCheckAt.
+    try {
+      const steamId = sanitizeSteamId(loadSettings().steamId);
+      const linkedGames = allGames.filter((game) => game.steamAppId);
+      if (steamId && linkedGames.length) {
+        const steam = await fetchOwnedSteamGames(steamId);
+        const byAppId = new Map(steam.games.map((entry) => [entry.appid, entry]));
+        for (const game of linkedGames) {
+          const fresh = byAppId.get(game.steamAppId);
+          if (!fresh) continue; // ya no lo tiene en la biblioteca
+          const updates = { steamPlaytimeHours: fresh.playtimeHours };
+          let log = (game.playLog || []).map((session) =>
+            session && session.source === "steam"
+              ? { ...session, hours: fresh.playtimeHours > 0 ? fresh.playtimeHours : null }
+              : session
+          );
+          // Backfill: juegos añadidos a Steam sin sesión marcada aún.
+          if (
+            !(game.playLog || []).some((session) => session && session.source === "steam") &&
+            fresh.playtimeHours > 0
+          ) {
+            const day = fresh.lastPlayedAt || today;
+            log = [...log, { startedAt: day, finishedAt: day, hours: fresh.playtimeHours, source: "steam" }];
+          }
+          updates.playLog = log;
+          await updateItem(user.uid, "game", game.id, updates);
+        }
+      }
+    } catch (err) {
+      console.error("Steam: no se pudo actualizar la biblioteca:", err);
     }
 
     try {
