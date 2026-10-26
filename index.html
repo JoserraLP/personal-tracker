@@ -19,8 +19,8 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=20261005" />
-  <link rel="stylesheet" href="ocio/ocio.css?v=20261005" />
+  <link rel="stylesheet" href="css/styles.css?v=20261006" />
+  <link rel="stylesheet" href="ocio/ocio.css?v=20261006" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
@@ -378,6 +378,21 @@
           <h3>Sincronización de datos</h3>
           <p class="settings-desc">Comprueba en el momento si algo se ha estrenado o ha salido un episodio nuevo (lo que la web revisa sola cada día).</p>
           <button type="button" class="btn btn--outline" id="btn-sync-now">Comprobar estrenos</button>
+        </div>
+
+        <div class="settings-card">
+          <h3>Integración de Steam</h3>
+          <p class="settings-desc" id="steam-proxy-hint"></p>
+          <div class="settings-row">
+            <div class="settings-row__text">
+              <label for="steam-id-input">SteamID64</label>
+              <p class="settings-row__hint">Los 17 dígitos de tu perfil de Steam (se ven en la URL del perfil). Requiere el detalle del juego público.</p>
+            </div>
+            <input id="steam-id-input" class="manual-input" inputmode="numeric" placeholder="76561198000000000" />
+          </div>
+          <button type="button" class="btn btn--accent-media" id="btn-steam-fetch">Buscar mis juegos de Steam</button>
+          <p class="settings-desc">Los juegos de Steam con horas se añaden al registro como ítems manuales, con una sesión de juego que agrupa las horas.</p>
+          <div id="steam-results" class="steam-results hidden"></div>
         </div>
 
         <div class="settings-card settings-card--data">
@@ -788,7 +803,7 @@
        js/auto-hide-nav.js. -->
   <button type="button" id="btn-back-to-top" class="back-to-top" aria-label="Volver arriba">↑ <span>Volver arriba</span></button>
 
-  <script type="module" src="js/app.js?v=20261005"></script>
+  <script type="module" src="js/app.js?v=20261006"></script>
   <script type="module">
     import { registerSW } from './js/sw-register.js';
     if ('serviceWorker' in navigator) registerSW();

@@ -5,6 +5,8 @@
 
 import { syncNow, isSyncRunning } from "./daily-check.js";
 import { isNotificationSupported, getPermission, requestDevicePushPermission } from "./push.js";
+import { fetchOwnedSteamGames, sanitizeSteamId, steamProxyUrl, steamHoursLabel } from "./api-steam.js";
+import { todayISO } from "./dates.js";
 
 const STORAGE_KEY = "mi-registro-settings";
 const DEBOUNCE_MS = 2000;
@@ -22,6 +24,9 @@ const DEFAULT_SETTINGS = {
   // El peso canónico en Firestore es SIEMPRE kg; esta preferencia solo
   // cambia la presentación (y las entradas) en la interfaz.
   unidadPeso: "kg",
+  // SteamID64 guardado para la integración de Steam (ADR-107): se
+  // recuerda para no estar poniéndolo en cada uso.
+  steamId: "",
   visibleSections: { ocio: true, recetas: true, gimnasio: true },
   visibleTabs: { resumen: true, series: true, peliculas: true, libros: true, compras: true, recetas: true, ingredientes: true, menu: true, compra: true, entrenos: true, ejercicios: true },
 };
@@ -224,6 +229,9 @@ export function renderSettings(ctx) {
 
   // Card «Secciones y pestañas»: render dinámico desde el registro.
   renderSectionsCard(settings);
+
+  // Card «Integración de Steam» (ADR-107).
+  renderSteamCard(settings);
 }
 
 // ---- Card «Secciones y pestañas» (issue #97) ----
@@ -290,6 +298,152 @@ function buildSectionsHTML(settings) {
         </div>`;
     })
     .join("\n");
+}
+
+// ---- Card «Integración de Steam» (ADR-107) ----
+
+function renderSteamCard(settings) {
+  const input = document.getElementById("steam-id-input");
+  if (input) {
+    input.value = sanitizeSteamId(settings.steamId) ? sanitizeSteamId(settings.steamId) : "";
+    // Persistencia del steamId con el mismo patrón del tema.
+    if (!input.dataset.steamWired) {
+      input.dataset.steamWired = "1";
+      input.addEventListener("change", () => {
+        const s = loadSettings();
+        s.steamId = sanitizeSteamId(input.value);
+        saveSettings(s);
+      });
+    }
+  }
+  const proxyHint = document.getElementById("steam-proxy-hint");
+  if (proxyHint) {
+    proxyHint.textContent = steamProxyUrl()
+      ? "Cómo traer los juegos de Steam con sus horas jugadas."
+      : "⚠ La integración no está configurada (falta la URL del proxy de Steam en el despliegue; ver cloudflare/steam-proxy/README.md).";
+  }
+  // Recargar resultados: si el grupo ya está en memoria se repinta
+  // limpio (los juegos nuevos los trae el botón de buscar).
+  clearSteamResults();
+}
+
+function clearSteamResults() {
+  const box = document.getElementById("steam-results");
+  if (box) {
+    box.innerHTML = "";
+    box.classList.add("hidden");
+  }
+}
+
+// Lista de resultados de Steam dentro de la card: nombre, horas
+// jugadas, día del último juego y botón de alta en el registro.
+// (Sin portada: la app no descarga assets de Steam; el alta es un
+// ítem manual.)
+function renderSteamResults(games, appIdToAdded) {
+  const box = document.getElementById("steam-results");
+  if (!box) return;
+  box.classList.remove("hidden");
+  box.innerHTML = games
+    .map((g, index) => {
+      const added = appIdToAdded[g.appid];
+      return `
+      <div class="steam-row">
+        <div class="steam-row__info">
+          <div class="steam-row__name" title="${g.name}">${g.name}</div>
+          <div class="steam-row__meta">${steamHoursLabel(g.playtimeHours) || "sin horas"} · jugado por última vez: ${g.lastPlayedAt || "nunca"}</div>
+        </div>
+        <button type="button" class="btn btn--small" data-steam-add="${index}" ${added ? "disabled" : ""}>
+          ${added ? "Añadido ✓" : "Añadir"}
+        </button>
+      </div>`;
+    })
+    .join("");
+}
+
+function wireSteamIntegration(ctx) {
+  const btn = document.getElementById("btn-steam-fetch");
+  if (!btn) return;
+  btn.addEventListener("click", async () => {
+    const settings = loadSettings();
+    const steamId = sanitizeSteamId((document.getElementById("steam-id-input") || {}).value || settings.steamId);
+    if (!steamId) {
+      ctx.showToast("El SteamID debe tener 17 dígitos (SteamID64).");
+      return;
+    }
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Buscando…";
+    try {
+      const result = await fetchOwnedSteamGames(steamId);
+      if (!result.games.length) {
+        ctx.showToast(result.hint || "Steam no devolvió ningún juego.");
+        return;
+      }
+      // Duplicados: los juegos ya añadidos desde Steam.
+      const addedIds = new Set(
+        (await ctx.getGroupItemsResolved("games"))
+          .filter((item) => item.steamAppId)
+          .map((item) => item.steamAppId)
+      );
+      const appIdToAdded = {};
+      result.games.forEach((g) => {
+        if (addedIds.has(g.appid)) appIdToAdded[g.appid] = true;
+      });
+      renderSteamResults(result.games, appIdToAdded);
+      // Conectar altos:
+      wireSteamAddButtons(ctx, result.games);
+    } catch (err) {
+      ctx.showToast("No se pudo consultar Steam: " + (err.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
+}
+
+// Alta de un juego de Steam en el registro: ítem manual con UNA
+// sesión de juego con las horas de Steam (suman a la estadística de
+// "horas jugadas" del perfil; la fecha es la del último juego o hoy).
+function steamGameDraft(g) {
+  const day = g.lastPlayedAt || todayISO();
+  const hours = g.playtimeHours > 0 ? g.playtimeHours : null;
+  return {
+    externalId: null,
+    type: "game",
+    title: g.name,
+    year: null,
+    coverUrl: null,
+    author: null,
+    pages: null,
+    status: "completado",
+    rating: null,
+    notes: "",
+    steamAppId: g.appid,
+    steamPlaytimeHours: g.playtimeHours,
+    playLog: [{ startedAt: day, finishedAt: day, hours }],
+  };
+}
+
+async function wireSteamAddButtons(ctx, games) {
+  const box = document.getElementById("steam-results");
+  if (!box) return;
+  box.querySelectorAll("[data-steam-add]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const game = games[Number(btn.dataset.steamAdd)];
+      if (!game) return;
+      btn.disabled = true;
+      btn.textContent = "Añadiendo…";
+      try {
+        await ctx.addItem(ctx.getCurrentUser().uid, "game", steamGameDraft(game));
+        btn.textContent = "Añadido ✓";
+        ctx.showToast(`«${game.name}» añadido a tu registro de videojuegos.`);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = "Añadir";
+        ctx.showToast("No se pudo añadir: " + (err.message || err));
+      }
+    });
+  });
 }
 
 // ---- Event Wiring ----
@@ -400,6 +554,7 @@ export function setupSettings(ctx, { onVisibilityChange: onChange = null } = {})
   wireNotificationToggles(ctx);
   wireSyncButton(ctx);
   wireVisibilityToggles(ctx);
+  wireSteamIntegration(ctx);
 }
 
 // Contexto de la app capturado en setupSettings: lo usan setUnit y

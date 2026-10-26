@@ -10,6 +10,7 @@ import { getNextEpisodeAirInfo, isItemUnreleased } from "./sorting.js";
 import { normalizeEntry, computeEpisodeAverageRating } from "./tv-progress.js";
 import { trapFocus } from "./focus-utils.js";
 import { unreleasedConfirmMessage, isUnreleasedDate, episodeUnreleasedMessage } from "./release.js";
+import { counterFieldLabel, counterBadgeText, sanitizeSeenCount, naturalTimes } from "./counter.js";
 
 function scopeFor(type) {
   return type === "book" ? "book" : type === "game" ? "game" : "media";
@@ -393,6 +394,7 @@ function renderGrid(gridEl, items, onOpen) {
       const communityBadge = communityRatingHtml(item);
       const hasRatings = stars || communityBadge;
       const progress = progressLine(item);
+      const counterBadge = counterBadgeText(item);
       const blockedClass = isItemUnreleased(item) ? " item-card--unreleased" : "";
       return `
       <article class="item-card item-card--${item.status}${blockedClass}">
@@ -409,6 +411,7 @@ function renderGrid(gridEl, items, onOpen) {
           <div class="item-card__title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
           <div class="item-card__meta" title="${escapeHtml(metaLineFor(item))}">${escapeHtml(metaLineFor(item))}</div>
           ${progress ? `<div class="item-card__progress">${escapeHtml(progress)}</div>` : ""}
+          ${counterBadge ? `<div class="item-card__counter">${counterBadge}</div>` : ""}
           ${hasRatings ? `<div class="item-card__ratings">
             ${stars ? `<span class="item-card__rating">${stars}</span>` : ""}
             ${communityBadge}
@@ -503,6 +506,7 @@ function renderList(gridEl, items, { onOpen, onQuickAction }) {
   gridEl.innerHTML = items
     .map((item, index) => {
       const progress = progressLine(item);
+      const counterBadge = counterBadgeText(item);
       const blockedClass = isItemUnreleased(item) ? " list-row--unreleased" : "";
       return `
       <div class="list-row list-row--${item.status}${blockedClass}" data-index="${index}">
@@ -516,6 +520,7 @@ function renderList(gridEl, items, { onOpen, onQuickAction }) {
               <div class="list-row__title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
               <div class="list-row__meta" title="${escapeHtml(metaLineFor(item))}">${escapeHtml(metaLineFor(item))}</div>
               ${progress ? `<div class="list-row__progress">${escapeHtml(progress)}</div>` : ""}
+              ${counterBadge ? `<span class="item-card__counter">${counterBadge}</span>` : ""}
               ${upcomingBadge(item)}
             </div>
             <span class="item-card__stamp item-card__stamp--${item.status} list-row__stamp">
@@ -860,9 +865,16 @@ export function openEditModal(item, { onSave, onCancel }) {
   const content = document.getElementById("modal-content");
 
   content.innerHTML = `
-    <h3 class="modal-detail__title" style="margin-bottom:1rem">Editar informaciÃ³n</h3>
+    <h3 class="modal-detail__title" style="margin-bottom:1rem">Editar información</h3>
     <form id="edit-form" class="manual-form">
       ${itemFormFields(item.type, item)}
+      <div class="field-group">
+        <label for="form-seen-count">${counterFieldLabel(item.type)}</label>
+        <input id="form-seen-count" class="manual-input" inputmode="numeric"
+               placeholder="${naturalTimes(item) || "0"}"
+               value="${item.seenCount != null ? item.seenCount : (naturalTimes(item) || "")}" />
+        <p class="field-hint">${item.type === "tv" ? "":"¿"}Cada sesión/visionado ya suma 1: esta caja sirve para corregirlo a mano (vacía = cuenta lo registrado).</p>
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn btn--outline" id="btn-edit-cancel">Cancelar</button>
         <button type="submit" class="btn btn--primary">Guardar cambios</button>
@@ -884,6 +896,10 @@ export function openEditModal(item, { onSave, onCancel }) {
       const pagesRaw = content.querySelector("#form-pages").value;
       changes.pages = pagesRaw ? Number(pagesRaw) : null;
     }
+    const seenRaw = sanitizeSeenCount(content.querySelector("#form-seen-count").value);
+    // Si el valor escrito coincide con lo ya registrado en los logs,
+    // no se anota nada (queda la cuenta automática).
+    changes.seenCount = seenRaw === naturalTimes(item) ? null : seenRaw;
     onSave(changes);
   });
 
