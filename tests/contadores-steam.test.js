@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { validateReturnTo } from "../cloudflare/steam-proxy/worker.js";
 import {
   naturalTimes,
   timesCount,
@@ -127,5 +128,28 @@ describe("api-steam.js — parte pura", () => {
     expect(draft.playLog).toEqual([
       { startedAt: "2026-10-20", finishedAt: "2026-10-20", hours: 34.7, source: "steam" },
     ]);
+  });
+});
+
+describe("steam-proxy worker.js — validateReturnTo", () => {
+  it("conserva el subdirectorio del deploy (no solo el origin)", () => {
+    const returnTo = "https://joserralp.github.io/personal-tracker/";
+    expect(validateReturnTo(returnTo, { ALLOWED_ORIGIN: "https://joserralp.github.io" })).toBe(
+      "https://joserralp.github.io/personal-tracker/"
+    );
+  });
+
+  it("rechaza return_to de otro host si ALLOWED_ORIGIN está fijado", () => {
+    expect(validateReturnTo("https://evil.example.com/personal-tracker/", { ALLOWED_ORIGIN: "https://joserralp.github.io" })).toBeNull();
+  });
+
+  it("rechaza return_to http (solo https)", () => {
+    expect(validateReturnTo("http://joserralp.github.io/personal-tracker/", { ALLOWED_ORIGIN: "https://joserralp.github.io" })).toBeNull();
+  });
+
+  it("sin ALLOWED_ORIGIN acepta cualquier https y conserva el path", () => {
+    expect(validateReturnTo("https://example.com/personal-tracker/index.html", {})).toBe(
+      "https://example.com/personal-tracker/index.html"
+    );
   });
 });
