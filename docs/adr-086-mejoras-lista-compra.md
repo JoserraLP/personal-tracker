@@ -1,254 +1,798 @@
-# ADR-086: Mejoras en la lista de la compra — multi-semana, paquetes y eliminar con swipe (issue #225)
+# ADR-086: Shopping list improvements — multi-week, packages and swipe deletion (issue #225)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
-Agosto 2026
+## Date
+August 2026
 
-## Contexto
+## Context
 
-La issue #225 pide tres mejoras para la pestaña **«Lista de la compra»**
-de la sección de Recetas (issue #64), construida en ADR-076/ADR-080/
-ADR-082 y con su estética de píldoras en ADR-084:
+Issue #225 asks for three
+improvements to the Recipes section's
+**«Lista de la compra»** tab (issue #64), built in ADR-076/ADR-080/
+ADR-082 and given its pill
+aesthetics in
+ADR-084:
 
-1. **Selección de varias semanas** a la vez, sumando los ingredientes
-   totales de las seleccionadas (antes solo calculaba la semana activa
-   del menú).
-2. **Cantidad en paquetes**: si el ingrediente del catálogo
-   (`users/{uid}/ingredients`) tiene almacenada cantidad y unidad de
-   paquete (campos `paqueteCantidad`/`paqueteUnidad` de la issue #224,
-   PR #227 **aún sin fusionar**), comparar y mostrar la cantidad en
-   paquetes redondeada al alza — 550 g con paquete de 1 Kg → 1 paquete;
-   2,5 Kg → 3 —, y permitir al usuario **ajustar esa cantidad** (p. ej.
-   ahorrarse un paquete o comprar de más) con persistencia.
-3. **Eliminar un ítem desplazándolo hacia la izquierda** (swipe), con
-   deshacer.
+1. **Selecting several weeks**
+   at once, summing the selected
+   weeks' total
+   ingredients
+   (before it only computed the
+   active
+   menu's
+   week).
+2. **Package
+   quantities**: if the
+   catalog's
+   ingredient (`users/{uid}/ingredients`)
+   has a
+   stored package's quantity and
+   unit
+   (issue #224's
+   fields
+   `paqueteCantidad`/`paqueteUnit` from PR
+   #227, **still
+   unmerged**), compare
+   and
+   show the
+   quantity
+   in packages rounded
+   up — 550 g with a
+   1 Kg package →
+   1 package;
+   2,5 Kg →
+   3 —, and
+   allow the
+   user to
+   **adjust that
+   quantity** (e.g.
+   saving a
+   package or
+   buying
+   more
+   than
+   needed) with
+   persistence.
+3. **Deleting an
+   item by
+   swiping it
+   left**, with
+   undo.
 
-Estado previo: la lista se calculaba a partir de la semana activa del
-menú (cada ingrediente escalaba por comensales y aplicaba las
-exclusiones `recetasExcluidasCompra`), siempre mostraba la cantidad
-necesaria en unidades, y los ítems no se podían eliminar (solo marcar
-como comprados). Los ítems extra ya vivían en el documento del menú de
-la semana (`itemsExtra`).
+Previous state: the
+   list computed
+   from the
+   menu's
+   active
+   week (each
+   ingredient scaled
+   by din
+  ers
+   and
+   applied the
+   `excludedFromShoppingRecipes`
+  exclusions), always showed the needed
+  quantity
+   in
+   units, and
+   items could not be
+   deleted (only marked bought). Extra
+   items already lived in the
+   week's
+   menu document (the
+   `extraItems`).
 
-Flujo de trabajo: la rama de trabajo se crea desde
-`content/issue-64-seccion-recetas` y la PR va **también a esa rama, no
-a `dev`** — excepción puntual a la regla de PRs contra `dev` de
-AGENTS.md §1, pedida explícitamente por el usuario, igual que en las
-issues anteriores de la sección.
+Workflow: the work branch
+ is created
+ from
+ `content/issue-64-seccion-recetas` and
+ the PR goes
+ **also to that branch, not to
+ `dev`** — a
+ one-off exception to AGENTS.md §1's
+ PRs-against-`dev` rule, explicitly requested
+ by the user, like in the
+ section's previous
+ issues.
 
-Numeración: en la rama base los ADR llegan a 083; el 084 lo usa la PR
-de la issue #221 (estética de la lista de la compra) y el 085 la PR de
-la issue #224 (mejoras de la pestaña Ingredientes, que introduce los
-campos de paquete), por lo que este ADR es el **086**.
+Numbering: on the base branch
+ the
+ ADRs reach
+ 083; the 084 is
+  used by
+ the
+ issue #221 PR (the
+ shopping
+ list's aesthetics) and
+ the
+ 085 by
+ issue
+ #224's PR
+ (the Ingredients
+ tab's improvements, introducing the
+ package
+ fields),
+ so this ADR is the
+ **086**.
 
-## Decisión
+## Decision
 
-### 1. Selección multi-semana con chips
+### 1. Multi-week selection
+ with
+ chips
 
-- Nueva barra de chips `.shopping-week-chips` bajo la toolbar: cada
-  chip (`.shopping-week-chip`, patrón visual de `recipe-form__chip`)
-  es una semana con checkbox oculto y muestra la fecha abreviada. La
-  ventana visible es de **5 semanas** alrededor de un offset
-  (`chipOffset − 2 … chipOffset + 2`), navegable con las flechas
-  ←/→ (`shopping-prev-week`/`shopping-next-week`).
-- La selección es un `Set` de `semanaInicio` ISO (`selectedWeeks`).
-  Mientras el usuario **no toca los chips** (flag `userTouchedChips`),
-  la selección sigue a la semana activa del menú
-  (`syncSelectionWithMenu` usa `getActiveWeekOffset()` de
-  `js/menu.js`); en cuanto toca un chip o una flecha, la selección
-  pasa a ser del usuario y deja de seguir al menú.
-- El cálculo (`computeLines`) suma los ingredientes de todas las
-  semanas seleccionadas agregando por clave normalizada
-  `«nombre|unidad»` (nombre y unidad normalizados). Cada semana
-  escala con **sus propios comensales** y aplica **sus propias
-  exclusiones** (`recetasExcluidasCompra`) y sus ítems eliminados
-  (`itemsEliminados`). Las semanas sin documento guardado aportan 0
-  (menú en memoria sin id). No se permite desmarcar la única semana
-  seleccionada (toast «Selecciona al menos una semana»).
-- El título de la pestaña indica «Lista de la semana del …» o
-  «Lista de la compra · N semanas».
+- A new `.shopping-week-chips`
+  chips
+  bar under
+  the
+  toolbar: each
+  chip (`.shopping-week-chip`, the
+  `recipe-form__chip`
+  visual
+  pattern)
+  is a
+  week with
+  a
+  hidden
+  checkbox showing the
+  abbreviated date. The
+  visible
+  window is
+  of
+  **5
+  weeks** around
+  an
+  offset (`chipOffset −
+  2 … chipOffset + 2`), navigable with the ←/→ arrows
+  (`shopping-prev-week`/`shopping-next-week`).
+- The
+  selection is
+  a
+  Set
+  of
+  ISO
+  `weekStart`s
+  (`selectedWeeks`). While
+  the
+  user **does not touch the
+  chips**
+  (the
+  `userTouchedChips`
+  flag), the
+  selection follows the
+  menu's
+  active
+  week (`syncSelectionWithMenu`
+  uses
+  the
+  `getActiveWeekOffset()` of
+  `js/menu.js`);
+  as soon as
+  they
+  touch
+  a
+  chip or
+  an
+  arrow, the
+  selection becomes
+  the
+  user's and
+  stops
+  following
+  the
+  menu.
+- The
+  calculation
+  (`computeLines`) sums
+  the
+  selected
+  weeks' ingredients, aggregating
+  by
+  the
+  normalized
+  `«nombre|unidad»`
+  key
+  (name
+  and
+  unit
+  normalized). Each
+  week scales with
+  **its own
+  diners**
+  and
+  applies
+  **its own
+  exclusions**
+  (`excludedFromShoppingRecipes`)
+  and
+  its
+  deleted
+  items (the
+  `deletedItems`). Weeks without
+  a
+  saved
+  document contribute
+  0
+  (an
+  in-memory
+  menu without
+  an
+  id). Unchecking the
+  only
+  selected
+  week is not
+  allowed
+  (the
+  toast
+  "Select at least one
+  week").
+- The
+  tab's title says «Lista de la semana del …» or
+  «Lista
+  de la
+  compra · N
+  semanas».
 
-### 2. Cantidad en paquetes (cálculo automático)
+### 2. Package
+  quantities
+  (the automatic
+  computation)
 
-- `pkgInfo(line)` busca el ingrediente en el catálogo
-  (`getIngredients()` de `js/recipes.js`, que pasa a exportarse).
-  Si tiene `paqueteCantidad` y `paqueteUnidad`, compara unidades
-  **por familias** (`unitFamily`): masa (g base 1 / Kg base 1000),
-  volumen (mL base 1 / L base 1000) y unidades (base 1).
-- Solo se comparan cantidades de la **misma familia**; en caso
-  contrario —o si el ingrediente no tiene dato de paquete— se devuelve
-  `null` y la línea muestra la **cantidad necesaria** (comportamiento
-  previo).
-- Redondeo al alza con tolerancia de coma flotante
-  (`Math.ceil(neededBase / pkgBase − 1e-9)`): 550 g con paquete de
-  1 Kg → 1 paquete; 2,5 Kg → 3. El `null`-safe de `Number()` y el
-  chequeo `pkgCant > 0` / `pkgBase > 0` hacen la **lectura defensiva**
-  de los campos de la issue #224: si la PR #227 aún no se ha fusionado
-  y los campos no existen, el cálculo de paquetes queda inactivo sin
-  errores.
+- `pkgInfo(line)` finds the
+  ingredient in the
+  catalog
+  (`getIngredients()`
+  of
+  `js/recipes.js`, which becomes exported).
+  If it has
+  `paqueteCantidad` and
+  `paqueteUnidad`, it compares
+  units
+  **by
+  families** (`unitFamily`): mass
+  (g base
+  1 / Kg base
+  1000), volume
+  (mL base
+  1 / L base
+  1000)
+  and
+  units (base
+  1).
+- Only
+  quantities of
+  the
+  **same
+  family** are
+  compared; otherwise
+  —or if the
+  ingredient has no
+  package
+  datum— it returns
+  `null` and
+  the
+  line shows the
+  **needed
+  quantity** (the previous
+  behavior).
+- Rounding
+  up with
+  a
+  floating-point tolerance (`Math.ceil(neededBase / pkgBase − 1e-9)`): 550 g with
+  a
+  1 Kg package →
+  1
+  package;
+  2,5 Kg →
+  3. The
+  `Number()`'s null-safety and
+  the
+  `pkgCant > 0` / `pkgBase > 0` checks make
+  the
+  **defensive
+  reading**
+  of issue #224's fields: if
+  PR
+  #227 is not
+  merged yet
+  and
+  the
+  fields do not exist, the
+  packages' calculation stays
+  inactive
+  without
+  errors.
 
-### 3. Stepper −/+ con persistencia local
+### 3. A −/+ stepper
+ with
+ local
 
-- Cada línea con paquete muestra el stepper −/+ (`.shopping-line__stepper`)
-  con el conteo «N paquetes» y la cantidad necesaria al lado
-  («· 550 g»). El stepper mide **1.5rem (24 px)** de área táctil
-  (WCAG 2.2 AA, criterio 2.5.8 Tamaño mínimo del objetivo).
-- El ajuste manual persiste en **localStorage por usuario**
-  (clave `compraPaquetes:<uid>`, JSON `{clave: nº}`), solo en el
-  dispositivo — trade-off aceptado: no se sincroniza entre
-  dispositivos, a cambio de cero cambios de esquema de datos.
-- El botón **↺** (`.shopping-line__pkgreset`) borra el ajuste y vuelve
-  al cálculo automático.
+ persistence
 
-### 4. Eliminar por swipe hacia la izquierda
+- Each
+  line
+  with
+  a
+  package
+  shows the
+  −/+ stepper (`.shopping-line__stepper`) with
+  the
+  "N
+  packages"
+  count
+  and
+  the
+  needed
+  quantity
+  next to
+  it («· 550 g»). The
+  stepper measures
+  a
+  **1.5rem (24 px)**
+  touch
+  area
+  (WCAG
+  2.2 AA, the
+  criterion 2.5.8 minimum
+  target
+  size).
+- The
+  manual
+  adjustment persists in
+  the
+  **per-user localStorage**
+  (the
+  key
+  `compraPaquetes:<uid>`, a
+  JSON `{key: nº}`), only on
+  the
+  device — an
+  accepted
+  trade-off: it does not sync
+  between
+  devices, in exchange for
+  zero data-schema changes.
+- The
+  **↺** button (`.shopping-line__pkgreset`) clears the
+  adjustment and
+  goes
+  back to
+  the
+  automatic
+  calculation.
 
-- Patrón de **axis lock del ADR-028**: `touchstart`/`touchmove`/
-  `touchend` con slop de 10 px; al cruzar el umbral se decide el eje
-  (empate → vertical, manda el scroll) y no se vuelve atrás.
-- El swipe a la izquierda **revela** un botón «Eliminar»
-  (`.shopping-line__del` sobre el fondo rojo `.shopping-line__swipe-bg`):
-  **no borra al soltar**, hay que pulsar el botón (evita borrados
-  accidentales). Deslizar a la derecha cierra la revelación. La
-  posición la aplica el CSS: transform inline durante el arrastre y
-  clase `.is-revealed` → `translateX(-88px)` al soltar.
-- En escritorio también se revela con **hover** (dentro de
-  `@media (hover: hover)`) y es accesible por **teclado**: al enfocar
-  el botón se añade `.is-revealed` y al salir del foco se cierra.
-- **Supresión del click sintetizado**: tras un gesto horizontal el
-  navegador sintetiza un `click` al soltar el dedo que caería sobre el
-  checkbox/stepper de la fila desplazada; se suprime con
-  `preventDefault()` en el `touchend` **no-pasivo** (solo cuando el
-  lock fue horizontal y el desplazamiento superó el umbral, para no
-  afectar a los toques deliberados).
+### 4. Swiping left
+ to
+  delete
 
-### 5. Persistencia de la eliminación y deshacer
+- The
+  ADR-028's
+  **axis lock
+  pattern**: `touchstart`/`touchmove`/
+  `touchend` with a
+  10 px
+  slop; on crossing the
+  threshold the
+  axis
+  is decided
+  (a
+  tie →
+  vertical, the
+  scroll
+  wins) and
+  there is no going back.
+- The
+  left
+  swipe **reveals** a
+  "Delete"
+  button (`.shopping-line__del` over the
+  red
+  .shopping-line__swipe-bg`
+  background):
+  **it does not delete
+  on release**, one has
+  to press the
+  button (preventing accidental
+  deletions). Swiping right closes the
+  reveal. The
+  position is
+  applied
+  by
+  the
+  CSS: an
+  inline
+  transform
+  during
+  the
+  drag and
+  the
+  `.is-revealed`
+  class
+  → the
+  `translateX(-88px)`
+  on release.
+- On
+  desktop the
+  reveal also happens
+  on **hover** (inside
+  `@media (hover: hover)`) and
+  is
+  keyboard-accessible: on
+  focusing the
+  button the
+  `.is-revealed`
+  is added and
+  leaving
+  focus closes it.
+- **Suppressing the synthesized click**: after a
+  horizontal
+  gesture the
+  browser
+  synthesizes a
+  `click`
+  on the
+  release
+  that would
+  land on the
+  shifted
+  row's
+  checkbox/stepper; it is
+  suppressed with
+  a
+  `preventDefault()` on the
+  **non-passive `touchend`** (only when the
+  lock was
+  horizontal
+  and
+  the
+  shift
+  exceeded the
+  threshold, to not
+  affect
+  deliberate
+  taps).
 
-- **Ítems de recetas**: se marcan en `itemsEliminados` (array de
-  claves normalizadas «nombre|unidad») del documento de menú de
-  **cada semana seleccionada que realmente contenga el ítem** (se
-  comprueba antes de escribir y se omite si ya estaba). Las escrituras
-  usan `updateMenuWeek(weekStart, changes, { create: false })`: **nunca
-  se crean documentos de semanas vacías**.
-- **Ítems extra**: se quitan de `itemsExtra` de las semanas donde
-  están.
-- **Escrituras serializadas** con una cola de promesas
-  (`enqueueMutation`) para evitar carreras entre eliminaciones,
-  restauraciones y añadidos casi simultáneos (dos lecturas previas
-  podían pisarse).
-- **Deshacer** con `showUndoToast` (patrón ADR-004): restaura el
-  `itemsEliminados` anterior de cada semana tocada o vuelve a añadir
-  el ítem extra.
-- Nota **«Quitados de la lista»** (`.shopping-deleted`) al pie de la
-  lista con los nombres de los ítems eliminados en las semanas
-  seleccionadas; pulsar uno lo vuelve a incluir (lo quita de
-  `itemsEliminados` en todas las semanas que lo tengan).
+### 5. The deletion's persistence and
+ the
+ undo
 
-### 6. Refactor de `js/menu.js` y exports nuevos
+- **Recipe
+  items**: they are
+  marked in the
+  menu
+  document's
+  `deletedItems` (an
+  array of
+  normalized
+  "nombre|unidad"
+  keys) of
+  **each selected
+  week actually
+  containing the
+  item**
+  (checked before
+  writing and
+  omitted
+  if already there). The writes
+  use the
+  `updateMenuWeek(weekStart, changes, { create: false })`:
+  **no empty
+  week documents are ever created**.
+- **Extra
+  items**: they are removed from the
+  `extraItems` of the
+  weeks where
+  they
+  are.
+- **Serialized writes** with a
+  promise
+  queue (`enqueueMutation`) to avoid
+  races between
+  deletions, restorations and
+  additions that are
+  almost
+  simultaneous (two
+  prior
+  reads could step
+  on each other).
+- **The undo** with
+  `showUndoToast` (ADR-004's pattern): it restores the
+  previous
+  `deletedItems` of each
+  touched
+  week or re-adds the
+  extra
+  item.
+- The
+  **«Quitados de la
+  lista»** note (`.shopping-deleted`) at the
+  list's
+  foot with
+  the
+  names of
+  the
+  selected
+  weeks'
+  deleted
+  items; pressing
+  one re-includes
+  it (it removes
+  it from the
+  `deletedItems` in
+  all the
+  weeks having
+  it).
 
-- `activeMenu` se generaliza en **`menuForWeek(weekStart)`** (menú de
-  una semana concreta; si no hay documento devuelve uno en memoria sin
-  id, con comensales 2 y listas vacías).
-- Nuevo export **`getMenuDataByWeek(weekStart)`** con shape
-  `{ semanaInicio, comensales, dias, recetasPorSemana,
-  recetasExcluidasCompra, itemsExtra, itemsEliminados, hasDoc }`.
-- Nuevo export **`updateMenuWeek(weekStart, changes, { create = true })`**:
-  actualiza una semana concreta con fuego-y-olvido y estado local
-  optimista; con `create: false` solo actualiza si el documento ya
-  existe.
-- Nuevo export **`getActiveWeekOffset()`**: offset de la semana activa
-  del menú, que la lista de la compra usa para arrancar su selección.
-- `menuDataOf` persiste también `itemsEliminados`.
-- `js/recipes.js`: `getIngredients()` pasa a ser exportada.
-- `js/app.js`: `resetShoppingListState()` (resetea chips, selección y
-  ajustes de paquetes en memoria) se invoca en el logout para que los
-  datos del usuario anterior no se muestren al siguiente.
+### 6. The refactor
+ of
+ `js/menu.js` and
 
-### 7. CSS y cuatro modos de tema
+ new
+ exports
 
-- `.shopping-week-chips` / `.shopping-week-chip` (con estado
-  `.is-checked` y `:focus-within` con outline visible, ya que el input
-  está oculto), `.shopping-line-wrap` (fondo rojo del swipe) /
-  `__swipe-bg` / `__del` / `__content` (superficie que se desplaza),
-  `.shopping-line__stepper` (1.5rem), `__pkgcount`, `__detail`,
-  `__pkgreset`, `.shopping-deleted` y el estado revelado
-  (`.is-revealed` + hover en `@media (hover: hover)`).
-- Overrides **agrupados** de las 4 familias de tema
-  (`[data-theme="light"/"white"]` y `[data-theme="black"]`) siguiendo
-  el patrón de selectores agrupados de AGENTS.md §4: el fondo del
-  swipe usa `--stamp` (y `--stamp-dark` en negro puro), los chips
-  marcados usan `--teal-reel` (`--teal-reel-dark` en negro puro), etc.
-- El rojo claro `#d16a59` del botón ↺ y de los botones de la nota
-  «Quitados de la lista» está **hardcodeado con comentario**: `--stamp`
-  (#a63b2e ≈ 2,6:1) no llega a AA 4,5:1 sobre oscuro, mientras que
-  `#d16a59` ≈ 4,7:1 sobre `--ink-raised`; en la familia clara se usa
-  `var(--stamp)` (≈ 6,4:1 sobre blanco).
+- `activeMenu` generalizes into
+  **`menuForWeek(weekStart)`** (a
+  specific
+  week's menu; without
+  a
+  document it returns an
+  in-memory
+  one without
+  an
+  id, with
+  2 din
+  ers and
+  empty
+  lists).
+- The new
+  export
+  **`getMenuDataByWeek(weekStart)`**
+  with
+  the
+  shape `{ weekStart, diners, days,
+  weeklyRecipes, excludedFromShoppingRecipes, extraItems, deletedItems,
+  hasDoc }`.
+- The new
+  export
+  **`updateMenuWeek(weekStart, changes, { create = true })`**:
+  it updates
+  a
+  specific
+  week fire-and-forget with an
+  optimistic local
+  state; with
+  `create: false` it only updates if the
+  document already exists.
+- The new
+  export
+  **`getActiveWeekOffset()`**: the
+  menu's
+  active
+  week's
+  offset, which the
+  shopping
+  list uses to
+  start its
+  selection.
+- `menuDataOf` also persists the
+  `deletedItems`.
+- `js/recipes.js`: `getIngredients()` becomes
+  exported.
+- `js/app.js`: `resetShoppingListState()` (it resets
+  chips, selection and
+  in-memory
+  package
+  adjustments) is
+  invoked
+  on logout so the
+  previous
+  user's
+  data are not
+  shown to
+  the
+  next.
 
-### 8. Dependencia de merge con la PR #227 (issue #224)
+### 7. CSS and
+ the four
+ theme
+ modes
 
-Los campos `paqueteCantidad`/`paqueteUnidad` del catálogo de
-ingredientes los introduce la PR #227 (issue #224), aún sin fusionar.
-Hasta que llegue, el cálculo de paquetes queda **inactivo** (los
-campos no existen → lectura defensiva → se muestra la cantidad
-necesaria); no se bloquea ninguna otra mejora de esta issue.
+- `.shopping-week-chips` /
+  `.shopping-week-chip` (with
+  the
+  `.is-checked`
+  state and
+  a
+  `:focus-within` with
+  a
+  visible
+  outline, since the
+  input is
+  hidden), `.shopping-line-wrap`
+  (the
+  swipe's red
+  background) /
+  `__swipe-bg` / `__del` /
+  `__content` (the shifting
+  surface), `.shopping-line__stepper`
+  (1.5rem), `__pkgcount`, `__detail`,
+  `__pkgreset`, `.shopping-deleted` and
+  the
+  revealed
+  state (`.is-revealed`
+  +
+  the
+  hover in
+  `@media (hover: hover)`).
+- The 4
+  theme
+  families'
+  **grouped**
+  overrides
+  (`[data-theme="light"/"white"]` and
+  `[data-theme="black"]`) following
+  AGENTS.md
+  §4's grouped-selectors pattern: the
+  swipe's background uses
+  `--stamp` (and
+  `--stamp-dark` in
+  pure black), the
+  checked
+  chips use
+  `--teal-reel` (with
+  `--teal-reel-dark` in pure
+  black), etc.
+- The
+  light red
+  `#d16a59` of
+  the
+  ↺ button and
+  of
+  the
+  «Quitados de la
+  lista»
+  note's
+  buttons is
+  **hardcoded with
+  a
+  comment**:
+  `--stamp` (#a63b2e ≈
+  2,6:1) does not
+  reach
+  AA
+  4,5:1 over dark, while
+  `#d16a59` ≈
+  4,7:1 over
+  `--ink-raised`; in
+  the
+  light
+  family the
+  `var(--stamp)` is
+  used (≈
+  6,4:1 over white).
 
-## Alternativas descartadas
+### 8. The merge dependency
+ with
+ PR
+ #227 (issue #224)
 
-- **Sincronizar los ajustes de paquetes entre dispositivos**
-  (Firestore): descartada — exigía cambios de esquema de datos y
-  lógica de resolución de conflictos; localStorage por uid (solo
-  dispositivo) es suficiente para el caso de uso y el trade-off se
-  documenta en el manual.
-- **Borrar el ítem al soltar el swipe**: descartada — provoca borrados
-  accidentales; se exige pulsar «Eliminar» tras revelarlo (y el hover
-  en escritorio no borra al pasar por encima).
-- **Persistir la eliminación en un documento propio de la lista de la
-  compra**: descartada — la lista se calcula del menú y no tiene
-  documento propio; `itemsEliminados` en el documento de menú de cada
-  semana es coherente con `itemsExtra` y con la semántica de
-  «esta semana no necesito este ingrediente».
-- **Crear documentos de semanas vacías al eliminar**: descartada —
-  `updateMenuWeek` con `create: false` evita ensuciar Firestore con
-  documentos sin menú.
-- **Ventana infinita o lista completa de chips**: descartada — la
-  ventana de 5 con flechas mantiene la toolbar compacta en móvil y la
-  responsividad (sin scroll horizontal).
-- **Guardar la revelación del swipe en estado**: descartada — la
-  revelación es efímera por gesto/foco y se cierra al re-render, igual
-  que en ADR-028.
+The ingredients
+ catalog's
+ `paqueteCantidad`/`paqueteUnit` fields are introduced by PR
+ #227
+ (issue
+ #224), still unmerged. Until then, the
+ packages' calculation stays
+ **inactive** (the fields do
+  not exist →
+  defensive
+  reading →
+  the
+  needed
+  quantity shows); no
+  other
+  improvement of
+  this
+  issue is blocked.
 
-## Consecuencias
+## Rejected alternatives
 
-- **Positivas**: la lista de la compra cubre varias semanas de una
-  vez (compras reales de un periodo); los ingredientes con dato de
-  paquete muestran una cantidad útil para el supermercado (y ajustable
-  a la realidad de la despensa, con deshacer del ajuste vía ↺); los
-  ítems se pueden quitar con un gesto natural en móvil, hover en
-  escritorio y teclado, siempre con deshacer y con una vía visible
-  para volver a incluirlos; `menuForWeek`/`getMenuDataByWeek`/
-  `updateMenuWeek`/`getActiveWeekOffset` quedan como API reutilizable
-  de `js/menu.js`.
-- **Neutras**: los ajustes de paquetes no se sincronizan entre
-  dispositivos (trade-off aceptado y documentado); la eliminación de
-  un ítem de receta es **por semana** (quitar el arroz de la semana A
-  no lo quita de la B — el manual lo explica); bump de versión PWA
-  (`20260912 → 20260913`) para propagar el nuevo CSS/JS a los clientes
-  con caché; el cálculo de paquetes queda dormido hasta que se fusione
-  la PR #227.
-- **Negativas**: ninguna conocida. QA PASS: multi-semana, paquetes con
-  redondeo al alza (casos 550 g/1 Kg → 1 y 2,5 Kg → 3), stepper con
-  persistencia y ↺, swipe con axis lock sin click fantasma, deshacer,
-  nota «Quitados de la lista», cuatro modos de tema con contraste WCAG
-  AA y responsividad en 360 / 768 / 1280 px sin scroll horizontal a
-  nivel de página. Seguridad PASS: sin hallazgos (el localStorage por
-  uid no guarda datos sensibles y la cola de mutaciones no cambia la
-  superficie de ataque de Firestore). Manual de usuario actualizado
-  (sección 8.4).
+- **Syncing the package adjustments between devices**
+  (Firestore): rejected — it would require data-schema changes
+  and conflict-resolution logic; a per-uid localStorage
+  (only on
+  the
+  device) is enough
+  for the
+  use case, and the trade-off is documented
+  in the manual.
+- **Deleting
+  the item on swipe release**: rejected — it causes
+  accidental deletions; pressing "Delete"
+  after revealing
+  is
+  required (and desktop's
+  hover
+  does not delete
+  on
+  pointing).
+- **Persisting the deletion in the shopping list's own document**:
+  rejected — the list computes from the menu and has no own document; the
+  `deletedItems` in each
+  week's
+  menu
+  document is coherent with
+  the
+  `extraItems` and with the
+  "this week I don't need this ingredient"
+  semantics.
+- **Creating empty week documents on deletion**: rejected — the
+  `updateMenuWeek` with
+  `create: false` avoids dirtying Firestore with documents without
+  a menu.
+- **An infinite
+  window or a full chip list**: rejected — the
+  5-window with
+  arrows keeps the
+  toolbar compact on mobile and the
+  responsiveness (without
+  horizontal scroll).
+- **Keeping the swipe's reveal in state**: rejected — the
+  reveal is ephemeral per gesture/focus and
+  closes on re-render, as in
+  ADR-028.
 
-## Iteración (2026-08-12): refinamientos de paquetes y de la eliminación
+## Consequences
 
-Comentario nuevo del usuario en la issue #225 con cuatro peticiones:
+- **Positive**: the shopping list covers several weeks at
+  once (real
+  purchases of a period);
+  ingredients with a
+  package
+  datum show a supermarket-useful quantity (and
+  adjustable to the pantry's reality, with the adjustment's undo via
+  ↺); items can be removed with a natural
+  mobile gesture, desktop's
+  hover and keyboard, always
+  with undo and a
+  visible way to re-include them; `menuForWeek`
+  /`getMenuDataByWeek`/
+  `updateMenuWeek`/`getActiveWeekOffset` remain
+  `js/menu.js`'s reusable API.
+- **Neutral**: the package adjustments are not
+  synced
+  between devices (an accepted, documented trade-off); a recipe item's
+  deletion is **per week** (removing rice from week A does not remove it
+  from B — the manual explains it); the PWA's version bump
+  (`20260912 → 20260913`)
+  to propagate the new CSS/JS to
+  cache-carrying clients; the packages' calculation stays
+  dormant until PR
+  #227 merges.
+- **Negative**: none known. QA PASS: multi-week, packages with
+  rounding up (the 550 g/1 Kg → 1 and 2,5 Kg → 3
+  cases), the stepper with
+  persistence
+  and ↺,
+  the swipe with
+  axis lock without
+  phantom clicks,
+
+ undo,
+  the "Quitados de la lista" note, four theme modes
+  with WCAG AA contrast and responsiveness at
+  360 / 768 / 1280 px with no page-level horizontal scroll.
+  Security PASS: no findings (the per-uid
+  localStorage stores no sensitive data and the mutations' queue does not
+  change Firestore's attack surface). The user manual is updated
+  (section 8.4).
+
+## The iteration (2026-08-12): the packages'
+ and the deletion's refinements
+
+A new user comment on issue #225 with four requests:
 
 > 1. Si aparece el número de paquetes, no debería aparecer el peso.
 >    Tampoco la palabra «paquetes», simplemente el número.
@@ -262,66 +806,116 @@ Comentario nuevo del usuario en la issue #225 con cuatro peticiones:
 >    desplazamiento extra para eliminarlo sin necesidad de pulsar
 >    sobre eliminar que se mostraría ahora.
 
-### Decisiones de la iteración
+### The iteration's decisions
 
-1. **Paquetes: solo el número** — `qtyHtml` muestra únicamente la
-   cifra de paquetes (con `aria-label` «N paquetes» para lectores de
-   pantalla) y elimina el span `.shopping-line__detail` («· 550 g»):
-   ya no se ve el peso ni la palabra «paquetes». Se retira también su
-   CSS (`.shopping-line__detail` y sus overrides) y su referencia en
-   el estado `is-bought`.
-2. **✕ roja siempre visible a la derecha** — cada línea incluye un
-   botón `.shopping-line__remove` (✕) al final del contenido, con
-   área táctil de 1.75rem (≥ 24 px, WCAG 2.2 AA 2.5.8) y el rojo
-   claro `#d16a59` (AA sobre oscuro, patrón del ↺; en la familia
-   clara se oscurece a `--stamp`). Reutiliza el delegado de
-   `data-del-key` existente, así que elimina con el mismo flujo y
-   deshacer.
-3. **El hover ya no revela el estado de eliminar** — se elimina el
-   bloque `@media (hover: hover)` que desplazaba el contenido al
-   pasar el ratón (causa del «marcado en rojo» y del «Eliminar»
-   superpuesto al peso al pulsar). Ahora el hover solo marca la
-   línea (fondo suave `--paper-alpha-10`/`--ink-alpha-10`), igual
-   que antes se marcaba al pulsar. El teclado queda cubierto por la
-   ✕ (botón real, enfocable y activable).
-4. **Swipe con desplazamiento extra elimina directamente** — se
-   añade la constante `SWIPE_DELETE = -112` (24 px más allá del
-   revelado a -88): durante el arrastre el contenido puede llegar a
-   -112 y la clase `.is-deleting` oscurece el fondo rojo
-   (`filter: brightness(0.85)`) para comunicar el umbral; al soltar
-   con `offset <= SWIPE_DELETE` se elimina el ítem directamente (con
-   deshacer), sin botón que pulsar. El botón «Eliminar» del fondo del
-   swipe desaparece (`.shopping-line__del` → icono decorativo
-   `.shopping-line__swipe-icon` con `pointer-events: none`).
-5. **Manual y hint** — sección 8.4 del manual y el hint al pie de la
-   lista se actualizan: número de paquetes sin peso, ✕ de la derecha
-   y swipe con desplazamiento extra.
-6. **PWA**: bump de versión `20260914 → 20260915`.
+1. **Packages: only the number** — `qtyHtml` shows only
+  the packages' figures (with the aria-label
+  "N paquetes"
+  for screen readers) and removes
+  the `.shopping-line__detail` span («· 550 g»):
+  the weight and the word "paquetes" are
+  no longer seen. Its CSS is also
+  removed (`.
+  shopping-line__detail` and its overrides) and its reference in
+  the `is-bought` state.
+2. **A always-visible red ✕ on the right** — each row includes a
+  `.shopping-line__remove` (✕) button at the end of the
+  content, with a 1.75rem (≥ 24 px, WCAG
+  2.2 AA 2.5.8) touch
+  area and the light red `#d16a59` (AA over dark, the
+  ↺'s pattern; in the
+  light family it darkens to
+  `--stamp`). It reuses the existing
+  `data-del-key`
+  delegate, so it deletes with the same flow
+  and undo.
+3. **The hover no longer reveals the deletion state** — the
+  `@media (hover: hover)` block that
+  shifted the content on pointer
+  hover (the cause of the "red
+  marking" and of
+  the "Delete"
+  overlapping the
+  weight when pressing) is removed. Now
+  the
+  hover only marks the row (a soft `--paper-alpha-10`/`--ink-alpha-10`
+  background), like before it marked on press. The
+  keyboard is covered by
+  the ✕ (a
+  real
+  button,
+  focusable and activable).
+4. **The swipe with an extra shift deletes directly** — the
+  `SWIPE_DELETE = -112` constant is added
+  (24 px past
+  the reveal at -88): during
+  the drag the content can reach
+  -112 and the `.is-deleting` class darkens
+  the red
+  background
+  (`filter: brightness(0.85)`)
+  to communicate the threshold; on release with
+  `offset <= SWIPE_DELETE` the item eliminates
+  directly (with undo), with
+  no button to
+  press. The swipe's background's
+  "Delete" button disappears (`.shopping-line__del`
+  → a decorative `.shopping-line__swipe-icon`
+  icon with `pointer-events: none`).
+5. **The manual and the hint** — the manual's section 8.4
+  and the list's foot hint update:
+  the packages' number without
+  the
+  weight, the right's
+  ✕ and the swipe with the extra shift.
+6. **PWA**: the version bumps `20260914 → 20260915`.
 
-### Consecuencias de la iteración
+### The iteration's consequences
 
-- **Positivas**: la cantidad con paquete queda limpia (solo el
-  número, sin duplicar peso); la ✕ roja da un camino de borrado
-  evidente y accesible en escritorio; el hover deja de sugerir un
-  borrado que no ocurre; el swipe gana el patrón estándar «desliza
-  hasta el fondo para borrar» con feedback visual del umbral.
-- **Neutras**: el borrado por swipe sigue pidiendo un gesto completo
-  (revelado + desplazamiento extra), lo que conserva la protección
-  frente a borrados accidentales de la decisión original; la
-  accesibilidad por teclado pasa del botón revelado al botón ✕
-  siempre visible.
-- **Negativas**: ninguna conocida. QA PASS: paquete muestra solo el
-  número y sin peso, ✕ elimina con deshacer, el hover no revela el
-  borrado (solo marca), el swipe con desplazamiento extra elimina al
-  soltar sin pulsar, los cuatro modos de tema con contraste WCAG AA
-  y responsividad en 360 / 768 / 1280 px sin scroll horizontal.
-  Seguridad PASS: sin hallazgos (cambios 100 % presentacionales y de
-  interacción; sin tocar datos).
+- **Positive**: the package-equipped quantity becomes clean (only
+  the number, without
+  duplicating
+  the weight); the red ✕
+  gives an evident, desktop-accessible deletion
+  path; the hover stops suggesting
+  a deletion
+  that does not happen; the swipe gains the standard
+  "swipe to the end to delete" pattern with
+  visual feedback of the threshold.
+- **Neutral**: the swipe's deletion still
+  requires a full
+  gesture
+  (the reveal
+  + the extra shift), keeping
+  the accidental-deletion protection
+  of the
+  original decision; the keyboard
+  accessibility moves from the revealed
+  button to the always-visible ✕
+  button.
+- **Negative**: none known. QA PASS: the package shows
+  only
+  the number
+  and
+  without the weight, the ✕ deletes with
+  undo, the hover
+  does not reveal
+  the deletion (it only marks), the swipe with the
+  extra shift deletes on
+  release without pressing,
+  the four theme modes with WCAG AA contrast
+  and responsiveness at 360 / 768 / 1280 px without
+  horizontal scroll. Security PASS: no
+  findings (100 % presentational and of
+  interaction
+  changes; data
+  untouched).
 
-## Iteración 2 (2026-08-12): el scroll vertical no marca en rojo y la ✕ del swipe solo se ve al deslizar
+## Iteration 2 (2026-08-12): vertical scrolling does not mark in red and the swipe's ✕ only shows while swiping
 
-Comentario nuevo del usuario en la issue #225 con dos últimos
-detalles:
+A new user comment on issue #225 with two
+final
+ details:
 
 > Cuando me voy desplazando (especialmente en el móvil) se va
 > marcando en rojo (aunque no se seleccione) el ítem sobre el que he
@@ -330,106 +924,242 @@ detalles:
 > superpone a la otra que hay. Esta x solo debe ser visible con el
 > desplazamiento, no antes de desplazarse.
 
-### Decisiones de la iteración 2
+### Iteration 2's decisions
 
-1. **El scroll vertical nunca revela el fondo rojo** — el axis lock
-   (ADR-028) ya distinguía el eje, pero en `touchend` el cálculo del
-   `offset` final usaba la deriva horizontal (`deltaX`) aunque el
-   lock hubiera sido `vertical`: con una deriva de más de 44 px
-   durante un scroll de página, `snap(offset < SWIPE_OPEN/2)` dejaba
-   el ítem revelado (fondo rojo) al soltar el dedo — exactamente el
-   «marcado en rojo» que el usuario veía al desplazarse en el móvil.
-   Ahora:
-   - En `touchmove` el transform y las clases `is-revealed`/
-     `is-deleting` solo se aplican con `lock === "horizontal"` (antes
-     se aplicaban también mientras el lock estaba aún sin decidir).
-   - En `touchend`, con `lock === "vertical"` se hace `snap(false)`
-     (se cierra la línea si estaba revelada); con `lock === null`
-     (toque sin desplazamiento) no se toca el estado. Solo el gesto
-     decidido como horizontal puede revelar o borrar.
-2. **La ✕ del fondo rojo solo se ve durante el arrastre** — la ✕
-   blanca decorativa `.shopping-line__swipe-icon` pasaba de
-   `opacity: 0.9` permanente a `opacity: 0` con transición, visible
-   únicamente mientras la fila tiene la clase `.is-dragging` (activa
-   durante el gesto táctil). Así, al quedar la línea revelada solo
-   se ve la ✕ roja de eliminar (siempre visible) y no se superponen
-   dos ✕; la ✕ blanca es feedback del gesto en curso, no un segundo
-   botón (sigue con `pointer-events: none`, el borrado se dispara
-   con el desplazamiento extra o con la ✕ roja).
-3. **Manual y hint** — sección 8.4 del manual: se aclara que el
-   gesto debe ser horizontal (desplazar la lista arriba/abajo no
-   marca ninguna línea) y que la ✕ del fondo rojo solo se ve mientras
-   se desliza.
-4. **PWA**: bump de versión `20260915 → 20260916`.
+1. **Vertical scrolling never reveals the red background** — the axis
+  lock
+  (ADR-028) already distinguished the
+  axis, but in `touchend` the
+  final
+  `offset` computation used the horizontal drift
+  (`deltaX`) even when
+  the
+  lock had been
+  `vertical`: with
+  a
+  drift of
+  more
+  than
+  44
+  px during
+  a
+  page
+  scroll, the
+  `snap(offset < SWIPE_OPEN/2)` left
+  the
+  item revealed
+  (the
+  red
+  background) on finger release — exactly the "marked
+  in
+  red" the user saw when scrolling
+  on the
+  mobile. Now:
+   - In `touchmove` the
+      transform and the
+      classes `is-revealed`/
+      `is-deleting` only apply with
+      `lock === "horizontal"`
+      (previously they also applied while the
+      lock was still
+      undecided).
+   - In `touchend`, with
+      `lock === "vertical"` it does the
+      `snap(false)` (it closes the
+      row
+      if revealed); with
+      `lock === null`(a
+      tap without
+      shift) it touches
+      not the
+      state. Only the
+      gesture decided
+      as horizontal can reveal
+      or delete.
+2. **The red background's ✕ only shows during the drag** — the
+   decorative
+   white
+   ✕ `.shopping-line__swipe-icon` went
+   from
+   a
+   permanent
+   `opacity: 0.9`
+   to
+   the
+   `opacity: 0` with
+   a
+   transition, visible
+   only while the
+   row carries
+   the
+   `.is-dragging` class
+   (active
+   during the
+   touch
+   gesture). Thus, once the
+   row is
+   revealed only the red
+   ✕ of
+   deletion
+   (always visible)
+   is
+   seen and two
+   ✕s do not overlap; the
+   white
+   ✕ is the
+   ongoing
+   gesture's
+   feedback, not a
+   second
+   button (it keeps
+   its
+   `pointer-events: none`, the
+   deletion fires
+   with
+   the
+   extra
+   shift or
+   with
+   the
+   red
+   ✕).
+3. **The manual and the hint** — the manual's
+   section 8.4:
+   it clarifies that the
+   gesture must be horizontal
+   (scrolling
+   the list up/down marks
+   no
+   row) and that the
+   red
+   background's ✕ only shows while
+   swiping.
+4. **PWA**: the version bumps `20260915 → 20260916`.
 
-### Consecuencias de la iteración 2
+### Iteration 2's consequences
 
-- **Positivas**: al hacer scroll en el móvil ninguna línea queda
-  marcada en rojo ni se revela accidentalmente (el gesto solo
-  reacciona a la deriva horizontal decidida por el axis lock); la
-  línea revelada muestra una única ✕ (la roja de eliminar), sin la
-  blanca decorativa superpuesta.
-- **Neutras**: la ✕ blanca ya no acompaña a la línea revelada en
-  reposo; el borrado por swipe y por ✕ roja conservan su
-  comportamiento.
-- **Negativas**: ninguna conocida. QA PASS: scroll vertical con
-  deriva horizontal no revela ni borra, el swipe horizontal sigue
-  revelando y borrando con el desplazamiento extra, la ✕ blanca solo
-  aparece durante el arrastre y la línea revelada muestra una sola ✕,
-  los cuatro modos de tema con contraste WCAG AA y responsividad en
-  360 / 768 / 1280 px sin scroll horizontal. Seguridad PASS: sin
-  hallazgos (cambios 100 % presentacionales y de interacción; sin
-  tocar datos).
+- **Positive**: on mobile
+  scroll no
+  row stays
+  marked in red nor accidentally revealed (the gesture only
+  reacts to the horizontal drift the axis lock decided);
+  the
+  revealed
+  row shows a single ✕ (the red
+  deletion one),
+  without
+  the
+  white
+  decorative one overlapping.
+- **Neutral**: the white
+  ✕ no longer
+  accompanies the
+  revealed
+  row at rest; the swipe and red ✕
+  deletions keep their behavior.
+- **Negative**: none known. QA PASS: a vertical
+  scroll with
+  a
+  horizontal
+  drift neither reveals nor deletes, the
+  horizontal
+  swipe keeps revealing and
+  deleting with the extra shift, the
+  white
+  ✕ only appears during the drag and
+  the
+  revealed
+  row shows a single ✕, the
+  four theme modes with
+  WCAG AA contrast and responsiveness at
+  360 / 768 / 1280 px with no
+  horizontal scroll. Security PASS: no
+  findings (100 %
+  presentational and interaction
+  changes; data
+  untouched).
 
-## Iteración 3 (2026-08-13): sin halo rojo en las esquinas de los ítems y marcado hover sin velo rojo
+## Iteration 3 (2026-08-13): no red halo on the items' corners and a hover marking without the red veil
 
-Comentario nuevo del usuario en la issue #225 con un último detalle
-visual:
+A new user comment on issue #225 with one
+last
+ visual
+ detail:
 
 > Los items de la lista, se ve ligeramente en rojo las esquinas
 > redondeadas de cada ítem.
 
-**Causa raíz:** `.shopping-line-wrap` tiene el fondo rojo del swipe
-(`--stamp`, y `--stamp-dark` en negro puro) con
-`border-radius: var(--radius)` (3 px) y `overflow: hidden`;
-`.shopping-line__content` ocupaba el wrap 1:1 con el **mismo**
-`border-radius: var(--radius)`. Dos radios idénticos apilados → el
-anti-aliasing de la esquina redondeada del contenido se fundía con el
-rojo de detrás → halo rojo subpixel en las esquinas redondeadas de
-cada ítem en reposo.
+**Root cause:** `.shopping-line-wrap`
+ has
+ the
+ swipe's red background
+ (`--stamp`, and
+  `--stamp-dark` in pure black) with
+ `border-radius: var(--radius)` (3 px) and
+ `overflow: hidden`;
+ the
+ `.shopping-line__content` occupied the wrap 1:1 with
+ the
+ **same**
+ `border-radius: var(--radius)`. Two identical
+ radii stacked →
+ the
+ content's rounded corner's anti-aliasing melted
+ with the red behind → a
+ subpixel red halo
+ on
+ the
+ rest
+ state's rounded corners in all four theme modes.
 
-### Decisiones de la iteración 3
+### Iteration 3's decisions
 
-1. **Sin radio duplicado en el contenido** — `.shopping-line__content`
-   pierde `border-radius: var(--radius)`: las esquinas ya las recorta
-   el wrap (`overflow: hidden` + `border-radius`), así que el
-   redondeo visual se conserva y el halo rojo desaparece en los
-   cuatro modos.
-2. **Marcado hover sin velo rojo** — el hover pasaba de
-   `background: var(--paper-alpha-10)` (translúcido → dejaba ver el
-   rojo del swipe de detrás y teñía la línea, percibiéndose «como
-   para eliminar», el efecto que el usuario ya rechazó en la
-   iteración 1) a `box-shadow: inset 0 0 0 999px <alpha>`, que se
-   pinta ENCIMA del fondo base `--ink-raised` sin reemplazarlo:
-   mismo marcado neutro, sin transparentar el rojo. Aplicado en las
-   3 reglas: oscura (`--paper-alpha-10`), agrupada light/white
-   (`--ink-alpha-10`) y negro puro (`--paper-alpha-10`).
-3. **PWA**: bump de versión `20260916 → 20260917`.
+1. **No duplicated radius on the content** — `.shopping-line__content`
+   loses `border-radius: var(--radius)`: the wrap already
+   clips the corners (`overflow: hidden` + the
+   radius), so the visual rounding is kept and the
+   red halo disappears in the four modes.
+2. **A hover marking without the red veil** — the hover went to
+   `background: var(--paper-alpha-10)` (translucent → it let
+  the swipe's red behind show and
+  tinted
+   the row, being
+   perceived as "as if for
+   deletion", the effect the user already rejected
+   in iteration 1) to `box-shadow: inset 0 0 0 999px <alpha>`, which paints
+   ON TOP of the
+   base `--ink-raised` background without
+  replacing it: the same neutral marking,
+  without
+   without letting the red show through. Applied
+   in the 3 rules: dark (`--paper-alpha-10`), the
+   grouped light/white (`--ink-alpha-10`) and
+   pure black (`--paper-alpha-10`).
+3. **PWA**: the version bumps `20260916 → 20260917`.
 
-### Consecuencias de la iteración 3
+### Iteration 3's consequences
 
-- **Positivas**: los ítems en reposo ya no muestran esquinas con halo
-  rojo y el hover marca la línea con un fundido neutro (nunca «rojo
-  de borrar»).
-- **Neutras**: ninguna — cambio 100 % presentacional, sin cambios de
-  comportamiento; el manual 8.4 ya describe correctamente que solo el
-  gesto horizontal revela el rojo.
-- **Negativas**: ninguna conocida. QA PASS (qa-reviewer): los 4 modos
-  de tema con contraste WCAG AA (los alfas son los mismos que antes),
-  sin scroll horizontal, sin regresiones en swipe/✕/paquetes/
-  multi-semana; la sombra inset se pinta bajo el borde, el
-  `border-left` ocre de `--hogar` y los hijos (stepper, ✕) quedan
-  intactos. Seguridad PASS (security-champion): sin hallazgos
-  (0 HIGH/MEDIUM/LOW).
+- **Positive**: the resting items no longer show
+  corners with a red halo and the hover marks the row with a neutral
+  fade (never a "red deletion"
+  look).
+- **Neutral**: none — a 100 % presentational change, with no
+  behavior changes; the manual 8.4 already correctly describes that
+  only the horizontal gesture reveals the red.
+- **Negative**: none known. QA PASS (qa-reviewer): the 4 theme modes
+  with WCAG AA contrast (the
+  alphas being the same as before),
+  with no
+  horizontal scroll, no regressions in swipe/✕/packages/
+  multi-week; the inset shadow paints under
+  the
+  border, the
+  `--hogar`'s ochre
+  `border-left` and
+  the children (stepper,
+  ✕) stay intact. Security PASS
+  (security-champion): no
+  findings (0
+  HIGH/MEDIUM/LOW).
 
 Related issue: #225 (https://github.com/gonzalitojh/Registro-personal/issues/225)

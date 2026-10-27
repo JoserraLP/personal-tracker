@@ -1,24 +1,24 @@
-# ADR-008: Exportación e importación de copia de seguridad JSON
+# ADR-008: JSON backup export and import
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Contexto
-Los usuarios de "Mi Registro" acumulan datos personales en Firestore
-(películas, series, libros, perfil, notificaciones) sin ninguna forma
-de obtener una copia de seguridad de los mismos. Si un usuario quería
-respaldar su información, no tenía forma de hacerlo desde la interfaz.
+## Context
+Users of "Mi Registro" accumulate personal data in Firestore
+(movies, series, books, profile, notifications) with no way
+to obtain a backup of it. If a user wanted
+to back up their information, there was no way to do it from the interface.
 
-Además, la aplicación no ofrecía mecanismo alguno para migrar datos
-entre cuentas o restaurar información en caso de pérdida accidental.
+Additionally, the application offered no mechanism whatsoever to migrate data
+between accounts or restore information in case of accidental loss.
 
-## Decisión
-Implementar un módulo de exportación e importación de datos en formato
-JSON, accesible desde una nueva pestaña "Datos" dentro de la vista de
-perfil del usuario.
+## Decision
+Implement a data export and import module in JSON
+format, accessible from a new "Data" tab inside the user's
+profile view.
 
-### Formato del archivo de respaldo
-El archivo JSON exportado sigue esta estructura:
+### Backup file format
+The exported JSON file follows this structure:
 
 ```json
 {
@@ -40,99 +40,97 @@ El archivo JSON exportado sigue esta estructura:
 }
 ```
 
-### Estrategia de exportación
-1. El usuario hace clic en "Exportar copia de seguridad" desde la
-   pestaña "Datos" del perfil.
-2. Se recopilan todos los datos mediante lecturas simples de Firestore
-   (`getItemsOnce` para películas, series y libros; `getUserProfile`
-   para el perfil; y la lista en memoria de notificaciones).
-3. Se construye un objeto JSON con metadatos (fecha, versión, usuario)
-   y los datos organizados por categorías.
-4. Se serializa con `JSON.stringify(backup, null, 2)` para producir un
-   archivo legible.
-5. Se descarga mediante un enlace temporal (`Blob` + `URL.createObjectURL`).
+### Export strategy
+1. The user clicks "Export backup" from the "Data"
+   tab of the profile.
+2. All the data is collected via simple Firestore reads
+   (`getItemsOnce` for movies, series and books; `getUserProfile`
+   for the profile; and the in-memory list of notifications).
+3. A JSON object is built with metadata (date, version, user)
+   and the data organized by category.
+4. It is serialized with `JSON.stringify(backup, null, 2)` to produce a
+   readable file.
+5. It is downloaded via a temporary link (`Blob` + `URL.createObjectURL`).
 
-### Estrategia de importación
-1. El usuario hace clic en "Importar copia de seguridad".
-2. Un diálogo `confirm()` solicita confirmación antes de proceder.
-3. Se abre un selector de archivos para elegir un JSON previamente
-   exportado.
-4. Se valida la estructura (versión mayor ≥ 1, presencia de `data`).
-5. Se restauran los datos en Firestore en este orden:
-   - Perfil del usuario (mediante `upsertUserProfile`)
-   - Películas (mediante `addItem` con tipo "movie")
-   - Series (mediante `addItem` con tipo "tv")
-   - Libros (mediante `addItem` con tipo "book")
-   - Notificaciones (mediante `addNotification`)
-6. Cada elemento se inserta como un nuevo documento (los IDs viejos
-   se descartan), y Firestore asigna nuevos `addedAt`/`updatedAt`
-   mediante `serverTimestamp()`.
-7. Se muestra un toast con el número total de elementos restaurados
-   y cualquier error ocurrido.
+### Import strategy
+1. The user clicks "Import backup".
+2. A `confirm()` dialog asks for confirmation before proceeding.
+3. A file picker opens to choose a previously exported JSON.
+4. The structure is validated (major version ≥ 1, presence of `data`).
+5. The data is restored into Firestore in this order:
+   - User profile (via `upsertUserProfile`)
+   - Movies (via `addItem` with type "movie")
+   - Series (via `addItem` with type "tv")
+   - Books (via `addItem` with type "book")
+   - Notifications (via `addNotification`)
+6. Each element is inserted as a new document (old IDs are
+   discarded), and Firestore assigns new `addedAt`/`updatedAt`
+   via `serverTimestamp()`.
+7. A toast is shown with the total number of restored elements
+   and any errors that occurred.
 
-### Ubicación en la interfaz
-La funcionalidad se encuentra en la vista de perfil, bajo una nueva
-pestaña "Datos", junto a las existentes "Estadísticas" y "Amigos".
-Se muestran dos tarjetas independientes: una para exportar y otra
-para importar.
+### Placement in the interface
+The feature lives in the profile view, under a new
+"Data" tab, next to the existing "Statistics" and "Friends" tabs.
+Two independent cards are shown: one for exporting and one
+for importing.
 
-### Arquitectura
+### Architecture
 ```
-js/export-backup.js          → Nuevo módulo con exportBackup(),
-                                importBackup() y setupExportBackup()
-js/profile.js                → Modificado: importa y llama a
-                                setupExportBackup(ctx)
-index.html                   → Modificado: añade subtab "Datos" y
-                                sección #profile-section-data
-css/styles.css               → Modificado: añade estilos .data-card
+js/export-backup.js          → New module with exportBackup(),
+                               importBackup() and setupExportBackup()
+js/profile.js                → Modified: imports and calls
+                               setupExportBackup(ctx)
+index.html                   → Modified: adds the "Data" subtab and
+                               section #profile-section-data
+css/styles.css               → Modified: adds .data-card styles
 ```
 
-### Alternativas descartadas
+### Rejected alternatives
 
-- **Exportación automática periódica**: Se descartó porque la
-  aplicación no tiene un backend propio que pueda programar tareas;
-  depender de Firebase Functions añadiría complejidad innecesaria.
-- **Integración con Google Drive/OneDrive**: El valor añadido no
-  justifica la complejidad de OAuth adicional y gestión de tokens.
-- **Botón de exportación en el header**: Se prefirió ubicarlo en el
-  perfil porque es donde el usuario gestiona su información personal.
-- **Importación con reemplazo de datos existentes**: Se optó por
-  "solo añadir" para evitar pérdidas accidentales de datos. Si el
-  usuario quiere reemplazar, debe borrar manualmente antes de importar.
-- **Formato CSV/u otros formatos**: JSON es el formato nativo de
-  Firestore y permite preservar la estructura completa de los datos.
+- **Automatic periodic export**: Rejected because the
+  application has no backend of its own that can schedule jobs;
+  depending on Firebase Functions would add unnecessary complexity.
+- **Google Drive/OneDrive integration**: The added value does not
+  justify the complexity of additional OAuth and token management.
+- **Export button in the header**: It was preferred to place it in the
+  profile because that is where the user manages their personal information.
+- **Import replacing existing data**: "Add only" was chosen to avoid accidental data loss. If the
+  user wants to replace, they must delete manually before importing.
+- **CSV or other formats**: JSON is Firestore's native format
+  and allows preserving the complete structure of the data.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- Los usuarios pueden descargar una copia de seguridad completa de
-  sus datos con un solo clic.
-- La importación permite restaurar datos de forma controlada, con
-  confirmación y validación del formato.
-- No se requieren permisos adicionales ni APIs externas.
-- El archivo JSON es legible y portable.
+### Positive
+- Users can download a complete backup of
+  their data with a single click.
+- Importing allows restoring data in a controlled way, with
+  confirmation and format validation.
+- No additional permissions or external APIs are required.
+- The JSON file is readable and portable.
 
-### Negativas
-- La importación es secuencial (un documento a la vez), por lo que
-  restaurar conjuntos de datos muy grandes (>500 elementos) puede
-  tomar varios segundos.
-- No se conservan los IDs originales de Firestore; los elementos
-  importados reciben nuevos IDs generados por Firestore.
-- La importación no verifica duplicados: si se importa el mismo
-  archivo dos veces, los elementos se duplican.
+### Negative
+- Import is sequential (one document at a time), so
+  restoring very large datasets (>500 items) can
+  take several seconds.
+- Original Firestore IDs are not preserved; imported
+  items receive new IDs generated by Firestore.
+- Import does not check for duplicates: if the same
+  file is imported twice, items are duplicated.
 
-### Neutras
-- Se añade un nuevo archivo JS de ~210 líneas (`export-backup.js`).
-- La API de Firestore se usa para lecturas (`getItemsOnce`) y
-  escrituras (`addItem`) que ya existían en el proyecto.
-- La funcionalidad de importación incluye una llamada a
-  `ctx.upsertUserProfile` que ya estaba disponible en el contexto.
+### Neutral
+- A new JS file of ~210 lines is added (`export-backup.js`).
+- The Firestore API is used for reads (`getItemsOnce`) and
+  writes (`addItem`) that already existed in the project.
+- The import feature includes a call to
+  `ctx.upsertUserProfile` that was already available in the context.
 
-## Archivos creados/modificados
-- `js/export-backup.js` — Nuevo: módulo con exportación e importación
-  de copias de seguridad (213 líneas).
-- `js/profile.js` — Modificado: añadida importación y llamada a
-  `setupExportBackup`, gestión de la nueva sección "Datos".
-- `index.html` — Modificado: añadido subtab "Datos" y sección
-  `#profile-section-data` con las tarjetas de exportar/importar.
-- `css/styles.css` — Modificado: añadidos estilos `.data-card`.
+## Files created/modified
+- `js/export-backup.js` — New: module with backup export and
+  import (213 lines).
+- `js/profile.js` — Modified: added import and call to
+  `setupExportBackup`, handling of the new "Data" section.
+- `index.html` — Modified: added the "Data" subtab and section
+  `#profile-section-data` with the export/import cards.
+- `css/styles.css` — Modified: added `.data-card` styles.

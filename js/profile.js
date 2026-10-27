@@ -1,7 +1,7 @@
 // =============================================================
-// Perfil, estadísticas y amigos. Extraído de app.js.
-// Maneja la vista de perfil con gráficas (Chart.js) y la sección
-// de amigos (lista + detalle de solo lectura).
+// Profile, statistics and friends. Extracted from app.js.
+// Handles the profile view with charts (Chart.js) and the friends
+// section (list + read-only detail).
 // =============================================================
 
 import { normalizeEntry } from "./tv-progress.js";
@@ -19,9 +19,9 @@ let statusChart = null;
 let genreChart = null;
 let platformChart = null;
 
-// Normaliza una fecha (string YYYY-MM-DD o Timestamp de Firestore) a
-// string YYYY-MM-DD; devuelve null si no es válida (mismo patrón que
-// maybePushDateEvent de activity-feed.js, issue #174).
+// Normalizes a date (string YYYY-MM-DD or Firestore Timestamp) to
+// string YYYY-MM-DD; returns null if invalid (same pattern as
+// maybePushDateEvent from activity-feed.js, issue #174).
 function toDateStr(date) {
   if (!date) return null;
   if (typeof date === "object" && date.toDate) {
@@ -110,10 +110,11 @@ function computeStats(filter, ctx) {
     });
   });
 
-  // Videojuegos (issue #174): la fecha efectiva de una sesión es
-  // finishedAt ?? startedAt (una sola fecha por sesión, evita doble
-  // conteo). Fallback: si el juego está completado y no tiene sesiones
-  // en el periodo, se cuenta con su updatedAt si cae en el periodo.
+  // Video games (issue #174): the effective date of a session is
+  // finishedAt ?? startedAt (a single date per session, avoids double
+  // counting). Fallback: if the game is completed and has no sessions
+  // in the period, it is counted with its updatedAt if it falls
+  // within the period.
   let gamesPlayed = 0;
   let gamesCompleted = 0;
   let gameSessions = 0;
@@ -141,9 +142,10 @@ function computeStats(filter, ctx) {
       playedInPeriod = true;
     }
     if (g.status === "completado") {
-      // Un juego completado cuenta en el periodo si la ÚLTIMA sesión
-      // terminada cae en el periodo (el momento de completado es el fin
-      // de la última partida); fallback a updatedAt si no hay sesiones.
+      // A completed game counts in the period if the LAST finished
+      // session falls in the period (the completion moment is the end
+      // of the last session); fallback to updatedAt if there are no
+      // sessions.
       const finishedDates = (g.playLog || [])
         .map((entry) => toDateStr(entry.finishedAt))
         .filter(Boolean)
@@ -193,8 +195,8 @@ function computeStats(filter, ctx) {
   };
 }
 
-// Formatea horas a "X h" o "X,Y h" (coma decimal, 1 decimal); si no es
-// un número finito muestra "0 h".
+// Formats hours as "X h" or "X,Y h" (decimal comma, 1 decimal); if it is
+// not a finite number it shows "0 h".
 function formatHours(h) {
   if (!Number.isFinite(h)) return "0 h";
   const rounded = Math.round(h * 10) / 10;
@@ -253,8 +255,8 @@ function renderStats(filter, ctx) {
     options: { responsive: true },
   });
 
-  // Top 6 de géneros y plataformas de los juegos jugados en el periodo
-  // (barras horizontales; paleta de variables de tema, sin hex).
+  // Top 6 of genres and platforms of the games played in the period
+  // (horizontal bars; palette of theme variables, no hex).
   function topN(counts, n = 6) {
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
@@ -310,17 +312,18 @@ export function setupProfile(ctx) {
   const statsRangeStart = document.getElementById("stats-range-start");
   const statsRangeEnd = document.getElementById("stats-range-end");
 
-  /* ---------- Apertura de secciones del perfil ---------- */
+  /* ---------- Opening of profile sections ---------- */
 
-  // Abre una sección del perfil. Cuando la llamada viene del router
-  // (fromRouter: true, p. ej. recarga directa en #/perfil/...) NO se
-  // vuelve a navegar (evita bucle); desde la UI sí se sincroniza la
-  // URL con navigate().
+  // Opens a section of the profile. When the call comes from the
+  // router (fromRouter: true, e.g. direct reload at #/perfil/...) it
+  // does NOT navigate again (avoids a loop); from the UI the URL is
+  // synced with navigate().
   function openProfileSection(section, ctx, opts = {}) {
     const { fromRouter = false } = opts;
     if (!fromRouter) {
-      // Navegación por la UI: el hash se sincroniza (navigate() no-op
-      // si ya estamos en la ruta canónica, así no hay doble ejecución).
+      // UI navigation: the hash is synced (navigate() is a no-op if
+      // we are already on the canonical route, so there is no double
+      // execution).
       navigate({ section: "perfil", profileSection: section });
     }
     document.getElementById("app").classList.add("hidden");
@@ -344,7 +347,7 @@ export function setupProfile(ctx) {
     }
   }
 
-  /* ---------- Dropdown del menú de perfil ---------- */
+  /* ---------- Profile menu dropdown ---------- */
 
   const profileMenuWrap = document.querySelector(".profile-menu-wrap");
   const profileDropdown = document.getElementById("profile-dropdown");
@@ -386,9 +389,10 @@ export function setupProfile(ctx) {
     }
   });
 
-  // Clas de perfil y subtabs: la UI solo navega (el hash cambia y el
-  // router, vía openProfileSection con fromRouter, hace el render).
-  // Así la URL es la única fuente de verdad y no hay doble trabajo.
+  // Profile and subtabs menu: the UI only navigates (the hash changes
+  // and the router, via openProfileSection with fromRouter, does the
+  // render). This way the URL is the single source of truth and there
+  // is no double work.
   profileDropdown.querySelectorAll("[data-section]").forEach((item) => {
     item.addEventListener("click", () => {
       closeProfileDropdown();
@@ -401,33 +405,33 @@ export function setupProfile(ctx) {
     logout();
   });
 
-  // Flecha de volver del perfil (issue #206, iteración 2026-08-11): el
-  // perfil vuelve a tener su cabecera propia con la flecha y las
-  // pestañas en la misma fila; la cabecera global no aparece aquí.
-  // Cierra la vista (toggle manual: cubre el caso de navegar sin
-  // cambiar el hash) y vuelve a la última sección de primer nivel en
-  // la que estuviera el usuario (Ocio, Recetas o Gimnasio, issues
-  // #213 y #268) con su última pestaña activa (normalizada a la
-  // primera visible si esa pestaña quedó oculta, issue #97). El
-  // onRoute del router se encarga de mostrar de nuevo la cabecera
-  // global y la vista.
+  // Profile back arrow (issue #206, iteration 2026-08-11): the
+  // profile gets back its own header with the arrow and the tabs in
+  // the same row; the global header does not appear here.
+  // It closes the view (manual toggle: covers the case of navigating
+  // without changing the hash) and returns to the last top-level
+  // section the user was in (Ocio, Recetas or Gimnasio, issues
+  // #213 and #268) with its last active tab (normalized to the
+  // first visible one if that tab got hidden, issue #97). The
+  // onRoute of the router takes care of showing the global header
+  // and the view again.
   document.getElementById("btn-close-profile").addEventListener("click", () => {
     document.getElementById("profile-view").classList.add("hidden");
     if (getLastSection() === "recetas") {
-      // Rama Recetas: navegar cambia el hash (#/perfil → #/recetas) y
-      // dispara onRoute → openRecipes, que ya oculta #app y
-      // #profile-view y destapa #recipes-view con su pestaña.
+      // Recetas branch: navigating changes the hash (#/perfil → #/recetas)
+      // and fires onRoute → openRecipes, which already hides #app and
+      // #profile-view and uncovers #recipes-view with its tab.
       navigate({ section: "recetas", tab: normalizeTabKey("recetas", getLastRecipesTab()) });
     } else if (getLastSection() === "gimnasio") {
-      // Rama Gimnasio (issue #268): navegar cambia el hash
-      // (#/perfil → #/gimnasio) y dispara onRoute → openGym, que ya
-      // oculta #app y #profile-view y destapa #gym-view con su
-      // pestaña (mismo patrón que la rama Recetas, issue #213).
+      // Gimnasio branch (issue #268): navigating changes the hash
+      // (#/perfil → #/gimnasio) and fires onRoute → openGym, which
+      // already hides #app and #profile-view and uncovers #gym-view
+      // with its tab (same pattern as the Recetas branch, issue #213).
       navigate({ section: "gimnasio", tab: normalizeTabKey("gimnasio", getLastGymTab()) });
     } else {
-      // Rama Ocio: comportamiento actual (mostrar #app antes de
-      // navegar; el onRoute de Ocio activa la pestaña y re-muestra la
-      // cabecera global).
+      // Ocio branch: current behavior (show #app before navigating;
+      // the Ocio onRoute activates the tab and re-shows the global
+      // header).
       document.getElementById("app").classList.remove("hidden");
       navigate(normalizeTabKey("ocio", getLastOcioKey()));
     }
@@ -447,7 +451,7 @@ export function setupProfile(ctx) {
     if (statsRangeStart.value && statsRangeEnd.value) renderStats(getCurrentStatsFilter(), ctx);
   });
 
-  // Inicializar botones de exportación/importación de datos
+  // Initialize data export/import buttons
   setupExportBackup(ctx);
   setupExportIcs(ctx);
   setupTvTimeImport(ctx);

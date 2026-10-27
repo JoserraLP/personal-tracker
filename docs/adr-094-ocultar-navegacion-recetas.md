@@ -1,184 +1,446 @@
-# ADR-094: Auto-ocultado de cabecera y pestañas en la sección de Recetas (issue #256)
+# ADR-094: The Recipes section's header and tabs auto-hiding (issue #256)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #256 (type: style) pide que, en la sección de **Recetas**, al
-desplazarse **hacia abajo** se oculten las **pestañas** y la **barra
-superior**, y aparezca un botón de **volver arriba**; al desplazarse
-**hacia arriba**, reaparecen. El comportamiento ya existe en la sección
-de **Ocio** (issue #137, ADR-060) y debe estar en **todas las
-secciones de la web**; por ahora solo Ocio y Recetas.
+Issue #256 (type: style) asks that on the
+**Recipes** section, when
+ scrolling **down**, the
+ **tabs** and the
+ **top bar**
+ hide, and a
+ **back to the top**
+ button appears; when
+ scrolling
+ **up**,
+ they
+ reappear. The
+ behavior already exists on the
+ **Ocio**
+ section (issue #137, ADR-060)
+ and must be on
+ **all the
+ web's
+ sections**;
+ for now only
+ Ocio and
+ Recipes.
 
-Estado previo:
+Previous state:
 
-- **Ocio** (issue #137, ADR-060): `js/auto-hide-nav.js` oculta la
-  cabecera global (`body.is-nav-hidden .app-header`) y la barra de
-  pestañas (`body.is-nav-hidden .tabs--bar`) al bajar por las listas,
-  y muestra el botón flotante «Volver arriba»
-  (`body.is-back-to-top-visible .back-to-top`) cuando los filtros
-  (`.library-controls` del panel activo) quedan fuera de vista. El
-  CSS usa **selectores genéricos sobre `body`**, sin distinguir
-  sección.
-- **Recetas** tiene, desde ADR-078 (issue #208), su **propia
-  `nav.tabs--bar`** como primer hijo de `#recipes-view`, con la misma
-  clase que la de Ocio. `#recipes-view` es una vista de primer nivel
-  **hermana de `profile-view` y fuera de `#app`** (issue #64,
-  ADR-076); cuando está visible, **`#app` está oculta** (es el estado
-  normal en Recetas).
-- ADR-077 (issue #206) documentó que el auto-ocultado quedaba
-  **restringido a las listas de Ocio** («en Recetas la cabecera es
-  fija»); el manual de usuario (§3.2) decía lo mismo.
-- **Por qué no funcionaba en Recetas**: el guard `activePanel()` solo
-  resolvía `#app:not(.hidden) .panel:not(.hidden)`, que en Recetas es
-  `null` (porque `#app` está oculta); además, `isInteracting()`
-  devolvía `true` siempre que `#app` tuviese `.hidden` — condición
-  **permanente** en la vista de Recetas —, así que la navegación
-  nunca se ocultaba. El `MutationObserver` tampoco vigilaba
-  `#recipes-view` ni sus secciones, y `updateBackToTop()` solo
-  buscaba `.library-controls`.
+- **Ocio**
+  (issue #137, ADR-060):
+  the
+  `js/auto-hide-nav.js`
+  hides
+  the
+  global
+  header
+  (the
+  `body.is-nav-hidden .app-header`)
+  and the
+  tab bar (the
+  `body.is-nav-hidden .tabs--bar`)
+  when scrolling
+  down
+  the
+  lists, and shows the floating
+  "Back to the top"
+  button (the
+  `body.is-back-to-top-visible .back-to-top`) when the
+  filters (the
+  active panel's
+  `.library-controls`)
+  are
+  out of view. The CSS uses the
+  **generic
+  selectors over the
+  `body`**, with no
+  section
+  distinction.
+- **Recipes** has, since
+  ADR-078
+  (issue
+  #208),
+  its
+  **own
+  `nav.tabs--bar`**
+  as the
+  first
+  child of
+  the
+  `#recipes-view`,
+  with the
+  same
+  class as Ocio's. The
+  `#recipes-view`
+  is a
+  top
+  level
+  **sister of the profile-view and outside
+  the
+  `#app`**
+  (issue #64, ADR-076);
+  when visible, **the
+  `#app` is hidden**
+  (the Recipes
+  view's normal
+  state).
+- ADR-077
+  (issue #206)
+  documented that the auto-hiding
+  was
+  **restricted
+  to
+  Ocio's lists**
+  ("in
+  Recipes the header is
+  fixed"); the
+  user's manual (the
+  §3.2)
+  said the same.
+- **Why it did not work in Recipes**: the
+  `activePanel()`
+  guard
+  only
+  resolved
+  the
+  `#app:not(.hidden) .panel:not(.hidden)`,
+  which
+  in Recipes is the
+  `null`
+  (because
+  the
+  `#app`
+  is hidden);
+  besides, the
+  `isInteracting()`
+  returned
+  `true`
+  whenever the
+  `#app`
+  had the
+  `.hidden`
+  — a
+  **permanent**
+  condition on the
+  Recipes view —,
+  so the
+  navigation was never
+  hidden. The
+  `MutationObserver`
+  did not watch the
+  `#recipes-view`
+  nor its
+  sections either, and the
+  `updateBackToTop()`
+  only looked for the
+  `.library-controls`.
 
-La implementación está validada (QA PASS) y escaneada (seguridad
-PASS, 0 hallazgos); el manual de usuario se actualizó en la misma
-tarea (regla 3 de AGENTS.md, commits de docs de esta rama). Este ADR
-documenta la decisión a posteriori, como los recientes (ADR-093).
+The implementation is validated
+  (a
+  QA PASS) and scanned
+  (a
+  security
+  PASS,
+  0 findings); the user manual updated in the
+  same task
+  (the
+  AGENTS.md's rule 3, the docs
+  commits of this branch). This ADR
+  documents the decision retrospectively,
+  like the recent ones
+  (the
+  ADR-093).
 
 Related issue: #256 — https://github.com/gonzalitojh/Registro-personal/issues/256
 
-## Decisión
+## Decision
 
-Extender **`js/auto-hide-nav.js`** (la única fuente de verdad del
-auto-ocultado) para que resuelva también el panel activo de Recetas,
-**sin tocar CSS**: los selectores de ocultación (`body.is-nav-hidden
-.app-header`, `body.is-nav-hidden .tabs--bar`,
-`body.is-back-to-top-visible .back-to-top`) son genéricos y la barra
-de Recetas usa la misma clase `tabs--bar` (ADR-078), por lo que las
-reglas existentes aplican automáticamente.
+Expand **`js/auto-hide-nav.js`**
+(the
+auto-hiding's
+single source of truth)
+so it also resolves
+Recipes'
+active panel,
+**without touching the CSS**: the
+hiding selectors (the
+`body.is-nav-hidden .app-header`,
+the
+`body.is-nav-hidden .tabs--bar`, the
+`body.is-back-to-top-visible .back-to-top`)
+are generic and the
+Recipes bar uses the same
+`tabs--bar` class (ADR-078), so the
+existing rules
+apply
+automatically.
 
-### 1. `activePanel()`: resolución en dos vistas
+### 1. The `activePanel()`: a resolution across two views
 
-- Si `#app` está visible → panel de ocio activo
-  (`#app .panel:not(.hidden)`), como hasta ahora.
-- Si `#app` está oculta pero `#recipes-view` está visible → la
-  **sección activa de Recetas** (`#recipes-view .recipes-view__body
-  section:not(.hidden)`); las pestañas de Recetas son `<section>`
-  hermanas dentro de `.recipes-view__body` y la activa es la única
-  sin `.hidden`.
-- En cualquier otro caso (pantalla de acceso, perfil/ajustes) →
-  `null`: allí la ocultación por scroll no aplica.
+- If the
+  `#app`
+  is visible → the
+  active ocio
+  panel
+  (the
+  `#app .panel:not(.hidden)`),
+  as until now.
+- If the
+  `#app`
+  is hidden
+  but the
+  `#recipes-view`
+  is visible → the
+  **active Recipes
+  section**
+  (the
+  `#recipes-view .recipes-view__body section:not(.hidden)`); the Recipes
+  tabs are sibling
+  `<section>`s inside the
+  `.recipes-view__body` and the active one is
+  the
+  only
+  one without the
+  `.hidden`.
+- In any other
+  case
+  (the
+  access
+  screen, the profile/settings) → the
+  `null`: there the scroll-hiding does not
+  apply.
 
-### 2. `isInteracting()`: el guard de `#app` oculta desaparece
+### 2. The `isInteracting()`: the hidden `#app`'s guard
+  disappears
 
-- Se **elimina** el bloqueo «`#app` oculta → interactuando». En
-  Recetas `#app` oculta es el caso normal; basta el guard
-  `!activePanel()` (que devuelve `null` en acceso y perfil/ajustes,
-  y también cuando `#recipes-view` está oculta).
-- **Nuevo guard** para los paneles de filtros de Recetas
-  (`.recipes-filter__panel:not(.hidden)`,
-  `.ingredients-filter__panel:not(.hidden)`): en móvil se anclan al
-  viewport **bajo la cabecera** (`top: var(--header-h)`), así que
-  ocultarla los dejaría descolgados — mismo patrón que los dropdowns
-  de la cabecera.
+- The "the
+  hidden
+  `#app` →
+  interacting" block is
+  **removed**. In Recipes the hidden
+  `#app`
+  is the normal
+  case;
+  the
+  `!activePanel()`
+  guard is enough
+  (it returns
+  the
+  `null`
+  on
+  the
+  access
+  and profile/settings, and
+  also when the
+  `#recipes-view`
+  is hidden).
+- **A new guard** for
+  Recipes'
+  filter panels (the
+  `.recipes-filter__panel:not(.hidden)`,
+  the
+  `.ingredients-filter__panel:not(.hidden)`):
+  on mobile they anchor to the viewport **beneath the header** (the
+  `top: var(--header-h)`),
+  so hiding it would leave
+  them orphaned — the header
+  dropdowns' same pattern.
 
-### 3. `updateBackToTop()`: `CONTROLS_SELECTOR` unificado
+### 3. The `updateBackToTop()`: a unified
+ `CONTROLS_SELECTOR`
 
-- Nueva constante `CONTROLS_SELECTOR = ".library-controls,
+- A new constant
+  `CONTROLS_SELECTOR = ".library-controls,
   .recipes-toolbar, .ingredients-toolbar, .menu-toolbar,
-  .shopping-toolbar"`: cubre los filtros de Ocio y las **barras de
-  herramientas de las 4 pestañas de Recetas** (Recetas, Ingredientes,
-  Menú y Compra).
-- El botón «Volver arriba» sigue mostrándose solo si la navegación
-  está oculta Y los controles del panel activo quedaron totalmente
-  fuera de vista (`getBoundingClientRect().bottom <= 0`); si el panel
-  no tiene controles, el botón no aparece.
+  .shopping-toolbar"`: it covers Ocio's
+  filters and the Recipes'
+  4 tabs' **toolbars**
+  (the Recipes, Ingredients, Menú and Compra).
+- The "Back to the top" button keeps showing only if the
+  navigation is hidden AND the active panel's controls went
+  entirely
+  out of view (the
+  `getBoundingClientRect().bottom <= 0`);
+  if the panel has
+  no controls, the button does not
+  appear.
 
-### 4. `MutationObserver` ampliado
+### 4. The `MutationObserver` expanded
 
-- Nuevos objetivos observados: `#recipes-view` (se oculta/muestra al
-  entrar/salir de la sección), `.recipes-view__body section`
-  (cambio de pestaña de Recetas), `.recipes-filter__panel` y
-  `.ingredients-filter__panel` (apertura/cierre de filtros).
+- New observed targets: the
+  `#recipes-view`
+  (it hides/shows when entering/leaving the section), the
+  `.recipes-view__body section`
+  (a Recipes tab change), the
+  `.recipes-filter__panel`
+  and the
+  `.ingredients-filter__panel`
+  (the filters' opening/closing).
 
-### 5. Manual de usuario (ya hecho en esta rama)
+### 5. The user manual
+  (already done on this branch)
 
-- §3: la cabecera «se oculta al bajar por las listas de Ocio **o de
-  Recetas**» y la barra de pestañas de Recetas «se oculta al bajar
-  por la lista como la de Ocio».
-- §3.2: el auto-ocultado aplica también a Recetas (Recetas,
-  Ingredientes, Menú o Compra); el botón «Volver arriba» aparece
-  cuando quedan fuera los controles de la lista (filtros de Ocio o la
-  barra de herramientas de la pestaña de Recetas activa); el perfil
-  sigue con su cabecera propia (flecha de volver + pestañas en la
-  misma fila).
+- §3: the header "hides when scrolling
+  down
+  the Ocio **or
+  Recipes** lists" and the Recipes tab
+  bar "hides when scrolling the list like Ocio's".
+- §3.2: the auto-hiding
+  also
+  applies to Recipes
+  (the
+  Recipes, Ingredients, Menú or Compra);
+  the "Back to the top" button appears when the list's
+  controls
+  (the
+  ocio's
+  filters
+  or the active Recipes tab's toolbar) go
+  out
+  of view;
+  the profile keeps
+  its
+  own header
+  (the back arrow + the tabs on the same row).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Módulo JS separado para Recetas** (p. ej.
-  `js/auto-hide-nav-recetas.js`): descartado — duplicaría estado y
-  lógica (umbrales, guards, botón) y rompería la única fuente de
-  verdad de `auto-hide-nav.js`.
-- **CSS específico por sección** (selectores
-  `#recipes-view .tabs--bar`, etc.): descartado — innecesario: la
-  unificación de ADR-078 (`tabs--bar` común) hace que los selectores
-  genéricos de ADR-060 cubran ambas secciones sin cambios.
-- **Extender la ocultación al perfil**: descartado — excepción
-  confirmada en ADR-077: el perfil no muestra la cabecera global
-  (tiene la suya propia con flecha de volver) y no hay listas largas
-  con barra de búsqueda.
+- **A separate JS module for Recipes**
+  (e.g. the
+  `js/auto-hide-nav-recetas.js`):
+  rejected — it would duplicate state and
+  logic (the thresholds, the guards, the button) and break the
+  `auto-hide-nav.js`'s single source of truth.
+- **CSS specific per section**
+  (the
+  `#recipes-view .tabs--bar`
+  selectors, etc.):
+  rejected — unnecessary: ADR-078's
+  unification (a
+  common
+  `tabs--bar`)
+  means ADR-060's
+  generic
+  selectors
+  cover
+  both
+  sections with no changes.
+- **Extending the hiding to the profile**:
+  rejected — ADR-077's
+  confirmed exception:
+  the profile does not show the global header
+  (it has
+  its own with the
+  back
+  arrow)
+  and there are no long lists with a search bar.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Consistencia Ocio/Recetas**: el comportamiento pedido por la
-  issue (ocultar al bajar, reaparecer al subir, botón «Volver
-  arriba») es idéntico en ambas secciones; la barra de pestañas de
-  Recetas (ADR-078) se comporta como la de Ocio (ADR-060).
-- **Una sola fuente de verdad**: todo el auto-ocultado sigue viviendo
-  en `js/auto-hide-nav.js`; ninguna regla CSS nueva ni duplicación de
-  lógica.
-- **Guards por propósito, no por suposición**: `isInteracting()` ya no
-  depende de la visibilidad de `#app` (que nada tiene que ver con la
-  interacción en Recetas), y los paneles de filtros de Recetas nunca
-  quedan descolgados al ocultar la cabecera en móvil.
-- **Manual al día**: regla 3 de AGENTS.md cumplida en la misma tarea
-  (§3 y §3.2), corrigiendo la contradicción previa («en Recetas se
-  queda fija»).
+- **The Ocio/Recipes
+  consistency**: the issue's requested behavior
+  (hiding on scrolling
+  down, reappearing on scrolling
+  up, the
+  "Back to the top" button) is identical in both
+  sections; the Recipes tab
+  bar
+  (the
+  ADR-078) behaves like Ocio's
+  (the
+  ADR-060).
+- **A single source of truth**: all the auto-hiding keeps
+  living in the
+  `js/auto-hide-nav.js`;
+  no
+  CSS
+  rule
+  is
+  new nor logic
+  duplicated.
+- **Guards by
+  purpose, not
+  by assumption**: the
+  `isInteracting()`
+  no longer depends on the
+  `#app`'s visibility
+  (which has
+  nothing to do with interaction
+  in Recipes), and the
+  Recipes filters' panels never get orphaned when
+  hiding the header on mobile.
+- **The manual up to date**:
+  the
+  AGENTS.md's rule 3 met
+  in the same task
+  (the
+  §3 and §3.2),
+  correcting the previous contradiction
+  ("in Recipes it stays fixed").
 
-### Neutras
+### Neutral
 
-- **El perfil queda excluido por diseño**: excepción confirmada de
-  ADR-077 (cabecera propia con flecha de volver); no aplica el
-  auto-ocultado.
-- **ADR-060 y ADR-077/ADR-078 siguen vigentes como registro
-  histórico**: documentaban el estado previo (auto-ocultado solo en
-  Ocio); este ADR describe su evolución, no los modifica.
-- **Con los paneles de filtros de Recetas abiertos la navegación
-  permanece visible**: comportamiento deliberado (mismo criterio que
-  los dropdowns de la cabecera).
+- **The profile stays out by design**:
+  ADR-077's confirmed exception
+  (an own header with
+  the
+  back
+  arrow); the auto-hiding does not apply.
+- **The
+  ADR-060 and ADR-077/ADR-078 remain in force
+  as historical records**:
+  they
+  documented the
+  previous
+  state (the auto-hiding only
+  in Ocio);
+  this ADR describes their evolution
+  without modifying
+  them.
+- **With the Recipes filters' panels open the navigation stays
+  visible**:
+  a deliberate
+  behavior (the same criterion as the
+  header's dropdowns).
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Ninguna conocida.** Validado: QA PASS del flujo completo (scroll
-  en las 4 pestañas de Recetas, botón «Volver arriba», filtros
-  abiertos, entrada/salida de la sección) y seguridad PASS (0
-  hallazgos; los cambios no interpolan datos de usuario). Los
-  selectores CSS no cambiaron, por lo que no hay riesgo de regresión
-  visual en Ocio ni en los cuatro modos de tema (ADR-009/ADR-064/
-  ADR-066).
+- **None known.**
+  Validated: a
+  QA PASS
+  of the whole flow
+  (the
+  scroll on the
+  Recipes'
+  4 tabs, the "Back to
+  the top" button, the
+  open filters, entering/leaving the section)
+  and a
+  security PASS
+  (0
+  findings; the changes do not interpolate user data). The CSS
+  selectors did not change, so there is no visual
+  regression risk in Ocio or in the four
+  theme modes
+  (the
+  ADR-009/ADR-064/ADR-066).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/auto-hide-nav.js` | **Modificado**: `activePanel()` resuelve también `#recipes-view .recipes-view__body section:not(.hidden)` cuando `#app` está oculta; `isInteracting()` elimina el bloqueo por `#app.hidden` (basta `!activePanel()`) y añade el guard de `.recipes-filter__panel`/`.ingredients-filter__panel`; `updateBackToTop()` usa `CONTROLS_SELECTOR` (`.library-controls` + las 4 barras de herramientas de Recetas); `MutationObserver` vigila `#recipes-view`, `.recipes-view__body section`, `.recipes-filter__panel`, `.ingredients-filter__panel` |
-| `css/styles.css` | **Sin cambios**: los selectores de ocultación (ADR-060) son genéricos y la barra de Recetas usa la misma clase `tabs--bar` (ADR-078) |
-| `docs/manual-de-usuario.md` | **Modificado**: §3 (la cabecera y la barra de pestañas se ocultan al bajar en Ocio **y en Recetas**) y §3.2 (auto-ocultado en las 4 pestañas de Recetas; botón «Volver arriba» con la barra de herramientas de la pestaña activa; el perfil conserva su cabecera propia) — regla 3 de AGENTS.md |
-| `docs/adr-094-ocultar-navegacion-recetas.md` | **Nuevo**: este documento |
+| `js/auto-hide-nav.js` | **Modified**: the `activePanel()` also resolves `#recipes-view .recipes-view__body section:not(.hidden)` when the `#app` is hidden; `isInteracting()` removes the `#app.hidden` block (the `!activePanel()` is enough) and adds the `.recipes-filter__panel`/`.ingredients-filter__panel` guard; `updateBackToTop()` uses the `CONTROLS_SELECTOR` (the `.library-controls` + the Recipes' 4 toolbars); the `MutationObserver` watches the `#recipes-view`, the `.recipes-view__body section`, the `.recipes-filter__panel`, the `.ingredients-filter__panel` |
+| `css/styles.css` | **Unchanged**: the hiding selectors (ADR-060) are generic and the Recipes bar uses the same `tabs--bar` class (ADR-078) |
+| `docs/manual-de-usuario.md` | **Modified**: §3 (the header and the tab bar hide when scrolling down in Ocio **and Recipes**) and §3.2 (the auto-hiding on the Recipes' 4 tabs; the "Back to the top" button with the active tab's toolbar; the profile keeps its own header) — AGENTS.md's rule 3 |
+| `docs/adr-094-ocultar-navegacion-recetas.md` | **New**: this document |
 
 Related issue: #256 — https://github.com/gonzalitojh/Registro-personal/issues/256

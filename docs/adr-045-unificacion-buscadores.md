@@ -1,362 +1,371 @@
-# ADR-045: Unificación de buscadores — la barra superior busca en la colección y en el catálogo (issue #82)
+# ADR-045: Search unification — the top bar searches the collection and the catalog (issue #82)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-07
 
-## Contexto
+## Context
 
-Hasta la issue #82 existían **dos flujos de búsqueda separados**:
+Until issue #82 there were **two separate search flows**:
 
-1. **Buscador global de la cabecera** (ADR-013, issue #46): el dropdown
-   `#global-search-results` anclado bajo `#global-search-input` buscaba
-   **solo en la colección del usuario** — películas, series, libros (también
-   por autor) y amigos, agrupados con iconos y con un **chip de estado** a
-   la derecha de cada fila. El click en una fila abría la ficha del ítem
-   (cerrando el dropdown).
-2. **Buscadores «para añadir» dentro de cada pestaña** (`ocio/*.html`): un
-   formulario `.search-slip` por grupo («Busca una serie…», «Busca una
-   película…», «Busca un libro o autor…») que buscaba en el catálogo (TMDB /
-   Google Books con respaldo de Open Library) y pintaba los resultados en
-   una **tira horizontal** (`.results-strip` con `.result-card`), con
-   toolbar de «Cargar más» / «Ocultar resultados» (`#btn-load-more-*`,
-   `#btn-hide-results-*`), botones de alta manual (`#btn-manual-movie/tv/
-   book`) y, en libros, la casilla **«Solo en español»** (`#books-spanish-
-   only`, ADR-002). La vista previa de ADR-030 se abría desde estas tarjetas
-   (`renderSearchResults` con callback `onPreview`).
+1. **The header's global search** (ADR-013, issue #46): the
+   `#global-search-results` dropdown anchored under `#global-search-input`
+   searched **only the user's collection** — movies, series, books (also
+   by author) and friends, grouped with icons and with a **status
+   chip** to the right of each row. Clicking a row opened the item's
+   profile (closing the dropdown).
+2. **"For adding" searchers inside each tab** (`ocio/*.html`): one
+   `.search-slip` form per group («Busca una serie…», «Busca una
+   película…», «Busca un libro o autor…») that searched the catalog (TMDB /
+   Google Books with Open Library fallback) and painted the results in a
+   **horizontal strip** (`.results-strip` with `.result-card`), with a
+   "Load more" / "Hide results" toolbar (`#btn-load-more-*`,
+   `#btn-hide-results-*`), manual-creation buttons (`#btn-manual-movie/tv/
+   book`) and, in books, the **«Solo en español»** checkbox (`#books-span-
+   only`, ADR-002). ADR-030's preview opened from those cards
+   (`renderSearchResults` with the `onPreview` callback).
 
-Además, cada pestaña tenía su **buscador de colección** `.library-search`
-(«Buscar en mi lista…»), que filtraba la biblioteca en memoria con un input
-propio (`librarySearchText` en `js/app.js`).
+In addition, each tab had its **collection searcher** `.library-search`
+(«Buscar en mi lista…»), which filtered the library in memory with its own
+input (`librarySearchText` in `js/app.js`).
 
-La issue #82 pide **unificar todo en la barra superior**: al buscar deben
-aparecer los resultados de la colección (comportamiento actual) y, encima
-de estos, **botones de tipo** (Serie / Película / Libro) para buscar en el
-catálogo; los resultados del catálogo se muestran **en lista dentro del
-mismo dropdown** (no horizontal), con un botón **«Añadir»** a la derecha
-(donde antes iba el chip de estado); pulsar sobre un resultado de catálogo
-amplía su información (preview de ADR-030) **sin cerrar el dropdown**; la
-fila **«Añadir manualmente»** se mueve al final de los resultados de
-catálogo y **se eliminan** tanto la barra de búsqueda de la colección como
-toda la UI de búsqueda para añadir. La issue pide además **estudiar cómo
-distinguir** «buscar en la colección» de «buscar algo nuevo».
+Issue #82 asks to **unify everything in the top bar**: when searching, the
+collection's results must appear (current behavior) and, above them,
+**type buttons** (Series / Movie / Book) to search the catalog; the
+catalog's results are shown **as a list inside the same dropdown** (not
+horizontal), with an **«Añadir»** button on the right (where the status
+chip used to go); pressing a catalog result expands its information
+(ADR-030 preview) **without closing the dropdown**; the row
+**«Añadir manualmente»** moves to the end of the catalog results and
+both the collection's search bar and all the add-search UI are
+**removed**. The issue also asks to **study how to distinguish** "search
+the collection" from "search something new".
 
 Related issue: #82 — https://github.com/gonzalitojh/Registro-personal/issues/82
 
-## Decisión
+## Decision
 
-Unificar las búsquedas en un **único punto de entrada**: la barra de la
-cabecera. El dropdown `#global-search-results` integra los resultados de la
-colección (comportamiento previo de ADR-013) y las secciones de catálogo
-(TMDB / Google Books / Open Library) bajo los botones de tipo, con el alta
-(`handleAdd`), la vista previa (ADR-030) y el alta manual (`handleManualAdd`)
-de `js/search.js`. La orquestación de la UI sigue en `js/global-search.js`
-(módulo existente, **sin módulo nuevo**); `js/search.js` pasa a ser
-**stateless** (solo lógica pura y llamadas a API, sin tocar el DOM).
+Unify the searches into a **single entry point**: the header's bar. The
+`#global-search-results` dropdown integrates the collection's results
+(ADR-013's previous behavior) and the catalog sections
+(TMDB / Google Books / Open Library) under the type buttons, with the
+creation (`handleAdd`), the preview (ADR-030) and the manual creation
+(`handleManualAdd`) of `js/search.js`. The UI orchestration stays in
+`js/global-search.js` (existing module, **no new module**); `js/search.js`
+becomes **stateless** (pure logic and API calls only, without touching
+the DOM).
 
-### 1. Distinción colección vs. catálogo: `kind` en `flatResults`
+### 1. Collection vs. catalog distinction: `kind` in `flatResults`
 
-La clave de la unificación es que **una sola lista plana** (`flatResults`)
-alimenta el dropdown, y cada entrada lleva un discriminador `kind`:
+The unification's key is that **a single flat list** (`flatResults`)
+feeds the dropdown, and each entry carries a `kind` discriminator:
 
-- `{ kind: "collection", type, item, group }` — ítem de la colección del
-  usuario (o amigo). Click → abrir ficha (cierra el dropdown).
-- `{ kind: "external", type, item, group }` — resultado del catálogo API.
-  Click → preview (ADR-030) **sin cerrar el dropdown**.
-- `{ kind: "manual", type, group, item: null }` — fila «Añadir
-  manualmente». Click → `openManualAddModal` sin cerrar el dropdown.
+- `{ kind: "collection", type, item, group }` — an item of the user's
+  collection (or a friend). Click → open profile (closes the dropdown).
+- `{ kind: "external", type, item, group }` — an API catalog result.
+  Click → preview (ADR-030) **without closing the dropdown**.
+- `{ kind: "manual", type, group, item: null }` — the «Añadir
+  manualmente» row. Click → `openManualAddModal` without closing the
+  dropdown.
 
-Tanto las filas de colección como las de catálogo usan la **misma clase CSS
-`.global-search__item`** (misma estructura: portada, título, metadatos); lo
-único que cambia es el **elemento derecho**: el chip de estado
-(`.global-search__item-status`, solo colección) frente al **botón
-«Añadir»/«Añadido»** (`.global-search__item-add`, solo catálogo). La
-navegación por teclado (flechas + Enter/Space, `data-global-idx`) y el
-resaltado son comunes a los tres `kind`. Se elimina la UI de la tira
-horizontal (`.result-card` / `renderSearchResults`) del flujo de alta.
+Both the collection rows and the catalog rows use the **same CSS class
+`.global-search__item`** (same structure: cover, title, metadata); the
+only thing that changes is the **right-hand element**: the status chip
+(`.global-search__item-status`, collection only) vs the
+**«Añadir»/«Añadido» button** (`.global-search__item-add`, catalog
+only). Keyboard navigation (arrows + Enter/Space, `data-global-idx`) and
+highlighting are common to the three `kind`s. The horizontal strip UI
+(`.result-card` / `renderSearchResults`) is removed from the creation
+flow.
 
-### 2. `js/search.js` refactorizado a stateless (sin módulo nuevo)
+### 2. `js/search.js` refactored to stateless (no new module)
 
-`js/search.js` deja de tocar el DOM y de guardar estado de resultados
-(desaparecen `searchState`, `lastMoviesResults`, etc.) y pasa a exportar
-solo lógica pura:
+`js/search.js` stops touching the DOM and storing results state
+(`searchState`, `lastMoviesResults`, etc. disappear) and only exports
+pure logic:
 
-- **`searchExternal(group, query, page = 1)`**: delega en `api-movies.js`
-  (`searchMovies`/`searchTv`) o `api-books.js` (`searchBooks`). Para
-  libros siempre llama con `spanishOnly = true` (punto 7). Devuelve
-  `{ items, hasMore, source }`.
-- **`handleAdd(item, btn, ctx)`** y **`handleManualAdd(type, data, ctx)`**:
-  flujos de alta existentes (incluida la ruta multi-portada de libros vía
-  `openBookConfirmModal`), sin cambios de comportamiento.
-- **`openSearchPreviewFromResults(item, added, ctx)`**: preview de ADR-030;
-  recalcula `added` con el estado actual del `ctx`.
-- **`existingIdsFor(group, ctx)`**, **`existingBookKeys(ctx)`** e
-  **`isBookAlreadyAdded(item, idsSet, keysSet)`**: detección de «ya
-  añadido» por `externalId` y, en libros, por cruce título+autor.
-- **`enrichSearchItem(item)`**: enriquecimiento no bloqueante de la preview
-  (nunca lanza).
+- **`searchExternal(group, query, page = 1)`**: delegates to
+  `api-movies.js` (`searchMovies`/`searchTv`) or `api-books.js`
+  (`searchBooks`). For books it always calls with `spanishOnly = true`
+  (point 7). Returns `{ items, hasMore, source }`.
+- **`handleAdd(item, btn, ctx)`** and **`handleManualAdd(type, data, ctx)`**:
+  existing creation flows (including the multi-cover book path via
+  `openBookConfirmModal`), no behavior change.
+- **`openSearchPreviewFromResults(item, added, ctx)`**: ADR-030's
+  preview; recomputes `added` with the `ctx`'s current state.
+- **`existingIdsFor(group, ctx)`**, **`existingBookKeys(ctx)`** and
+  **`isBookAlreadyAdded(item, idsSet, keysSet)`**: "already added"
+  detection by `externalId` and, in books, by title+author cross-check.
+- **`enrichSearchItem(item)`**: the preview's non-blocking enrichment
+  (never throws).
 
-**Eliminados**: `setupSearch`, `clearAllSearches`, `refreshSearchAddButtons`,
-`hideResults` y `toggleResultsToolbar` (y con ellos sus `addEventListener`
-sobre `#form-search-*`, `#btn-load-more-*`, `#btn-hide-results-*`,
-`.search-clear-btn`, `#btn-manual-*` y `#books-spanish-only`). La UI del
-dropdown (colección + catálogo) vive en `js/global-search.js`.
+**Removed**: `setupSearch`, `clearAllSearches`, `refreshSearchAddButtons`,
+`hideResults` and `toggleResultsToolbar` (and with them their
+`addEventListener`s over `#form-search-*`, `#btn-load-more-*`,
+`#btn-hide-results-*`, `.search-clear-btn`, `#btn-manual-*` and
+`#books-spanish-only`). The dropdown UI (collection + catalog) lives in
+`js/global-search.js`.
 
-### 3. Botones de tipo SIEMPRE visibles encima de los resultados
+### 3. Type buttons ALWAYS visible above the results
 
-Los botones **«Serie» / «Película» / «Libro»** (`renderTypeButtons`,
-`.global-search__type-buttons`) se renderizan **en todos los estados del
-dropdown**: hint inicial (< 2 caracteres), resultados, estados de catálogo
-y «sin resultados». Pulsar uno marca el grupo como activo
-(`activeGroup` → `.is-active`) y lanza la búsqueda en el catálogo
-(`runExternalSearch(group, query)`) con la query actual; con query corta
-muestra el hint de mínimo 2 caracteres sin llamar a la API.
+The **«Serie» / «Película» / «Libro»** buttons (`renderTypeButtons`,
+`.global-search__type-buttons`) render **in all the dropdown's states**:
+initial hint (< 2 characters), results, catalog states and "no
+results". Pressing one marks the group as active
+(`activeGroup` → `.is-active`) and launches the catalog search
+(`runExternalSearch(group, query)`) with the current query; with a short
+query it shows the 2-character minimum hint without calling the API.
 
-### 4. Secciones de catálogo en lista dentro del dropdown
+### 4. Catalog sections as a list inside the dropdown
 
-**Selección única** (comentario del usuario en la issue #82, opción B): al
-pulsar un botón de tipo se muestra **solo la sección «Catálogo · X» del
-grupo activo** (`activeGroup`); los resultados del catálogo previamente
-pulsado se **ocultan** inmediatamente. La colección del usuario (grupos
-Películas/Series/Libros/Amigos) se renderiza siempre y nunca se ve
-afectada por la selección de catálogo. El estado de cada grupo externo
-(carga `inFlight`, error `externalError` o caché `externalCache`) se
-**conserva en memoria** para poder volver al grupo anterior sin re-llamar
-a la API, pero solo se renderiza el del grupo activo.
+**Single selection** (user comment in issue #82, option B): pressing a
+type button shows **only the active group's «Catálogo · X» section**
+(`activeGroup`); the previously open catalog's results are **hidden**
+immediately. The user's collection (groups Películas/Series/Libros/Amigos)
+always renders and is never affected by the catalog selection. Each
+external group's state (loading `inFlight`, error `externalError` or cache
+`externalCache`) is **kept in memory** so one can return to the previous
+group without re-calling the API, but only the active group's is
+rendered.
 
-Cada sección tiene cuatro estados posibles — y en **todos** ellos la fila
-**«¿No la encuentras? Añadir manualmente…»** al final (`manualRowHtml`;
-en el estado «cargando» lo hace `externalSectionLoadingHtml`):
+Each section has four possible states — and in **all** of them the
+**«¿No la encuentras? Añadir manualmente…»** row at the end (`manualRowHtml`;
+in the "loading" state `externalSectionLoadingHtml` adds it):
 
-| Estado | Contenido |
+| State | Content |
 |---|---|
-| **Buscando** | «Buscando en el catálogo…» + fila manual |
-| **Error** | «No se pudo buscar: \<mensaje\>» + fila manual |
-| **Vacío** | «No hay resultados de serie/película/libro para "X".» + fila manual |
-| **Resultados** | Hasta 5 filas con portada, título, año (y autor en libros) y botón **«Añadir»** a la derecha (`.global-search__item-add`, `btn--small`) + fila manual |
+| **Searching** | «Buscando en el catálogo…» + manual row |
+| **Error** | «No se pudo buscar: \<mensaje\>» + manual row |
+| **Empty** | «No hay resultados de serie/película/libro para "X".» + manual row |
+| **Results** | Up to 5 rows with cover, title, year (and author in books) and the **«Añadir»** button on the right (`.global-search__item-add`, `btn--small`) + manual row |
 
-El botón «Añadir» usa `handleAdd(entry.item, btn, ctx)` con
-`e.stopPropagation()` (no abre la preview); al añadir con éxito pasa a
-`disabled` + «Añadido». El **click en la fila** (o Enter/Space) abre la
-**vista previa** (`openSearchPreviewFromResults`, ADR-030) **sin cerrar el
-dropdown**: el modal se superpone y, al cerrarlo, el usuario sigue en su
-búsqueda.
+The «Añadir» button uses `handleAdd(entry.item, btn, ctx)` with
+`e.stopPropagation()` (does not open the preview); on successful add it
+becomes `disabled` + «Añadido». **Clicking the row** (or Enter/Space)
+opens the **preview** (`openSearchPreviewFromResults`, ADR-030)
+**without closing the dropdown**: the modal overlaps and, on closing it,
+the user stays in their search.
 
-### 5. Anti-race: `searchSeq` + caché por grupo + `inFlight`
+### 5. Anti-race: `searchSeq` + per-group cache + `inFlight`
 
-Para que las respuestas de la API nunca pisen estado más reciente:
+So that API responses never overwrite newer state:
 
-- **`searchSeq`**: contador monotónico que se incrementa en cada nueva
-  búsqueda (`performSearch`), en cada `runExternalSearch` y en
-  `closeGlobalSearch()`. Cada búsqueda captura su `seq`; al resolver, si
-  `seq !== searchSeq` (o el dropdown ya no está abierto) la respuesta se
-  **descarta silenciosamente**.
-- **Caché por grupo** `externalCache[group] = { query, items, source }`:
-  solo se guarda la búsqueda del grupo terminada con éxito para la query
-  actual; `renderExternalSection` decide el estado comparando
+- **`searchSeq`**: monotonic counter incremented on each new search
+  (`performSearch`), on each `runExternalSearch` and in
+  `closeGlobalSearch()`. Each search captures its `seq`; on resolution, if
+  `seq !== searchSeq` (or the dropdown is no longer open) the response is
+  **silently discarded**.
+- **Per-group cache** `externalCache[group] = { query, items, source }`:
+  only the successful search for the current query is stored;
+  `renderExternalSection` decides the state by comparing
   `cache.query === query`.
-- **`inFlight[group]`** y **`externalError[group] = { query, message }`**:
-  marcan búsquedas en curso y errores (el error solo se pinta si su `query`
-  es la actual).
-- **`closeGlobalSearch()` invalida todo**: incrementa `searchSeq` y limpia
-  caché, `inFlight`, errores y `activeGroup`; el texto del input se
-  conserva (patrón Gmail, ya documentado en ADR-013).
+- **`inFlight[group]`** and **`externalError[group] = { query, message }`**:
+  mark searches in progress and errors (the error only paints if its
+  `query` is the current one).
+- **`closeGlobalSearch()` invalidates everything**: increments `searchSeq`
+  and clears the cache, `inFlight`, errors and `activeGroup`; the input's
+  text is kept (Gmail pattern, already documented in ADR-013).
 
-### 6. Sin paginación en el dropdown (solo primera página)
+### 6. No pagination in the dropdown (first page only)
 
-A diferencia del antiguo `.results-strip` (con «Cargar más» por grupo), el
-dropdown **no pagina**: `runExternalSearch` llama siempre a
-`searchExternal(group, query, 1)` y recorta a **5 resultados por grupo**
-(`slice(0, 5)`). La colección mantiene su cap preexistente (5 por grupo de
-ítems, 3 amigos). El dropdown es un panel de acción rápida: la preview
-(ADR-030) y el alta manual cubren los casos de descubrimiento.
+Unlike the old `.results-strip` (with per-group "Load more"), the
+dropdown **does not paginate**: `runExternalSearch` always calls
+`searchExternal(group, query, 1)` and trims to **5 results per group**
+(`slice(0, 5)`). The collection keeps its pre-existing cap (5 per group of
+items, 3 friends). The dropdown is a quick-action panel: the preview
+(ADR-030) and the manual creation cover the discovery cases.
 
-### 7. Libros siempre en español (casilla eliminada)
+### 7. Books always in Spanish (checkbox removed)
 
-`searchExternal` para `books` llama a `apiSearchBooks(query, page, null,
-true)` — `spanishOnly` siempre `true`. Se **elimina** la casilla
-`#books-spanish-only` (ADR-002) y el `change` listener que relanzaba la
-búsqueda; el comportamiento por defecto (descartar ediciones confirmadas en
-otro idioma, conservar las sin dato de idioma) pasa a ser el único. La API
-`searchBooks` conserva el parámetro por compatibilidad interna.
+`searchExternal` for `books` calls `apiSearchBooks(query, page, null,
+true)` — `spanishOnly` always `true`. The `#books-spanish-only`
+checkbox (ADR-002) and its `change` listener that relaunched the search
+are **removed**; the default behavior (discarding confirmed editions in
+another language, keeping those with no language data) becomes the only
+one. The `searchBooks` API keeps the parameter for internal
+compatibility.
 
-### 8. `refreshExternalResults(ctx)`: botones «Añadir»/«Añadido» al día
+### 8. `refreshExternalResults(ctx)`: «Añadir»/«Añadido» buttons up to date
 
-Nueva función exportada de `js/global-search.js`: **re-renderiza las
-secciones externas desde la caché** con el estado actual de la colección.
-`js/app.js` la llama tras **cada snapshot de Firestore**
-(`subscribeToItems` de movie/tv/book, sustituyendo a las llamadas a
-`refreshSearchAddButtons`): si el dropdown está abierto, los botones
-«Añadir» pasan a «Añadido» (y viceversa) sin rehacer búsquedas ni perder
-la posición del usuario.
+New exported function of `js/global-search.js`: **re-renders the
+external sections from the cache** with the collection's current state.
+`js/app.js` calls it after **each Firestore snapshot**
+(`subscribeToItems` of movie/tv/book, replacing the
+`refreshSearchAddButtons` calls): if the dropdown is open, the
+«Añadir» buttons become «Añadido» (and vice versa) without redoing
+searches or losing the user's position.
 
-### 9. UI eliminada (colección y «para añadir»)
+### 9. UI removed (collection and "for adding")
 
-- `ocio/*.html`: **eliminados** los formularios `.search-slip`
+- `ocio/*.html`: the `.search-slip` forms are **removed**
   (`#form-search-movies/tv/books`, `#search-*-input`, `.search-clear-btn`),
-  las tiras `.results-strip` (`#search-*-results`), los toolbars
-  (`#results-toolbar-*`, `#btn-load-more-*`, `#btn-hide-results-*`), los
-  botones `#btn-manual-movie/tv/book`, la casilla `#books-spanish-only` y
-  el buscador de colección `.library-search` («Buscar en mi lista…»).
-- `js/app.js`: eliminados `librarySearchText` y los listeners de
-  `.library-search-input`; eliminado `clearAllSearches()` al cambiar de
-  sección.
-- `js/ui.js`: eliminado `renderSearchResults` (y sus helpers de tarjeta
-  `.result-card`); se conservan `openSearchPreviewModal`,
-  `openBookConfirmModal` y `openManualAddModal` (la preview de ADR-030 y el
-  alta manual se mantienen, ahora alimentados desde el dropdown).
-- `ocio/ocio.css`: limpieza de los estilos de `.search-slip`,
-  `.results-strip`, `.result-card*`, `.results-toolbar`, `.lang-filter-check`
-  y `.library-search*` (que ADR-027/042/016/009 referenciaban).
+  the `.results-strip` strips (`#search-*-results`), the toolbars
+  (`#results-toolbar-*`, `#btn-load-more-*`, `#btn-hide-results-*`),
+  the `#btn-manual-movie/tv/book` buttons, the `#books-spanish-only`
+  checkbox and the `.library-search` collection searcher («Buscar en mi
+  lista…»).
+- `js/app.js`: `librarySearchText` and the `.library-search-input`
+  listeners removed; `clearAllSearches()` on section change removed.
+- `js/ui.js`: `renderSearchResults` removed (and its `.result-card`
+  helpers); `openSearchPreviewModal`, `openBookConfirmModal` and
+  `openManualAddModal` are kept (ADR-030's preview and manual creation
+  remain, now fed from the dropdown).
+- `ocio/ocio.css`: cleanup of the `.search-slip`, `.results-strip`,
+  `.result-card*`, `.results-toolbar`, `.lang-filter-check` and
+  `.library-search*` styles (which ADR-027/042/016/009 referenced).
 
-### 10. Responsividad (AGENTS.md)
+### 10. Responsiveness (AGENTS.md)
 
-- **Botones de tipo con `flex-wrap`**: `.global-search__type-buttons`
-  envuelve a una segunda línea si no caben (base y refuerzo en la media
-  query ≤600 px), sin desbordar.
-- **Dropdown fixed en móvil (≤600 px)**: `#global-search-results` pasa a
-  `position: fixed; left/right: 1rem; top: 4.5rem` (patrón exacto del
-  `.notif-dropdown` de ADR-027): el wrap de la barra es estrecho y el panel
-  desbordaría; anclado al viewport nunca sale del ancho visible.
-- **Títulos y metadatos en móvil**: `white-space: normal` con clamp a 2
-  líneas (en desktop conservan nowrap + ellipsis + `title`); filas con
-  `min-width: 0` y `overflow-wrap`, sin scroll horizontal a nivel de
-  página en 360/768/1280 px.
+- **Type buttons with `flex-wrap`**: `.global-search__type-buttons`
+  wraps to a second line when they do not fit (base and reinforcement in
+  the ≤600 px media query), without overflowing.
+- **Fixed dropdown on mobile (≤600 px)**: `#global-search-results` moves
+  to `position: fixed; left/right: 1rem; top: 4.5rem` (the exact pattern
+  of ADR-027's `.notif-dropdown`): the bar's wrap is narrow and the panel
+  would overflow; anchored to the viewport it never leaves the visible
+  width.
+- **Titles and metadata on mobile**: `white-space: normal` with a 2-line
+  clamp (on desktop they keep nowrap + ellipsis + `title`); rows with
+  `min-width: 0` and `overflow-wrap`, no page-level horizontal scroll at
+  360/768/1280 px.
 
-### 11. Sin cambios de versionado PWA
+### 11. No PWA versioning change
 
-No se modifica `APP_VERSION` (`js/config.js`), los `?v=` de `index.html` ni
-`STATIC_ASSETS` del service worker: la versión `20260816` (introducida en la
-issue #92) ya está activa en la rama de integración y cubre los cambios de
-UI de esta issue al desplegarse junto con ellos.
+`APP_VERSION` (`js/config.js`), the `?v=` refs of `index.html` and the
+service worker's `STATIC_ASSETS` are not modified: version `20260816`
+(introduced in issue #92) is already active in the integration branch
+and covers this issue's UI changes when deploying together with them.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Mantener los buscadores «para añadir» en las pestañas y solo enlazarlos
-  desde la barra superior**: descartado — la issue pide explícitamente
-  eliminar la barra de búsqueda de la colección y la búsqueda para añadir;
-  un único punto de búsqueda evita la duplicación de UI y de estado.
-- **Módulo nuevo para la búsqueda de catálogo** (p. ej.
-  `js/catalog-search.js`): descartado — `js/search.js` ya alojaba la lógica
-  de búsqueda/alta; el refactor a stateless la conserva sin DOM, y
-  `js/global-search.js` ya orquesta el dropdown (ADR-013). Cero módulos
-  nuevos.
-- **Filas de catálogo con clase CSS propia**
-  (`.global-search__item--external` u otra): descartado — la misma clase
-  `.global-search__item` con elemento derecho distinto (chip vs. botón
-  Añadir) reutiliza layout, hover, foco y responsividad; el `kind` de
-  `flatResults` ya diferencia el comportamiento.
-- **Paginación en el dropdown** («Cargar más» por sección, como en el
-  antiguo `.results-strip`): descartado — el dropdown es una paleta de
-  acción rápida, no una página de búsqueda; el cap de 5 por grupo más la
-  preview y el alta manual cubren el descubrimiento sin complejidad.
-- **Cerrar el dropdown al abrir la preview** (patrón de la colección):
-  descartado — interrumpiría el flujo «buscar → comparar → añadir»; la
-  preview se superpone al dropdown y al cerrarla el usuario retoma su
-  búsqueda exactamente donde estaba.
-- **Mantener la casilla «Solo en español»**: descartado — la app es en
-  español y la casilla estaba activada por defecto; eliminarla simplifica
-  la UI de libros (ADR-002) sin perder capacidad de búsqueda.
-- **Multi-selección de catálogos (opción A del comentario de la issue
-  #82)**: mantener marcados varios botones de tipo a la vez y permitir
-  desmarcarlos para ocultar sus resultados — descartado en favor de la
-  **selección única** (opción B): el dropdown es un panel de acción rápida
-  y acumular varias secciones «Catálogo · X» lo alargaba y confundía (el
-  usuario reportó que al pulsar Películas tras Series se mantenían ambos
-  resultados); con un único catálogo activo el panel se mantiene legible,
-  y el estado de los demás grupos se conserva en caché para volver sin
-  re-consultar la API.
-- **Conservar la caché de catálogo al cerrar el dropdown** (reabrir y
-  reutilizar): descartado — la caché se invalida en `closeGlobalSearch()`
-  para que ninguna sección muestre resultados de otra sesión; el coste es
-  una llamada a la API al volver a pulsar el botón de tipo.
-- **Mantener el buscador `.library-search` de la colección**: descartado —
-  la issue pide eliminarlo; la barra superior ya filtra la colección (y por
-  autor en libros), así que era funcionalmente redundante.
+- **Keeping the "for adding" searchers in the tabs and only linking them
+  from the top bar**: rejected — the issue explicitly asks to remove the
+  collection's search bar and the add search; a single search point
+  avoids UI and state duplication.
+- **A new module for the catalog search** (e.g.
+  `js/catalog-search.js`): rejected — `js/search.js` already housed the
+  search/creation logic; the stateless refactor keeps it without DOM, and
+  `js/global-search.js` already orchestrates the dropdown (ADR-013). Zero
+  new modules.
+- **Catalog rows with their own CSS class**
+  (`.global-search__item--external` or another): rejected — the same
+  `.global-search__item` class with a different right-hand element (chip
+  vs. Add button) reuses layout, hover, focus and responsiveness; the
+  `kind` of `flatResults` already differentiates the behavior.
+- **Pagination in the dropdown** ("Load more" per section, as in the old
+  `.results-strip`): rejected — the dropdown is a quick-action palette,
+  not a search page; the per-group cap of 5 plus the preview and manual
+  creation cover discovery without complexity.
+- **Closing the dropdown when opening the preview** (collection's
+  pattern): rejected — it would interrupt the "search → compare → add"
+  flow; the preview overlaps the dropdown and on closing it the user
+  resumes their search exactly where they were.
+- **Keeping the «Solo en español» checkbox**: rejected — the app is in
+  Spanish and the checkbox was on by default; removing it simplifies
+  the books UI (ADR-002) without losing search capability.
+- **Multi-selection of catalogs (option A of issue #82's comment)**: keep
+  several type buttons marked at once and allow un-marking them to hide
+  their results — rejected in favor of **single selection** (option B):
+  the dropdown is a quick-action panel and accumulating several
+  «Catálogo · X» sections made it long and confusing (the user reported
+  that pressing Movies after Series kept both results); with a single
+  active catalog the panel stays readable, and the other groups' state is
+  kept in cache to return without re-querying the API.
+- **Keeping the catalog cache when closing the dropdown** (reopen and
+  reuse): rejected — the cache is invalidated in `closeGlobalSearch()`
+  so no section shows results from another session; the cost is one API
+  call when pressing the type button again.
+- **Keeping the `.library-search` collection searcher**: rejected —
+  the issue asks to remove it; the top bar already filters the collection
+  (and by author in books), so it was functionally redundant.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Un solo punto de búsqueda**: buscar lo tuyo y añadir lo nuevo ocurre en
-  el mismo panel, con el mismo patrón de lista, teclado y responsividad.
-- **Menos UI que mantener**: desaparecen 3 `.search-slip`, 3
-  `.results-strip`, 3 toolbars, 6 botones (`#btn-load-more-*`,
-  `#btn-hide-results-*`), 3 `#btn-manual-*`, 3 `.library-search`, la casilla
-  de idioma y `renderSearchResults` (~650 líneas netas menos en el diff
-  global entre lo eliminado y lo añadido).
-- **`search.js` stateless**: lógica pura y testeable, sin acoplamiento al
-  DOM ni estado de resultados; las funciones de alta/preview (ADR-030) se
-  reutilizan sin cambios de comportamiento.
-- **Anti-race robusto**: `searchSeq` + caché por grupo + `inFlight`
-  descartan respuestas obsoletas; `closeGlobalSearch()` invalida todo de
-  una vez, sin estados colgantes.
-- **Botones «Añadir»/«Añadido» siempre al día**: `refreshExternalResults`
-  re-renderiza desde caché tras cada snapshot de Firestore, sin búsquedas
-  nuevas ni pérdida de contexto.
-- **Flujo de alta continuo**: la preview no cierra el dropdown; añadir,
-  comparar y volver a buscar no requieren reabrir el panel.
-- **Menos opciones en libros**: siempre en español, sin casilla que
-  gestionar (ADR-002 queda reducido a su comportamiento por defecto).
-- **Responsividad verificada** según AGENTS.md (360/768/1280 px sin scroll
-  horizontal): `flex-wrap` en los botones de tipo, dropdown `fixed` en
-  móvil, clamp a 2 líneas en títulos/meta móvil, `min-width: 0` en filas.
+- **A single search point**: searching your stuff and adding new stuff
+  happens in the same panel, with the same list pattern, keyboard and
+  responsiveness.
+- **Less UI to maintain**: 3 `.search-slip`, 3 `.results-strip`, 3
+  toolbars, 6 buttons (`#btn-load-more-*`, `#btn-hide-results-*`), 3
+  `#btn-manual-*`, 3 `.library-search`, the language checkbox and
+  `renderSearchResults` disappear (~650 net lines fewer in the global
+  diff between removed and added).
+- **`search.js` stateless**: pure, testable logic, with no DOM coupling
+  nor results state; the creation/preview functions (ADR-030) are
+  reused with no behavior change.
+- **Robust anti-race**: `searchSeq` + per-group cache + `inFlight`
+  discard stale responses; `closeGlobalSearch()` invalidates everything at
+  once, with no hanging states.
+- **«Añadir»/«Añadido» buttons always up to date**: `refreshExternalResults`
+  re-renders from cache after every Firestore snapshot, without new
+  searches nor loss of context.
+- **Continuous creation flow**: the preview does not close the dropdown;
+  adding, comparing and searching again do not require reopening the
+  panel.
+- **Fewer options in books**: always in Spanish, with no checkbox to
+  manage (ADR-002 is reduced to its default behavior).
+- **Responsiveness verified** per AGENTS.md (360/768/1280 px with no
+  horizontal scroll): `flex-wrap` on the type buttons, `fixed` dropdown on
+  mobile, 2-line clamp on mobile titles/metadata, `min-width: 0` on rows.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Sin paginación ni «Cargar más»**: de una búsqueda con muchos resultados
-  solo se ven los 5 primeros por grupo en el dropdown; la preview y el alta
-  manual mitigan, pero no hay forma de recorrer el resto desde el panel.
-- **La caché externa se invalida al cerrar el dropdown**: reabrir y repetir
-  la búsqueda del catálogo implica una nueva llamada a la API (coste de red
-  y de cuota); aceptado a cambio de no mostrar resultados obsoletos.
-- **Cambio de costumbre**: quien buscaba dentro de la pestaña («Buscar en
-  mi lista…» o el buscador «para añadir») debe usar la barra superior; el
-  manual de usuario se actualizó para reflejarlo (obligación de AGENTS.md).
-- **El dropdown crece**: con colección + varias secciones de catálogo el
-  panel puede superar la altura del viewport; `max-height: min(60vh,
-  480px)` + `overflow-y: auto` (preexistente) lo mantienen scrollable sin
-  desbordar.
+- **No pagination nor "Load more"**: from a search with many results only
+  the first 5 per group are seen in the dropdown; the preview and manual
+  creation mitigate, but there is no way to browse the rest from the
+  panel.
+- **The external cache is invalidated when closing the dropdown**:
+  reopening and repeating the catalog search implies a new API call
+  (network and quota cost); accepted in exchange for not showing stale
+  results.
+- **Habit change**: whoever searched inside the tab («Buscar en mi
+  lista…» or the "for adding" searcher) must use the top bar; the user
+  manual was updated to reflect it (AGENTS.md obligation).
+- **The dropdown grows**: with collection + several catalog sections the
+  panel can exceed the viewport's height; `max-height: min(60vh,
+  480px)` + `overflow-y: auto` (pre-existing) keep it scrollable without
+  overflowing.
 
-### Neutras
+### Neutral
 
-- **ADR-013 parcialmente superado**: el buscador global que documentó
-  (colección + amigos, chips de estado) se conserva tal cual como primera
-  parte del dropdown; su ámbito se amplía con las secciones de catálogo.
-- **ADR-030 vigente pero con nuevo anfitrión**: la vista previa se mantiene
-  íntegra (modal, enriquecimiento, guardas `isConnected`), pero ahora se
-  abre desde filas del dropdown en lugar de desde `.result-card`;
-  `renderSearchResults` (con su 6º parámetro `onPreview`) se elimina al
-  desaparecer la tira horizontal.
-- **ADR-002 reducido**: la búsqueda de libros conserva Google Books con
-  respaldo de Open Library y el agrupado de ediciones; la casilla «Solo en
-  español» desaparece y su comportamiento activado pasa a ser el único.
-- **ADR-042/027/016/009**: los selectores `.search-slip input` y
-  `.library-search-input` que mencionan ya no existen; su regla de
-  `font-size: 16px` global sigue aplicando a los inputs restantes.
-- **PWA**: sin cambios en esta issue; el versionado `20260816` (issue #92)
-  ya cubría los parciales y módulos tocados aquí.
-- **`docs/manual-de-usuario.md` actualizado**: secciones 3, 4.2 (series),
-  5.2 (películas), 6.2 (libros, siempre en español) y 7 (Cómo buscar:
-  7.1 catálogo con botones de tipo, 7.2 tu registro, 7.3 añadir manualmente)
-  y TOC, reflejando el flujo unificado.
+- **ADR-013 partially superseded**: the global search it documented
+  (collection + friends, status chips) is kept as-is as the first part of
+  the dropdown; its scope is expanded with the catalog sections.
+- **ADR-030 in force but with a new host**: the preview stays intact
+  (modal, enrichment, `isConnected` guards), but it now opens from
+  dropdown rows instead of `.result-card`; `renderSearchResults` (with its
+  6th `onPreview` parameter) is removed as the horizontal strip
+  disappears.
+- **ADR-002 reduced**: the books search keeps Google Books with Open
+  Library fallback and editions grouping; the «Solo en español» checkbox
+  disappears and its on behavior becomes the only one.
+- **ADR-042/027/016/009**: the `.search-slip input` and
+  `.library-search-input` selectors they mention no longer exist; their
+  global `font-size: 16px` rule still applies to the remaining inputs.
+- **PWA**: no change in this issue; the `20260816` versioning (issue #92)
+  already covered the partials and modules touched here.
+- **`docs/manual-de-usuario.md` updated**: sections 3, 4.2 (series),
+  5.2 (movies), 6.2 (books, always in Spanish) and 7 (How to search:
+  7.1 catalog with type buttons, 7.2 your log, 7.3 add manually)
+  and TOC, reflecting the unified flow.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/search.js` | **Refactor a stateless**: eliminados `setupSearch`, `clearAllSearches`, `refreshSearchAddButtons`, `hideResults`, `toggleResultsToolbar` y el estado de resultados; exporta `searchExternal(group, query, page=1)` (delega en api-movies/api-books; libros siempre `spanishOnly=true`), `existingIdsFor`, `existingBookKeys`, `isBookAlreadyAdded`, `handleAdd`, `handleManualAdd`, `openSearchPreviewFromResults`, `enrichSearchItem` (estos últimos sin cambios de comportamiento) |
-| `js/global-search.js` | **Dropdown unificado (issue #82)**: `flatResults` con `kind` `"collection"`/`"external"`/`"manual"`; botones de tipo SIEMPRE visibles (`renderTypeButtons`, `activeGroup`); **selección única**: solo la sección «Catálogo · X» del grupo activo (al pulsar otro tipo se ocultan los anteriores; caché conservada para volver sin re-llamar); secciones en lista con botón Añadir/Añadido y fila manual al final (también en buscando/error/vacío: `manualRowHtml`, `externalSectionLoadingHtml`); click en fila external → preview sin cerrar el dropdown; anti-race `searchSeq` + caché por grupo `{ query, items, source }` + `inFlight` + `externalError`; `closeGlobalSearch()` invalida todo; sin paginación (página 1, cap 5); nueva `refreshExternalResults(ctx)` exportada; botón Añadir con `stopPropagation` y refresh a «Añadido» tras éxito |
-| `js/app.js` | Importa `refreshExternalResults` (sustituye a `refreshSearchAddButtons`); la llama tras cada snapshot de `subscribeToItems` (movie/tv/book); eliminados `librarySearchText` y los listeners de `.library-search-input`; eliminado `clearAllSearches()` |
-| `js/ui.js` | Eliminado `renderSearchResults` (y el render de `.result-card` de la tira horizontal); se conservan `openSearchPreviewModal`, `openBookConfirmModal` y `openManualAddModal` |
-| `ocio/series.html`, `ocio/peliculas.html`, `ocio/libros.html` | Eliminados `.search-slip` (`#form-search-*`, `#search-*-input`, `.search-clear-btn`), `.results-strip` (`#search-*-results`), `.results-toolbar` (`#btn-load-more-*`, `#btn-hide-results-*`), `#btn-manual-movie/tv/book`, `#books-spanish-only` y `.library-search` («Buscar en mi lista…») |
-| `css/styles.css` | `.global-search__type-buttons`/`__type-btn`/`.is-active` (flex-wrap), `.global-search__group-title`, `.global-search__status`, `.global-search__item-add` (btn Añadir), `.global-search__manual-add`, `.global-search__item-status` (chip, compartido con la colección); `@media (max-width: 600px)`: refuerzo de flex-wrap y títulos/meta con clamp a 2 líneas (el dropdown ya era `position: fixed` en móvil) |
-| `ocio/ocio.css` | Limpieza de estilos de `.search-slip`, `.results-strip`, `.result-card*`, `.results-toolbar`, `.lang-filter-check`, `.library-search*` |
-| `js/config.js` | `APP_VERSION` de `20260815` a **`20260816`** |
-| `service-worker.js` | `STATIC_ASSETS` con `?v=20260816` (styles, ocio.css, app.js y `ocio/*.html`); invalida las cachés de `20260815` y anteriores |
-| `docs/manual-de-usuario.md` | Secciones 3, 4.2, 5.2, 6.2 y 7 (7.1 catálogo con botones de tipo y fila manual; 7.2 tu registro; 7.3 añadir manualmente) y TOC actualizados al flujo unificado: libros siempre en español, sin «Buscar en mi lista…» ni buscadores dentro de las pestañas |
-| `docs/adr-045-unificacion-buscadores.md` | **Nuevo**: este documento |
+| `js/search.js` | **Refactor to stateless**: `setupSearch`, `clearAllSearches`, `refreshSearchAddButtons`, `hideResults`, `toggleResultsToolbar` and the results state removed; exports `searchExternal(group, query, page=1)` (delegates to api-movies/api-books; books always `spanishOnly=true`), `existingIdsFor`, `existingBookKeys`, `isBookAlreadyAdded`, `handleAdd`, `handleManualAdd`, `openSearchPreviewFromResults`, `enrichSearchItem` (the latter with no behavior change) |
+| `js/global-search.js` | **Unified dropdown (issue #82)**: `flatResults` with `kind` `"collection"`/`"external"`/`"manual"`; type buttons ALWAYS visible (`renderTypeButtons`, `activeGroup`); **single selection**: only the active group's «Catálogo · X» section (pressing another type hides the previous ones; cache kept to return without re-calling); list sections with Add/Added button and manual row at the end (also in searching/error/empty: `manualRowHtml`, `externalSectionLoadingHtml`); click on an external row → preview without closing the dropdown; anti-race `searchSeq` + per-group cache `{ query, items, source }` + `inFlight` + `externalError`; `closeGlobalSearch()` invalidates everything; no pagination (page 1, cap 5); new exported `refreshExternalResults(ctx)`; Add button with `stopPropagation` and refresh to «Añadido» after success |
+| `js/app.js` | Imports `refreshExternalResults` (replaces `refreshSearchAddButtons`); calls it after each `subscribeToItems` snapshot (movie/tv/book); `librarySearchText` and the `.library-search-input` listeners removed; `clearAllSearches()` removed |
+| `js/ui.js` | `renderSearchResults` removed (and the horizontal strip's `.result-card` render); `openSearchPreviewModal`, `openBookConfirmModal` and `openManualAddModal` kept |
+| `ocio/series.html`, `ocio/peliculas.html`, `ocio/libros.html` | Removed `.search-slip` (`#form-search-*`, `#search-*-input`, `.search-clear-btn`), `.results-strip` (`#search-*-results`), `.results-toolbar` (`#btn-load-more-*`, `#btn-hide-results-*`), `#btn-manual-movie/tv/book`, `#books-spanish-only` and `.library-search` («Buscar en mi lista…») |
+| `css/styles.css` | `.global-search__type-buttons`/`__type-btn`/`.is-active` (flex-wrap), `.global-search__group-title`, `.global-search__status`, `.global-search__item-add` (Add button), `.global-search__manual-add`, `.global-search__item-status` (chip, shared with the collection); `@media (max-width: 600px)`: flex-wrap reinforcement and titles/metadata with 2-line clamp (the dropdown was already `position: fixed` on mobile) |
+| `ocio/ocio.css` | Cleanup of the styles of `.search-slip`, `.results-strip`, `.result-card*`, `.results-toolbar`, `.lang-filter-check`, `.library-search*` |
+| `js/config.js` | `APP_VERSION` from `20260815` to **`20260816`** |
+| `service-worker.js` | `STATIC_ASSETS` with `?v=20260816` (styles, ocio.css, app.js and `ocio/*.html`); invalidates `20260815` and older caches |
+| `docs/manual-de-usuario.md` | Sections 3, 4.2, 5.2, 6.2 and 7 (7.1 catalog with type buttons and manual row; 7.2 your log; 7.3 add manually) and TOC updated to the unified flow: books always in Spanish, no «Buscar en mi lista…» nor searchers inside the tabs |
+| `docs/adr-045-unificacion-buscadores.md` | **New**: this document |
 
 Related issue: #82 — https://github.com/gonzalitojh/Registro-personal/issues/82

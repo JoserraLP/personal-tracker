@@ -1,188 +1,189 @@
-# ADR-071: Aviso de lanzamiento de videojuegos (issue #175)
+# ADR-071: Video game release notice (issue #175)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-10
 
-## Contexto
+## Context
 
-La **comprobación diaria** (`checkForUpdates` en `js/daily-check.js`)
-revisa una vez al día, sin red salvo excepciones puntuales, los estrenos
-de películas pendientes (`movie_release`), las premieres de series
-(`series_premiere`) y los episodios nuevos (`new_episode`), y crea las
-notificaciones correspondientes en la campana (ADR-037, ADR-012).
+The **daily check** (`checkForUpdates` in `js/daily-check.js`)
+reviews once a day, with no network except for specific exceptions, the
+releases of pending movies (`movie_release`), series'
+premieres (`series_premiere`) and new episodes (`new_episode`), and creates the
+corresponding notifications in the bell (ADR-037, ADR-012).
 
-Los **videojuegos** son una categoría propia desde la issue #47
-(colección `games` en Firestore, `playLog` por juego, ADR-067 para el
-estudio de APIs y ADR-068 para la consistencia de su información), pero
-no tenían hueco en la comprobación diaria: al añadirlos se guardaba el
-año (`year`) pero **no la fecha de lanzamiento** (`first_release_date` de
-IGDB no se mapeaba), y el manual de usuario (§16) decía explícitamente
-que «los videojuegos no se actualizan solos… no hay comprobación diaria
-de novedades para ellos».
+**Video games** have been their own category since issue #47
+(the `games` collection in Firestore, a per-game `playLog,` ADR-067 for the
+APIs study and ADR-068 for the consistency of its information), but they
+had no place in the daily check: when adding them the year (`year`) was
+stored but **not the release date** (IGDB's `first_release_date`
+was not mapped), and the user manual (§16) explicitly said that
+«the video games do not update themselves… there is no daily check of
+new stuff for them».
 
-La issue #175 pide incluir los videojuegos en las daily-check y las
-notificaciones: avisar cuando un juego pendiente **sale a la venta**.
+Issue #175 asks to include video games in the daily checks and the
+notifications: warn when a pending game **goes on sale**.
 
-Restricción de diseño relevante: IGDB se consulta a través de un proxy
-Cloudflare Worker con un **rate limit de 4 req/s** (ADR-067); refrescar
-diariamente los metadatos de todos los juegos guardados no es viable por
-coste del proxy y límite de peticiones.
+Relevant design constraint: IGDB is queried through a
+Cloudflare Worker proxy with a **4 req/s rate limit** (ADR-067);
+refreshing all the saved games' metadata daily is not viable due to the
+proxy's cost and the requests limit.
 
 Related issue: #175 — https://github.com/gonzalitojh/Registro-personal/issues/175
 
-## Decisión
+## Decision
 
-Añadir un aviso de lanzamiento de videojuegos **sin red**: la fecha se
-guarda al añadir el juego y la pasada diaria solo la compara con la
-fecha actual, siguiendo el patrón fail-open de las series manuales.
+Add a video game release notice **without network**: the date is
+stored when adding the game and the daily run only compares it with
+the current date, following the manual series' fail-open pattern.
 
-### 1. `releaseDate` en api-games.js
+### 1. `releaseDate` in api-games.js
 
-Nuevo helper `dateFromTimestamp(ts)`: convierte el timestamp Unix de
-IGDB (en **segundos**) a `"YYYY-MM-DD"` usando **partes de fecha
-locales** (`getFullYear`/`getMonth`/`getDate`, nunca `toISOString()`,
-que usaría UTC y desviaría un día cerca de medianoche — mismo criterio
-local que `yearFromTimestamp`). Devuelve `null` si no hay timestamp o es
-inválido. `releaseDate` se añade al resultado de `mapGameResult`
-(búsqueda) y de `getGameDetails` (detalles al añadir).
+A new helper `dateFromTimestamp(ts)`: converts IGDB's Unix timestamp (in
+**seconds**) to `"YYYY-MM-DD"` using **local date
+parts** (`getFullYear`/`getMonth`/`getDate`, never `toISOString()`,
+which would use UTC and shift a day near midnight — the same local
+criterion as `yearFromTimestamp`). It returns `null` if there is no
+timestamp or it is invalid. `releaseDate` is added to `mapGameResult`'s
+result (search) and to `getGameDetails`' (details on adding).
 
-### 2. `awaitingRelease` al añadir (search.js)
+### 2. `awaitingRelease` on adding (search.js)
 
-- **Flujo normal** (`handleAdd`): tras enriquecer el borrador con
-  `getGameDetails`, si `details.releaseDate && isUnreleasedDate(details.releaseDate)`
-  → `draft.awaitingRelease = true`. La **guarda `releaseDate` truthy es
-  obligatoria**: `isUnreleasedDate(null)` devuelve `true` y un juego sin
-  fecha quedaría `awaitingRelease` para siempre (no hay refresco diario
-  que lo resuelva).
-- **Flujo «marcar jugado»** (`handleAddSeen`): el borrador lleva
-  `awaitingRelease: false` explícito — un juego que ya se marcó como
-  jugado en el momento del alta no espera lanzamiento.
+- **Normal flow** (`handleAdd`): after enriching the draft with
+  `getGameDetails`, if `details.releaseDate && isUnreleasedDate(details.releaseDate)`
+  → `draft.awaitingRelease = true`. The **truthy `releaseDate` guard is
+  mandatory**: `isUnreleasedDate(null)` returns `true` and a
+  dateless game would stay `awaitingRelease` forever (there is no daily
+  refresh to resolve it).
+- **The "mark played" flow** (`handleAddSeen`): the draft carries
+  an explicit `awaitingRelease: false` — a game already marked
+  as played at creation time does not wait for a release.
 
-### 3. Pasada diaria sin red (daily-check.js)
+### 3. Network-free daily run (daily-check.js)
 
-Nueva pasada de videojuegos en `checkForUpdates`, tras el bloque de
-series manuales. **Sin red**: usa los datos guardados (IGDB no se
-consulta en la pasada). **Fail-open** como `manualShows`: un error de
-escritura no aborta la pasada ni cuenta como fallo de API. Se revisan
-todos los juegos no manuales, con dos fases por juego:
+A new video games pass in `checkForUpdates`, after the manual series'
+block. **Without network**: it uses the stored data (IGDB is not
+queried in the run). **Fail-open** like `manualShows`: a write
+error does not abort the run nor count as an API failure. All non-manual
+games are reviewed, with two phases per game:
 
-| Fase | Condición | Acción |
+| Phase | Condition | Action |
 |------|-----------|--------|
-| **Backfill del flag** | `!g.awaitingRelease && g.releaseDate && isUnreleasedDate(g.releaseDate) && !(g.playLog && g.playLog.length)` | `updates.awaitingRelease = true` |
-| **Aviso de lanzamiento** | `prefs.game_release !== false && g.awaitingRelease && g.releaseDate && g.releaseDate <= today && !(g.playLog && g.playLog.length)` | `addNotification` con ««Título» ya está a la venta (dd/mm/aaaa).» (`formatDateEs`), `awaitingRelease = false`, `releasedNoticedAt = today` |
+| **Flag backfill** | `!g.awaitingRelease && g.releaseDate && isUnreleasedDate(g.releaseDate) && !(g.playLog && g.playLog.length)` | `updates.awaitingRelease = true` |
+| **Release notice** | `prefs.game_release !== false && g.awaitingRelease && g.releaseDate && g.releaseDate <= today && !(g.playLog && g.playLog.length)` | `addNotification` with ««Título» ya está a la venta (dd/mm/aaaa).» (`formatDateEs`), `awaitingRelease = false`, `releasedNoticedAt = today` |
 
-- El **backfill** cubre los juegos guardados antes de la issue #175 que
-  ya tengan `releaseDate`; la guarda truthy impide marcar juegos sin
-  fecha (sin fecha no hay lanzamiento que esperar).
-- La **guarda del `playLog`** en ambas fases es necesaria porque
-  `quick-actions.js` y `modal-handlers.js` no limpian `awaitingRelease`
-  al marcar un juego como jugado: sin ella se avisaría de juegos ya
-  terminados.
-- `releasedNoticedAt` se persiste como registro de que el aviso se
-  emitió (y evita repetirlo si un futuro refresco de metadatos
-  reintroduce el flag).
+- The **backfill** covers games saved before issue #175 that
+  already have a `releaseDate`; the truthy guard prevents marking
+  dateless games (without a date there is no release to wait for).
+- **The `playLog` guard** in both phases is necessary because
+  `quick-actions.js` and `modal-handlers.js` do not clear
+  `awaitingRelease` when marking a game as played: without it games
+  already finished would be notified.
+- `releasedNoticedAt` is persisted as a record that the notice was
+  issued (and avoids repeating it if a future metadata refresh
+  reintroduces the flag).
 
-### 4. Preferencia `game_release` (settings.js + index.html)
+### 4. The `game_release` preference (settings.js + index.html)
 
-- `game_release: true` en `DEFAULT_SETTINGS.notifications` (entre
-  `series_premiere` y `friend_activity`).
-- Añadida a los **dos mapas** de checkboxes de settings.js: el de
-  `renderSettings` y el de `wireNotificationToggles`, ambos con id
-  `"notif-game-release": "game_release"`.
-- `index.html`: nueva fila de ajustes «Estrenos de videojuegos» con el
-  checkbox `notif-game-release` (marcado por defecto), tras «Estrenos de
+- `game_release: true` in `DEFAULT_SETTINGS.notifications` (between
+  `series_premiere` and `friend_activity`).
+- Added to settings.js's **two maps** of checkboxes: the one of
+  `renderSettings` and the one of `wireNotificationToggles`, both with
+  the id `"notif-game-release": "game_release"`.
+- `index.html`: a new settings row «Estrenos de videojuegos» with the
+  `notif-game-release` checkbox (checked by default), after «Estrenos de
   series».
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Refresco diario de metadatos de IGDB**: descartado — el coste del
-  proxy Cloudflare Worker y el rate limit de IGDB (4 req/s, ADR-067)
-  hacen inviable consultar todos los juegos cada día; la información se
-  rellena en el momento de añadirlos y la pasada diaria trabaja sin red
-  con los datos guardados.
-- **Tratar «sin fecha» como `awaitingRelease`**: descartado — sería un
-  flag muerto: sin `releaseDate` el aviso nunca podría dispararse y el
-  backfill no tendría fecha que comprobar; quedaría `true` para siempre
-  (y el manual §16 prometía que los juegos no se actualizan solos, así
-  que nada lo resolvería).
-- **Migración de juegos existentes con un refresco único**: descartado —
-  implicaría una pasada de red masiva puntual (coste del proxy/rate
-  limit); el backfill de la pasada diaria consigue gratis el mismo
-  resultado para los juegos que ya tengan `releaseDate`.
-- **Limpiar `awaitingRelease` en quick-actions.js y modal-handlers.js**:
-  descartado — ampliaría la superficie de cambio a todos los flujos de
-  «marcar jugado»; la guarda del `playLog` en la pasada diaria logra el
-  mismo efecto sin tocar esos flujos.
+- **Daily refresh of IGDB's metadata**: rejected — the
+  Cloudflare Worker proxy's cost and IGDB's rate limit (4 req/s,
+  ADR-067) make querying all games every day unviable; the information
+  is filled at adding time and the daily run works
+  without network with the stored data.
+- **Treating "no date" as `awaitingRelease`**: rejected — it would be
+  a dead flag: without `releaseDate` the notice could never fire and the
+  backfill would have no date to check; it would stay `true` forever
+  (and the manual's §16 promised games do not update on
+  their own, so nothing would resolve it).
+- **Migrating existing games with a one-off refresh**: rejected — it
+  would imply a massive one-time network run (the proxy's cost/rate
+  limit); the daily run's backfill achieves the same
+  result for free for games already holding a `releaseDate`.
+- **Clearing `awaitingRelease` in quick-actions.js and modal-handlers.js**:
+  rejected — it would expand the change surface to all the
+  "mark played" flows; the daily run's `playLog` guard achieves the
+  same effect without touching those flows.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- Los videojuegos con fecha de lanzamiento futura avisan de su salida a
-  la venta en la campana, con su preferencia propia desactivable en
-  Ajustes.
-- La pasada diaria sigue siendo **sin red** para los juegos (mismo
-  patrón fail-open que las series manuales).
-- El backfill cubre automáticamente los juegos preexistentes que ya
-  tengan `releaseDate`, sin migraciones.
+- Video games with a future release date notify their going on sale in
+  the bell, with their own deactivatable preference in
+  Settings.
+- The daily run stays **network-free** for games (the same
+  fail-open pattern as the manual series).
+- The backfill automatically covers pre-existing games already
+  holding a `releaseDate`, with no migrations.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- Los juegos guardados **antes** de esta feature y **sin** `releaseDate`
-  no recibirán nunca el aviso: sin migración ni refresco de metadatos no
-  hay forma de conocer su fecha (aceptado; el backfill solo aplica a los
-  que ya tengan fecha).
-- Los juegos sin fecha de lanzamiento en IGDB tampoco avisan nunca (ni
-  falta que hace: no hay lanzamiento que esperar).
-- La guarda del `playLog` depende de que el juego tenga historial: un
-  juego marcado jugado por otros caminos sin tocar el `playLog` podría
-  recibir el aviso (caso límite aceptado).
+- Games saved **before** this feature and **without** a
+  `releaseDate` will never get the notice: without a migration nor a
+  metadata refresh there is no way to know their date (accepted; the
+  backfill only applies to those already holding a date).
+- Games without a release date on IGDB never notify either (nor
+  should they: there is no release to wait for).
+- The `playLog` guard depends on the game having history: a game
+  marked played by other paths without touching the `playLog` could
+  get the notice (an accepted edge case).
 
-### Neutras
+### Neutral
 
-- La notificación de videojuegos «escapa» (se muestra) en los **3 sinks
-  de render** sin código específico por tipo: la lista de la campana y el
-  badge (`renderNotifications`, app.js) y la notificación del sistema
-  vía push (js/push.js `handleNotificationsSnapshot` → `SHOW_NOTIFICATION`
-  → service-worker.js), porque el mensaje es texto libre y los sinks no
-  distinguen tipos.
-- `docs/manual-de-usuario.md` actualizado (§13 notificaciones, §15
-  ajustes y §16 sincronización — este último ya no promete que los
-  videojuegos queden fuera de la comprobación diaria) (regla 3 de
-  AGENTS.md).
+- The video games' notification "escapes" (shows) in the
+  **3 render sinks** without per-type code: the bell's list and the
+  badge (`renderNotifications`, app.js) and the system
+  notification via push (js/push.js `handleNotificationsSnapshot` →
+  `SHOW_NOTIFICATION` → service-worker.js), because the message is free
+  text and the sinks do not distinguish types.
+- `docs/manual-de-usuario.md` updated (§13 notifications, §15
+  settings and §16 sync — the latter no longer promises that video
+  games are outside the daily check) (AGENTS.md's rule
+  3).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/api-games.js` | **Modificado**: `dateFromTimestamp(ts)` (timestamp Unix en segundos → `"YYYY-MM-DD"` con hora local, `null` sin fecha) y `releaseDate` en `mapGameResult` y `getGameDetails` |
-| `js/search.js` | **Modificado**: `awaitingRelease: true` al añadir si `releaseDate` truthy y futura (guarda obligatoria); `awaitingRelease: false` explícito en `handleAddSeen` |
-| `js/daily-check.js` | **Modificado**: pasada de videojuegos sin red (fail-open): backfill del flag y aviso de lanzamiento con guardas `releaseDate` truthy y `playLog`, `releasedNoticedAt` |
-| `js/settings.js` | **Modificado**: `game_release: true` en `DEFAULT_SETTINGS.notifications` y en los dos mapas de checkboxes (`renderSettings` y `wireNotificationToggles`) con id `notif-game-release` |
-| `index.html` | **Modificado**: fila de ajustes «Estrenos de videojuegos» (checkbox `notif-game-release`, marcado), tras «Estrenos de series» |
-| `docs/manual-de-usuario.md` | **Modificado**: §13 (nuevo tipo de aviso), §15 (nuevo ajuste) y §16 (los juegos ya no quedan fuera de la comprobación diaria de lanzamientos) |
-| `docs/adr-071-aviso-lanzamiento-videojuegos.md` | **Nuevo**: este documento |
+| `js/api-games.js` | **Modified**: `dateFromTimestamp(ts)` (a Unix timestamp in seconds → `"YYYY-MM-DD"` with local time, `null` without a date) and `releaseDate` in `mapGameResult` and `getGameDetails` |
+| `js/search.js` | **Modified**: `awaitingRelease: true` on adding if the `releaseDate` is truthy and future (a mandatory guard); an explicit `awaitingRelease: false` in `handleAddSeen` |
+| `js/daily-check.js` | **Modified**: the network-free video games pass (fail-open): the flag's backfill and the release notice with the truthy `releaseDate` and `playLog` guards, `releasedNoticedAt` |
+| `js/settings.js` | **Modified**: `game_release: true` in `DEFAULT_SETTINGS.notifications` and in the two checkbox maps (`renderSettings` and `wireNotificationToggles`) with the id `notif-game-release` |
+| `index.html` | **Modified**: the settings row «Estrenos de videojuegos» (the `notif-game-release` checkbox, checked), after «Estrenos de series» |
+| `docs/manual-de-usuario.md` | **Modified**: §13 (a new alert type), §15 (a new setting) and §16 (games are no longer outside the daily release check) |
+| `docs/adr-071-aviso-lanzamiento-videojuegos.md` | **New**: this document |
 
-## Verificación
+## Verification
 
-- Revisión QA: PASS — `releaseDate` guardado al añadir (búsqueda y
-  detalles), `awaitingRelease` solo con fecha futura real y sin
-  `playLog`, backfill de juegos preexistentes con fecha, aviso con
-  mensaje ««Título» ya está a la venta (dd/mm/aaaa).», limpieza del flag
-  y `releasedNoticedAt` tras notificar, preferencia `game_release`
-  funcional en los dos mapas de settings y checkbox marcado por defecto.
-- Sin red en la pasada: PASS — la comprobación diaria de juegos solo lee
-  datos guardados; IGDB no se consulta (coste del proxy/rate limit
-  respetado).
-- Sinks de render: PASS — la notificación aparece en la lista de la
-  campana, el badge y la notificación del sistema (push) sin cambios en
-  esos flujos.
-- Temas: PASS — la fila de ajustes reutiliza el patrón de switch
-  existente, sin colores ni superficies nuevas.
-- Escaneo de seguridad: PASS sin hallazgos (solo lectura de prefs y
-  escritura sobre el propio juego, sin secretos ni PII).
+- QA review: PASS — the `releaseDate` stored on adding (search and
+  details), `awaitingRelease` only with a really future date and no
+  `playLog`, the backfill of pre-existing games with a date, the
+  notice with the message ««Título» ya está a la venta (dd/mm/aaaa).», clearing the flag
+  and `releasedNoticedAt` after notifying, the working `game_release`
+  preference in the two settings maps and the checkbox checked by
+  default.
+- No network in the run: PASS — the games' daily check only reads
+  stored data; IGDB is not queried (the proxy's
+  cost/rate limit respected).
+- Render sinks: PASS — the notification appears in the bell's list, the
+  badge and the system notification (push) with no
+  changes in those flows.
+- Themes: PASS — the settings row reuses the existing switch
+  pattern, with no new colors nor surfaces.
+- Security scan: PASS with no findings (only reading prefs and
+  writing to the game itself, no secrets nor PII).
 
 Related issue: #175 — https://github.com/gonzalitojh/Registro-personal/issues/175

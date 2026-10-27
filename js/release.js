@@ -1,24 +1,24 @@
 // =============================================================
-// Lógica de "no estrenado". TMDB devuelve la fecha vacía como null
-// (normalizada en api-movies.js); para nosotros un ítem sin fecha
-// de estreno oficial se trata igual que uno con fecha futura: NO
-// está estrenado. Aquí vive ese criterio único y los mensajes de
-// confirmación al marcar como visto un ítem no estrenado.
+// Logic of "not yet released". TMDB returns an empty date as null
+// (normalized in api-movies.js); for us an item without an official
+// release date is treated the same as one with a future date: it is
+// NOT released. The single criterion lives here, along with the
+// confirmation messages when marking an unreleased item as watched.
 // =============================================================
 
 import { todayISO, formatDateEs } from "./dates.js";
 
-// Un ítem está sin estrenar si no tiene fecha oficial o si la
-// fecha es futura (comparación de strings "YYYY-MM-DD").
+// An item is unreleased if it has no official date or if the date
+// is in the future (string comparison "YYYY-MM-DD").
 export function isUnreleasedDate(dateStr) {
   return !dateStr || dateStr > todayISO();
 }
 
-// Mensaje de confirmación al marcar como visto un episodio concreto
-// (T{season}E{episode}) del que conocemos su fecha de emisión (o la
-// ausencia de ella). Cubre el caso en que TMDB no devuelve
-// next_episode_to_air pero el episodio existe en su temporada.
-// Devuelve null cuando el episodio ya está estrenado.
+// Confirmation message when marking as watched a specific episode
+// (S{season}E{episode}) whose air date is known (or known to be
+// missing). Covers the case where TMDB does not return
+// next_episode_to_air but the episode exists in its season.
+// Returns null when the episode is already released.
 export function episodeUnreleasedMessage(title, season, episode, airDate) {
   if (!isUnreleasedDate(airDate)) return null;
   if (airDate) {
@@ -29,14 +29,14 @@ export function episodeUnreleasedMessage(title, season, episode, airDate) {
   return `«${title}» (T${season}E${episode}) no tiene fecha de estreno oficial en TMDB; suponemos que aún no está estrenado. ¿Marcarlo igualmente como visto?`;
 }
 
-// Mensaje de confirmación al marcar como visto un ítem sin estrenar.
-// Devuelve null cuando no aplica (manual, estrenado, sin coincidencia
-// de episodio siguiente, tipo no soportado).
-// airInfo (opcional): resultado de getNextEpisodeAirInfo (sorting.js)
-// con el tag `source`; se inyecta como parámetro para no crear un ciclo
-// de imports (release.js solo importa dates.js). Para series, si no se
-// pasa airInfo (o no coincide con el siguiente episodio) se devuelve
-// null: sin información no hay confirmación.
+// Confirmation message when marking an unreleased item as watched.
+// Returns null when it does not apply (manual, released, no match
+// for the next episode, unsupported type).
+// airInfo (optional): result of getNextEpisodeAirInfo (sorting.js)
+// with the `source` tag; it is injected as a parameter to avoid an
+// import cycle (release.js only imports dates.js). For shows, if
+// airInfo is not passed (or does not match the next episode) null
+// is returned: without information there is no confirmation.
 export function unreleasedConfirmMessage(item, airInfo = null) {
   if (item.type === "movie") {
     if (item.manual) return null;
@@ -50,8 +50,8 @@ export function unreleasedConfirmMessage(item, airInfo = null) {
   }
 
   if (item.type === "tv") {
-    // Las series manuales no tienen fechas reales de TMDB: se excluyen
-    // de toda confirmación de "no estrenado".
+    // Manual shows have no real TMDB dates: they are excluded from
+    // every "unreleased" confirmation.
     if (item.manual) return null;
     const { nextEpisode } = item;
     if (!nextEpisode) return null;
@@ -61,8 +61,9 @@ export function unreleasedConfirmMessage(item, airInfo = null) {
         : null;
     if (!info) return null;
     if (!isUnreleasedDate(info.airDate)) return null;
-    // Fuente "season": la temporada entera aún no está estrenada (su
-    // air_date es null o futura), aunque el episodio concreto exista.
+    // Source "season": the whole season is not released yet (its
+    // air_date is null or in the future), even if the specific
+    // episode exists.
     if (info.source === "season") {
       return `Según TMDB la temporada ${info.season} de «${item.title}» aún no está estrenada${
         info.airDate ? ` (se estrena el ${formatDateEs(info.airDate)})` : " (sin fecha oficial)"

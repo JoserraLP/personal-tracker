@@ -1,12 +1,12 @@
 // =============================================================
-// Búsqueda de películas, series y libros + alta desde resultados
-// + alta manual. Extraído de app.js para desacoplar toda la lógica
-// de búsqueda de la orquestación general.
+// Search of movies, shows and books + adding from results
+// + manual adding. Extracted from app.js to decouple all search
+// logic from the general orchestration.
 //
-// Desde la issue #82 este módulo es stateless: no toca el DOM ni
-// guarda resultados. La UI del dropdown (incluida la búsqueda en el
-// catálogo) vive en global-search.js, que importa de aquí las
-// funciones de alta, preview y llamadas a la API.
+// Since issue #82 this module is stateless: it does not touch the
+// DOM nor stores results. The dropdown UI (including the catalog
+// search) lives in global-search.js, which imports the adding,
+// preview and API call functions from here.
 // =============================================================
 
 import { addItem, updateItem, deleteItem } from "./db.js";
@@ -20,16 +20,16 @@ import { computeProgress, markAllSeasonsWatched } from "./tv-progress.js";
 import { openRatingModal, RATING_MODAL_UNDONE } from "./rating-modal.js";
 import * as ui from "./ui.js";
 
-// Búsqueda en el catálogo de un grupo (stateless: solo devuelve
-// datos, sin tocar el DOM). group: "movies" | "tv" | "books" | "games".
-// Devuelve { items, hasMore, source } (source solo para libros:
+// Search in the catalog of a group (stateless: it only returns
+// data, without touching the DOM). group: "movies" | "tv" | "books" | "games".
+// Returns { items, hasMore, source } (source only for books:
 // "googlebooks" | "openlibrary").
 export async function searchExternal(group, query, page = 1) {
   if (group === "movies") return apiSearchMovies(query, page);
   if (group === "tv") return apiSearchTv(query, page);
   if (group === "games") return apiSearchGames(query, page);
-  // Libros: siempre en español (la casilla "Solo en español" se
-  // eliminó en la issue #82).
+  // Books: always in Spanish (the "Solo en español" checkbox was
+  // removed in issue #82).
   return apiSearchBooks(query, page, null, true);
 }
 
@@ -37,10 +37,10 @@ export function existingIdsFor(group, ctx) {
   return new Set(ctx.getItemsByGroup(group).map((i) => i.externalId));
 }
 
-// Para libros: detecta si ya están añadidos por externalId O por
-// título+autor (cruce entre fuentes: un libro añadido vía Open
-// Library con ID "/works/..." se detecta también en resultados de
-// Google Books y viceversa).
+// For books: detects whether they are already added by externalId OR
+// by title+author (cross-reference between sources: a book added via
+// Open Library with ID "/works/..." is also detected in Google Books
+// results and vice versa).
 export function existingBookKeys(ctx) {
   const books = ctx.getItemsByGroup("books");
   const keys = new Set();
@@ -57,14 +57,15 @@ export function isBookAlreadyAdded(item, idsSet, keysSet) {
   return keysSet.has(key);
 }
 
-// Almacenamiento mínimo (issue #200, estudio A2 secciones 8.1-8.2):
-// del snapshot ampliado de la API solo se persisten los campos que la
-// UI consume SIN red — tarjeta (coverUrl), avisos (releaseDate,
-// firstAirDate, nextEpisodeToAir, seasonAirDates) y rating comunitario
-// (la tarjeta lo pinta). El resto de la ficha (sinopsis, reparto,
-// tráiler, saga, plataformas...) se pide bajo demanda al abrir la
-// ficha; getMovieDetails/getTvExtraDetails guardan ese snapshot en su
-// caché de 24 h, así que una ficha recién añadida no repite llamada.
+// Minimal storage (issue #200, study A2 sections 8.1-8.2):
+// from the extended snapshot of the API only the fields the UI
+// consumes WITHOUT network are persisted — card (coverUrl), alerts
+// (releaseDate, firstAirDate, nextEpisodeToAir, seasonAirDates) and
+// community rating (the card paints it). The rest of the detail view
+// (synopsis, cast, trailer, saga, platforms...) is requested on
+// demand when opening the detail; getMovieDetails/getTvExtraDetails
+// keep that snapshot in their 24 h cache, so a freshly added detail
+// view does not repeat the call.
 export function minimalStoredFields(details, type) {
   const keep = {};
   if (type === "movie") {
@@ -89,7 +90,7 @@ export function minimalStoredFields(details, type) {
   return keep;
 }
 
-/* ---------- Alta desde resultados ---------- */
+/* ---------- Adding from results ---------- */
 
 async function doAddBook(item, btn, ctx, choices) {
   btn.disabled = true;
@@ -111,13 +112,13 @@ async function doAddBook(item, btn, ctx, choices) {
       readLog: [],
     };
 
-    // Para libros de Open Library (ID "/works/..."), buscar sinopsis
-    // si no se proporcionó ninguna.
+    // For Open Library books (ID "/works/..."), look up the synopsis
+    // if none was provided.
     if (!draft.description && item.externalId && item.externalId.startsWith("/works/")) {
       try {
         draft.description = await getOpenLibraryDescription(item.externalId);
       } catch (err) {
-        // no bloqueamos el alta
+        // we do not block the add
       }
     }
 
@@ -136,11 +137,11 @@ async function doAddBook(item, btn, ctx, choices) {
 export async function handleAdd(item, btn, ctx) {
   if (!ctx.getCurrentUser()) return;
 
-  // Defensa en profundidad contra duplicados con lazy loading (issue
-  // #178): el grupo puede no estar aún cargado en memoria (pestaña no
-  // visitada) y el botón «Añadir» haberse mostrado igualmente. Antes
-  // de añadir se comprueba por externalId con una lectura que cae a
-  // Firestore si el estado en memoria no está completo.
+  // Defense in depth against duplicates with lazy loading (issue
+  // #178): the group may not be loaded in memory yet (tab not
+  // visited) and the «Añadir» button may have been shown anyway.
+  // Before adding, it is checked by externalId with a read that falls
+  // back to Firestore if the in-memory state is not complete.
   if (item.externalId) {
     const typeToGroup = { movie: "movies", tv: "tv", book: "books", game: "games" };
     const group = typeToGroup[item.type] || "movies";
@@ -152,8 +153,8 @@ export async function handleAdd(item, btn, ctx) {
     }
   }
 
-  // Para libros con múltiples portadas o sinopsis, abrir modal de
-  // selección antes de añadir.
+  // For books with multiple covers or synopses, open a selection
+  // modal before adding.
   if (
     item.type === "book" &&
     ((item.allCovers && item.allCovers.length > 1) ||
@@ -166,7 +167,7 @@ export async function handleAdd(item, btn, ctx) {
     return;
   }
 
-  // Ruta rápida: sin opciones que elegir (o fuente Open Library con una portada).
+  // Quick path: no options to choose (or Open Library source with one cover).
   if (item.type === "book") {
     return await doAddBook(item, btn, ctx, {
       coverUrl: item.coverUrl,
@@ -174,7 +175,7 @@ export async function handleAdd(item, btn, ctx) {
     });
   }
 
-  // --- Videojuegos (IGDB vía proxy) ---
+  // --- Video games (IGDB via proxy) ---
   if (item.type === "game") {
     btn.disabled = true;
     btn.textContent = "Añadiendo…";
@@ -192,16 +193,17 @@ export async function handleAdd(item, btn, ctx) {
       };
       try {
         const details = await getGameDetails(item.externalId);
-        // Almacenamiento mínimo: solo tarjeta + avisos + rating
-        // comunitario (la sinopsis, plataformas, etc. van bajo demanda).
+        // Minimal storage: card + alerts + community rating only
+        // (synopsis, platforms, etc. go on demand).
         Object.assign(draft, minimalStoredFields(details, "game"));
         if (!draft.coverUrl) draft.coverUrl = item.coverUrl || null;
-        // Guarda obligatoria de releaseDate truthy: isUnreleasedDate(null)
-        // devuelve true y un juego sin fecha quedaría awaitingRelease para
-        // siempre (no hay refresco diario que lo resuelva).
+        // Mandatory truthy releaseDate save: isUnreleasedDate(null)
+        // returns true and a game without a date would stay
+        // awaitingRelease forever (there is no daily refresh to
+        // resolve it).
         if (details.releaseDate && isUnreleasedDate(details.releaseDate)) draft.awaitingRelease = true;
       } catch (err) {
-        // no bloqueamos el alta si este paso extra falla
+        // we do not block the add if this extra step fails
       }
       await addItem(ctx.getCurrentUser().uid, "game", draft);
       ui.showToast(`«${item.title}» añadido a tu registro.`);
@@ -214,7 +216,7 @@ export async function handleAdd(item, btn, ctx) {
     }
   }
 
-  // --- Películas / series (sin cambios) ---
+  // --- Movies / shows (unchanged) ---
   btn.disabled = true;
   btn.textContent = "Añadiendo…";
   try {
@@ -235,12 +237,12 @@ export async function handleAdd(item, btn, ctx) {
       draft.watchLog = [];
       try {
         const details = await getMovieDetails(item.externalId);
-        // Almacenamiento mínimo: solo tarjeta + avisos + rating
-        // comunitario (sinopsis, reparto, tráiler, saga... bajo demanda).
+        // Minimal storage: card + alerts + community rating only
+        // (synopsis, cast, trailer, saga... on demand).
         Object.assign(draft, minimalStoredFields(details, "movie"));
         if (details.releaseDate !== undefined && isUnreleasedDate(details.releaseDate)) draft.awaitingRelease = true;
       } catch (err) {
-        // no bloqueamos el alta si este paso extra falla
+        // we do not block the add if this extra step fails
       }
     } else if (item.type === "tv") {
       draft.watched = {};
@@ -251,12 +253,12 @@ export async function handleAdd(item, btn, ctx) {
       draft.history = [];
       try {
         const details = await getTvExtraDetails(item.externalId);
-        // Almacenamiento mínimo: los campos de avisos (fechas y próximo
-        // episodio) sí se persisten; el resto de la ficha, bajo demanda.
+        // Minimal storage: the alert fields (dates and next episode)
+        // are persisted; the rest of the detail view, on demand.
         Object.assign(draft, minimalStoredFields(details, "tv"));
         if (details.firstAirDate !== undefined && isUnreleasedDate(details.firstAirDate)) draft.awaitingRelease = true;
       } catch (err) {
-        // ídem
+        // see above
       }
     }
 
@@ -271,22 +273,22 @@ export async function handleAdd(item, btn, ctx) {
   }
 }
 
-/* ---------- Alta directa como visto desde el catálogo (issue #115) ---------- */
+/* ---------- Direct add as watched from the catalog (issue #115) ---------- */
 
-// Restaura el botón «Marcar visto» (o «Marcar leído»/«Marcar jugado» según
-// el tipo, issue #177) a su estado inicial (tras abortar, fallar o deshacer
-// el flujo de alta como visto).
+// Restores the «Marcar visto» button (or «Marcar leído»/«Marcar jugado»
+// depending on the type, issue #177) to its initial state (after
+// aborting, failing or undoing the add-as-watched flow).
 function restoreSeenBtn(btn, type) {
   if (!btn) return;
   btn.disabled = false;
   btn.textContent = seenActionLabels(type).action;
 }
 
-// Da de alta el ítem como visto y abre la ventana de valoración al
-// momento (patrón maybeQuickItemRating de quick-actions.js). Nunca
-// lanza: si la ventana no puede abrirse, el alta ya persistida queda
-// intacta. Devuelve true solo si el flujo terminó sin deshacer; false
-// si el usuario deshizo el marcado (el toast ya informó de ello).
+// Adds the item as watched and opens the rating window right away
+// (pattern maybeQuickItemRating from quick-actions.js). Never
+// throws: if the window cannot open, the already-persisted add stays
+// intact. Returns true only if the flow finished without undo; false
+// if the user undid the marking (the toast already informed of it).
 async function openSeenRating(uid, type, ref, opts) {
   try {
     const result = await openRatingModal({
@@ -306,9 +308,9 @@ async function openSeenRating(uid, type, ref, opts) {
     const undone = result === RATING_MODAL_UNDONE;
     if (undone) {
       ui.showToast("Marcado deshecho.");
-      // false = el botón debe restaurarse: tras el undo, el snapshot de
-      // Firestore re-renderiza la fila con ambos botones activos y en el
-      // interín no debe quedar el botón en «Visto» (issue #115).
+      // false = the button must be restored: after the undo, the
+      // Firestore snapshot re-renders the row with both buttons active
+      // and meanwhile the button must not stay at «Visto» (issue #115).
       return false;
     }
     ui.showToast(opts.doneToast);
@@ -319,8 +321,9 @@ async function openSeenRating(uid, type, ref, opts) {
   }
 }
 
-// Alta de libro ya leído (issue #115): mismo esqueleto que doAddBook,
-// pero con status "completado" y el readLog con inicio y fin hoy.
+// Add of an already-read book (issue #115): same skeleton as
+// doAddBook, but with status "completado" and the readLog with start
+// and end today.
 async function doAddBookSeen(item, btn, ctx, choices) {
   btn.disabled = true;
   btn.textContent = "Marcando…";
@@ -341,13 +344,13 @@ async function doAddBookSeen(item, btn, ctx, choices) {
       readLog: [{ startedAt: todayISO(), finishedAt: todayISO() }],
     };
 
-    // Para libros de Open Library (ID "/works/..."), buscar sinopsis
-    // si no se proporcionó ninguna (mismo backfill que doAddBook).
+    // For Open Library books (ID "/works/..."), look up the synopsis
+    // if none was provided (same backfill as doAddBook).
     if (!draft.description && item.externalId && item.externalId.startsWith("/works/")) {
       try {
         draft.description = await getOpenLibraryDescription(item.externalId);
       } catch (err) {
-        // no bloqueamos el alta
+        // we do not block the add
       }
     }
 
@@ -359,9 +362,9 @@ async function doAddBookSeen(item, btn, ctx, choices) {
       communityRating: null,
       doneToast: `«${item.title}» añadido y marcado como leído.`,
     });
-    // La ruta multi-portada no tiene listener que consuma la promesa
-    // (el flujo continuó en el modal de confirmación): el estado final
-    // del botón se fija aquí mismo, como hace el listener del dropdown.
+    // The multi-cover path has no listener consuming the promise
+    // (the flow continued in the confirmation modal): the final state
+    // of the button is set right here, like the dropdown listener does.
     if (ok) {
       btn.disabled = true;
       btn.textContent = seenActionLabels("book").done;
@@ -376,21 +379,21 @@ async function doAddBookSeen(item, btn, ctx, choices) {
   }
 }
 
-// Marca un resultado del catálogo como visto directamente y abre la
-// valoración al momento, evitando el paso intermedio añadir→marcar
-// (issue #115). En series marca TODOS los episodios de TODAS las
-// temporadas y valora la serie en su conjunto.
-// Devuelve Promise<boolean>: true = añadido y flujo completado,
-// false = abortado, error o deshecho.
+// Marks a catalog result as watched directly and opens the rating
+// right away, skipping the intermediate add→mark step (issue #115).
+// For shows it marks ALL the episodes of ALL the seasons and rates
+// the show as a whole.
+// Returns Promise<boolean>: true = added and flow completed,
+// false = aborted, error or undone.
 export async function handleAddSeen(item, btn, ctx) {
   if (!ctx.getCurrentUser()) return false;
 
-  // Defensa en profundidad contra duplicados con lazy loading (issue
-  // #178): el grupo puede no estar aún cargado en memoria (pestaña no
-  // visitada) y el botón «Marcar visto/leído/jugado» haberse mostrado
-  // igualmente. Antes de añadir se comprueba por externalId con una
-  // lectura que cae a Firestore si el estado en memoria no está
-  // completo.
+  // Defense in depth against duplicates with lazy loading (issue
+  // #178): the group may not be loaded in memory yet (tab not
+  // visited) and the «Marcar visto/leído/jugado» button may have been
+  // shown anyway. Before adding, it is checked by externalId with a
+  // read that falls back to Firestore if the in-memory state is not
+  // complete.
   if (item.externalId) {
     const typeToGroup = { movie: "movies", tv: "tv", book: "books", game: "games" };
     const group = typeToGroup[item.type] || "movies";
@@ -402,9 +405,9 @@ export async function handleAddSeen(item, btn, ctx) {
     }
   }
 
-  // Para libros con múltiples portadas o sinopsis, abrir modal de
-  // selección antes de añadir (mismo predicado que handleAdd). No se
-  // espera: el resultado llega vía doAddBookSeen.
+  // For books with multiple covers or synopses, open a selection
+  // modal before adding (same predicate as handleAdd). It is not
+  // awaited: the result arrives via doAddBookSeen.
   if (
     item.type === "book" &&
     ((item.allCovers && item.allCovers.length > 1) ||
@@ -417,7 +420,7 @@ export async function handleAddSeen(item, btn, ctx) {
     return;
   }
 
-  // Ruta rápida: sin opciones que elegir (o fuente Open Library con una portada).
+  // Quick path: no options to choose (or Open Library source with one cover).
   if (item.type === "book") {
     return await doAddBookSeen(item, btn, ctx, {
       coverUrl: item.coverUrl,
@@ -425,7 +428,7 @@ export async function handleAddSeen(item, btn, ctx) {
     });
   }
 
-  // --- Videojuegos (IGDB vía proxy) ---
+  // --- Video games (IGDB via proxy) ---
   if (item.type === "game") {
     btn.disabled = true;
     btn.textContent = "Marcando…";
@@ -445,14 +448,14 @@ export async function handleAddSeen(item, btn, ctx) {
       let details = {};
       try {
         details = await getGameDetails(item.externalId);
-        // Almacenamiento mínimo: solo tarjeta + avisos + rating
-        // comunitario (la ficha se pide bajo demanda al abrirla).
+        // Minimal storage: card + alerts + community rating only
+        // (the detail view is requested on demand at open).
         Object.assign(draft, minimalStoredFields(details, "game"));
-        // IGDB puede devolver cover null: no pisar la
-        // portada del resultado de búsqueda (mismo patrón que TMDB).
+        // IGDB may return cover null: do not override the
+        // cover of the search result (same pattern as TMDB).
         draft.coverUrl = draft.coverUrl || item.coverUrl;
       } catch (err) {
-        // no bloqueamos el alta si este paso extra falla
+        // we do not block the add if this extra step fails
       }
 
       const ref = await addItem(ctx.getCurrentUser().uid, "game", draft);
@@ -470,7 +473,7 @@ export async function handleAddSeen(item, btn, ctx) {
     }
   }
 
-  // --- Películas / series ---
+  // --- Movies / shows ---
   btn.disabled = true;
   btn.textContent = "Marcando…";
   try {
@@ -479,12 +482,12 @@ export async function handleAddSeen(item, btn, ctx) {
       try {
         details = await getMovieDetails(item.externalId);
       } catch (err) {
-        // no bloqueamos el alta si este paso extra falla
+        // we do not block the add if this extra step fails
       }
 
-      // Confirmación de no estrenado: los resultados de búsqueda no
-      // traen releaseDate, así que se usa el de los detalles (con
-      // fallback null, que el mensaje trata como "sin fecha oficial").
+      // Unreleased confirmation: search results do not carry
+      // releaseDate, so the one from the details is used (with a
+      // null fallback, which the message treats as "no official date").
       const msg = unreleasedConfirmMessage({
         type: "movie",
         manual: false,
@@ -510,11 +513,11 @@ export async function handleAddSeen(item, btn, ctx) {
         watchLog: [todayISO()],
         awaitingRelease: false,
       };
-      // Almacenamiento mínimo: solo tarjeta + avisos + rating comunitario.
+      // Minimal storage: card + alerts + community rating only.
       Object.assign(draft, minimalStoredFields(details, "movie"));
 
-      // TMDB puede devolver poster_path null: no pisar la portada del
-      // resultado de búsqueda (patrón del review de QA, issue #115).
+      // TMDB may return poster_path null: do not override the cover of
+      // the search result (QA review pattern, issue #115).
       draft.coverUrl = draft.coverUrl || item.coverUrl;
 
       const ref = await addItem(ctx.getCurrentUser().uid, "movie", draft);
@@ -526,7 +529,7 @@ export async function handleAddSeen(item, btn, ctx) {
       });
     }
 
-    // Serie: GATE obligatorio — sin temporadas no hay alta a medias.
+    // Show: mandatory GATE — without seasons there is no partial add.
     let seasonsMeta = [];
     try {
       seasonsMeta = await getTvSeasonsMeta(item.externalId);
@@ -539,7 +542,7 @@ export async function handleAddSeen(item, btn, ctx) {
       return false;
     }
 
-    // Confirmación si hay temporadas aún no estrenadas.
+    // Confirmation if there are seasons not released yet.
     const unreleasedSeasons = seasonsMeta.filter((s) => isUnreleasedDate(s.airDate));
     if (unreleasedSeasons.length) {
       const msg = `«${item.title}» · ${unreleasedSeasons.length} de ${seasonsMeta.length} temporadas aún no están estrenadas. ¿Marcarlas todas igualmente como vistas?`;
@@ -553,7 +556,7 @@ export async function handleAddSeen(item, btn, ctx) {
     try {
       tvDetails = await getTvExtraDetails(item.externalId);
     } catch (err) {
-      // no bloqueamos el alta si este paso extra falla
+        // we do not block the add if this extra step fails
     }
 
     const draft = {
@@ -568,9 +571,9 @@ export async function handleAddSeen(item, btn, ctx) {
       rating: null,
       notes: "",
     };
-    // Almacenamiento mínimo: solo tarjeta + avisos + rating comunitario.
+    // Minimal storage: card + alerts + community rating only.
     Object.assign(draft, minimalStoredFields(tvDetails, "tv"));
-    // Todos los episodios de todas las temporadas, marcados hoy.
+    // All episodes of all seasons, marked today.
     const watched = markAllSeasonsWatched({}, seasonsMeta, todayISO());
     const progress = computeProgress(seasonsMeta, watched);
     draft.watched = watched;
@@ -587,7 +590,7 @@ export async function handleAddSeen(item, btn, ctx) {
       title: item.title,
       coverUrl: item.coverUrl,
       communityRating: tvDetails.communityRating ?? null,
-      // Sin episodeLabel: la valoración es de la serie en su conjunto.
+      // Without episodeLabel: the rating is for the show as a whole.
       doneToast: `«${item.title}» añadida y marcada como vista.`,
     });
   } catch (err) {
@@ -597,11 +600,11 @@ export async function handleAddSeen(item, btn, ctx) {
   }
 }
 
-/* ---------- Vista previa de resultados de búsqueda (issue #22) ---------- */
+/* ---------- Preview of search results (issue #22) ---------- */
 
-// Carga los detalles ampliados de un resultado de búsqueda para la
-// vista previa. Devuelve {} si no hay nada que enriquecer o si falla
-// la llamada a la API (nunca lanza).
+// Loads the extended details of a search result for the preview.
+// Returns {} when there is nothing to enrich or when the API call
+// fails (never throws).
 export async function enrichSearchItem(item) {
   if (item.type === "movie") {
     try {
@@ -613,20 +616,21 @@ export async function enrichSearchItem(item) {
   if (item.type === "tv") {
     try {
       const details = await getTvExtraDetails(item.externalId);
-      // Las temporadas se piden aparte: si fallan, se devuelven los
-      // detalles sin seasonsMeta (la vista previa no se bloquea).
+      // Seasons are requested separately: if they fail, the details
+      // are returned without seasonsMeta (the preview does not get
+      // blocked).
       try {
         details.seasonsMeta = await getTvSeasonsMeta(item.externalId);
       } catch (err) {
-        // no bloqueamos la preview
+        // we do not block the preview
       }
       return details;
     } catch (err) {
       return {};
     }
   }
-  // Videojuego: datos ampliados de IGDB (sinopsis, plataformas,
-  // desarrolladores, Metacritic, ESRB...).
+  // Video game: extended IGDB data (synopsis, platforms,
+  // developers, Metacritic, ESRB...).
   if (item.type === "game") {
     try {
       return await getGameDetails(item.externalId);
@@ -634,8 +638,8 @@ export async function enrichSearchItem(item) {
       return {};
     }
   }
-  // Libro: solo sinopsis, y únicamente para fuentes Open Library
-  // ("/works/...") que aún no la traigan en el resultado de búsqueda.
+  // Book: synopsis only, and only for Open Library sources
+  // ("/works/...") that do not carry it in the search result yet.
   if (item.externalId && item.externalId.startsWith("/works/") && !item.description) {
     try {
       return { description: await getOpenLibraryDescription(item.externalId) };
@@ -646,10 +650,10 @@ export async function enrichSearchItem(item) {
   return {};
 }
 
-// Abre la vista previa de un resultado de búsqueda. Recalcula `added`
-// con el estado actual del ctx como defensa frente a cambios entre el
-// render y el click (el grupo se mapea a plural porque ctx usa las
-// claves "movies"/"tv"/"books"/"games").
+// Opens the preview of a search result. It recomputes `added` with
+// the current ctx state as defense against changes between render
+// and click (the group is mapped to plural because ctx uses the
+// "movies"/"tv"/"books"/"games" keys).
 export function openSearchPreviewFromResults(item, added, ctx) {
   const typeToGroup = { movie: "movies", tv: "tv", book: "books", game: "games" };
   const group = typeToGroup[item.type] || "movies";
@@ -662,7 +666,7 @@ export function openSearchPreviewFromResults(item, added, ctx) {
     added: currentAdded,
     onAdd: async (item, btn) => {
       const ok = await handleAdd(item, btn, ctx);
-      // closeModal es idempotente: los libros ya cerraron en doAddBook
+      // closeModal is idempotent: books already closed in doAddBook
       if (ok) ui.closeModal();
       return ok;
     },
@@ -670,7 +674,7 @@ export function openSearchPreviewFromResults(item, added, ctx) {
   });
 }
 
-/* ---------- Alta manual ---------- */
+/* ---------- Manual add ---------- */
 
 function manualExternalId() {
   return "manual-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -705,7 +709,7 @@ export async function handleManualAdd(type, data, ctx) {
     draft.progress = null;
     draft.playLog = [];
   } else {
-    // Libros
+    // Books
     draft.progress = null;
     draft.readLog = [];
   }

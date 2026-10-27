@@ -1,7 +1,7 @@
 // =============================================================
-// Wiring del dropdown de notificaciones: abrir/cerrar, marcar
-// como leídas, borrar todas. Extraído de app.js.
-// Incluye gestión de foco para accesibilidad.
+// Wiring of the notifications dropdown: open/close, mark all
+// as read, delete all. Extracted from app.js.
+// Includes focus management for accessibility.
 // =============================================================
 
 import { trapFocus } from "./focus-utils.js";
@@ -20,7 +20,7 @@ export function setupNotifications(ctx) {
       focusTrapCleanup();
       focusTrapCleanup = null;
     }
-    // Restaurar foco al botón de notificaciones
+    // Restore focus to the notifications button
     if (btnNotifications) btnNotifications.focus();
   }
 
@@ -29,15 +29,15 @@ export function setupNotifications(ctx) {
     notifDropdown.classList.toggle("hidden");
 
     if (!notifDropdown.classList.contains("hidden")) {
-      // Marcar como leídas
+      // Mark as read
       ctx.getNotifications()
         .filter((n) => !n.read)
         .forEach((n) => markNotificationRead(ctx.getCurrentUser().uid, n.id));
 
-      // Atrapar foco dentro del dropdown
+      // Trap focus inside the dropdown
       focusTrapCleanup = trapFocus(notifDropdown);
 
-      // Escape para cerrar
+      // Escape to close
       function escHandler(e) {
         if (e.key === "Escape") {
           e.preventDefault();

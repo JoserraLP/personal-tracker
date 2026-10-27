@@ -1,67 +1,67 @@
 // =============================================================
-// Notificaciones en el dispositivo (Push): puente entre las
-// notificaciones internas de la campana y las notificaciones del
-// sistema operativo / navegador (Service Worker).
-// Cuando la app está abierta pero NO en primer plano (pestaña
-// oculta, otra app en el móvil con la PWA instalada), las
-// notificaciones nuevas que llegan por Firestore se reenvían al
-// Service Worker para mostrarlas como notificación del sistema.
+// On-device notifications (Push): bridge between the internal
+// bell notifications and the operating system / browser
+// notifications (Service Worker).
+// When the app is open but NOT in the foreground (tab hidden,
+// another app in the phone with the PWA installed), new
+// notifications arriving via Firestore are forwarded to the
+// Service Worker so they show as system notifications.
 // =============================================================
 
 import { loadSettings, saveSettings } from "./settings.js";
 
-// Límite de ids recordados para no volver a notificar lo ya visto.
-// Evita que seenIds crezca sin fin: al superarlo se descartan los
-// más antiguos (el Set mantiene el orden de inserción).
+// Limit of remembered ids so already-seen items are not notified
+// again. Prevents seenIds from growing forever: once exceeded, the
+// oldest ones are discarded (the Set keeps insertion order).
 const MAX_SEEN = 500;
 
 let seenIds = new Set();
 let initialized = false;
 
-// ---- Soporte y permiso del navegador ----
+// ---- Browser support and permission ----
 
-/** ¿El navegador soporta la API de notificaciones? */
+/** Does the browser support the Notifications API? */
 export function isNotificationSupported() {
   return "Notification" in window;
 }
 
-/** Estado del permiso de notificaciones ('granted' | 'denied' | 'default'). */
+/** Notification permission state ('granted' | 'denied' | 'default'). */
 export function getPermission() {
   return Notification.permission;
 }
 
-// ---- Preferencia de usuario (persistida en ajustes) ----
+// ---- User preference (persisted in settings) ----
 
-/** ¿El usuario tiene activadas las notificaciones en el dispositivo? */
+/** Does the user have on-device notifications enabled? */
 export function isDevicePushEnabled() {
   return loadSettings().notifications.device_push === true;
 }
 
-/** Activa o desactiva la preferencia en los ajustes guardados. */
+/** Enables or disables the preference in the saved settings. */
 export function setDevicePushEnabled(enabled) {
   const s = loadSettings();
   s.notifications.device_push = enabled;
   saveSettings(s);
 }
 
-/** Pide al usuario el permiso de notificaciones del navegador. */
+/** Asks the user for the browser's notification permission. */
 export async function requestDevicePushPermission() {
   return Notification.requestPermission();
 }
 
 /**
- * ¿La app está en primer plano? Decisión de producto: solo se mira
- * document.visibilityState (NO document.hasFocus()) para evitar
- * falsos negativos en iOS standalone. Notificamos cuando la app NO
- * está en primer plano.
+ * Is the app in the foreground? Product decision: only
+ * document.visibilityState is checked (NOT document.hasFocus()) to
+ * avoid false negatives on iOS standalone. We notify when the app is
+ * NOT in the foreground.
  */
 export function isAppInForeground() {
   return document.visibilityState === "visible";
 }
 
-// ---- Detección de notificaciones nuevas y envío al SW ----
+// ---- Detection of new notifications and forwarding to the SW ----
 
-/** Descarta los ids más antiguos si seenIds supera MAX_SEEN. */
+/** Discards the oldest ids when seenIds exceeds MAX_SEEN. */
 function trimSeenIds() {
   while (seenIds.size > MAX_SEEN) {
     seenIds.delete(seenIds.values().next().value);
@@ -69,14 +69,14 @@ function trimSeenIds() {
 }
 
 /**
- * Procesa cada snapshot de la campana: detecta notificaciones NUEVAS
- * por id y, si la app está en segundo plano y el usuario tiene
- * activado el push, las reenvía al Service Worker (fire-and-forget)
- * para que las muestre como notificación del sistema.
+ * Processes each snapshot from the bell: detects NEW notifications
+ * by id and, if the app is in the background and the user has push
+ * enabled, forwards them to the Service Worker (fire-and-forget) so
+ * they show as system notifications.
  */
 export function handleNotificationsSnapshot(items) {
   if (!initialized) {
-    // Baseline: al abrir la app NO se notifica lo ya existente.
+    // Baseline: when the app opens, existing notifications are NOT notified.
     for (const n of items || []) {
       if (n && n.id) seenIds.add(n.id);
     }
@@ -108,9 +108,9 @@ export function handleNotificationsSnapshot(items) {
 }
 
 /**
- * Resetea el estado de detección (p. ej. al cerrar sesión) para que
- * el siguiente inicio de sesión vuelva a tomar baseline y no se
- * notifiquen notificaciones antiguas de la sesión anterior.
+ * Resets the detection state (e.g. on logout) so that the next
+ * sign-in takes a baseline again and old notifications from the
+ * previous session are not notified.
  */
 export function resetDevicePush() {
   seenIds.clear();

@@ -1,22 +1,22 @@
 // =============================================================
-// Sección de Gimnasio (issue #62) — pestañas «Resumen», «Entrenos»
-// y «Ejercicios».
-// La pestaña Resumen (issue #269) agrega los entrenos de un periodo
-// elegido (semana/mes en curso o rango libre) en totales y desglose
-// por ejercicio. Gestiona además el registro de entrenos (fecha,
-// nombre, nota y ejercicios con series de peso × repeticiones) y el
-// catálogo de ejercicios del usuario (users/{uid}/gym-workouts y
+// Gym section (issue #62) — tabs «Summary», «Workouts»
+// and «Exercises».
+// The Summary tab (issue #269) aggregates the workouts of a chosen
+// period (current week/month or free range) into totals and a breakdown
+// per exercise. It also manages the registration of workouts (date,
+// name, note and exercises with sets of weight × reps) and the
+// user's exercise catalog (users/{uid}/gym-workouts and
 // users/{uid}/gym-exercises).
 //
-// Peso y unidad (issue #62): el peso canónico en Firestore es
-// SIEMPRE kg (pesoKg). La unidad de presentación (kg/lbs) vive en
-// settings.unidadPeso y solo afecta a los displays, a las entradas
-// y al placeholder de los inputs: los valores guardados nunca
-// cambian al alternar.
+// Weight and unit (issue #62): the canonical weight in Firestore is
+// ALWAYS kg (pesoKg). The display unit (kg/lbs) lives in
+// settings.unidadPeso and only affects the displays, the inputs
+// and the placeholder of the inputs: the saved values never
+// change when toggling.
 //
-// Patrón: como recipes.js, se conecta desde app.js vía
-// setupGym({ ctx }), que devuelve la API de apertura de la vista
-// ({ openGym({ tab }) }) para el router y la sidebar.
+// Pattern: like recipes.js, it is connected from app.js via
+// setupGym({ ctx }), which returns the opening API of the view
+// ({ openGym({ tab }) }) for the router and the sidebar.
 // =============================================================
 
 import { navigate } from "./router.js";
@@ -24,15 +24,15 @@ import { trapFocus } from "./focus-utils.js";
 import { showToast } from "./ui.js";
 import { getUnit, setUnit } from "./settings.js";
 
-// ---------- Constantes ----------
+// ---------- Constants ----------
 
-// Conversión kg → lbs (1 kg = 2.20462 lbs). El peso se guarda
-// siempre en kg; esta constante solo alimenta la presentación.
+// Conversion kg → lbs (1 kg = 2.20462 lbs). The weight is always stored
+// in kg; this constant only feeds the display.
 const KG_PER_LB = 2.20462;
 
-// Grupos musculares del catálogo de ejercicios (issue #62): presets
-// del select del alta/edición. Los entrenos guardados conservan el
-// grupo como texto; los ids de abajo son los canónicos.
+// Muscle groups of the exercise catalog (issue #62): presets
+// of the select of the create/edit form. Saved workouts keep the
+// group as text; the ids below are canonical.
 const GYM_MUSCLE_GROUPS = [
   { id: "pecho", label: "Pecho" },
   { id: "espalda", label: "Espalda" },
@@ -50,53 +50,53 @@ const GYM_MUSCLE_GROUPS = [
 
 const GROUP_LABELS = Object.fromEntries(GYM_MUSCLE_GROUPS.map((g) => [g.id, g.label]));
 
-// ---------- Estado del módulo ----------
+// ---------- Module state ----------
 
 let currentUser = null;
 let ctx = null;
 let workouts = [];
 let exercises = [];
-// Pestaña de Gimnasio activa: se re-renderiza solo la pestaña a la
-// vista cuando llegan datos nuevos (patrón de recipes.js #209).
-// El default es «resumen»: la primera pestaña de la sección (#269).
+// Active Gym tab: only the tab being viewed is re-rendered
+// when new data arrives (pattern from recipes.js #209).
+// The default is «resumen»: the first tab of the section (#269).
 let currentTab = "resumen";
 
-// Modales: null = cerrado; "read" | "edit" | "new". El flag edit
-// bloquea el cierre por backdrop/Escape (patrón recipes.js:159-186).
+// Modals: null = closed; "read" | "edit" | "new". The edit flag
+// blocks closing by backdrop/Escape (pattern recipes.js:159-186).
 let workoutModalMode = null;
 let exerciseCardModalMode = null;
 let workoutModalCleanup = null;
 let exerciseModalCleanup = null;
 
-// Entreno en edición: id del documento (null en el alta) y borrador
-// en memoria (peso SIEMPRE en kg). El formulario se re-renderiza a
-// partir del borrador en cada cambio del constructor.
+// Workout in edition: document id (null when creating) and in-memory
+// draft (weight ALWAYS in kg). The form is re-rendered from
+// the draft on each change of the builder.
 let editingWorkoutId = null;
 let workoutDraft = null;
 
-// Ejercicio en edición: id (null en el alta). El formulario se lee
-// al pulsar Guardar (sin borrador: no hay constructor).
+// Exercise in edition: id (null when creating). The form is read
+// when pressing Save (no draft: there is no builder).
 let editingExerciseId = null;
 
-// Rango libre del resumen (issue #269, iteración 3): fechas YYYY-MM-DD
-// elegidas en el calendario del recuadro único; null = límite abierto.
-// Ya no hay dos inputs de fecha independientes: el primer click en el
-// calendario fija «desde» y el segundo «hasta» (intercambiando si el
-// segundo es anterior al primero). Iteración 4: el calendario NO se
-// cierra al fijar solo el primer extremo — permanece abierto hasta
-// que las dos fechas están elegidas (el cierre al completar el rango
-// y el de fuera/Esc/«Listo» se mantienen).
+// Free range of the summary (issue #269, iteration 3): YYYY-MM-DD dates
+// chosen in the calendar of the single box; null = open limit.
+// There are no longer two independent date inputs: the first click on the
+// calendar sets «from» and the second «to» (swapping if the
+// second is earlier than the first). Iteration 4: the calendar does NOT
+// close when only the first bound is set — it stays open until
+// the two dates are chosen (closing on completing the range
+// and on outside/Escape/«Listo» remain).
 let summaryRange = { from: null, to: null };
-// Mes visible en el calendario del rango ({year, month 0-11}).
+// Month visible in the range calendar ({year, month 0-11}).
 let summaryRangeMonth = null;
-// El calendario está abierto (aria-expanded del trigger).
+// The calendar is open (aria-expanded of the trigger).
 let summaryRangePopoverOpen = false;
 
-// Wiring de los listeners del DOM (idempotente): setupGym corre tras
-// cada login y los addEventListener no deben acumularse.
+// Wiring of the DOM listeners (idempotent): setupGym runs after
+// each login and the addEventListener calls must not accumulate.
 let gymWired = false;
 
-// ---------- Utilidades ----------
+// ---------- Utilities ----------
 
 function escapeHtml(str) {
   if (str == null) return "";
@@ -107,37 +107,37 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
-// Unidad de presentación activa (leída fresca desde localStorage).
+// Active display unit (read fresh from localStorage).
 function unit() {
   return getUnit();
 }
 
-// Etiqueta corta de la unidad activa para placeholders y summaries.
+// Short label of the active unit for placeholders and summaries.
 function unitLabel() {
   return unit();
 }
 
-// kg (canónico) → unidad de presentación, redondeado a 1 decimal.
+// kg (canonical) → display unit, rounded to 1 decimal.
 function kgToDisplay(kg) {
   const v = unit() === "lbs" ? kg * KG_PER_LB : kg;
   return Math.round(v * 10) / 10;
 }
 
-// unidad de presentación → kg (canónico), redondeado a 2 decimales.
+// display unit → kg (canonical), rounded to 2 decimals.
 function displayToKg(v) {
   const kg = unit() === "lbs" ? v / KG_PER_LB : v;
   return Math.round(kg * 100) / 100;
 }
 
-// Etiqueta de un grupo muscular (preset conocido o texto libre).
+// Label of a muscle group (known preset or free text).
 function groupLabel(id) {
   return GROUP_LABELS[id] || id || "";
 }
 
 // ---------- Setup ----------
 
-// Idempotente: los elementos del DOM se wirean una sola vez aunque
-// setupGym se llame tras cada login (ver app.js).
+// Idempotent: the DOM elements are wired once even if
+// setupGym is called after each login (see app.js).
 export function setupGym(opts) {
   ctx = opts?.ctx || null;
 
@@ -147,20 +147,20 @@ export function setupGym(opts) {
   document.getElementById("btn-new-workout").addEventListener("click", () => openWorkoutModal());
   document.getElementById("btn-new-exercise").addEventListener("click", () => openExerciseModal());
 
-  // Pestañas (issue #62): la UI solo navega; el router (fromRouter)
-  // hace el render. Patrón de recetas (recipes.js).
+  // Tabs (issue #62): the UI only navigates; the router (fromRouter)
+  // does the render. Pattern from recipes (recipes.js).
   document.querySelectorAll("[data-gym-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       navigate({ section: "gimnasio", tab: btn.dataset.gymTab });
     });
   });
 
-  // Selector de periodo del resumen (issue #269): el click en un chip
-  // sincroniza la UI (is-active/aria-pressed) y la visibilidad del
-  // recuadro del rango libre (solo con la opción «Rango», iteración
-  // del comentario de la issue), y si el periodo cambió se
-  // re-renderiza el resumen (lee el periodo nuevo del DOM). Los chips
-  // de semana/mes en curso no aplican al rango libre.
+  // Summary period selector (issue #269): the click on a chip
+  // syncs the UI (is-active/aria-pressed) and the visibility of
+  // the free range box (only with the «Rango» option, iteration
+  // of the comment of the issue), and if the period changed the
+  // summary is re-rendered (it reads the new period from the DOM). The
+  // current week/month chips do not apply to the free range.
   document.querySelectorAll("[data-summary-period]").forEach((chip) => {
     chip.addEventListener("click", () => {
       const previous = document.querySelector(".gym-summary-chip.is-active")?.dataset.summaryPeriod || null;
@@ -169,22 +169,22 @@ export function setupGym(opts) {
     });
   });
 
-  // Recuadro único del rango (iteración 3): el trigger abre/cierra el
-  // calendario; dentro se eligen «desde» (primer click) y «hasta»
-  // (segundo click) en el mismo control. Cierra con «Listo», con
-  // Escape o al hacer click fuera del recuadro.
+  // Single box of the range (iteration 3): the trigger opens/closes the
+  // calendar; inside, «from» (first click) and «to»
+  // (second click) are chosen in the same control. It closes with «Listo», with
+  // Escape or when clicking outside the box.
   //
-  // Iteración 4: el click fuera NO debe cerrar el calendario cuando
-  // se acaba de pulsar un día — el re-render de la rejilla que hace
-  // onSummaryRangeDayClick() detacha el botón pulsado antes de que el
-  // evento llegue a este handler (fase burbuja en document), y
-  // e.target.closest("#gym-summary-range") fallaría sobre un nodo
-  // descolgado, cerrando el calendario con solo «desde» elegido. La
-  // marca en fase de CAPTURA (que corre antes del re-render) recuerda
-  // que el click nació dentro del recuadro: el calendario permanece
-  // abierto hasta que las dos fechas están elegidas (el cierre al
-  // completar el rango lo hace onSummaryRangeDayClick(), y Esc /
-  // «Listo» / click fuera real siguen cerrando igual).
+  // Iteration 4: the click outside must NOT close the calendar when
+  // a day has just been pressed — the grid re-render made by
+  // onSummaryRangeDayClick() detaches the pressed button before the
+  // event reaches this handler (bubble phase on document), and
+  // e.target.closest("#gym-summary-range") would fail on a detached
+  // node, closing the calendar with only «from» chosen. The
+  // mark in the CAPTURE phase (which runs before the re-render) remembers
+  // that the click was born inside the box: the calendar remains
+  // open until the two dates are chosen (closing on
+  // completing the range is done by onSummaryRangeDayClick(), and Escape /
+  // «Listo» / real outside click still close the same way).
   document.getElementById("gym-summary-range")?.addEventListener("click", (e) => {
     e.__summaryRangeInside = true;
   }, true);
@@ -208,8 +208,8 @@ export function setupGym(opts) {
     onSummaryRangeDayClick(day.dataset.summaryRangeDay);
   });
   document.getElementById("gym-summary-range-clear")?.addEventListener("click", () => {
-    // Borrar el rango deja ambos extremos sin límite y el calendario
-    // abierto para volver a elegir.
+    // Clearing the range leaves both bounds open and the calendar
+    // open to choose again.
     summaryRange = { from: null, to: null };
     renderSummaryRangeCalendar();
     updateSummaryRangeSummary();
@@ -225,10 +225,10 @@ export function setupGym(opts) {
     if (e.key === "Escape" && summaryRangePopoverOpen) closeSummaryRangePopover();
   });
 
-  // Selector de unidad de peso (issue #62): se persiste con setUnit
-  // (localStorage + sync a Firestore) y se re-renderiza la pestaña
-  // activa (Resumen incluida, #269) y el modal de entreno abierto,
-  // si lo hay.
+  // Weight unit selector (issue #62): it is persisted with setUnit
+  // (localStorage + sync to Firestore) and the active tab is re-rendered
+  // (Summary included, #269) and the open workout modal,
+  // if any.
   const unitSelect = document.getElementById("gym-unit-select");
   if (unitSelect) {
     unitSelect.addEventListener("change", () => {
@@ -237,9 +237,9 @@ export function setupGym(opts) {
     });
   }
 
-  // Modal de entreno: cierre por ✕, backdrop y Escape. Backdrop y
-  // Escape solo cierran en modo lectura; en edición se bloquean para
-  // no perder el progreso del constructor (patrón recipes.js #234).
+  // Workout modal: close by ✕, backdrop and Escape. Backdrop and
+  // Escape only close in read mode; in edit they are blocked to
+  // not lose the builder's progress (pattern recipes.js #234).
   document.getElementById("gym-workout-modal-close").addEventListener("click", closeWorkoutModal);
   document.getElementById("gym-workout-modal-backdrop").addEventListener("click", () => {
     if (workoutModalMode === "read") closeWorkoutModal();
@@ -251,7 +251,7 @@ export function setupGym(opts) {
     }
   });
 
-  // Modal de ejercicio: mismo patrón.
+  // Exercise modal: same pattern.
   document.getElementById("gym-exercise-modal-close").addEventListener("click", closeExerciseModal);
   document.getElementById("gym-exercise-modal-backdrop").addEventListener("click", () => {
     if (exerciseCardModalMode === "read") closeExerciseModal();
@@ -263,8 +263,8 @@ export function setupGym(opts) {
     }
   });
 
-  // Cards de entrenos: toda la tarjeta es el botón; click (y
-  // Enter/Espacio) abren el detalle en modo lectura.
+  // Workout cards: the whole card is the button; click (and
+  // Enter/Space) open the detail in read mode.
   document.getElementById("gym-workouts-list").addEventListener("click", (e) => {
     const card = e.target.closest("[data-workout-id]");
     if (!card) return;
@@ -278,7 +278,7 @@ export function setupGym(opts) {
     openWorkoutModal(card.dataset.workoutId);
   });
 
-  // Cards del catálogo de ejercicios: idem.
+  // Exercise catalog cards: ditto.
   document.getElementById("gym-exercises-catalog").addEventListener("click", (e) => {
     const card = e.target.closest("[data-exercise-id]");
     if (!card) return;
@@ -295,10 +295,10 @@ export function setupGym(opts) {
   return { openGym };
 }
 
-// Arranca las suscripciones en tiempo real (lo llama app.js tras el
-// login, como el resto de secciones). Devuelve la función de
-// cancelación. Cada snapshot solo re-renderiza la pestaña a la vista
-// (patrón de recipes.js).
+// Starts the real-time subscriptions (app.js calls it after the
+// login, like the rest of sections). Returns the cancellation
+// function. Each snapshot only re-renders the tab being viewed
+// (pattern from recipes.js).
 export function subscribeGymData(uid, onChange, onError) {
   currentUser = uid;
   const subs = [];
@@ -306,8 +306,8 @@ export function subscribeGymData(uid, onChange, onError) {
   subs.push(ctx.subscribeToGymWorkouts(uid, (items) => {
     workouts = items;
     if (currentTab === "entrenos") renderWorkouts();
-    // El resumen (issue #269) vive de los entrenos: se re-renderiza
-    // en tiempo real al alta/edición/eliminación.
+    // The summary (issue #269) lives off the workouts: it is re-rendered
+    // in real time on create/edit/delete.
     if (currentTab === "resumen") renderSummary();
     if (onChange) onChange();
   }, onError));
@@ -315,15 +315,15 @@ export function subscribeGymData(uid, onChange, onError) {
   subs.push(ctx.subscribeToGymExercises(uid, (items) => {
     exercises = items;
     if (currentTab === "ejercicios") renderCatalog();
-    // El resumen (issue #269) usa el catálogo para resolver el grupo
-    // muscular y el nombre canónico de los ejercicios: si llega un
-    // snapshot nuevo con la pestaña a la vista, se repinta.
+    // The summary (issue #269) uses the catalog to resolve the muscle
+    // group and the canonical name of the exercises: if a new
+    // snapshot arrives with the tab being viewed, it is repainted.
     if (currentTab === "resumen") renderSummary();
-    // Constructor de entreno abierto (alta/edición): el catálogo puede
-    // llegar después que el modal (issue #62, primer ejercicio desde
-    // «Ver catálogo de ejercicios»). El borrador está en kg, así que
-    // re-renderizar es seguro; el editor se repinta con el select
-    // actualizado.
+    // Open workout builder (create/edit): the catalog may
+    // arrive later than the modal (issue #62, first exercise from
+    // «Ver catálogo de ejercicios»). The draft is in kg, so
+    // re-rendering is safe; the editor is repainted with the updated
+    // select.
     const workoutModal = document.getElementById("gym-workout-modal");
     if (workoutModal && !workoutModal.classList.contains("hidden")) {
       if (workoutModalMode === "edit" || workoutModalMode === "new") {
@@ -336,9 +336,9 @@ export function subscribeGymData(uid, onChange, onError) {
   return () => subs.forEach((unsub) => unsub && unsub());
 }
 
-// Vacía el estado local (lo llama app.js al cerrar sesión, para que
-// los datos del usuario anterior no se muestren al siguiente),
-// incluido el rango libre del resumen y el calendario (iteración 3).
+// Clears the local state (app.js calls it on logout, so the
+// previous user's data isn't shown to the next one),
+// including the free range of the summary and the calendar (iteration 3).
 export function resetGymData() {
   workouts = [];
   exercises = [];
@@ -359,7 +359,7 @@ export function resetGymData() {
   closeExerciseModal();
 }
 
-// ---------- Apertura / cierre de la vista ----------
+// ---------- Opening / closing of the view ----------
 
 export function openGym({ tab = "resumen", fromRouter = false } = {}) {
   if (!fromRouter) {
@@ -387,22 +387,22 @@ export function openGym({ tab = "resumen", fromRouter = false } = {}) {
     if (panel) panel.classList.toggle("hidden", key !== tab);
   });
 
-  // Dispatch de render por pestaña (#269): el resumen entra como una
-  // pestaña más, sin if/else encadenados.
+  // Render dispatch per tab (#269): the summary enters as one
+  // more tab, with no chained if/else.
   const renderers = { resumen: renderSummary, entrenos: renderWorkouts, ejercicios: renderCatalog };
   renderers[tab]?.();
 }
 
-// ---------- Unidad de peso: re-render global (issue #62) ----------
+// ---------- Weight unit: global re-render (issue #62) ----------
 
-// Tras cambiar el select de unidad se repinta todo lo que muestra
-// pesos: la pestaña activa y, si el modal de entreno está abierto,
-// su vista (lectura o edición, desde el borrador en memoria).
+// After changing the unit select, everything showing weights
+// is repainted: the active tab and, if the workout modal is open,
+// its view (read or edit, from the in-memory draft).
 function renderAllWithUnit() {
-  // Dispatch de render por pestaña (#269): el resumen se repinta por
-  // uniformidad y porque desde las iteraciones 3/4 muestra pesos (la
-  // columna Diferencia) convertidos una sola vez al pintar: al
-  // cambiar la unidad debe repintarse con la conversión nueva.
+  // Render dispatch per tab (#269): the summary is repainted for
+  // uniformity and because since iterations 3/4 it shows weights (the
+  // Difference column) converted once when painting: when changing the unit
+  // it must be repainted with the new conversion.
   const renderers = { resumen: renderSummary, entrenos: renderWorkouts, ejercicios: renderCatalog };
   renderers[currentTab]?.();
   const workoutModal = document.getElementById("gym-workout-modal");
@@ -416,7 +416,7 @@ function renderAllWithUnit() {
   }
 }
 
-// ---------- Pestaña Entrenos: listado ----------
+// ---------- Workouts tab: list ----------
 
 function renderWorkouts() {
   const container = document.getElementById("gym-workouts-list");
@@ -444,7 +444,7 @@ function workoutCardHtml(w) {
   </article>`;
 }
 
-// ---------- Pestaña Ejercicios: catálogo ----------
+// ---------- Exercises tab: catalog ----------
 
 function renderCatalog() {
   const container = document.getElementById("gym-exercises-catalog");
@@ -456,8 +456,8 @@ function renderCatalog() {
     return;
   }
 
-  // El snapshot ya llega ordenado por nombre (db.js); el sort local
-  // con tie-break por id es defensivo frente a catálogos antiguos.
+  // The snapshot already arrives sorted by name (db.js); the local sort
+  // with tie-break by id is defensive against old catalogs.
   const sorted = [...exercises].sort(
     (a, b) => a.nombre.localeCompare(b.nombre, "es") || a.id.localeCompare(b.id)
   );
@@ -476,17 +476,17 @@ function exerciseCardHtml(ex) {
   </article>`;
 }
 
-// ---------- Pestaña Resumen (issue #269) ----------
+// ---------- Summary tab (issue #269) ----------
 
-// Rango de fechas (fechaISO YYYY-MM-DD) del periodo activo, leído
-// del DOM (chip .gym-summary-chip.is-active) y del estado del rango
-// libre elegido en el calendario del recuadro único (#269), con el
-// patrón UTC de ctx.todayISO():
-//   - week: lunes de la semana en curso → hoy.
-//   - month: primer día del mes en curso → hoy.
-//   - custom: summaryRange.from/summaryRange.to, inclusivo.
-//     Un extremo vacío es un límite abierto (null); si from > to se
-//     intercambian (el calendario ya lo evita al elegir, defensivo).
+// Date range (fechaISO YYYY-MM-DD) of the active period, read
+// from the DOM (chip .gym-summary-chip.is-active) and from the state of the
+// free range chosen in the calendar of the single box (#269), with the
+// UTC pattern of ctx.todayISO():
+//   - week: Monday of the current week → today.
+//   - month: first day of the current month → today.
+//   - custom: summaryRange.from/summaryRange.to, inclusive.
+//     An empty bound is an open limit (null); if from > to they
+//     are swapped (the calendar already avoids it when choosing, defensive).
 function summaryPeriodRange() {
   const today = ctx.todayISO();
   const active = document.querySelector(".gym-summary-chip.is-active")?.dataset.summaryPeriod || "week";
@@ -498,17 +498,17 @@ function summaryPeriodRange() {
     if (from && to && from > to) [from, to] = [to, from];
     return { period: "custom", custom: true, from, to };
   }
-  // Semana en curso: el lunes es hoy − ((getUTCDay() + 6) % 7) días
-  // (domingo = 0 → offset 6; lunes = 1 → offset 0).
+  // Current week: Monday is today − ((getUTCDay() + 6) % 7) days
+  // (Sunday = 0 → offset 6; Monday = 1 → offset 0).
   const monday = new Date(`${today}T00:00:00Z`);
   monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
   return { period: "week", custom: false, from: monday.toISOString().slice(0, 10), to: today };
 }
 
-// Clave de agrupación de una entrada de ejercicio de un entreno: el
-// id canónico si existe y sigue en el catálogo; si no (ejercicio
-// borrado del catálogo o datos legacy sin id) se agrupa por el
-// nombre snapshot normalizado.
+// Grouping key of a workout's exercise entry: the
+// canonical id if it exists and is still in the catalog; otherwise (exercise
+// deleted from the catalog or legacy data without id) it groups by the
+// normalized snapshot name.
 function summaryExerciseKey(e) {
   if (e?.ejercicioId && exercises.some((x) => x.id === e.ejercicioId)) {
     return e.ejercicioId;
@@ -516,9 +516,9 @@ function summaryExerciseKey(e) {
   return String(e?.nombre || "").trim().toLowerCase();
 }
 
-// Grupo muscular de una entrada de entreno: el guardado en la propia
-// entrada si lo tiene; si no, el del catálogo (por ejercicioId o,
-// para legacy sin id, por nombre normalizado).
+// Muscle group of a workout entry: the one saved in the entry itself
+// if it has it; otherwise the catalog's one (by ejercicioId or, for
+// legacy without id, by normalized name).
 function summaryGroupFor(e) {
   if (e?.grupoMuscular) return e.grupoMuscular;
   const byId = e?.ejercicioId && exercises.find((x) => x.id === e.ejercicioId);
@@ -529,45 +529,45 @@ function summaryGroupFor(e) {
   return byName?.grupoMuscular || null;
 }
 
-// Agrega los entrenos del rango [from, to] (fechas YYYY-MM-DD,
-// comparación lexicográfica; from/to null = límite abierto) en:
-//   - totals { entrenos, ejercicios } del periodo (nº de entrenos y
-//     nº de ejercicios distintos).
-//   - perExercise: Map clave → { nombre, grupoMuscular, veces,
-//     pesoAntiguo, pesoNuevo } con veces = nº de entrenos distintos
-//     en que aparece y el peso más ANTIGUO y el más NUEVO registrados
-//     en el periodo (kg canónicos; las series sin peso —null o ≤ 0—
-//     no cuentan).
-//   - perGroup: Map grupo → { label, ejercicios, entrenos } con el nº
-//     de ejercicios distintos y de entrenos de cada grupo muscular.
-// Iteraciones de los comentarios del usuario en la issue: los
-// sumatorios de series, repeticiones y volumen se eliminan — el
-// resumen se centra en lo que pide: nº de entrenos, ejercicios
-// totales, desglose por grupos musculares y, desde la iteración 4, la
-// DIFERENCIA de peso por ejercicio (el peso más antiguo del periodo
-// frente al más nuevo, con signo: positivo si aumentó, negativo si
-// bajó). Una entrada sin id ni nombre no agrupa ni cuenta (no hay
-// ejercicio al que atribuirla); sin grupo muscular solo cuenta en los
-// totales, no en el desglose por grupos.
+// Aggregates the workouts of the range [from, to] (YYYY-MM-DD dates,
+// lexicographic comparison; null from/to = open limit) into:
+//   - totals { entrenos, ejercicios } of the period (number of workouts and
+//     number of distinct exercises).
+//   - perExercise: Map key → { nombre, grupoMuscular, veces,
+//     pesoAntiguo, pesoNuevo } with veces = number of distinct workouts
+//     where it appears and the OLDEST and the NEWEST registered weight
+//     in the period (canonical kg; sets without weight —null or ≤ 0—
+//     don't count).
+//   - perGroup: Map group → { label, ejercicios, entrenos } with the number
+//     of distinct exercises and workouts of each muscle group.
+// Iterations from the user's comments on the issue: the
+// totals of sets, repetitions and volume are removed — the
+// summary focuses on what is asked: number of workouts, total
+// exercises, breakdown by muscle groups and, since iteration 4, the
+// WEIGHT DIFFERENCE per exercise (the oldest weight of the period
+// vs the newest, signed: positive if it increased, negative if
+// it went down). An entry without id or name neither groups nor counts (there is
+// no exercise to attribute it to); without a muscle group it only counts in the
+// totals, not in the group breakdown.
 function summarizeWorkouts(workoutsList, from, to) {
   const totals = { entrenos: 0, ejercicios: 0 };
   const perExercise = new Map();
   const perGroup = new Map();
-  const seenWorkouts = new Map(); // clave de ejercicio → Set de ids de entreno
+  const seenWorkouts = new Map(); // exercise key → Set of workout ids
 
-  // workoutsList llega ordenado desc por fechaISO (suscripción de
-  // db.js, ADR-095): el PRIMER entreno procesado es el más NUEVO y el
-  // ÚLTIMO el más ANTIGUO. Ese orden define los extremos cronológicos
-  // de la iteración 4 (el peso más antiguo y el más nuevo), no los
-  // mínimos/máximos de la iteración 3.
+  // workoutsList arrives sorted desc by fechaISO (subscription of
+  // db.js, ADR-095): the FIRST workout processed is the NEWEST and the
+  // LAST is the OLDEST. That order defines the chronological bounds
+  // of iteration 4 (the oldest and the newest weight), not the
+  // minimums/maximums of iteration 3.
   for (const w of workoutsList) {
     if (from && w.fechaISO < from) continue;
     if (to && w.fechaISO > to) continue;
     totals.entrenos += 1;
     for (const e of w.ejercicios || []) {
       const key = summaryExerciseKey(e);
-      // Entrada sin id ni nombre: no agrupa ni cuenta (no hay
-      // ejercicio al que atribuirla).
+      // Entry without id or name: neither groups nor counts (there is
+      // no exercise to attribute it to).
       if (!key) continue;
       let agg = perExercise.get(key);
       if (!agg) {
@@ -583,15 +583,15 @@ function summarizeWorkouts(workoutsList, from, to) {
       }
       if (!seenWorkouts.has(key)) seenWorkouts.set(key, new Set());
       seenWorkouts.get(key).add(w.id);
-      // Extremos cronológicos de peso del periodo (kg canónicos,
-      // iteración 4): una serie sin peso registrado (null o ≤ 0,
-      // p. ej. peso corporal) no puede ser extremo. Dentro de un
-      // entreno, el peso más antiguo es la primera serie con peso y
-      // el más nuevo la última. Entre entrenos (lista desc), la
-      // primera vez que se ve el ejercicio fija su peso más NUEVO (el
-      // entreno más reciente del periodo) y cada entreno posterior
-      // sobrescribe el peso más ANTIGUO hasta quedarse con el del
-      // entreno más remoto del periodo.
+      // Chronological weight bounds of the period (canonical kg,
+      // iteration 4): a set without a registered weight (null or ≤ 0,
+      // e.g. body weight) cannot be a bound. Within a
+      // workout, the oldest weight is the first set with weight and
+      // the newest the last. Across workouts (desc list), the
+      // first time the exercise is seen fixes its NEWEST weight (the
+      // most recent workout of the period) and each subsequent workout
+      // overwrites the OLDEST weight until keeping the one of the
+      // earliest workout of the period.
       let serieAntigua = null;
       let serieNueva = null;
       for (const s of e.series || []) {
@@ -615,8 +615,8 @@ function summarizeWorkouts(workoutsList, from, to) {
       gagg.workouts.add(w.id);
     }
   }
-  // Veces = nº de entrenos distintos en que aparece el ejercicio;
-  // ejercicios totales = nº de ejercicios distintos del periodo.
+  // Veces = number of distinct workouts where the exercise appears;
+  // total exercises = number of distinct exercises of the period.
   totals.ejercicios = perExercise.size;
   for (const [key, agg] of perExercise) {
     agg.veces = seenWorkouts.get(key)?.size || 0;
@@ -628,11 +628,11 @@ function summarizeWorkouts(workoutsList, from, to) {
   return { totals, perExercise, perGroup };
 }
 
-// Pinta el resumen del periodo activo en #gym-summary-data: cabecera
-// con el rango, tarjetas (entrenos y ejercicios totales) y dos
-// desgloses — por grupos musculares y por ejercicio — ordenados por
-// frecuencia desc, tie-break alfabético (iteración del comentario de
-// la issue: sin sumatorios de series/reps/volumen).
+// Paints the summary of the active period in #gym-summary-data: header
+// with the range, cards (workouts and total exercises) and two
+// breakdowns — by muscle groups and per exercise — sorted by
+// frequency desc, alphabetical tie-break (iteration of the issue's
+// comment: without totals of sets/reps/volume).
 function renderSummary() {
   const container = document.getElementById("gym-summary-data");
   if (!container) return;
@@ -690,33 +690,33 @@ function renderSummary() {
         </div>`
     : "";
 
-  // Iteración 4: cada ejercicio muestra SOLO la diferencia de peso del
-  // periodo — el peso más nuevo frente al más antiguo, con signo
-  // (positivo si aumentó, negativo si bajó) — en la unidad de
-  // presentación activa; «—» si no hay ninguna serie con peso en el
-  // periodo (todo sin peso registrado). Los extremos mín/máx de la
-  // iteración 3 se eliminan: el usuario quiere ver únicamente el
-  // cambio entre el peso más antiguo y el más nuevo.
+  // Iteration 4: each exercise shows ONLY the weight difference of the
+  // period — the newest weight vs the oldest one, signed
+  // (positive if it increased, negative if it went down) — in the active
+  // display unit; «—» if there is no set with weight in the
+  // period (all without registered weight). The min/max bounds of
+  // iteration 3 are removed: the user wants to see only the
+  // change between the oldest weight and the newest.
   const unitHeader = escapeHtml(unitLabel());
-  // Formatea la diferencia con signo explícito (+ para aumento, −
-  // para disminución; 0 sin signo). Se calcula en kg canónicos y se
-  // convierte una sola vez al pintar (mismo patrón de la iteración 3).
+  // Formats the difference with an explicit sign (+ for increase, −
+  // for decrease; 0 without sign). It is computed in canonical kg and
+  // converted once when painting (same pattern as iteration 3).
   const fmtDiff = (kg) => {
     if (kg == null) return "—";
     const d = kgToDisplay(kg);
     return escapeHtml(d > 0 ? `+${d}` : String(d));
   };
-  // Iteración 5: la diferencia se pinta con color semántico — verde si
-  // aumentó, rojo si bajó — y SIN clase cuando es cero (hereda el
-  // color normal de la celda, «blanco como ahora»). El matiz lo
-  // aplica css/styles.css con variantes AA por familia de tema.
+  // Iteration 5: the difference is painted with semantic color — green if
+  // it increased, red if it went down — and WITHOUT a class when it is zero (it inherits the
+  // normal color of the cell, «white like now»). The shade is
+  // applied by css/styles.css with AA variants per theme family.
   const diffClass = (kg) =>
     kg == null || kg === 0 ? "" : `gym-summary-table__diff--${kg > 0 ? "up" : "down"}`;
   const rows = [...perExercise.values()]
     .sort((a, b) => b.veces - a.veces || a.nombre.localeCompare(b.nombre, "es"))
     .map((agg) => {
-      // Diferencia = peso más nuevo − peso más antiguo del periodo
-      // (kg canónicos); null si falta alguno de los dos extremos.
+      // Difference = newest weight − oldest weight of the period
+      // (canonical kg); null if either bound is missing.
       const diffKg = agg.pesoAntiguo != null && agg.pesoNuevo != null ? agg.pesoNuevo - agg.pesoAntiguo : null;
       return `
       <tr>
@@ -753,12 +753,12 @@ function renderSummary() {
     ${table}`;
 }
 
-// Sincroniza la UI del selector de periodo: is-active/aria-pressed
-// solo en el chip del periodo indicado (los otros quedan inactivos) y
-// el recuadro del rango libre visible únicamente con la opción
-// «Rango» (iteración del comentario de la issue). Al activar «Rango»
-// el calendario nace abierto y con el rango ya elegido resumido en el
-// trigger; al salir a semana/mes el calendario se cierra.
+// Syncs the UI of the period selector: is-active/aria-pressed
+// only on the chip of the given period (the others stay inactive) and
+// the free range box visible only with the «Rango» option (iteration
+// of the issue's comment). When activating «Rango»
+// the calendar is born open and with the already chosen range summarized in the
+// trigger; when going back to week/month the calendar closes.
 function syncSummaryPeriodUI(period) {
   document.querySelectorAll("[data-summary-period]").forEach((chip) => {
     const isActive = chip.dataset.summaryPeriod === period;
@@ -776,10 +776,10 @@ function syncSummaryPeriodUI(period) {
   }
 }
 
-// Texto del trigger del recuadro del rango libre
-// (#gym-summary-range-summary): las fechas «desde – hasta» ya
-// elegidas en el calendario (o «sin límite» si un extremo está
-// vacío), en el mismo formato que la cabecera del periodo pintado.
+// Text of the trigger of the free range box
+// (#gym-summary-range-summary): the «from – to» dates already
+// chosen in the calendar (or «sin límite» if a bound is
+// empty), in the same format as the painted period header.
 function updateSummaryRangeSummary() {
   const summaryEl = document.getElementById("gym-summary-range-summary");
   if (!summaryEl) return;
@@ -788,10 +788,10 @@ function updateSummaryRangeSummary() {
   summaryEl.textContent = `${fmtDate(from)} – ${fmtDate(to)}`;
 }
 
-// ---------- Calendario del rango libre (issue #269, iteración 3) ----------
+// ---------- Free range calendar (issue #269, iteration 3) ----------
 
-// Mes inicial del calendario: el del extremo «desde» (o «hasta» si
-// solo se eligió ese) si hay rango; si no, el mes en curso.
+// Initial month of the calendar: the one of the «from» bound (or «to» if
+// only that one was chosen) if there is a range; otherwise the current month.
 function summaryRangeCalMonth() {
   const anchor = summaryRange.from || summaryRange.to;
   if (anchor) {
@@ -802,16 +802,16 @@ function summaryRangeCalMonth() {
   return { year: y, month: m - 1 };
 }
 
-// Cabeceras de la semana (lunes primero) en el idioma de la
-// interfaz (es-ES): "L M X J V S D". Se calculan una vez y se
-// recuerdan (fallback explícito si el entorno no las produce).
+// Week row headers (Monday first) in the interface language
+// (es-ES): "L M X J V S D". They are computed once and
+// remembered (explicit fallback if the environment doesn't produce them).
 let summaryWeekdayLabels = null;
 function summaryWeekdayLabelsFn() {
   if (summaryWeekdayLabels) return summaryWeekdayLabels;
   const fallback = ["L", "M", "X", "J", "V", "S", "D"];
   summaryWeekdayLabels = Array.from({ length: 7 }, (_, i) => {
-    // 2024-01-01 fue lunes: los 7 primeros días de enero de 2024
-    // cubren la semana completa en orden.
+    // 2024-01-01 was a Monday: the first 7 days of January 2024
+    // cover the full week in order.
     const label = new Date(Date.UTC(2024, 0, 1 + i)).toLocaleDateString("es-ES", {
       weekday: "narrow",
       timeZone: "UTC",
@@ -821,7 +821,7 @@ function summaryWeekdayLabelsFn() {
   return summaryWeekdayLabels;
 }
 
-// Título del mes del calendario ("Agosto de 2026", es-ES).
+// Title of the calendar month ("Agosto de 2026", es-ES).
 function summaryRangeMonthLabel(year, month) {
   const label = new Date(Date.UTC(year, month, 1)).toLocaleDateString("es-ES", {
     month: "long",
@@ -831,12 +831,12 @@ function summaryRangeMonthLabel(year, month) {
   return label ? label.charAt(0).toUpperCase() + label.slice(1) : `${year}`;
 }
 
-// Grid del mes en curso: 42 celdas (6 filas × 7 columnas, lunes
-// primero). Las celdas fuera del mes son null (vacías) para que la
-// rejilla no salte de altura al navegar entre meses.
+// Grid of the current month: 42 cells (6 rows × 7 columns, Monday
+// first). Cells outside the month are null (empty) so the
+// grid doesn't jump in height when navigating between months.
 function summaryRangeDayGrid(year, month) {
   const firstWeekday = new Date(Date.UTC(year, month, 1)).getUTCDay();
-  const offset = (firstWeekday + 6) % 7; // lunes primero (domingo = 0 → 6)
+  const offset = (firstWeekday + 6) % 7; // Monday first (Sunday = 0 → 6)
   const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const cells = [];
   for (let i = 0; i < offset; i++) cells.push(null);
@@ -847,10 +847,10 @@ function summaryRangeDayGrid(year, month) {
   return cells;
 }
 
-// Primer click (sin rango o con rango completo): empieza un rango
-// nuevo en ese día. Segundo click (con «desde» elegido y «hasta»
-// vacío): cierra el rango, intercambiando los extremos si el click
-// es anterior al «desde»; al completarse el calendario se cierra.
+// First click (no range or with a complete range): starts a new
+// range on that day. Second click (with «from» chosen and «to»
+// empty): closes the range, swapping the bounds if the click
+// is earlier than the «from»; when completed the calendar closes.
 function onSummaryRangeDayClick(iso) {
   if (!summaryRange.from || (summaryRange.from && summaryRange.to)) {
     summaryRange = { from: iso, to: null };
@@ -871,9 +871,9 @@ function onSummaryRangeDayClick(iso) {
   if (completed) closeSummaryRangePopover();
 }
 
-// Pinta el mes visible en el calendario del recuadro: cabecera con el
-// mes y la navegación, fila de días de la semana y rejilla de días
-// con los estados (hoy, extremos del rango, días intermedios).
+// Paints the visible month in the box's calendar: header with the
+// month and the navigation, weekday row and day grid
+// with the states (today, range bounds, intermediate days).
 function renderSummaryRangeCalendar() {
   const grid = document.getElementById("gym-summary-range-days");
   if (!grid) return;
@@ -903,9 +903,9 @@ function renderSummaryRangeCalendar() {
   }).join("");
 }
 
-// Abre el calendario: recuerda el mes del rango elegido (o el mes en
-// curso), repinta y deja el foco en el extremo «desde» (o en hoy si
-// el rango está vacío) para poder navegar también con teclado.
+// Opens the calendar: it remembers the month of the chosen range (or the current
+// month), repaints and leaves the focus on the «from» bound (or on today if
+// the range is empty) so it can also be navigated with the keyboard.
 function openSummaryRangePopover() {
   const popover = document.getElementById("gym-summary-range-popover");
   const trigger = document.getElementById("gym-summary-range-trigger");
@@ -929,17 +929,17 @@ function closeSummaryRangePopover() {
   popover.hidden = true;
   trigger?.setAttribute("aria-expanded", "false");
   summaryRangePopoverOpen = false;
-  // Retorno de foco al trigger (a11y): salvo cuando el recuadro queda
-  // oculto justo después (cambio de chip a semana/mes en curso), caso
-  // en el que enfocar un elemento oculto perdería el foco a body.
+  // Return focus to the trigger (a11y): except when the box is left
+  // hidden right after (chip change to current week/month), in which
+  // case focusing a hidden element would drop the focus to body.
   const rangeBox = document.getElementById("gym-summary-range");
   if (trigger && rangeBox && !rangeBox.hidden) {
     trigger.focus({ preventScroll: false });
   }
 }
 
-// Navega el calendario un mes (delta ±1); el mes visible se
-// recomputa con aritmética modular sobre (year, month 0-11).
+// Navigates the calendar one month (delta ±1); the visible month is
+// recomputed with modular arithmetic on (year, month 0-11).
 function shiftSummaryRangeMonth(delta) {
   const cal = summaryRangeMonth;
   const m = cal.month + delta;
@@ -948,10 +948,10 @@ function shiftSummaryRangeMonth(delta) {
   renderSummaryRangeCalendar();
 }
 
-// ---------- Modal de entreno ----------
+// ---------- Workout modal ----------
 
-// Abre el modal de entreno: con id = detalle en modo lectura (con
-// Editar/Eliminar); sin id = alta con el constructor de ejercicios.
+// Opens the workout modal: with id = detail in read mode (with
+// Edit/Delete); without id = create with the exercise builder.
 function openWorkoutModal(id) {
   const modal = document.getElementById("gym-workout-modal");
   const content = document.getElementById("gym-workout-modal-content");
@@ -988,9 +988,9 @@ function openWorkoutModal(id) {
   if (workoutModalCleanup) workoutModalCleanup();
   workoutModalCleanup = trapFocus(modal.querySelector(".modal__card"));
   if (workoutModalMode !== "read") {
-    // Foco al campo de fecha en el alta/edición (patrón del modal de
-    // ingrediente): en un segundo rAF tras el de trapFocus (que
-    // enfoca la ✕) el foco final queda en el input.
+    // Focus on the date field on create/edit (pattern of the
+    // ingredient modal): in a second rAF after trapFocus's one (which
+    // focuses the ✕) the final focus ends on the input.
     requestAnimationFrame(() => {
       content.querySelector("#gym-wk-fecha")?.focus({ preventScroll: false });
     });
@@ -1011,9 +1011,9 @@ function closeWorkoutModal() {
   if (modal._previousActiveElement) modal._previousActiveElement.focus();
 }
 
-// Vista de solo lectura del entreno: fecha, nombre y nota opcionales,
-// ejercicios con su tabla de series (peso × repeticiones, unidad de
-// presentación activa) y acciones Editar/Eliminar.
+// Read-only view of the workout: date, optional name and note,
+// exercises with their sets table (weight × repetitions, active
+// display unit) and Edit/Delete actions.
 function workoutDetailHtml(w) {
   const ejercicios = w.ejercicios || [];
   const blocks = ejercicios.map((ex, i) => {
@@ -1060,8 +1060,8 @@ function workoutDetailHtml(w) {
 function bindWorkoutDetailHandlers(content, workout) {
   content.querySelector("[data-gym-wk-edit]")?.addEventListener("click", () => {
     if (!workout) return;
-    // El borrador de edición parte de los datos guardados (kg
-    // canónicos; la conversión ocurre en el render de los inputs).
+    // The edit draft starts from the saved data (canonical
+    // kg; the conversion happens in the inputs' render).
     workoutDraft = {
       fechaISO: workout.fechaISO || ctx.todayISO(),
       nombre: workout.nombre || "",
@@ -1090,9 +1090,9 @@ function bindWorkoutDetailHandlers(content, workout) {
   });
 }
 
-// Render del editor (alta o edición): se repinta completo a partir
-// de workoutDraft en cada cambio del constructor (añadir/quitar
-// serie o ejercicio).
+// Render of the editor (create or edit): it is fully repainted from
+// workoutDraft on each change of the builder (add/remove
+// set or exercise).
 function renderWorkoutEditor() {
   const modal = document.getElementById("gym-workout-modal");
   const content = document.getElementById("gym-workout-modal-content");
@@ -1104,16 +1104,16 @@ function renderWorkoutEditor() {
   bindWorkoutEditorHandlers(content);
 }
 
-// Última ocurrencia de un ejercicio (#265, #270): recorre workouts (ya
-// ordenados por fechaISO desc desde db.js) y devuelve la ocurrencia
-// más reciente con series como {fechaISO, series} — copia {pesoKg,
-// reps} — o null. Match canónico por ejercicioId con prioridad
-// estricta; solo si no hay ninguna entrada canónica se usa el fallback
-// por nombre snapshot normalizado (legacy sin id).
+// Last occurrence of an exercise (#265, #270): it walks workouts (already
+// sorted by fechaISO desc from db.js) and returns the most recent
+// occurrence with sets as {fechaISO, series} — copy of {pesoKg,
+// reps} — or null. Canonical match by ejercicioId with strict
+// priority; only if there is no canonical entry is the fallback
+// by normalized snapshot name used (legacy without id).
 function lastWorkoutForExercise(exerciseId, nombre) {
   const norm = (s) => String(s || "").trim().toLowerCase();
   const nameNorm = norm(nombre);
-  let legacy = null; // { w, ex } de la primera entrada legacy con series
+  let legacy = null; // { w, ex } of the first legacy entry with sets
   for (const w of workouts) {
     for (const ex of w.ejercicios || []) {
       if (!(ex.series || []).length) continue;
@@ -1130,9 +1130,10 @@ function lastWorkoutForExercise(exerciseId, nombre) {
     : null;
 }
 
-// Pre-relleno (#265): solo si el bloque aún no tiene series (no pisa
-// lo ya escrito ni lo traído de un entreno en edición). Re-renderiza
-// y devuelve el foco al select (patrón de «Añadir serie»).
+// Pre-fill (#265): only if the block does not have sets yet (it does not
+// overwrite what is already written or what was brought from a workout in
+// edition). It re-renders and returns the focus to the select (pattern
+// of «Añadir serie»).
 function maybePrefillSeriesFromLastWorkout(select) {
   if (!workoutDraft) return;
   const block = select.closest(".gym-exercise-block");
@@ -1198,21 +1199,21 @@ function renderWorkoutEditorHtml() {
   </form>`;
 }
 
-// Bloque de un ejercicio del constructor: select del catálogo (con
-// placeholder del nombre snapshot en los datos antiguos sin id),
-// filas de serie (peso en la unidad activa + reps) y botones de
-// quitar serie/ejercicio.
+// Block of one exercise of the builder: catalog select (with
+// the snapshot-name placeholder for old data without id),
+// sets rows (weight in the active unit + reps) and buttons to
+// remove set/exercise.
 function workoutExerciseBlockHtml(ex, i) {
   const options = exercises.map((e) =>
     `<option value="${escapeHtml(e.id)}"${e.id === ex.ejercicioId ? " selected" : ""}>${escapeHtml(e.nombre)}</option>`
   ).join("");
-  // Datos antiguos (legacy «Otro…»): sin id y con nombre snapshot; se
-  // muestra el nombre como placeholder para no perder la referencia.
+  // Old data (legacy «Otro…»): without id and with snapshot name; the
+  // name is shown as a placeholder so the reference is not lost.
   const placeholderLabel = ex.ejercicioId === null && ex.nombre ? ex.nombre : "Elige un ejercicio…";
   const seriesRows = ex.series.map((s, si) => workoutSeriesRowHtml(i, si, s)).join("");
-  // Cabecera de la tabla de series (etiquetas peso/reps, #265): misma
-  // rejilla que las filas para que las columnas queden alineadas; la
-  // tercera celda está vacía porque en las filas es el botón ✕.
+  // Header of the sets table (weight/reps labels, #265): same
+  // grid as the rows so the columns stay aligned; the
+  // third cell is empty because in the rows it is the ✕ button.
   const seriesHead = `<div class="gym-series-row gym-series-row--head" aria-hidden="true">
     <span>Peso (${escapeHtml(unitLabel())})</span>
     <span>Repeticiones</span>
@@ -1235,9 +1236,9 @@ function workoutExerciseBlockHtml(ex, i) {
   </div>`;
 }
 
-// Fila de serie de un ejercicio del constructor: peso (unidad activa,
-// paso 0.5 y inputmode decimal para teclado numérico) + reps (mínimo
-// 1) + botón de quitar. Valor en la unidad de presentación.
+// Sets row of an exercise of the builder: weight (active unit,
+// step 0.5 and inputmode decimal for numeric keyboard) + reps (minimum
+// 1) + remove button. Value in the display unit.
 function workoutSeriesRowHtml(exIdx, si, s) {
   const peso = s.pesoKg ? kgToDisplay(s.pesoKg) : "";
   return `<div class="gym-series-row">
@@ -1251,8 +1252,8 @@ function workoutSeriesRowHtml(exIdx, si, s) {
   </div>`;
 }
 
-// Lectura del formulario hacia el borrador (peso convertido a kg).
-// Se ejecuta antes de cada mutación del constructor y al guardar.
+// Reading of the form into the draft (weight converted to kg).
+// It runs before each mutation of the builder and on save.
 function syncWorkoutDraftFromDom() {
   const form = document.getElementById("gym-workout-form");
   if (!form) return;
@@ -1262,14 +1263,14 @@ function syncWorkoutDraftFromDom() {
   workoutDraft.ejercicios = Array.from(form.querySelectorAll(".gym-exercise-block")).map((block, idx) => {
     const select = block.querySelector("[data-gym-ex-select]");
     const ejercicioId = select.value || null;
-    // Si el ejercicio se borró del catálogo tras guardarse el entreno,
-    // el select ya no tiene su opción: se conserva el nombre snapshot
-    // del borrador (los entrenos guardados conservan su nombre).
+    // If the exercise was deleted from the catalog after saving the
+    // workout, the select no longer has its option: the snapshot name
+    // of the draft is kept (saved workouts keep their name).
     const found = exercises.find((e) => e.id === select.value);
     const nombre = found?.nombre ?? workoutDraft.ejercicios[idx]?.nombre ?? "";
-    // Las filas de serie son las .gym-series-row SIN la cabecera de
-    // etiquetas (.gym-series-row--head, #265): la cabecera solo tiene
-    // spans y no debe leerse como una fila de datos.
+    // The sets rows are the .gym-series-row WITHOUT the labels header
+    // (.gym-series-row--head, #265): the header only has
+    // spans and must not be read as a data row.
     const series = Array.from(block.querySelectorAll(".gym-series-row:not(.gym-series-row--head)")).map((row) => ({
       pesoKg: displayToKg(parseFloat(row.querySelector("[data-gym-series-peso]").value) || 0),
       reps: parseInt(row.querySelector("[data-gym-series-reps]").value, 10) || 0,
@@ -1279,14 +1280,14 @@ function syncWorkoutDraftFromDom() {
 }
 
 function bindWorkoutEditorHandlers(content) {
-  // Selector de unidad de peso del modal (alta/edición, #265): misma
-  // lógica y persistencia que el global #gym-unit-select, así que
-  // solo se re-renderiza lo que muestra pesos (renderAllWithUnit
-  // repinta pestaña, editor abierto y deja el select global en sync).
+  // Weight unit selector of the modal (create/edit, #265): same
+  // logic and persistence as the global #gym-unit-select, so
+  // only what shows weights is re-rendered (renderAllWithUnit
+  // repaints the tab, the open editor and keeps the global select in sync).
   content.querySelector("#gym-wk-unit")?.addEventListener("change", (e) => {
-    // Guardar lo tecleado antes de re-renderizar: el re-render parte
-    // del borrador (kg canónico) y convertiría y conservaría lo
-    // escrito en lugar de perderlo.
+    // Save what was typed before re-rendering: the re-render starts
+    // from the draft (canonical kg) and would convert and keep what
+    // was typed instead of losing it.
     syncWorkoutDraftFromDom();
     setUnit(e.target.value);
     const globalSelect = document.getElementById("gym-unit-select");
@@ -1294,9 +1295,9 @@ function bindWorkoutEditorHandlers(content) {
     renderAllWithUnit();
   });
 
-  // Selección de ejercicio del catálogo: se sincroniza el borrador (el
-  // nombre snapshot puede cambiar al pasar de un ejercicio a otro) y se
-  // pre-rellenan las series con las de la última vez (#265).
+  // Catalog exercise selection: the draft is synced (the
+  // snapshot name may change when moving from one exercise to another) and the
+  // sets are pre-filled with the last ones (#265).
   content.querySelectorAll("[data-gym-ex-select]").forEach((select) => {
     select.addEventListener("change", () => {
       syncWorkoutDraftFromDom();
@@ -1304,7 +1305,7 @@ function bindWorkoutEditorHandlers(content) {
     });
   });
 
-  // Añadir serie: guarda lo escrito en el borrador y re-renderiza.
+  // Add set: saves what was typed into the draft and re-renders.
   content.querySelectorAll("[data-gym-add-series]").forEach((btn) => {
     btn.addEventListener("click", () => {
       syncWorkoutDraftFromDom();
@@ -1316,8 +1317,8 @@ function bindWorkoutEditorHandlers(content) {
     });
   });
 
-  // Duplicar serie (#265): copia la última serie del ejercicio (peso y
-  // reps) al final, sin tener que reescribirla. Avisa si no hay ninguna.
+  // Duplicar serie (#265): copies the last set of the exercise (weight and
+  // reps) to the end, without having to rewrite it. It warns if there isn't any.
   content.querySelectorAll("[data-gym-dup-series]").forEach((btn) => {
     btn.addEventListener("click", () => {
       syncWorkoutDraftFromDom();
@@ -1335,7 +1336,7 @@ function bindWorkoutEditorHandlers(content) {
     });
   });
 
-  // Quitar serie: idem, sin la fila.
+  // Quitar serie: ditto, without the row.
   content.querySelectorAll("[data-gym-series-remove]").forEach((btn) => {
     btn.addEventListener("click", () => {
       syncWorkoutDraftFromDom();
@@ -1347,7 +1348,7 @@ function bindWorkoutEditorHandlers(content) {
     });
   });
 
-  // Quitar ejercicio del constructor.
+  // Remove exercise from the builder.
   content.querySelectorAll("[data-gym-ex-remove]").forEach((btn) => {
     btn.addEventListener("click", () => {
       syncWorkoutDraftFromDom();
@@ -1359,7 +1360,7 @@ function bindWorkoutEditorHandlers(content) {
     });
   });
 
-  // Añadir ejercicio vacío al constructor.
+  // Add empty exercise to the builder.
   content.querySelector("[data-gym-add-exercise]")?.addEventListener("click", () => {
     syncWorkoutDraftFromDom();
     workoutDraft.ejercicios.push({ ejercicioId: "", nombre: "", series: [] });
@@ -1368,21 +1369,21 @@ function bindWorkoutEditorHandlers(content) {
     block?.querySelector("[data-gym-ex-select]")?.focus();
   });
 
-  // Nuevo ejercicio (#265): abre el mismo modal de alta que la pestaña
-  // Ejercicios sin cerrar el del entreno (patrón de open-catalog).
+  // Nuevo ejercicio (#265): opens the same create modal as the
+  // Exercises tab without closing the workout's one (pattern of open-catalog).
   content.querySelector("[data-gym-new-exercise]")?.addEventListener("click", () => {
     openExerciseModal();
   });
 
-  // Atajo al catálogo (hint cuando el catálogo está vacío y el
-  // constructor no puede ofrecer opciones): abre el modal de alta de
-  // ejercicio sin cerrar el del entreno (patrón de los modales de
-  // recetas al abrir el catálogo de ingredientes).
+  // Shortcut to the catalog (hint when the catalog is empty and the
+  // builder can't offer options): opens the exercise create modal
+  // without closing the workout's one (pattern of the recipes
+  // modals when opening the ingredient catalog).
   content.querySelector("[data-gym-open-catalog]")?.addEventListener("click", () => {
     openExerciseModal();
   });
 
-  // Cancelar: vuelve a la lectura (si se está editando) o cierra.
+  // Cancel: returns to the read view (if editing) or closes.
   content.querySelector("[data-gym-wk-cancel]")?.addEventListener("click", () => {
     if (workoutModalMode === "edit" && editingWorkoutId) {
       workoutModalMode = "read";
@@ -1399,9 +1400,9 @@ function bindWorkoutEditorHandlers(content) {
   content.querySelector("#gym-workout-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     syncWorkoutDraftFromDom();
-    // Guard del guardado (issue #62): solo valen las series con
-    // reps ≥ 1; los ejercicios sin series válidas se descartan. Sin
-    // ninguna serie válida no se puede guardar.
+    // Save guard (issue #62): only the sets with
+    // reps ≥ 1 count; exercises without valid sets are discarded. Without
+    // any valid set it cannot be saved.
     const validExercises = workoutDraft.ejercicios
       .map((ex) => ({ ...ex, series: ex.series.filter((s) => s.reps > 0) }))
       .filter((ex) => ex.series.length > 0);
@@ -1431,10 +1432,10 @@ function bindWorkoutEditorHandlers(content) {
   });
 }
 
-// ---------- Modal de ejercicio ----------
+// ---------- Exercise modal ----------
 
-// Abre el modal de ejercicio: con id = detalle en modo lectura (con
-// Editar/Eliminar); sin id = alta.
+// Opens the exercise modal: with id = detail in read mode (with
+// Edit/Delete); without id = create.
 function openExerciseModal(id) {
   const modal = document.getElementById("gym-exercise-modal");
   const content = document.getElementById("gym-exercise-modal-content");
@@ -1486,9 +1487,9 @@ function closeExerciseModal() {
   if (modal._previousActiveElement) modal._previousActiveElement.focus();
 }
 
-// Vista de solo lectura del ejercicio: nombre, grupo muscular, notas
-// y sección «Última vez» (#270) con la fecha y las series del entreno
-// más reciente donde se trabajó; acciones Editar/Eliminar.
+// Read-only view of the exercise: name, muscle group, notes
+// and the «Last time» section (#270) with the date and the sets of the
+// most recent workout where it was trained; Edit/Delete actions.
 function exerciseDetailHtml(ex) {
   const last = lastWorkoutForExercise(ex.id, ex.nombre);
   const lastSection = last
@@ -1538,7 +1539,7 @@ function bindExerciseDetailHandlers(content, exercise) {
     try {
       await ctx.deleteGymExercise(currentUser, exercise.id);
       closeExerciseModal();
-      // Los entrenos guardados conservan el nombre (snapshot, #62).
+      // The saved workouts keep the name (snapshot, #62).
       showToast("Ejercicio eliminado (los entrenos guardados conservan su nombre).");
     } catch (err) {
       console.error("No se pudo eliminar el ejercicio:", err);
@@ -1547,7 +1548,7 @@ function bindExerciseDetailHandlers(content, exercise) {
   });
 }
 
-// Render del formulario de ejercicio (alta o edición).
+// Render of the exercise form (create or edit).
 function renderExerciseForm(exercise) {
   const modal = document.getElementById("gym-exercise-modal");
   const content = document.getElementById("gym-exercise-modal-content");

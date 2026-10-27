@@ -1,55 +1,59 @@
-# ADR-076: Excluir ramas del despliegue con el prefijo no-deploy/ (issue #198)
+# ADR-076: Excluding branches from the deployment with the no-deploy/ prefix (issue #198)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-11
 
-## Contexto
+## Context
 
-La action `deploy-all-branches`
-(`.github/workflows/deploy-all-branches.yml`) despliega **todas las ramas**
-del repositorio en GitHub Pages vía `scripts/build-pages-site.sh` (ADR-036):
-`main` en la raíz de `_site/` y cada rama no-default en
-`_site/dev/<ruta-saneada>/`, con `/dev/` como **hub de previews** y un
-índice auto-generado (`_site/dev/index.html`) que enlaza todas las ramas y
-la raíz (ADR-044). Cada ejecución consume minutos de Actions y crea un
-deployment en la cola de Pages (el problema de saturación de la cola fue la
-motivación del ADR-041).
+The `deploy-all-branches`
+action (`.github/workflows/deploy-all-branches.yml`) deploys **all the
+branches** of the repository to GitHub Pages via
+`scripts/build-pages-site.sh` (ADR-036): `main` at `_site/`'s root and
+each non-default branch at
+`_site/dev/<sanitized-route>/`, with `/dev/` as the **previews hub** and an
+auto-generated index (`_site/dev/index.html`) linking all the branches
+and the root (ADR-044). Every run consumes Actions minutes and
+creates a deployment in the Pages queue (the queue's saturation was problem
+that motivated ADR-041).
 
-La issue #198: el usuario conserva ramas que **no fusionará** (p. ej.
-`feat/issue-191-portadas-no-cargan`) y quiere que las ramas cuyo nombre
-empieza por `no-deploy/` (p. ej. `no-deploy/feat/issue-191-portadas-no-cargan`)
-queden **excluidas del despliegue**, para no consumir recursos desplegando
-algo que se va a quedar mucho tiempo ahí. Propone renombrar la rama con ese
-prefijo como mecanismo de exclusión.
+Issue #198: the user keeps branches they **will not merge** (e.g.
+`feat/issue-191-portadas-no-cargan`) and wants branches whose name
+starts with `no-deploy/` (e.g. `no-deploy/feat/issue-191-portadas-no-cargan`)
+to be **excluded from the deployment**, to not consume resources deploying
+something that will stay there for a long time. They propose renaming
+the branch with that prefix as the exclusion mechanism.
 
-Estado del código verificado en el momento de la decisión:
+Code state verified at decision time:
 
-- `scripts/build-pages-site.sh` lista **todas** las ramas remotas
-  (`git for-each-ref refs/remotes/origin`, recortando el prefijo y
-  filtrando `origin/HEAD`) y extrae cada rama no-default en
-  `_site/dev/<ruta-saneada>/` (`sanitize_segment`/`branch_path`, con
-  `strip_sensitive()` como defensa en profundidad sobre el árbol extraído).
-- El trigger `push` del workflow vuelve a dispararse en **todas las ramas,
-  sin filtro**: el usuario revirtió a propósito (commit `1cd1061`,
-  2026-08-07) la limitación a `main`/`dev` del ADR-041. **Esta issue NO
-  reintroduce esa limitación**: los pushes a ramas de trabajo normales
-  siguen desplegando igual que antes.
-- Los eventos `workflow_dispatch` y `delete` **no admiten filtros de
-  rama**: cualquier exclusión que viva solo en el trigger no cubriría ni el
-  re-despliegue manual ni el borrado de una rama.
+- `scripts/build-pages-site.sh` lists **all** the remote branches
+  (`git for-each-ref refs/remotes/origin`, trimming the prefix and
+  filtering `origin/HEAD`) and extracts each non-default branch into
+  `_site/dev/<sanitized-route>/`
+  (`sanitize_segment`/`branch_path`, with
+  `strip_sensitive()` as defense in depth over the extracted tree).
+- The workflow's `push` trigger fires again on **all
+  branches, without a filter**: the user reverted on purpose (commit
+  `1cd1061`,
+  2026-08-07) ADR-041's limitation to `main`/`dev`. **This issue does
+  NOT reintroduce that limitation**: pushes
+  to normal work branches keep deploying like
+  before.
+- The `workflow_dispatch` and `delete` events **do not accept branch
+  filters**: any exclusion living only in the trigger would cover neither
+  the manual re-deployment nor a branch's deletion.
 
-## Decisión
+## Decision
 
-**Excluir del despliegue las ramas cuyo nombre empieza por el prefijo
-`no-deploy/` (con barra), en dos niveles: el trigger del workflow y el
-script de build (defensa en profundidad).**
+**Exclude from the deployment the branches whose name starts with the
+`no-deploy/` prefix (with the slash), on two levels: the workflow's
+trigger and the build script (defense in depth).**
 
-### 1. Capa de trigger: `branches-ignore` en `on: push`
+### 1. Trigger layer: `branches-ignore` on `on: push`
 
-El trigger `push` pasa de «todas las ramas, sin filtro» a:
+The `push` trigger goes from "all branches, no filter" to:
 
 ```yaml
 on:
@@ -58,142 +62,159 @@ on:
       - 'no-deploy/**'
 ```
 
-- El patrón `no-deploy/**` es **multi-segmento**: cubre `no-deploy/foo` y
-  `no-deploy/foo/bar` (el `**` cruza `/`, a diferencia de `*` — misma
-  semántica `File.fnmatch` que el patrón `**/*` del entorno `github-pages`
-  documentado en ADR-036).
-- Un push a una rama `no-deploy/*` **no dispara el workflow**: no consume
-  minutos de Actions ni crea deployment en la cola de Pages. El resto de
-  pushes (incluidas las ramas de trabajo normales) sigue disparándolo.
-- `workflow_dispatch` y `delete` quedan **intactos** (no admiten filtros de
-  rama; la exclusión de esas vías la cubre la capa de script).
+- The `no-deploy/**` pattern is **multi-segment**: it covers
+  `no-deploy/foo` and `no-deploy/foo/bar` (the `**` crosses `/`,
+  unlike `*` — the same
+  `File.fnmatch` semantics as the `**/*` pattern
+  of the `github-pages` environment documented in
+  ADR-036).
+- A push to a `no-deploy/*` branch **does not fire the workflow**: it
+  consumes no Actions minutes nor creates a deployment in the Pages
+  queue. The rest of the pushes (including normal work branches)
+  keep firing it.
+- `workflow_dispatch` and `delete` stay **intact** (they do not accept
+  branch filters; covering those paths' exclusion is the script
+  layer's job).
 
-### 2. Capa de script: partición INCLUDED/EXCLUDED en `build-pages-site.sh`
+### 2. Script layer: the INCLUDED/EXCLUDED partition in `build-pages-site.sh`
 
-El script define `NO_DEPLOY_PREFIX="no-deploy/"` y **particiona** la lista
-de ramas remotas en `INCLUDED_BRANCHES` / `EXCLUDED_BRANCHES` con un
-*prefix match* que incluye la barra (`[[ "${b}" == "${NO_DEPLOY_PREFIX}"* ]]`):
+The script defines `NO_DEPLOY_PREFIX="no-deploy/"` and **partitions**
+the remote branches' list into `INCLUDED_BRANCHES` /
+`EXCLUDED_BRANCHES` with a *prefix match* including
+the slash (`[[ "${b}" == "${NO_DEPLOY_PREFIX}"* ]])`:
 
-- Las ramas excluidas **no se extraen** en `_site/dev/` ni se enlazan en el
-  hub de previews (AC1).
-- Si hay ramas excluidas se loguea
+- The excluded branches are **not extracted** in `_site/dev/` nor
+  linked in the previews hub (AC1).
+- If there are excluded branches it logs
   `Ramas excluidas del despliegue (prefijo no-deploy/): ...`
-  (**trazabilidad** en los logs del build, AC4); las incluidas se loguean
-  como `Ramas detectadas (se desplegarán): ...`.
-- **Salvaguarda «todas excluidas»**: si TODAS las ramas llevan el prefijo,
-  el script emite `::warning::` («Todas las ramas tienen el prefijo
-  no-deploy/: solo se desplegará la rama por defecto en la raíz.») y
-  continúa desplegando solo la rama por defecto en la raíz — **sin
-  abortar**. El caso real de **cero ramas sin prefijo** (p. ej. repositorio
-  sin ramas remotas) conserva el comportamiento previo: `::error::` +
+  (**traceability** in the build's logs, AC4); the included ones log
+  as `Ramas detectadas (se desplegarán): ...`.
+- **The "all excluded" safeguard**: if ALL the branches carry the
+  prefix, the script emits `::warning::` («Todas las ramas tienen el
+  prefijo no-deploy/: solo se desplegará la rama por defecto en la
+  raíz.») and continues deploying only the default branch at the root
+  — **without aborting**. The real case of
+  **zero branches without the prefix** (e.g. a
+  repository without remote branches) keeps the previous behavior:
+  `::error::` +
   `exit 1`.
-- El texto del hub se ajusta: «Las ramas no-default **desplegadas** tienen
-  su preview bajo esta ruta...» (antes «Cada rama no-default del
-  repositorio tiene su preview...»), reflejando que ya no todas las ramas
-  se sirven.
+- The hub's text is adjusted: «Las ramas no-default **desplegadas**
+  tienen su preview bajo esta ruta...» (before «Cada rama no-default
+  del repositorio tiene su preview...»), reflecting that not all
+  branches are served anymore.
 
-### 3. Caso límite aceptado: `no-deploy` sin barra NO se excluye
+### 3. Accepted edge case: `no-deploy` without the slash is NOT excluded
 
-El prefix match es `no-deploy/` con barra: una rama llamada exactamente
-`no-deploy` (sin barra, ni segmentos posteriores) **no** casa con el
-prefijo y se despliega como una rama normal. Caso límite improbable (el
-prefijo es un namespace, no un nombre de rama) aceptado y documentado; el
-mismo criterio es consistente en las dos capas (el patrón `no-deploy/**` de
-GitHub tampoco casa `no-deploy`).
+The prefix match is `no-deploy/` with the slash: a branch called
+exactly `no-deploy` (without the slash nor later segments) **does
+not** match the prefix and deploys like a normal branch. An
+improbable edge case (the prefix is a namespace, not a branch name)
+accepted and documented; the same criterion is consistent in both
+layers (GitHub's `no-deploy/**` pattern also does not match
+`no-deploy`).
 
-### 4. Documentación
+### 4. Documentation
 
-El README (sección 6) documenta el mecanismo: ramas con prefijo
-`no-deploy/` excluidas del hub de previews y un push a ellas sin disparo del
-workflow, con el caso de uso de conservar ramas no fusionables
-(`feat/...` → `no-deploy/feat/...`). La línea de cabecera de la sección
-vuelve a decir «cada push de cualquier rama», coherente con el revert de
-`1cd1061` (sin reintroducir la limitación del ADR-041).
+The README (section 6) documents the mechanism: branches with
+the `no-deploy/` prefix excluded from the previews hub and a push to
+them not firing the workflow, with the use case of
+keeping unmergeable branches (`feat/...` → `no-deploy/feat/...`). The
+section's header line goes back to saying "each push of
+any branch", coherent with `1cd1061`'s
+revert (without reintroducing ADR-041's limitation).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Reintroducir la limitación de `push` a `main`/`dev` (ADR-041)**:
-  descartado — el usuario la revirtió a propósito (`1cd1061`, 2026-08-07);
-  además de contradecir esa intención explícita, perdería los previews
-  frescos de las ramas de trabajo en cada push (que se actualizaban al
-  instante y es el comportamiento que el usuario quiere conservar).
-- **Solo `branches-ignore` sin tocar el script**: descartado —
-  `workflow_dispatch` y `delete` no admiten filtros de rama; un
-  re-despliegue manual o el borrado de una rama `no-deploy/` volverían a
-  extraerla en `_site/dev/` y a enlazarla en el hub.
-- **Solo filtro en el script sin `branches-ignore`**: descartado — el push
-  a una rama `no-deploy/*` seguiría disparando el workflow y consumiendo
-  minutos de Actions (build completo de todas las ramas) aunque el resultado
-  final no desplegara la rama; la mitad del ahorro de la issue depende del
-  filtro del trigger.
-- **Otro prefijo o lista mantenida manualmente**: descartado —
-  `no-deploy/` es autoexplicativo (una rama excluida «no se despliega» sin
-  más convención que su nombre) y el mecanismo es **idéntico para cualquier
-  prefijo**, por lo que cambiarlo no aporta nada; una lista explícita de
-  ramas exigiría mantenimiento en cada alta/baja y desincronizaría las dos
-  capas (el trigger no puede expresar una lista arbitraria con un patrón
-  simple).
+- **Reintroducing the `push` limitation to `main`/`dev` (ADR-041)**:
+  rejected — the user reverted it on purpose (`1cd1061`,
+  2026-08-07); besides contradicting that explicit intent, it would
+  lose the work branches' fresh previews on each push (which updated
+  instantly and is the behavior the user wants to keep).
+- **Only `branches-ignore` without touching the script**: rejected —
+  `workflow_dispatch` and `delete` do not accept branch filters; a
+  manual re-deploy or the deletion of a `no-deploy/` branch would
+  extract it into `_site/dev/` and link it in the hub again.
+- **Only a script filter without `branches-ignore`**: rejected — a push
+  to a `no-deploy/*` branch would keep firing the workflow and consuming
+  Actions minutes (a full build of all the branches) even though the final
+  result would not deploy the branch; half of the issue's savings depends on
+  the trigger's filter.
+- **Another prefix or a manually maintained list**: rejected —
+  `no-deploy/` is self-explanatory (an excluded branch "is not
+  deployed" with no convention beyond its name) and the mechanism is
+  **identical for any prefix**, so changing it adds
+  nothing; an explicit branch list would require maintenance on
+  every add/removal and would de-sync the two layers (the
+  trigger cannot express an arbitrary list with a simple
+  pattern).
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Ahorro de recursos real**: un push a una rama `no-deploy/*` no dispara
-  el workflow (cero minutos de Actions) y la rama nunca entra en la cola de
-  deployments de Pages; las ramas conservadas sin fusionar dejan de
-  consumir en cada iteración.
-- **Doble capa (defensa en profundidad)**: el filtro del trigger evita el
-  coste; el filtro del script garantiza el **resultado correcto** en todas
-  las vías de entrada (`push` con workflow aún sin promocionar,
-  `workflow_dispatch` y `delete`).
-- **Trazabilidad**: los logs del build listan las ramas excluidas, de modo
-  que una rama que no aparece en el hub se distingue entre «excluida» y
-  «no detectada».
-- **Despliegue atómico en el caso límite**: si todas las ramas acaban con
-  el prefijo, el build no aborta (warning + solo rama por defecto en la
-  raíz); el `::error::` + `exit 1` se conserva para el caso real de cero
-  ramas remotas.
-- **Resto de ramas sin cambios**: `main` en la raíz, ramas no-default en
-  `/dev/<ruta-saneada>/` y hub regenerado con sus enlaces (AC3).
+- **Real resource savings**: a push to a `no-deploy/*` branch does not
+  fire the workflow (zero Actions minutes) and the branch never enters
+  the Pages deployments' queue; the kept unmerged
+  branches stop consuming on every iteration.
+- **Double layer (defense in depth)**: the trigger's filter avoids the
+  cost; the script's filter guarantees the **correct result** on all
+  the entry paths (`push` with the workflow not yet promoted,
+  `workflow_dispatch` and `delete`).
+- **Traceability**: the build's logs list the excluded branches, so a
+  branch not appearing in the hub is distinguishable between
+  "excluded" and "undetected".
+- **Atomic deployment in the edge case**: if all the branches end with
+  the prefix, the build does not abort (a warning + only the
+  default branch at the root); the
+  `::error::` +
+  `exit 1` is preserved for the real case of zero remote
+  branches.
+- **The rest of the branches unchanged**: `main` at the root,
+  non-default branches in
+  `/dev/<sanitized-route>/` and a regenerated hub with its links
+  (AC3).
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Borrar una rama `no-deploy/` SÍ dispara un run**: el evento `delete` no
-  admite filtros y reconstruye el sitio completo. Aceptado: es un run único
-  con salida **idéntica** a la anterior (la rama nunca estuvo desplegada),
-  y eliminar la exclusión tras borrar la rama es justo el comportamiento
-  deseado.
-- **Rama llamada exactamente `no-deploy` (sin barra) no se excluye**: caso
-  límite aceptado y documentado; el prefijo se define con barra para que
-  solo actúe sobre el namespace completo.
-- **El filtro del trigger solo tiene efecto pleno cuando el workflow esté
-  en la rama por defecto (main)**: mientras esta versión viva solo en la
-  rama de trabajo, GitHub evalúa el workflow desde `main` para decidir el
-  disparo, así que un push a `no-deploy/*` aún ejecutaría el run; la capa
-  de script ya excluye del build en ese escenario.
-- **Orden recomendado al usuario**: **promover esta versión a `main` ANTES
-  de renombrar** la rama (`feat/...` → `no-deploy/feat/...`): renombrar
-  antes expone a un run intermedio con el script viejo (la rama renombrada
-  no tiene esta versión del script) que desplegaría la rama una última vez.
+- **Deleting a `no-deploy/` branch DOES fire a run**: the `delete`
+  event accepts no filters and rebuilds the whole site. Accepted: it is a
+  single run with a result **identical** to the previous one (the branch was
+  never deployed), and removing the exclusion after deleting the branch is
+  exactly the desired behavior.
+- **A branch called exactly `no-deploy` (without the slash) is not
+  excluded**: an accepted and documented edge case; the prefix is defined
+  with the slash so it only acts on the whole namespace.
+- **The trigger's filter only fully applies when the workflow is on
+  the default branch (main)**: while this version
+  lives only on the work branch, GitHub evaluates
+  the workflow from `main` to decide whether to fire, so a push
+  to `no-deploy/*` would still run; the script layer already excludes it
+  from the build in that scenario.
+- **The recommended order for the user**: **promote this version to
+  `main` BEFORE renaming** the branch (`feat/...` → `no-deploy/feat/...`):
+  renaming
+  first risks an intermediate run with the old script (the renamed
+  branch does not have this script's version) that would deploy the
+  branch one last time.
 
-### Neutras
+### Neutral
 
-- **`docs/manual-de-usuario.md` sin cambios** (regla 3 de AGENTS.md): el
-  cambio es interno (infraestructura de despliegue); el usuario final no ve
-  ninguna diferencia de comportamiento y el manual no documenta los
-  previews por rama (misma decisión que ADR-036, ADR-041 y ADR-044).
-- El cambio es **retrocompatible**: ninguna rama existente con el prefijo
-  se desplegaba antes de forma distinta (el prefijo es nuevo), y el resto
-  del pipeline (saneo, checks de colisión, `strip_sensitive`, hub) no se
-  toca.
+- **`docs/manual-de-usuario.md` unchanged** (AGENTS.md's rule 3): the
+  change is internal (deployment infrastructure); the end user sees no
+  behavioral difference and the manual does not document the per-branch
+  previews (the same decision as ADR-036, ADR-041 and ADR-044).
+- The change is **backwards compatible**: no existing branch with the
+  prefix was deployed differently before (the prefix is new), and the rest
+  of the pipeline (sanitization, collision checks, `strip_sensitive`, the
+  hub) is untouched.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `scripts/build-pages-site.sh` | **Modificado**: `NO_DEPLOY_PREFIX="no-deploy/"`; partición de ramas remotas en `INCLUDED_BRANCHES`/`EXCLUDED_BRANCHES` (prefix match con barra); log «Ramas excluidas del despliegue (prefijo no-deploy/): ...»; salvaguarda «todas excluidas» (`::warning::` + solo rama por defecto en la raíz, sin abortar; `::error::` + `exit 1` preservado para el caso real de cero ramas); texto del hub («Las ramas no-default desplegadas...»); comentarios de cabecera y del paso 2 |
-| `.github/workflows/deploy-all-branches.yml` | **Modificado**: `on: push` con `branches-ignore: ['no-deploy/**']` (patrón `**` multi-segmento); comentario de cabecera con la política de exclusión; `workflow_dispatch` y `delete` intactos |
-| `README.md` | **Modificado**: sección 6 — bala documentando el prefijo de exclusión (no se sirve en el hub, el push no dispara el workflow, caso de uso «conservar ramas no fusionables») y retoque de la línea de cabecera a «cada push de cualquier rama» |
-| `docs/adr-076-excluir-ramas-no-deploy.md` | **Nuevo**: este documento |
+| `scripts/build-pages-site.sh` | **Modified**: `NO_DEPLOY_PREFIX="no-deploy/"`; the remote branches' partition into `INCLUDED_BRANCHES`/`EXCLUDED_BRANCHES` (prefix match with the slash); the log «Ramas excluidas del despliegue (prefijo no-deploy/): ...»; the "all excluded" safeguard (`::warning::` + only the default branch at the root, without aborting; `::error::` + `exit 1` preserved for the real case of zero branches); the hub's text («Las ramas no-default desplegadas...»); header and step 2 comments |
+| `.github/workflows/deploy-all-branches.yml` | **Modified**: `on: push` with `branches-ignore: ['no-deploy/**']` (a `**` multi-segment pattern); header comment with the exclusion policy; `workflow_dispatch` and `delete` intact |
+| `README.md` | **Modified**: section 6 — a bullet documenting the exclusion prefix (it is not served in the hub, a push does not fire the workflow, the "keep unmergeable branches" use case) and the header line reworded to «each push of any branch» |
+| `docs/adr-076-excluir-ramas-no-deploy.md` | **New**: this document |
 
 Related issue: #198 — https://github.com/gonzalitojh/Registro-personal/issues/198

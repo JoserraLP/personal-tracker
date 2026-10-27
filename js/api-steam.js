@@ -1,50 +1,50 @@
 // =============================================================
-// Integración de Steam (Ajustes → Integración de Steam): le
-// ofrece al usuario la lista de juegos que posee en su cuenta de
-// Steam con las HORAS JUGADAS (del proxy steam-proxy, worker de
-// Cloudflare; ver cloudflare/steam-proxy/).
+// Steam integration (Settings → Steam Integration): it offers the
+// user the list of games they own on their Steam account with the
+// PLAYED HOURS (from the steam-proxy proxy, a Cloudflare worker; see
+// cloudflare/steam-proxy/).
 //
-// El cliente es delgado y PURO donde se pueda: normalizar la
-// respuesta del worker y conversiones están separadas para poder
-// testearlas sin red. Steam no se usa para buscar juegos (de eso
-// se encarga la búsqueda del catálogo con IGDB/IGDB-proxy), solo
-// para traer la biblioteca del usuario con sus horas.
+// The client is thin and PURE where possible: normalizing the worker
+// response and conversions are separated so they can be tested
+// without network. Steam is not used to search for games (the
+// catalog search with IGDB/IGDB-proxy handles that), only to fetch
+// the user's library with their hours.
 //
-// NOTA: Epic Games no ofrece una API pública para la biblioteca del
-// usuario ni sus horas (requiere OAuth de tienda con permisos de
-// desarrollador y no hay endpoint de tiempo de juego), así que NO se
-// sincroniza y se documenta en el ADR-107.
+// NOTE: Epic Games does not offer a public API for the user's
+// library or its hours (it requires store OAuth with developer
+// permissions and there is no playtime endpoint), so it is NOT
+// synced and this is documented in ADR-107.
 // =============================================================
 
 import { STEAM_PROXY_URL } from "./config.js";
 
 // -------------------------------------------------------------
-// Partes puras
+// Pure parts
 // -------------------------------------------------------------
 
-// Horas de Steam ("134.7") → texto español "134,7 h". Cadena vacía
-// si no hay horas registradas.
+// Steam hours ("134.7") → Spanish text "134,7 h". Empty string
+// if there are no recorded hours.
 export function steamHoursLabel(hours) {
   const h = Number(hours);
   if (!Number.isFinite(h) || h <= 0) return "";
   return h.toLocaleString("es-ES", { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + " h";
 }
 
-// Valida un SteamID64 del formulario: 17 dígitos (los id modernos).
-// Devuelve el valor limpio o "".
+// Validates a SteamID64 from the form: 17 digits (modern ids).
+// Returns the clean value or "".
 export function sanitizeSteamId(value) {
   const v = (value || "").trim();
   return /^\d{17}$/.test(v) ? v : "";
 }
 
-// Valida que el proxy esté configurado: la app no puede llamar a
-// Steam sin él. Devuelve la URL o null.
+// Validates that the proxy is configured: the app cannot call
+// Steam without it. Returns the URL or null.
 export function steamProxyUrl() {
   return STEAM_PROXY_URL && /^https:\/\//.test(STEAM_PROXY_URL) ? STEAM_PROXY_URL : null;
 }
 
-// URL del endpoint /owned de un steamid (o null si no hay proxy).
-// Se separa para testear sin fetch.
+// URL of the /owned endpoint for a steamid (or null if there is no
+// proxy). Separated so it can be tested without fetch.
 export function ownedUrl(steamId) {
   const base = steamProxyUrl();
   if (!base) return null;
@@ -54,26 +54,26 @@ export function ownedUrl(steamId) {
 }
 
 // -------------------------------------------------------------
-// Login OpenID ("Sign in through Steam", ADR-108)
+// OpenID login ("Sign in through Steam", ADR-108)
 // -------------------------------------------------------------
 
-// URL de inicio de sesión por vinculación: el navegador va al
-// worker /login (que salta a Steam) y vuelve con el steamid
-// verificado a la web actual (hash #/steam-callback). Con proxy sin
-// configurar devuelve null.
+// URL to start the linking login: the browser goes to the
+// /login worker (which redirects to Steam) and comes back with the
+// verified steamid to the current site (hash #/steam-callback). With the
+// proxy unconfigured it returns null.
 export function steamLoginUrl() {
   const base = steamProxyUrl();
   if (!base) return null;
-  // En entornos sin window (tests en Node) no hay de dónde volver.
+  // In environments without window (tests in Node) there is nowhere to return from.
   if (typeof window === "undefined" || !window.location) return null;
   const returnTo = window.location.origin + window.location.pathname;
   return `${base.replace(/\/+$/, "")}/login?return_to=${encodeURIComponent(returnTo)}`;
 }
 
 /**
- * Interpreta el hash de retorno `#/steam-callback?steamid=...` (o
- * `...?error=verify`). Devuelve null si el hash no es de este flujo.
- * @param {string} hash - location.hash actual.
+ * Interprets the return hash `#/steam-callback?steamid=...` (or
+ * `...?error=verify`). Returns null if the hash is not from this flow.
+ * @param {string} hash - current location.hash.
  */
 export function parseSteamCallbackHash(hash) {
   const frag = (hash || "").replace(/^#\/?/, "");
@@ -90,14 +90,14 @@ export function parseSteamCallbackHash(hash) {
 }
 
 // -------------------------------------------------------------
-// Cliente (fetch al Worker)
+// Client (fetch to the Worker)
 // -------------------------------------------------------------
 
 /**
- * Pide al proxy la biblioteca del usuario y la normaliza.
- * @param {string} steamId - SteamID64 del usuario (17 dígitos).
- * @returns {Promise<{ total: number, games: Array<{appid, name, playtimeHours, lastPlayedAt}> }>} 
- *          Lanza con mensajes claros si falla la configuración o la red.
+ * Asks the proxy for the user's library and normalizes it.
+ * @param {string} steamId - user's SteamID64 (17 digits).
+ * @returns {Promise<{ total: number, games: Array<{appid, name, playtimeHours, lastPlayedAt}> }>}
+ *          Throws with clear messages if the configuration or the network fails.
  */
 export async function fetchOwnedSteamGames(steamId) {
   const url = ownedUrl(steamId);

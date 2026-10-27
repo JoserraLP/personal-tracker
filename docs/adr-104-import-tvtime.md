@@ -1,71 +1,72 @@
-# ADR-104: Importación del historial completo desde TV Time
+# ADR-104: Importing the full history from TV Time
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-10-23
 
-## Contexto
+## Context
 
-La app permite llevar el registro de series/películas manualmente, pero
-no importar el historial previo de otra aplicación de tracking. TV Time
-permite exportar el historial completo en un archivo JSON: lista de
-series, cada una con temporadas y episodios, contadores de revisionados
-y fechas de último visionado (`watched_at`), además del estado del
-seguimiento (`status`: up_to_date / continuing / stopped /
-not_started_yet), favorito y ids (solo TVDB en este export).
+The app allows tracking series/movies manually, but not importing prior
+history from another tracking app. TV Time allows exporting the full
+history as a JSON file: a list of series, each with seasons and
+episodes, rewatch counters and last-watched dates (`watched_at`), plus
+the tracking status (`status`: up_to_date / continuing / stopped /
+not_started_yet), favorite and ids (TVDB only in this export).
 
-El export NO trae ids de TMDB ni covers, así que las series importadas
-no pueden enriquecerse con el catálogo externo ni engancharse a datos
-de emisión (fecha del próximo episodio, avisos de estreno) sin
-incorporar un enriquecimiento bajo demanda. La alternativa (buscar
-cada título en TMDB durante la importación y darlo de alta como serie
-normal con externalId) era una importación de cientos de series:
-lenta, con rate limits y con fallos de título que completaban la
-importación a medias. Tampoco es determinista: una importación parcial
-deja series y fichas a medias.
+The export does NOT bring TMDB ids or covers, so imported series cannot
+be enriched with the external catalog or hooked to airing data (next
+episode date, release notices) without adding on-demand enrichment. The
+alternative (searching each title in TMDB during the import and
+registering it as a normal series with externalId) would be an import of
+hundreds of series: slow, with rate limits and title failures that
+completed the import half-way. It is not deterministic either: a partial
+import leaves series and cards half-done.
 
-## Decisión
+## Decision
 
-Nueva funcionalidad en **Ajustes → Datos → Importar desde TV Time**:
+New feature in **Ajustes → Datos → Importar desde TV Time**
+[Settings → Data → Import from TV Time]:
 
-- Módulo **js/tvtime-import.js** PURO, con funciones exportadas y
-  testeado unitariamente (tests/tvtime-import.test.js):
+- PURE module **js/tvtime-import.js**, with exported functions and
+  unit-tested (tests/tvtime-import.test.js):
   - `tvTimeDateToIso`, `statusFromTvTime`, `tvTimeSeasonsMeta`,
     `tvTimeWatchedMap`, `tvTimeNextEpisode`, `buildTvTimeItem`,
     `parseTvTimeExport`.
-- Mapeo:
-  - Estado: up_to_date → completado (si todo visto) / en_curso;
-    continuing → en_curso (o pendiente); stopped → abandonado (o
-    pendiente); demás → pendiente.
-  - Episodes vistos → `watched` (forma canónica de `js/tv-progress.js`:
-    `{ temporada: { episodio: { date, rating, times } } }`), con la
-    fecha del archivo y `times = rewatch_count + watched_count` (mín. 1).
-  - `nextEpisode` = primer episodio no visto; si ya no queda ninguno:
-    status forzado a completado, `timesCompleted = 1` y "nextEpisode"
-    null (la app lo trata como serie completa, nunca "sin estrenar").
-  - `seasonsMeta` derivada del propio fichero (temporadas no especiales
-    ordenadas).
-  - `manual: true` y `externalId: null`: la ficha no busca en TMDB; las
-    series quedan fuera del flujo "sin estrenar" (que depende de fechas
-    de TMDB). Son fichas editables del flujo de series manuales.
-- Flujo UI: file picker (fichero .json) → parseo → resumen en el
-  confirm (series importables, episodios vistos, entradas saltadas,
-  aviso de duplicados posibles) → alta secuencial
-  `ctx.addItem(uid, "tv", item)`, con toast final de resultado
-  (errores contados en consola).
-- Exclusiones documentadas también en el manual: temporada 0
-  (especiales), favoritos (`is_favorite`, la app no tiene ese dato).
+- Mapping:
+  - Status: up_to_date → completado [completed] (if everything watched)
+    / en_curso [in progress]; continuing → en_curso (or pendiente
+    [pending]); stopped → abandonado [abandoned] (or pendiente); others
+    → pendiente.
+  - Watched episodes → `watched` (canonical shape of `js/tv-progress.js`:
+    `{ season: { episode: { date, rating, times } } }`), with the date
+    from the file and `times = rewatch_count + watched_count` (min. 1).
+  - `nextEpisode` = first unwatched episode; if none is left: status
+    forced to completado, `timesCompleted = 1` and "nextEpisode" null
+    (the app treats it as a completed series, never "unreleased").
+  - `seasonsMeta` derived from the file itself (non-special seasons,
+    sorted).
+  - `manual: true` and `externalId: null`: the card does not search
+    TMDB; series stay out of the "unreleased" flow (which depends on
+    TMDB dates). They are editable cards of the manual series flow.
+- UI flow: file picker (.json file) → parse → summary in the confirm
+  (importable series, watched episodes, skipped entries, warning about
+  possible duplicates) → sequential registration
+  `ctx.addItem(uid, "tv", item)`, with a final result toast (errors
+  counted in the console).
+- Exclusions documented in the manual too: season 0 (specials),
+  favorites (`is_favorite`, the app has no such data).
 
-## Consecuencias
+## Consequences
 
-- Recuperar tu historial es un solo paso: confiable y sin coste de API.
-- Se mantiene la invariante de datos: forma canónica `watched`, sin
-  campos read-only, sin enriquecimiento (bajo demanda solo si el ítem
-  tiene externalId, que aquí es null).
-- Riesgo conocido: reimportar duplica las series; el confirm lo avisa.
-- Si en el fichero hay episodios con watched_at sin fecha (null), se
-  importan con `date: null` y cubren episodios marcados a los que TV
-  Time no les guardó fecha (no cuentan fechas para primera/última
-  actividad).
+- Recovering your history is a single step: reliable and with no API
+  cost.
+- The data invariant is kept: canonical `watched` shape, no read-only
+  fields, no enrichment (on-demand only if the item has externalId,
+  which here is null).
+- Known risk: reimporting duplicates the series; the confirm warns
+  about it.
+- If the file has episodes with a dateless watched_at (null), they are
+  imported with `date: null` and cover marked episodes for which TV
+  Time saved no date (they do not count dates for first/last activity).

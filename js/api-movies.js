@@ -1,8 +1,8 @@
 // =============================================================
-// Búsqueda de películas y series, temporadas/episodios, y datos
-// ampliados (duración, reparto, sinopsis...) en TMDB. Gratis para
-// uso no comercial, con atribución (ver footer de index.html).
-// Documentación: https://developer.themoviedb.org/docs
+// Search of movies and TV series, seasons/episodes, and extended
+// data (runtime, cast, synopsis...) in TMDB. Free for
+// non-commercial use, with attribution (see footer of index.html).
+// Documentation: https://developer.themoviedb.org/docs
 // =============================================================
 
 import { TMDB_API_KEY } from "./config.js";
@@ -59,10 +59,10 @@ function mapTvResult(r) {
   };
 }
 
-// Normaliza la lista de temporadas que devuelve TMDB: se ignoran los
-// "specials" (season_number 0) y la fecha de emisión se normaliza a
-// null cuando TMDB no la anuncia (una temporada sin air_date NO está
-// estrenada; un null es información real, no un fallo de la API).
+// Normalizes the list of seasons returned by TMDB: "specials"
+// (season_number 0) are ignored and the air date is normalized to
+// null when TMDB doesn't announce it (a season without air_date is NOT
+// released yet; a null is real information, not an API failure).
 function normalizeSeasons(seasons) {
   return (seasons || [])
     .filter((s) => s.season_number > 0)
@@ -74,19 +74,19 @@ function normalizeSeasons(seasons) {
     }));
 }
 
-// Mapa temporada -> fecha de emisión (o null si aún no tiene fecha
-// oficial): { "1": "2020-01-01", "2": null, ... }. Object.fromEntries
-// conserva los null, que son información real de "temporada sin
-// estrenar". Se persiste en el ítem y se refresca a diario.
+// Map season -> air date (or null if it doesn't have an official
+// date yet): { "1": "2020-01-01", "2": null, ... }. Object.fromEntries
+// keeps the nulls, which are real information about a "season not
+// released yet". It is persisted in the item and refreshed daily.
 export function seasonAirDateMap(seasons) {
   return Object.fromEntries(
     normalizeSeasons(seasons).map((s) => [String(s.seasonNumber), s.airDate])
   );
 }
 
-// Lista de temporadas de una serie (nombre y nº de episodios de cada una),
-// más datos "en vivo" sobre el estado de emisión y el próximo episodio
-// (útiles para el aviso de "aún no estrenada").
+// List of seasons of a TV series (name and number of episodes of each one),
+// plus "live" data about the airing status and the next episode
+// (useful for the "not yet released" warning).
 export async function getTvSeasonsMeta(tvId) {
   const url = `${BASE_URL}/tv/${tvId}?api_key=${TMDB_API_KEY}&language=es-ES`;
   const data = await fetchJson(url, { retries: 1 }).catch(() => {
@@ -95,10 +95,10 @@ export async function getTvSeasonsMeta(tvId) {
   return normalizeSeasons(data.seasons);
 }
 
-// Episodios (número, nombre, fecha de emisión y valoración de la
-// comunidad) de una temporada concreta. Se piden solo cuando el
-// usuario despliega esa temporada o marca un episodio, y se cachean
-// en memoria 24 h (misma caché compartida que los watch providers).
+// Episodes (number, name, air date and community
+// rating) of a specific season. They are only requested when the
+// user expands that season or marks an episode, and they are cached
+// in memory for 24 h (same shared cache as the watch providers).
 export async function getSeasonEpisodes(tvId, seasonNumber) {
   const cacheKey = `season_${tvId}_${seasonNumber}`;
   const cached = getCached(cacheKey);
@@ -118,27 +118,27 @@ export async function getSeasonEpisodes(tvId, seasonNumber) {
   return episodes;
 }
 
-// Extrae la URL del tráiler oficial de YouTube a partir de la
-// respuesta del endpoint /videos de TMDB. Prioriza "Trailer" sobre
-// "Teaser" y, dentro del mismo tipo, el más reciente (por id).
+// Extracts the official YouTube trailer URL from the
+// response of TMDB's /videos endpoint. Prioritizes "Trailer" over
+// "Teaser" and, within the same type, the most recent one (by id).
 function _extractTrailerUrl(videos) {
   if (!videos || !videos.results || !videos.results.length) return null;
   const trailers = videos.results.filter(
     (v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser")
   );
   if (!trailers.length) return null;
-  // Priorizar "Trailer" sobre "Teaser"
+  // Prioritize "Trailer" over "Teaser"
   const best = trailers.find((v) => v.type === "Trailer") || trailers[0];
   return `https://www.youtube.com/watch?v=${best.key}`;
 }
 
-// Datos ampliados de una película: duración, sinopsis, género,
-// director, reparto principal, colección/saga y tráiler. Con el
-// almacenamiento mínimo (issue #200) se piden bajo demanda al
-// abrir la ficha (y de paso al alta para conocer la fecha de
-// estreno), con caché en memoria de 24 h (la misma compartida que
-// los watch providers): una ficha recién añadida o ya visitada no
-// vuelve a llamar a la API.
+// Extended data of a movie: runtime, synopsis, genre,
+// director, main cast, collection/saga and trailer. With
+// minimal storage (issue #200) they are requested on demand when
+// opening the detail view (and also when adding to learn the release
+// date), with a 24 h in-memory cache (the same shared as
+// the watch providers): a freshly added or already visited item
+// does not call the API again.
 export async function getMovieDetails(id) {
   const cacheKey = `details_movie_${id}`;
   const cached = getCached(cacheKey);
@@ -170,14 +170,14 @@ export async function getMovieDetails(id) {
   return result;
 }
 
-// Datos de una colección/saga de TMDB: nombre, póster y lista de
-// películas que la componen. Se usa al pulsar "Añadir resto de la
-// saga" desde la ficha de una película, y también para mostrar
-// "Otras películas de la saga" en el modal (issue #280). Con caché
-// en memoria de 24 h (la compartida con getMovieDetails y watch
-// providers): una colección ya consultada no repite llamada. Solo
-// se cachean las respuestas correctas; un fallo transitorio de red
-// no oculta la sección durante 24 h.
+// Data of a TMDB collection/saga: name, poster and list of
+// movies that compose it. It is used when pressing "Add the rest of the
+// saga" from a movie's detail view, and also to show
+// "Other movies from the saga" in the modal (issue #280). With a
+// 24 h in-memory cache (the one shared with getMovieDetails and the
+// watch providers): an already fetched collection does not repeat the call. Only
+// correct responses are cached; a transient network failure
+// does not hide the section for 24 h.
 export async function getCollectionDetails(collectionId) {
   const cacheKey = `collection_${collectionId}`;
   const cached = getCached(cacheKey);
@@ -205,12 +205,12 @@ export async function getCollectionDetails(collectionId) {
   return result;
 }
 
-// Datos ampliados de una serie: duración de episodio, sinopsis,
-// género, creadores, reparto principal, estado de emisión, próximo
-// episodio a emitir (si lo hay) y tráiler. Con el almacenamiento
-// mínimo (issue #200) se piden bajo demanda al abrir la ficha (y de
-// paso al alta para conocer estrenos/fechas de temporada), con caché
-// en memoria de 24 h (misma caché compartida que los watch providers).
+// Extended data of a TV series: episode runtime, synopsis,
+// genre, creators, main cast, airing status, next
+// episode to air (if any) and trailer. With the
+// minimal storage (issue #200) they are requested on demand when opening
+// the detail view (and also when adding to learn releases/season dates), with a
+// 24 h in-memory cache (same shared cache as the watch providers).
 export async function getTvExtraDetails(id) {
   const cacheKey = `details_tv_${id}`;
   const cached = getCached(cacheKey);
@@ -237,9 +237,9 @@ export async function getTvExtraDetails(id) {
     communityRating: data.vote_count > 0 ? data.vote_average : null,
     trailerUrl: _extractTrailerUrl(data.videos),
     coverUrl: data.poster_path ? `${IMG_BASE}${data.poster_path}` : null,
-    // Fechas de emisión por temporada (null = temporada aún sin estrenar).
-    // Se persiste junto al ítem para poder avisar del "no estrenado"
-    // aunque TMDB deje de devolver next_episode_to_air.
+    // Air dates per season (null = season not released yet).
+    // It is persisted along with the item so the "not released"
+    // warning still works even if TMDB stops returning next_episode_to_air.
     seasonAirDates: seasonAirDateMap(data.seasons),
   };
   setCache(cacheKey, result);
@@ -247,16 +247,16 @@ export async function getTvExtraDetails(id) {
 }
 
 // =============================================================
-// Plataformas de streaming (watch providers) desde TMDB.
-// Devuelve los proveedores de streaming, alquiler y compra para
-// un título (película o serie) en un país concreto.
-// Los resultados se cachean en memoria para evitar llamadas
-// redundantes durante la misma sesión.
+// Streaming platforms (watch providers) from TMDB.
+// Returns the streaming, rent and buy providers for
+// a title (movie or TV series) in a specific country.
+// Results are cached in memory to avoid redundant calls
+// during the same session.
 // =============================================================
 
 const IMG_LOGO = "https://image.tmdb.org/t/p/w92";
 const providersCache = new Map();
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 horas
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 function getCached(key) {
   const entry = providersCache.get(key);
@@ -273,10 +273,10 @@ function setCache(key, data) {
 }
 
 /**
- * Obtiene los watch providers de una película o serie en TMDB.
- * @param {string|number} id          - ID externo de TMDB
- * @param {'movie'|'tv'}  type        - Tipo de contenido
- * @param {string}        countryCode - Código ISO 3166-1 alpha-2 (ej: "ES", "US")
+ * Gets the watch providers of a movie or TV series in TMDB.
+ * @param {string|number} id          - External ID from TMDB
+ * @param {'movie'|'tv'}  type        - Content type
+ * @param {string}        countryCode - ISO 3166-1 alpha-2 code (e.g.: "ES", "US")
  * @returns {Promise<{flatrate:Array, rent:Array, buy:Array, link:string|null}|null>}
  */
 export async function getWatchProviders(id, type, countryCode = "ES") {
@@ -305,10 +305,10 @@ export async function getWatchProviders(id, type, countryCode = "ES") {
 }
 
 // =============================================================
-// Recomendaciones (contenido similar) desde TMDB. Devuelve
-// listas de películas o series similares usando el endpoint
-// /similar de TMDB. Los resultados tienen la misma forma que
-// los de búsqueda (externalId, title, year, coverUrl, overview).
+// Recommendations (similar content) from TMDB. Returns
+// lists of similar movies or TV series using TMDB's
+// /similar endpoint. Results have the same shape as
+// search results (externalId, title, year, coverUrl, overview).
 // =============================================================
 
 export async function getSimilarMovies(id) {

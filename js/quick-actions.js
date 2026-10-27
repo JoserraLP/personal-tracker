@@ -1,6 +1,7 @@
 // =============================================================
-// Acciones rápidas (modo lista y swipe): marcar vista, siguiente
-// episodio o avanzar lectura sin abrir el modal. Extraído de app.js.
+// Quick actions (list mode and swipe): mark watched, next episode
+// or advance reading without opening the modal. Extracted from
+// app.js.
 // =============================================================
 
 import { addWatch, statusFromWatchLog } from "./watch-log.js";
@@ -12,9 +13,8 @@ import { unreleasedConfirmMessage, episodeUnreleasedMessage } from "./release.js
 import { getNextEpisodeAirInfo } from "./sorting.js";
 import { openRatingModal, RATING_MODAL_UNDONE } from "./rating-modal.js";
 
-// Meta de temporadas: para series manuales devuelve una sola
-// temporada con el nº de episodios indicado; para el resto, pide
-// los datos a TMDB.
+// Season meta: for manual shows returns a single season with the
+// given episode count; for the rest, it asks TMDB.
 export async function getSeasonsMetaFor(item, ctx) {
   if (item.manual) {
     return [{ seasonNumber: 1, name: "Temporada 1", episodeCount: item.manualEpisodeCount || 10 }];
@@ -22,10 +22,10 @@ export async function getSeasonsMetaFor(item, ctx) {
   return ctx.getTvSeasonsMeta(item.externalId);
 }
 
-// Abre la ventana de valoración tras marcar como vista/leída una
-// película o un libro desde una acción rápida (issue #21). Nunca
-// lanza: si algo falla, el marcado ya persistido queda intacto.
-// Devuelve true si el usuario deshizo el marcado (issue #136).
+// Opens the rating window after marking a movie or a book as
+// watched/read from a quick action (issue #21). It never throws:
+// if something fails, the already-persisted marking stays intact.
+// Returns true if the user undid the marking (issue #136).
 async function maybeQuickItemRating(item, ctx, type, opts = {}) {
   try {
     const result = await openRatingModal({
@@ -57,14 +57,14 @@ async function quickMarkMovie(item, ctx) {
   const prevStatus = item.status;
   const newLog = addWatch(item.watchLog, todayISO());
   const status = statusFromWatchLog(newLog);
-  // awaitingRelease se limpia al marcar como vista (idempotente, igual
-  // que en el modal de detalle): un ítem ya visto no puede seguir
-  // "sin estrenar".
+  // awaitingRelease is cleared when marking as watched (idempotent,
+  // same as in the detail modal): an already watched item cannot stay
+  // "unreleased".
   await ctx.updateItem(ctx.getCurrentUser().uid, "movie", item.id, { watchLog: newLog, status, awaitingRelease: false });
   item.awaitingRelease = false;
-  // Deshacer (issue #136): restaura el watchLog/status/awaitingRelease
-  // previos sin forzar awaitingRelease:false. El status se restaura
-  // LITERAL al capturado (no al recomputado del log).
+  // Undo (issue #136): restores the previous watchLog/status/
+  // awaitingRelease without forcing awaitingRelease:false. The status
+  // is restored LITERALLY as captured (not the recomputed log one).
   const undone = await maybeQuickItemRating(item, ctx, "movie", {
     onUndo: async () => {
       await ctx.updateItem(ctx.getCurrentUser().uid, "movie", item.id, {
@@ -87,11 +87,11 @@ async function quickMarkBook(item, ctx) {
   const prevReadLog = isReading ? item.readLog : null;
   const prevStatus = isReading ? item.status : null;
   await ctx.updateItem(ctx.getCurrentUser().uid, "book", item.id, { readLog: newLog, status });
-  // La ventana de valoración solo se ofrece al terminar de leer
+  // The rating window is only offered when finishing reading
   if (isReading) {
-    // Deshacer (issue #136): restaura el readLog y el status previos.
-    // El status se restaura LITERAL al capturado (no al recomputado
-    // del log) por si el usuario lo tenía en un estado manual.
+    // Undo (issue #136): restores the previous readLog and status.
+    // The status is restored LITERALLY as captured (not the
+    // recomputed log one) in case the user had a manual state.
     const undone = await maybeQuickItemRating(item, ctx, "book", {
       onUndo: async () => {
         await ctx.updateItem(ctx.getCurrentUser().uid, "book", item.id, {
@@ -115,11 +115,11 @@ async function quickMarkGame(item, ctx) {
   const prevPlayLog = isPlaying ? item.playLog : null;
   const prevStatus = isPlaying ? item.status : null;
   await ctx.updateItem(ctx.getCurrentUser().uid, "game", item.id, { playLog: newLog, status });
-  // La ventana de valoración solo se ofrece al terminar de jugar
+  // The rating window is only offered when finishing playing
   if (isPlaying) {
-    // Deshacer (issue #136): restaura el playLog y el status previos.
-    // El status se restaura LITERAL al capturado (no al recomputado
-    // del log) por si el usuario lo tenía en un estado manual.
+    // Undo (issue #136): restores the previous playLog and status.
+    // The status is restored LITERALLY as captured (not the
+    // recomputed log one) in case the user had a manual state.
     const undone = await maybeQuickItemRating(item, ctx, "game", {
       communityLabel: "IGDB",
       onUndo: async () => {
@@ -137,12 +137,12 @@ async function quickMarkGame(item, ctx) {
   }
 }
 
-// Persiste el progreso de una serie (marcado o valoración de un
-// episodio) y muta el ítem en memoria, igual que hace quickMarkTv.
-// nextEpisodeAirDate (opcional): fecha de emisión del próximo
-// episodio sin estrenar ({ season, episode, airDate } o null); si se
-// pasa, se guarda junto al progreso para avisar de "no estrenado"
-// sin repetir llamadas a la API.
+// Persists the progress of a show (marking or rating of an episode)
+// and mutates the item in memory, the same way quickMarkTv does.
+// nextEpisodeAirDate (optional): air date of the next unreleased
+// episode ({ season, episode, airDate } or null); if passed, it is
+// stored along with the progress so the "unreleased" alert can be
+// shown without repeating API calls.
 function saveTvProgress(item, ctx, seasonsMeta, newWatched, nextEpisodeAirDate) {
   const newProgress = computeProgress(seasonsMeta, newWatched);
   const payload = {
@@ -151,8 +151,8 @@ function saveTvProgress(item, ctx, seasonsMeta, newWatched, nextEpisodeAirDate) 
     nextEpisode: newProgress.nextEpisode,
     firstWatchedAt: newProgress.firstWatchedAt,
     lastWatchedAt: newProgress.lastWatchedAt,
-    // Una serie con episodios vistos no puede seguir "sin estrenar"
-    // (idempotente, igual que en el modal de detalle).
+    // A show with watched episodes cannot stay "unreleased"
+    // (idempotent, same as in the detail modal).
     awaitingRelease: false,
   };
   if (nextEpisodeAirDate !== null && nextEpisodeAirDate !== undefined) {
@@ -173,10 +173,10 @@ function saveTvProgress(item, ctx, seasonsMeta, newWatched, nextEpisodeAirDate) 
     });
 }
 
-// Abre la ventana de valoración del episodio recién marcado desde
-// una acción rápida (issue #21). meta puede ser null (serie manual
-// o episodio sin datos): entonces no se muestra nota de comunidad.
-// Devuelve true si el usuario deshizo el marcado (issue #136).
+// Opens the rating window of the just-marked episode from a quick
+// action (issue #21). meta can be null (manual show or episode
+// without data): then no community score is shown.
+// Returns true if the user undid the marking (issue #136).
 async function maybeQuickEpisodeRating(item, ctx, seasonsMeta, season, episode, meta, opts = {}) {
   try {
     const result = await openRatingModal({
@@ -215,13 +215,13 @@ async function quickMarkTv(item, ctx) {
     return;
   }
   const { season, episode } = item.nextEpisode;
-  // Confirmación base (cualquier fuente: nextEpisodeToAir en vivo,
-  // seasonAirDates refrescado a diario o backfill persistido). Si no
-  // aplica y la serie no es manual, se consulta la temporada para
-  // verificar el estreno del episodio concreto: TMDB puede no devolver
-  // next_episode_to_air (p. ej. serie entre temporadas sin fecha
-  // anunciada) aunque el episodio no esté estrenado. Fail-open: si la
-  // API falla, se marca sin confirmación.
+  // Base confirmation (any source: live nextEpisodeToAir,
+  // seasonAirDates refreshed daily or persisted backfill). If it does
+  // not apply and the show is not manual, the season is queried to
+  // verify the specific episode's release: TMDB may not return
+  // next_episode_to_air (e.g. a show between seasons with no
+  // announced date) even though the episode is not released.
+  // Fail-open: if the API fails, it marks without confirmation.
   let confirmMsg = unreleasedConfirmMessage(item, getNextEpisodeAirInfo(item));
   let episodes = null;
   if (!confirmMsg && !item.manual && item.externalId) {
@@ -235,11 +235,11 @@ async function quickMarkTv(item, ctx) {
   }
   if (confirmMsg && !window.confirm(confirmMsg)) return;
   const seasonsMeta = await getSeasonsMetaFor(item, ctx);
-  // Refresco de las fechas de temporada (issue #27): si la meta recién
-  // consultada difiere de la persistida, se actualiza en memoria y se
-  // guarda fuego-y-olvido (mismo patrón que onUpdateNextEpisodeAirDate).
-  // Un fallo aquí no rompe la acción. Las series manuales no tienen
-  // fechas reales de TMDB: se excluyen.
+  // Season date refresh (issue #27): if the freshly fetched meta
+  // differs from the persisted one, it is updated in memory and
+  // stored fire-and-forget (same pattern as
+  // onUpdateNextEpisodeAirDate). A failure here does not break the
+  // action. Manual shows have no real TMDB dates: they are excluded.
   if (!item.manual && seasonsMeta.length) {
     const seasonAirDates = Object.fromEntries(
       seasonsMeta.filter((s) => !s.manual).map((s) => [String(s.seasonNumber), s.airDate])
@@ -253,10 +253,10 @@ async function quickMarkTv(item, ctx) {
   }
   const newWatched = setEpisodeDate(item.watched, season, episode, todayISO());
 
-  // Si el siguiente episodio (tras marcar este) sigue en la misma
-  // temporada y ya tenemos sus datos, guardamos su fecha de emisión
-  // (o null si TMDB no la tiene) para poder avisar del "no estrenado"
-  // sin más llamadas.
+  // If the next episode (after marking this one) is still in the same
+  // season and we already have its data, we store its air date (or
+  // null if TMDB does not have it) so we can warn about "unreleased"
+  // without further calls.
   let nextEpisodeAirDate = null;
   if (episodes) {
     const newProgress = computeProgress(seasonsMeta, newWatched);
@@ -274,11 +274,11 @@ async function quickMarkTv(item, ctx) {
   const prevStatus = item.status;
   const prevNextEpisodeAirDate = item.nextEpisodeAirDate;
   await saveTvProgress(item, ctx, seasonsMeta, newWatched, nextEpisodeAirDate);
-  // Valoración del episodio: con datos TMDB se muestra la nota de
-  // comunidad del episodio; en series manuales meta es null, así que
-  // la ventana aparece igualmente con "Sin puntuaciones" (igual que
-  // en el modal de detalle, issue #21). Si el episodio ya se consultó
-  // para verificar el estreno, se reutiliza sin repetir la llamada.
+  // Episode rating: with TMDB data the episode community score is
+  // shown; in manual shows meta is null, so the window appears anyway
+  // with "Sin puntuaciones" (same as in the detail modal, issue #21).
+  // If the episode was already fetched to verify the release, it is
+  // reused without repeating the call.
   let meta = null;
   if (episodes) {
     meta = episodes.find((e) => e.episodeNumber === episode) || null;
@@ -290,10 +290,11 @@ async function quickMarkTv(item, ctx) {
       console.error("No se pudo obtener el episodio para valorarlo:", err);
     }
   }
-  // Deshacer (issue #136): restaura el progreso previo de la serie
-  // (watched, status literal del capturado, nextEpisode, fechas y
-  // awaitingRelease; saveTvProgress recalcula el status y este payload
-  // lo sobreescribe con el previo por si era un estado manual).
+  // Undo (issue #136): restores the show's previous progress
+  // (watched, status literally as captured, nextEpisode, dates and
+  // awaitingRelease; saveTvProgress recomputes the status and this
+  // payload overwrites it with the previous one in case it was a
+  // manual state).
   const undone = await maybeQuickEpisodeRating(item, ctx, seasonsMeta, season, episode, meta, {
     onUndo: async () => {
       const prevProgress = computeProgress(seasonsMeta, prevWatched);

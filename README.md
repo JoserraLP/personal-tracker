@@ -1,303 +1,305 @@
-# Mi Registro
+# Mi Registro [My Tracker]
 
-Registro personal (y ahora también entre amigos) de películas, series y
-libros, para sustituir a TV Time. Web estática (HTML + CSS + JS con módulos
-nativos, sin build ni frameworks), alojada gratis en GitHub Pages, con
-Firebase como base de datos multiusuario.
+Personal tracker (and now also shared among friends) of movies, series and
+books, to replace TV Time. Static web app (HTML + CSS + JS with native
+modules, no build or frameworks), hosted for free on GitHub Pages, with
+Firebase as the multi-user database.
 
 ```
 mi-registro/
-├── index.html               ← armazón: cabecera, login, modal, perfil
-├── manifest.json             (tuyo, no lo toca este proyecto)
+├── index.html               ← skeleton: header, login, modal, profile
+├── manifest.json             (yours, not touched by this project)
 ├── resources/
-│   └── icon.png            ← tu icono (ya lo tienes puesto)
-├── ocio/                    ← sección "ocio": pelis, series y libros
-│   ├── series.html          contenido de la pestaña Series
-│   ├── peliculas.html       contenido de la pestaña Películas
-│   ├── libros.html          contenido de la pestaña Libros
-│   └── ocio.css             estilos específicos de esta sección
+│   └── icon.png            ← your icon (already in place)
+├── ocio/                    ← "ocio" [leisure] section: movies, series and books
+│   ├── series.html          content of the Series tab
+│   ├── peliculas.html       content of the Movies tab
+│   ├── libros.html          content of the Books tab
+│   └── ocio.css             styles specific to this section
 ├── css/
-│   └── styles.css          ← estilos del armazón (compartidos)
+│   └── styles.css          ← skeleton styles (shared)
 ├── js/
-│   ├── config.js           ← claves de Firebase/TMDB/Books (rellenar)
-│   ├── firebase.js          inicialización de Firebase
-│   ├── http.js               fetch con reintento (TMDB, Open Library)
-│   ├── api-movies.js        búsqueda, temporadas/episodios y datos ampliados en TMDB
-│   ├── api-books.js         búsqueda en Open Library / Google Books
-│   ├── dates.js              utilidades de fecha
-│   ├── constants.js          constantes compartidas (STATUS_LABELS, TYPE_BY_GROUP)
-│   ├── sorting.js            funciones de ordenación y comparación
-│   ├── tv-progress.js       episodios vistos (con valoración por episodio), revisionados
-│   ├── watch-log.js          historial de visionados (películas)
-│   ├── reading-log.js        historial de lecturas (libros)
-│   ├── db.js                 lectura/escritura en Firestore, perfiles, amigos
-│   ├── ui.js                  renderizado del DOM
-│   ├── search.js              búsqueda y alta de ítems
-│   ├── modal-handlers.js      apertura y gestión de modales
-│   ├── quick-actions.js       acciones rápidas (marcar vista/siguiente)
-│   ├── daily-check.js         comprobación diaria de estrenos
-│   ├── notifications-setup.js wiring de notificaciones
-│   ├── sidebar.js            barra lateral de navegación (drawer)
-│   ├── profile.js             perfil, estadísticas y amigos
-│   └── app.js                 punto de entrada y orquestador
+│   ├── config.js           ← Firebase/TMDB/Books keys (fill in)
+│   ├── firebase.js          Firebase initialization
+│   ├── http.js               fetch with retry (TMDB, Open Library)
+│   ├── api-movies.js        search, seasons/episodes and extended data on TMDB
+│   ├── api-books.js         search on Open Library / Google Books
+│   ├── dates.js              date utilities
+│   ├── constants.js          shared constants (STATUS_LABELS, TYPE_BY_GROUP)
+│   ├── sorting.js            sorting and comparison functions
+│   ├── tv-progress.js       watched episodes (with per-episode rating), rewatches
+│   ├── watch-log.js          watch history (movies)
+│   ├── reading-log.js        reading history (books)
+│   ├── db.js                 Firestore read/write, profiles, friends
+│   ├── ui.js                  DOM rendering
+│   ├── search.js              search and item registration
+│   ├── modal-handlers.js      opening and management of modals
+│   ├── quick-actions.js       quick actions (mark watched/next)
+│   ├── daily-check.js         daily release check
+│   ├── notifications-setup.js notifications wiring
+│   ├── sidebar.js            navigation sidebar (drawer)
+│   ├── profile.js             profile, statistics and friends
+│   └── app.js                 entry point and orchestrator
 ├── docs/
 │   └── adr-001-code-cleanup-refactoring.md
-├── firestore.rules         ← reglas de seguridad (aquí viven los correos permitidos)
+├── firestore.rules         ← security rules (the allowed emails live here)
 └── README.md
 ```
 
-## Cómo está organizado el HTML/CSS
+## How the HTML/CSS is organized
 
-Sigue siendo **una sola página** (una URL, sin recargas al cambiar de
-pestaña): `index.html` trae el armazón —cabecera, pestañas, pantalla de
-login, modal, perfil— y dentro de cada `<section>` de pestaña solo hay un
-`data-ocio-src="ocio/....html"`. Al cargar, `app.js` pide esos tres
-archivos con `fetch()` y los inyecta en su sitio antes de conectar el
-resto de la aplicación. Para quien la usa no cambia nada; para ti, el
-código de cada pestaña vive en su propio archivo dentro de `ocio/`.
+It is still **a single page** (one URL, no reloads when switching tabs):
+`index.html` brings the skeleton —header, tabs, login screen, modal,
+profile— and inside each tab's `<section>` there is only a
+`data-ocio-src="ocio/....html"`. On load, `app.js` requests those three
+files with `fetch()` and injects them in place before connecting the
+rest of the app. Nothing changes for whoever uses it; for you, the
+code of each tab lives in its own file inside `ocio/`.
 
-El CSS sigue la misma idea: `css/styles.css` tiene los tokens de color y
-tipografía y todo lo que es "armazón" (login, cabecera, modal vacío,
-perfil, notificaciones); `ocio/ocio.css` tiene todo lo específico de
-pelis/series/libros (buscador, tarjetas, temporadas, formularios...).
-Ambos se cargan siempre juntos, así que las variables de color definidas
-en uno están disponibles en el otro sin nada especial.
+The CSS follows the same idea: `css/styles.css` has the color and
+typography tokens and everything that is "skeleton" (login, header, empty
+modal, profile, notifications); `ocio/ocio.css` has everything specific to
+movies/series/books (search, cards, seasons, forms...).
+Both are always loaded together, so the color variables defined
+in one are available in the other without anything special.
 
-Si en el futuro añades otra sección (no-ocio), sería una carpeta hermana
-de `ocio/` con su propia estructura (`.html` por pestaña + su `.css`),
-enganchada al mismo armazón.
+If in the future you add another section (non-leisure), it would be a sibling
+folder of `ocio/` with its own structure (`.html` per tab + its `.css`),
+hooked to the same skeleton.
 
-## Cómo está organizado el JavaScript
+## How the JavaScript is organized
 
-El código JS sigue un patrón de **orquestador + módulos especializados**:
+The JS code follows a pattern of **orchestrator + specialized modules**:
 
-- **`app.js`** es el punto de entrada y orquestador: gestiona el estado
-  global, las suscripciones a Firestore, los filtros/orden y conecta los
-  módulos especializados.
-- Cada módulo especializado (`search.js`, `modal-handlers.js`, `profile.js`,
-  etc.) recibe un objeto `ctx` con funciones de acceso al estado y a las
-  dependencias, lo que hace todas las dependencias explícitas y evita
-  importaciones circulares.
-- `constants.js` y `sorting.js` contienen lógica pura reutilizable por
-  varios módulos.
-- `ui.js` sigue centralizando todo el renderizado del DOM.
+- **`app.js`** is the entry point and orchestrator: it manages the global
+  state, the Firestore subscriptions, the filters/sorting and connects the
+  specialized modules.
+- Each specialized module (`search.js`, `modal-handlers.js`, `profile.js`,
+  etc.) receives a `ctx` object with functions to access the state and the
+  dependencies, which makes all dependencies explicit and avoids circular
+  imports.
+- `constants.js` and `sorting.js` contain pure logic reusable by
+  several modules.
+- `ui.js` keeps centralizing all DOM rendering.
 
-Para ver los detalles del refactoring, consulta `docs/adr-001-code-cleanup-refactoring.md`.
+To see the refactoring details, check `docs/adr-001-code-cleanup-refactoring.md`.
 
-> **Importante para probarlo en local:** como ahora `app.js` usa
-> `fetch()` para traer esos archivos, abrir `index.html` directamente
-> haciendo doble clic (protocolo `file://`) **ya no funciona en
-> absoluto** — los navegadores bloquean `fetch()` de archivos locales por
-> seguridad. Prueba siempre desde un servidor local
-> (`python3 -m http.server` en la carpeta del proyecto) o directamente
-> desde tu URL de GitHub Pages.
+> **Important for testing locally:** since `app.js` now uses
+> `fetch()` to bring those files, opening `index.html` directly
+> by double-clicking (the `file://` protocol) **no longer works at
+> all** — browsers block `fetch()` of local files for
+> security. Always test from a local server
+> (`python3 -m http.server` in the project folder) or directly
+> from your GitHub Pages URL.
 
-## Cómo funciona el acceso (léelo con calma, es lo más delicado)
+## How access works (read carefully, it is the most delicate part)
 
-Esto ya no es una app de un único usuario: **cualquier correo de tu lista
-de invitados puede registrarse** (entrar por primera vez crea su cuenta
-automáticamente) y, una vez dentro, **todos los usuarios registrados se
-consideran ya "amigos" entre sí** — cada uno ve y edita solo lo suyo, pero
-puede ver (no editar) el registro de cualquier otro desde la sección
-"Amigos" del perfil.
+This is no longer a single-user app: **any email on your guest list can
+register** (entering for the first time creates their account
+automatically) and, once inside, **all registered users are considered
+"friends" of each other** — each one sees and edits only their own stuff,
+but can view (not edit) anyone else's tracking from the
+"Friends" section of the profile.
 
-Quién puede entrar se controla en **un solo sitio**: la regla
-`isAllowedUser()` de **`firestore.rules`** (issue #195). Antes existía
-también `js/allowed-emails.js`, un array en el navegador que avisaba al
-momento si el correo no estaba en la lista; se eliminó porque duplicaba
-la lista y se desincronizaba con las reglas. Ahora la propia web pregunta
-a Firestore al iniciar sesión: si las reglas rechazan al usuario, se le
-avisa (*«Tu correo no está en la lista de invitados. Pide que te
-añadan.»*) y se le cierra la sesión.
+Who can enter is controlled in **a single place**: the
+`isAllowedUser()` rule of **`firestore.rules`** (issue #195). There used to
+be also `js/allowed-emails.js`, an array in the browser that warned on the
+spot if the email was not on the list; it was removed because it duplicated
+the list and desynchronized from the rules. Now the web app itself asks
+Firestore when signing in: if the rules reject the user, they are
+warned (*«Tu correo no está en la lista de invitados. Pide que te
+añadan.»* [Your email is not on the guest list. Ask to be added.]) and
+logged out.
 
-**Cada vez que añadas o quites un amigo, edita la lista de correos dentro
-de `isAllowedUser()` en `firestore.rules`** y vuelve a pegar el archivo
-completo en Firebase console → Firestore Database → Reglas → Publicar.
-Ese es el único sitio donde se mantienen los correos; no hay ningún otro
-archivo que tocar.
+**Every time you add or remove a friend, edit the email list inside
+`isAllowedUser()` in `firestore.rules`** and paste the whole file again
+into the Firebase console → Firestore Database → Rules → Publish.
+That is the only place where the emails are kept; there is no other
+file to touch.
 
-Dentro de Firestore, cada usuario tiene sus propias colecciones:
-`users/{uid}/movies`, `/series`, `/books` (visibles para cualquier otro
-usuario autorizado, con permiso de solo lectura) y `/notifications`
-(privada, nadie más la ve). El documento `users/{uid}` en sí guarda el
-perfil (nombre, foto, email) que se usa para la lista de amigos.
+Inside Firestore, each user has their own collections:
+`users/{uid}/movies`, `/series`, `/books` (visible to any other
+authorized user, with read-only permission) and `/notifications`
+(private, nobody else sees it). The `users/{uid}` document itself stores the
+profile (name, photo, email) used for the friends list.
 
-> **Nota de seguridad:** la lista de correos determina quién puede
-> registrarse y usar la app, pero técnicamente cualquiera con una cuenta de
-> Google puede *intentar* iniciar sesión (eso Firebase no lo puede impedir).
-> Lo que de verdad importa es que, si su correo no está en la lista de las
-> reglas, no consigue acceso a ningún dato — ni a los suyos propios ni a
-> los de nadie.
+> **Security note:** the email list determines who can
+> register and use the app, but technically anyone with a Google
+> account can *try* to sign in (Firebase cannot prevent that).
+> What really matters is that, if their email is not on the rules list, they
+> get no access to any data — not even their own, let alone
+> anyone else's.
 
-## 1. Crear el proyecto en Firebase
+## 1. Create the Firebase project
 
-1. Ve a [console.firebase.google.com](https://console.firebase.google.com) y
-   crea un proyecto nuevo (gratis, plan "Spark").
-2. **Authentication** → pestaña "Sign-in method" → activa **Google**.
-3. **Firestore Database** → "Crear base de datos" → modo producción → elige
-   una región (por ejemplo `eur3` si estás en España).
-4. **Configuración del proyecto** (icono del engranaje) → baja hasta "Tus
-   apps" → añade una app **Web** (`</>`) → copia el objeto `firebaseConfig`
-   que te muestra.
+1. Go to [console.firebase.google.com](https://console.firebase.google.com) and
+   create a new project (free, "Spark" plan).
+2. **Authentication** → "Sign-in method" tab → enable **Google**.
+3. **Firestore Database** → "Create database" → production mode → choose
+   a region (for example `eur3` if you are in Spain).
+4. **Project settings** (gear icon) → scroll down to "Your
+   apps" → add a **Web** app (`</>`) → copy the `firebaseConfig` object
+   it shows you.
 
-## 2. Rellenar `js/config.js`
+## 2. Fill in `js/config.js`
 
-- En `js/config.js`: pega el `firebaseConfig` del paso anterior y tu clave
-  de TMDB (paso siguiente).
+- In `js/config.js`: paste the `firebaseConfig` from the previous step and your
+  TMDB key (next step).
 
-## 3. Reglas de seguridad de Firestore
+## 3. Firestore security rules
 
-En Firebase console → Firestore Database → pestaña "Reglas", pega el
-contenido de `firestore.rules` **sustituyendo los correos de ejemplo de
-`isAllowedUser()` por los tuyos** (añade tantos como quieras, es un
-array) y publica. Esta lista es la única fuente de verdad de quién puede
-entrar: para añadir o quitar un amigo, edítala y vuelve a publicar.
+In the Firebase console → Firestore Database → "Rules" tab, paste the
+content of `firestore.rules` **replacing the sample emails in
+`isAllowedUser()` with yours** (add as many as you want, it is an
+array) and publish. This list is the single source of truth of who can
+enter: to add or remove a friend, edit it and publish again.
 
-## 4. Clave de la API de TMDB (películas y series)
+## 4. TMDB API key (movies and series)
 
-1. Crea una cuenta gratuita en [themoviedb.org](https://www.themoviedb.org).
-2. Configuración de la cuenta → API → solicita una clave de tipo "Developer".
-   Es gratis para uso no comercial.
-3. Copia la "API Key (v3 auth)" en `TMDB_API_KEY` dentro de `js/config.js`.
+1. Create a free account on [themoviedb.org](https://www.themoviedb.org).
+2. Account settings → API → request a "Developer" type key.
+   It is free for non-commercial use.
+3. Copy the "API Key (v3 auth)" into `TMDB_API_KEY` inside `js/config.js`.
 
-> IMDb no ofrece API pública asequible ni datos de premios; por eso se usa
-> TMDB, gratuita y con catálogo muy similar.
+> IMDb offers no affordable public API nor awards data; that is why TMDB is
+> used, free and with a very similar catalog.
 
-## 5. Clave de Google Books (opcional)
+## 5. Google Books key (optional)
 
-La búsqueda de libros usa **Open Library como fuente principal** (agrupa
-por libro, no por edición, y no necesita clave) y Google Books solo como
-respaldo. Si quieres tu propia clave para ese respaldo, sigue el proceso
-de restricción por dominio explicado más abajo en «Solución de problemas».
+Book search uses **Open Library as the primary source** (it groups
+by work, not by edition, and needs no key) and Google Books only as
+fallback. If you want your own key for that fallback, follow the
+domain-restriction process explained below in «Troubleshooting».
 
-## 6. Subir a GitHub y activar Pages
+## 6. Upload to GitHub and enable Pages
 
-1. Crea un repositorio nuevo en GitHub (público, obligatorio en el plan
-   gratuito) y sube todo el contenido de esta carpeta, incluido tu
+1. Create a new repository on GitHub (public, mandatory on the free
+   plan) and upload the whole content of this folder, including your
    `resources/icon.png`.
-2. Settings → Pages → Source: **"GitHub Actions"** → Guardar. Si tu web
-   ya estaba publicada con el modo antiguo ("Deploy from a branch"), el
-   primer despliegue con el workflow intenta migrarla automáticamente; si
-   la migración automática fallara, haz el cambio de Source manualmente y
-   guarda. Además, el entorno `github-pages` debe permitir desplegar a
-   **todas las ramas** (Settings → Environments → `github-pages` →
-   "Deployment branches" → patrón `**/*`, que cubre cualquier jerarquía).
-   Sin ese patrón, los despliegues desde ramas como `feature/...` se
-   rechazan con un error de "environment protection rules".
-3. El workflow `.github/workflows/deploy-pages.yml` despliega **solo la
-   rama `main` en cada push/merge a `main`** (ADR-106): la web publicada
-   en `https://tu-usuario.github.io/nombre-del-repo/` es siempre la
-   última versión fusionada en `main`. Las otras ramas (dev y
-   features) NO se publican: solo despliegan en local para pruebas.
-4. Para **re-desplegar manualmente**: pestaña Actions →
+2. Settings → Pages → Source: **"GitHub Actions"** → Save. If your web
+   app was already published with the old mode ("Deploy from a branch"), the
+   first workflow deployment tries to migrate it automatically; if
+   the automatic migration fails, do the Source change manually and
+   save. Also, the `github-pages` environment must allow deploying to
+   **all branches** (Settings → Environments → `github-pages` →
+   "Deployment branches" → pattern `**/*`, which covers any hierarchy).
+   Without that pattern, deployments from branches like `feature/...` are
+   rejected with an "environment protection rules" error.
+3. The `.github/workflows/deploy-pages.yml` workflow deploys **only the
+   `main` branch on every push/merge to `main`** (ADR-106): the web app
+   published at `https://your-user.github.io/repo-name/` is always the
+   latest version merged into `main`. The other branches (dev and
+   features) are NOT published: they only deploy locally for testing.
+4. To **re-deploy manually**: Actions tab →
    `deploy-pages` → "Run workflow".
-6. **(Opcional) Resolución automática de issues** — el workflow
-   `.github/workflows/auto-resolve-issues.yml` lanza una sesión de
-   OpenCode (agente `sdd-master`, modelo DeepSeek V4 Flash Free, variante
-   max) que resuelve automáticamente la issue más prioritaria del backlog
-   (issues con label `ai` en `status: todo`, prioridad → tipo → antigüedad;
-   nunca issues `needs-info`/`blocked` ni bloqueadas por otra sin resolver).
-   Se dispara al crear una issue nueva, al comentar en una issue en curso
-   (iteración) o con un disparo manual desde la pestaña Actions —
-   **ya no se dispara al fusionar PRs**. Si no quedan issues, el
-   workflow termina sin lanzar sesión ("servidor apagado").
-   Tras cada sesión exitosa se relanza automáticamente el despliegue de
-   Pages (`deploy-pages`), de modo que la versión de `main` queda
-   publicada aunque el push lo haga la action con el token del bot.
-   Requiere que
-   el workflow esté en la rama por defecto (`main`): se activa en
-   producción tras la promoción `dev` → `main`. Prueba manual desde la
-    pestaña Actions → `auto-resolve-issues` → "Run workflow" (con
-    `dry_run` para ver la selección sin lanzar la sesión). Si una sesión
-    falla a mitad de ejecución (p. ej. por límite de tokens del modelo
-    free), el progreso se guarda automáticamente en una rama
-    `wip/issue-N`, se restaura en el siguiente intento y el workflow se
-    **relanza automáticamente sobre la misma issue** (hasta 2 reintentos,
-    comentando cada fallo en la issue — todos los comentarios, PRs y
-    cambios de labels de la sesión y de los pasos de fallo los publica
-    `github-actions[bot]` (nunca tu usuario), de modo que no vuelven a
-    disparar el workflow—; agotados los reintentos, la issue
-    vuelve a la cola con un comentario). Se pueden **encolar varias
-    ejecuciones** del workflow (p. ej. N issues abiertas seguidas): las
-    runs esperan en cola y se procesan en orden, una sesión a la vez, sin
-    cancelar las encoladas (antes solo cabían 1 en ejecución + 1 en cola
-    y las demás se cancelaban). También se detecta el **falso éxito**: si
-    la sesión termina con la issue aún en `status: in-progress` (el modelo
-    emitió su respuesta final antes de completar el flujo), se trata como
-    un fallo más y el workflow guarda el progreso WIP y relanza
-    automáticamente.
+6. **(Optional) Automatic issue resolution** — the
+   `.github/workflows/auto-resolve-issues.yml` workflow launches an
+   OpenCode session (agent `sdd-master`, model DeepSeek V4 Flash Free, max
+   variant) that automatically resolves the highest-priority issue in the
+   backlog (issues with the `ai` label in `status: todo`, priority → type →
+   age; never `needs-info`/`blocked` issues or those blocked by another
+   unresolved one).
+   It triggers when a new issue is created, when commenting on an in-progress
+   issue (iteration) or with a manual trigger from the Actions tab —
+   **it no longer triggers on PR merges**. If there are no issues left, the
+   workflow finishes without launching a session ("server off").
+   After each successful session the Pages deployment is automatically
+   relaunched (`deploy-pages`), so the `main` version gets published even
+   though the push is done by the action with the bot token.
+   It requires the
+   workflow to be on the default branch (`main`): it activates in
+   production after the `dev` → `main` promotion. Manual test from the
+   Actions tab → `auto-resolve-issues` → "Run workflow" (with
+   `dry_run` to see the selection without launching the session). If a
+   session fails mid-run (e.g. due to the free model's token limit), the
+   progress is saved automatically to a `wip/issue-N` branch, is restored on
+   the next attempt and the workflow is
+   **automatically relaunched on the same issue** (up to 2 retries,
+   commenting each failure on the issue — all comments, PRs and
+   label changes of the session and of the failure steps are published by
+   `github-actions[bot]` (never your user), so they do not trigger the
+   workflow again—; once retries are exhausted, the issue
+   returns to the queue with a comment). You can **queue several
+   runs** of the workflow (e.g. N open issues in a row): the
+   runs wait in queue and are processed in order, one session at a time,
+   without canceling the queued ones (previously only 1 could run + 1 in
+   queue and the rest were canceled). **False success** is also detected: if
+   the session ends with the issue still in `status: in-progress` (the model
+   emitted its final answer before completing the flow), it is treated as
+   another failure and the workflow saves the WIP progress and relaunches
+   automatically.
 
-## 7. Autorizar tu dominio en Firebase
+## 7. Authorize your domain in Firebase
 
-Authentication → Settings → "Authorized domains" → añade
-`tu-usuario.github.io`. Sin este paso, el login de Google falla con un
-error de dominio no autorizado. `localhost` ya viene autorizado por
-defecto para cuando pruebes en local.
+Authentication → Settings → "Authorized domains" → add
+`your-user.github.io`. Without this step, the Google login fails with a
+domain-not-authorized error. `localhost` is already authorized by
+default for when you test locally.
 
-## 8. Cómo se usa
+## 8. How to use it
 
-Al abrir la app entras directamente en **Series, filtrado por "Viendo", en
-vista de lista** — pensado para el uso más habitual.
+Opening the app puts you directly in **Series, filtered by "Viendo"
+[Watching], in list view** — designed for the most common use.
 
-- **Vista cuadrícula / lista**, con acción rápida (botón grande o
-  deslizar en móvil) para marcar visto/siguiente episodio/avanzar lectura.
-- **Películas**: Pendiente/Vista, con historial de visionados (revisionados
-  incluidos) y aviso si intentas marcarla vista antes de su estreno.
-- **Series**: episodio a episodio, con fecha editable, y ahora también
-  **valoración individual por episodio** (aparece debajo de cada episodio
-  ya marcado como visto). "Volver a verla desde el principio" archiva el
-  visionado en un historial sin perder el anterior.
-- **Libros**: empezar/terminar lectura con fecha, relecturas con historial.
-- **Standby / Abandonado** (series y libros), **editar información**, **alta
-  manual** (con nº de episodios para series manuales), **buscar en tu
-  propia lista**, **más resultados con "Cargar más"**, **colores pastel por
-  estado**, **información ampliada** (duración, género, director/creadores,
-  reparto, sinopsis), y una casilla **"Solo en español"** en la búsqueda de
-  libros (activada por defecto): sin marcarla, los resultados en español
-  simplemente aparecen primero; marcándola, se descartan directamente los
-  que Open Library confirma en otro idioma (los que no tienen ese dato no
-  se descartan, para no perder resultados por falta de metadatos) — todo
-  esto ya explicado en versiones anteriores de este README, sigue
-  funcionando igual.
-- **Notificaciones** (🔔): avisa de estrenos y episodios nuevos, una vez al
-  día. Esa misma comprobación diaria **también rellena información que
-  faltase** (sinopsis, reparto, director, fecha de estreno...) en cualquier
-  ficha que la tuviera incompleta — útil tanto para lo que añadiste antes
-  de que la app recogiera esos datos, como para series en producción que
-  aún no tienen todo publicado en TMDB: en cuanto TMDB lo actualice, tu
-  ficha se completa sola al día siguiente.
-- **Perfil**: pulsando tu foto se abre con dos secciones:
-  - **Estadísticas**: resumen (pelis vistas, episodios, series completadas,
-    libros leídos) con selector Siempre/Año/Mes y dos gráficas.
-  - **Amigos**: lista de todos los usuarios registrados; al pulsar uno ves
-    su registro completo en modo solo lectura (sin notas personales, esas
-    siempre son privadas).
+- **Grid / list view**, with quick action (big button or
+  swipe on mobile) to mark watched/next episode/advance reading.
+- **Movies**: Pending/Watched, with watch history (rewatches
+  included) and a warning if you try to mark it watched before its release.
+- **Series**: episode by episode, with editable date, and now also
+  **individual rating per episode** (appears below each episode
+  already marked as watched). "Watch it again from the beginning" archives
+  the watch in a history without losing the previous one.
+- **Books**: start/finish reading with date, re-reads with history.
+- **Standby / Abandoned** (series and books), **edit information**, **manual
+  registration** (with episode count for manual series), **search your own
+  list**, **more results with "Cargar más" [Load more]**, **pastel colors by
+  status**, **extended information** (runtime, genre, director/creators,
+  cast, synopsis), and a **"Solo en español" [Only in Spanish]** checkbox in
+  the book search (on by default): unchecked, Spanish results
+  simply appear first; checked, the ones Open Library confirms in another
+  language are discarded outright (those lacking that data are not
+  discarded, to avoid losing results for lack of metadata) — all
+  of this already explained in previous versions of this README, it keeps
+  working the same.
+- **Notifications** (🔔): warns about releases and new episodes, once a
+  day. That same daily check **also fills in missing information**
+  (synopsis, cast, director, release date...) on any card that had it
+  incomplete — useful both for what you added before the app collected
+  those fields and for series in production that do not have everything
+  published on TMDB yet: as soon as TMDB updates it, your card completes
+  itself the next day.
+- **Profile**: tapping your photo opens it with two sections:
+  - **Estadísticas** [Statistics]: summary (movies watched, episodes,
+    series completed, books read) with an Always/Year/Month selector and two charts.
+  - **Amigos** [Friends]: list of all registered users; tapping one shows
+    their full tracking in read-only mode (without personal notes, those
+    are always private).
 
-## Solución de problemas
+## Troubleshooting
 
-**Error 503 "Service temporarily unavailable" al buscar libros** — fallo
-puntual del servidor, no tuyo. La app reintenta sola; si persiste, espera
-unos segundos.
+**Error 503 "Service temporarily unavailable" when searching books** — a
+sporadic server failure, not your fault. The app retries on its own; if it
+persists, wait a few seconds.
 
-**Error 403 "referrer blocked" al buscar libros** — solo afecta al
-respaldo de Google Books. Pasa si restringiste esa clave por dominio y
-pruebas desde `file://` en tu disco en vez de desde GitHub Pages o un
-servidor local (`python3 -m http.server`, añadiendo
-`http://localhost:PUERTO/*` a los referrers permitidos en Google Cloud
+**Error 403 "referrer blocked" when searching books** — it only affects the
+Google Books fallback. It happens if you restricted that key by domain and
+test from `file://` on your disk instead of from GitHub Pages or a
+local server (`python3 -m http.server`, adding
+`http://localhost:PORT/*` to the allowed referrers in the Google Cloud
 Console).
 
-**Un amigo no puede entrar aunque lo añadí** — revisa que su correo esté
-en la lista de `isAllowedUser()` de `firestore.rules` y que hayas vuelto
-a publicar las reglas en Firebase console (los cambios en el archivo del
-repositorio no se aplican solos a la base de datos). No hay ningún otro
-sitio donde mantener correos.
+**A friend cannot enter even though I added them** — check that their email is
+on the `isAllowedUser()` list of `firestore.rules` and that you have
+published the rules again in the Firebase console (changes to the
+repository file are not applied to the database by themselves). There is no
+other place to keep emails.
 
-## Límites a tener en cuenta
+## Limits to keep in mind
 
-- Firebase Spark (gratis): 50.000 lecturas/día y 1 GiB de almacenamiento —
-  de sobra para un grupo pequeño de amigos.
-- TMDB: uso gratuito solo no comercial, con atribución (pie de página).
-- La comprobación diaria hace una petición a TMDB por cada película o serie
-  activa que aún tenga datos incompletos o esté pendiente de estreno, y una
-  a Open Library por cada libro sin sinopsis — una vez rellenos, dejan de
-  consultarse, así que el gasto de peticiones baja solo con el tiempo.
+- Firebase Spark (free): 50,000 reads/day and 1 GiB of storage —
+  more than enough for a small group of friends.
+- TMDB: free use is non-commercial only, with attribution (footer).
+- The daily check makes one request to TMDB for each active movie or series
+  that still has incomplete data or a pending release, and one to Open
+  Library for each book without a synopsis — once filled, they stop being
+  queried, so request usage drops on its own over time.

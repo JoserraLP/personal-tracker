@@ -1,256 +1,252 @@
-# ADR-009: Modo claro (alternativa de tema claro/oscuro)
+# ADR-009: Light mode (light/dark theme alternative)
 
-**Fecha:** 2026-07-29
-**Estado:** Aceptado
-**Última actualización:** 2026-08-03 (redefinición completa de la paleta del modo claro y overrides puntuales — ver sección «Actualización 2026-08-03»)
+**Date:** 2026-07-29
+**Status:** Accepted
+**Last updated:** 2026-08-03 (complete redefinition of the light mode palette and targeted overrides — see section "2026-08-03 update")
 
-## Contexto
+## Context
 
-La aplicación "Mi Registro" se diseñó originalmente con un único tema oscuro
-(por defecto), inspirado en una «mesa de lectura» o «cuaderno de biblioteca»
-con fondo marrón oscuro (`--ink: #171512`) y texto en tono pergamino
-(`--paper: #f1ead9`). Todos los colores estaban hardcodeados en CSS sin
-ninguna capa de abstracción, y el CSS de `ocio/ocio.css` contenía valores
-literales en hexadecimal repartidos por todo el archivo.
+The application "Mi Registro" was originally designed with a single dark theme
+(default), inspired by a "reading table" or "library notebook" with a dark
+brown background (`--ink: #171512`) and parchment-toned text
+(`--paper: #f1ead9`). All colors were hardcoded in CSS with no
+abstraction layer, and the CSS in `ocio/ocio.css` contained literal
+hexadecimal values scattered across the whole file.
 
-No existía:
+There was no:
 
-- Ninguna forma de cambiar a un tema claro.
-- Un sistema de variables CSS que permitiese definir colores una vez y
-  reutilizarlos.
-- Persistencia de la preferencia del usuario entre sesiones.
-- Adaptación de los colores de Chart.js (perfil) al cambiar de tema.
-- Actualización del `<meta name="theme-color">` para la barra de
-  navegación del navegador.
+- Way to switch to a light theme.
+- CSS variables system to define colors once and
+  reuse them.
+- Persistence of the user's preference between sessions.
+- Adaptation of the Chart.js colors (profile) when switching theme.
+- Update of `<meta name="theme-color">` for the browser's
+  navigation bar.
 
-### Problema detectado en la revisión QA (2026-08-03)
+### Problem found in the QA review (2026-08-03)
 
-Tras la implementación inicial del sistema de temas, la revisión QA reveló que
-el modo claro **apenas se diferenciaba del modo oscuro**:
+After the initial implementation of the theme system, the QA review revealed that
+light mode was **barely distinguishable from dark mode**:
 
-- La variable `--ink` (usada por `html`/`body` como `background`) seguía siendo
-  oscura (`#1e1b16` frente a `#171512` en modo oscuro), por lo que el fondo
-  general de la aplicación permanecía prácticamente igual. Los elementos que
-  usan `background: var(--ink)` (`.auth-screen`, `.profile-view`, etc.) seguían
-  oscuros.
-- La causa raíz es un **conflicto semántico** de las variables: el `body` usa
-  `--ink` como fondo y `--paper` como texto, mientras que las tarjetas usan
-  `--paper` como fondo y `--ink` como texto. Un único par de variables no puede
-  servir correctamente a ambos modos con una simple redeclaración de valores:
-  el modo claro exige una inversión explícita por elemento.
+- The variable `--ink` (used by `html`/`body` as `background`) was still
+  dark (`#1e1b16` versus `#171512` in dark mode), so the overall background of the application stayed practically the same. Elements that
+  use `background: var(--ink)` (`.auth-screen`, `.profile-view`, etc.) remained
+  dark.
+- The root cause is a **semantic conflict** of the variables: `body` uses
+  `--ink` as background and `--paper` as text, while cards use
+  `--paper` as background and `--ink` as text. A single pair of variables cannot
+  serve both modes correctly with a simple redeclaration of values:
+  light mode requires an explicit per-element inversion.
 
-## Decisión
+## Decision
 
-Implementar un **sistema de temas claro/oscuro** basado en **CSS Custom
-Properties (variables CSS)** combinadas con un **atributo `[data-theme]`
-en `<html>`**, controlado por JavaScript con persistencia en `localStorage`,
-y **redefinir por completo la paleta del modo claro** con overrides puntuales
-por elemento (ver «Actualización 2026-08-03»).
+Implement a **light/dark theme system** based on **CSS Custom
+Properties (CSS variables)** combined with a **`[data-theme]`
+attribute on `<html>`**, controlled by JavaScript with `localStorage` persistence,
+and **completely redefine the light mode palette** with targeted per-element
+overrides (see "2026-08-03 update").
 
-### Arquitectura del sistema de temas
+### Theme system architecture
 
-1. **Definición de variables en `:root`** — Todas las variables de color
-   se definen en `:root` con los valores del tema oscuro (por defecto).
-   Esto incluye no solo los colores base (`--ink`, `--paper`, `--teal-reel`,
-   etc.), sino también variantes con opacidad (`--ink-alpha-06`,
-   `--paper-alpha-20`, etc.) y variables de estado (`--bg-state-en_curso`,
-   `--bg-state-completado`, etc.). **Este bloque no se ha modificado** en la
-   actualización de 2026-08-03.
+1. **Variable definitions in `:root`** — All color variables
+   are defined in `:root` with the dark theme values (default).
+   This includes not only the base colors (`--ink`, `--paper`, `--teal-reel`,
+   etc.), but also alpha variants (`--ink-alpha-06`,
+   `--paper-alpha-20`, etc.) and state variables (`--bg-state-en_curso`,
+   `--bg-state-completado`, etc.). **This block has not been modified** in the
+   2026-08-03 update.
 
-2. **Override con `[data-theme="light"]`** — Un bloque `[data-theme="light"]`
-   redeclara las mismas variables con valores adaptados al modo claro (ver
-   paleta actualizada abajo).
+2. **Override with `[data-theme="light"]`** — A `[data-theme="light"]` block
+   redeclares the same variables with values adapted to light mode (see
+   updated palette below).
 
-3. **Variables de estado compartidas** — Los colores de estado
-   (`--bg-state-en_curso`, `--bg-state-completado`, etc.) y los acentos
-   (`--teal-reel`, `--ochre-spine`, `--stamp`, con sus variantes oscuras)
-   son los mismos en ambos temas porque son colores semánticos que funcionan
-   sobre cualquier fondo.
+3. **Shared state variables** — The state colors
+   (`--bg-state-en_curso`, `--bg-state-completado`, etc.) and the accents
+   (`--teal-reel`, `--ochre-spine`, `--stamp`, with their dark variants)
+   are the same in both themes because they are semantic colors that work
+   over any background.
 
-4. **JavaScript de control (`js/app.js`):**
-   - `setTheme(theme)`: asigna `data-theme` al `<html>`, persiste en
-     `localStorage`, actualiza el icono del botón (☀️/🌙), la etiqueta
-     ARIA, y el `<meta name="theme-color">` (`#171512` oscuro /
-     `#f5f0e8` claro).
-   - `getSavedTheme()`: lee de `localStorage` con clave
-     `"mi-registro-theme"`, devuelve `"dark"` por defecto si no hay
-     preferencia guardada.
-   - La preferencia se restaura **antes** de pintar cualquier contenido
-     (`setTheme(getSavedTheme())` al inicio de `init()`).
+4. **Control JavaScript (`js/app.js`):**
+   - `setTheme(theme)`: sets `data-theme` on `<html>`, persists to
+     `localStorage`, updates the button icon (☀️/🌙), the ARIA
+     label, and the `<meta name="theme-color">` (`#171512` dark /
+     `#f5f0e8` light).
+   - `getSavedTheme()`: reads from `localStorage` with the key
+     `"mi-registro-theme"`, returns `"dark"` by default if there is no
+     saved preference.
+   - The preference is restored **before** painting any content
+     (`setTheme(getSavedTheme())` at the start of `init()`).
 
-5. **Botón de alternancia en la interfaz (`index.html`):**
-   - Botón con `role="switch"`, `aria-checked`, `aria-label` dinámico.
-   - El icono visual (`#theme-toggle-icon`) tiene `aria-hidden="true"`
-     (la info semántica va en `aria-label`).
-   - El evento click en `app.js` alterna entre `"dark"` y `"light"`.
+5. **Toggle button in the interface (`index.html`):**
+   - Button with `role="switch"`, `aria-checked`, dynamic `aria-label`.
+   - The visual icon (`#theme-toggle-icon`) has `aria-hidden="true"`
+     (semantic info goes in `aria-label`).
+   - The click event in `app.js` toggles between `"dark"` and `"light"`.
 
-6. **Chart.js adaptativo (`js/profile.js`):**
-   - Los colores de los gráficos (actividad mensual y distribución por
-     estados) se leen mediante
+6. **Adaptive Chart.js (`js/profile.js`):**
+   - The chart colors (monthly activity and distribution by
+     state) are read via
      `getComputedStyle(document.documentElement).getPropertyValue("--teal-reel")`,
-     por lo que se actualizan automáticamente al cambiar de tema (tras
-     recargar o al reconstruir el perfil).
+     so they update automatically when the theme changes (after
+     reloading or rebuilding the profile).
 
-7. **Refactorización de `ocio/ocio.css`:**
-   - Todos los valores de color hardcodeados se sustituyeron por
-     referencias a variables CSS (`var(--ink)`, `var(--paper)`,
-     `var(--teal-reel)`, etc.), lo que hace que `ocio/ocio.css` sea
-     compatible con ambos temas sin duplicar estilos. En la actualización
-     de 2026-08-03 se añadió además un pequeño bloque de overrides
-     `[data-theme="light"]` para los pocos componentes que no heredan
-     correctamente las variables (ver abajo).
+7. **Refactoring of `ocio/ocio.css`:**
+   - All hardcoded color values were replaced with references to CSS
+     variables (`var(--ink)`, `var(--paper)`, `var(--teal-reel)`, etc.), which makes `ocio/ocio.css`
+     compatible with both themes without duplicating styles. In the
+     2026-08-03 update a small block of `[data-theme="light"]` overrides was also added for the few components that do not inherit
+     the variables correctly (see below).
 
-### Actualización 2026-08-03: redefinición de la paleta del modo claro
+### 2026-08-03 update: redefinition of the light mode palette
 
-#### Paleta redefinida
+#### Redefined palette
 
-El bloque `[data-theme="light"]` de `css/styles.css` fue reescrito por
-completo con una paleta genuinamente clara (fondo crema, texto oscuro,
-tarjetas blancas):
+The `[data-theme="light"]` block of `css/styles.css` was completely rewritten with
+a genuinely light palette (cream background, dark text,
+white cards):
 
-| Variable | Valor anterior (inválido) | Valor nuevo | Uso |
-|----------|---------------------------|-------------|-----|
-| `--ink` | `#1e1b16` | `#2c2822` | Texto principal (tinta oscura) |
-| `--ink-raised` | `#f2ede6` | `#ffffff` | Superficies elevadas (blanco puro) |
-| `--ink-soft` | `#6b6559` | `#6b6355` | Texto secundario / atenuado |
-| `--paper` | `#faf6f0` | `#ffffff` | Tarjetas y superficies (blanco puro) |
-| `--paper-dim` | `#f0e8dc` | `#f5f0e8` | Fondo general de la app (crema claro) |
-| `--paper-line` | `#d4c9b8` | `#d9cfc0` | Líneas y bordes sobre crema |
-| `--backdrop` | `rgba(0,0,0,0.35)` | `rgba(0,0,0,0.25)` | Sombras de modales/overlays |
+| Variable | Old value (invalid) | New value | Use |
+|----------|---------------------|-----------|-----|
+| `--ink` | `#1e1b16` | `#2c2822` | Main text (dark ink) |
+| `--ink-raised` | `#f2ede6` | `#ffffff` | Raised surfaces (pure white) |
+| `--ink-soft` | `#6b6559` | `#6b6355` | Secondary / muted text |
+| `--paper` | `#faf6f0` | `#ffffff` | Cards and surfaces (pure white) |
+| `--paper-dim` | `#f0e8dc` | `#f5f0e8` | Overall app background (light cream) |
+| `--paper-line` | `#d4c9b8` | `#d9cfc0` | Lines and borders on cream |
+| `--backdrop` | `rgba(0,0,0,0.35)` | `rgba(0,0,0,0.25)` | Modal/overlay shadows |
 
-#### Variables alpha invertidas
+#### Inverted alpha variables
 
-- **`--ink-alpha-*`** (`06/08/10/15/20`): basadas en `rgba(44, 40, 34, X)`
-  (la nueva tinta), usadas como tintes de hover/foco sobre superficies claras.
-- **`--paper-alpha-14/20/30/35/40`**: redefinidas como `rgba(44, 40, 34, X)`
-  (tinta oscura translúcida) porque se usan como **bordes sobre fondo claro**.
-- **`--paper-alpha-10`** y **`--paper-alpha-92`**: se mantienen basadas en
-  blanco (`rgba(255, 255, 255, X)`) — el 92% es el fondo translúcido de los
-  «sellos» de las tarjetas, que debe seguir siendo claro.
+- **`--ink-alpha-*`** (`06/08/10/15/20`): based on `rgba(44, 40, 34, X)`
+  (the new ink), used as hover/focus tints over light surfaces.
+- **`--paper-alpha-14/20/30/35/40`**: redefined as `rgba(44, 40, 34, X)`
+  (translucent dark ink) because they are used as **borders on light background**.
+- **`--paper-alpha-10`** and **`--paper-alpha-92`**: kept based on
+  white (`rgba(255, 255, 255, X)`) — the 92% one is the translucent background of the
+  card "stamps", which must remain light.
 
-#### Sombras suavizadas
+#### Softened shadows
 
 - `--shadow-card`: `0 8px 20px rgba(0, 0, 0, 0.08)`
 - `--shadow-pop`: `0 16px 40px rgba(0, 0, 0, 0.12)`
 
-#### Sección de overrides puntuales en `css/styles.css`
+#### Targeted overrides section in `css/styles.css`
 
-Se añadió una nueva sección de reglas `[data-theme="light"]` específicas por
-elemento, con el comentario que documenta la razón de ser: los elementos que
-usan `--ink` como fondo o `--paper` como color de texto necesitan inversión
-explícita porque en modo claro el fondo general es claro y la tinta es oscura.
+A new section of per-element `[data-theme="light"]` rules was added, with a comment documenting the rationale: elements that
+use `--ink` as background or `--paper` as text color need explicit
+inversion because in light mode the overall background is light and the ink is dark.
 
-Elementos cubiertos:
+Elements covered:
 
 - `html, body` — `background: var(--paper-dim)`; `color: var(--ink)`
-- `.auth-screen` — fondo con degradados radiales suaves sobre `--paper-dim`
+- `.auth-screen` — background with soft radial gradients over `--paper-dim`
 - `.profile-view` — `background: var(--paper-dim)`; `color: var(--ink)`
 - `.icon-btn` — `color: var(--ink)`
-- `.btn--ghost` / `.btn--ghost:hover` — tinta oscura, borde alpha oscuro
+- `.btn--ghost` / `.btn--ghost:hover` — dark ink, dark alpha border
 - `.btn-link` — `color: var(--ink)`
-- `.btn--outline-dark` / hover — tinta oscura, borde alpha oscuro, hover con
+- `.btn--outline-dark` / hover — dark ink, dark alpha border, hover with
   `--ink-alpha-10`
 - `.app-footer` — `color: rgba(44, 40, 34, 0.55)`
 - `.profile-view__header select` — `color: var(--ink)`
-- `.settings-select` — fondo blanco, tinta oscura, borde `--paper-alpha-30`
-- `.stats-range-fields` y sus `input[type="date"]` — fondo blanco, tinta
-  oscura, borde `--paper-line`
+- `.settings-select` — white background, dark ink, `--paper-alpha-30` border
+- `.stats-range-fields` and its `input[type="date"]` — white background, dark
+  ink, `--paper-line` border
 - `.friend-detail__section h3` — `color: var(--ink)`
-- `.global-search__panel` (fondo blanco + borde), `.global-search__input`,
+- `.global-search__panel` (white background + border), `.global-search__input`,
   `.global-search__item-title`, `.global-search__friend-name`,
   `.global-search__close:hover`
 - `.activity-event__text` — `color: var(--ink)`
-- `.switch__input:focus-visible + .switch__slider` — outline teñido de tinta
+- `.switch__input:focus-visible + .switch__slider` — ink-tinted outline
 
-#### Overrides en `ocio/ocio.css`
+#### Overrides in `ocio/ocio.css`
 
-Se añadió un bloque `[data-theme="light"]` (22 líneas) al final de
+A `[data-theme="light"]` block (22 lines) was added at the end of
 `ocio/ocio.css`:
 
-- `.sort-select` y `.library-search-input` — `color: var(--ink)` (usaban
-  `--paper` como color de texto).
-- `.item-card__perforation` — la perforación tipo «entrada de cine» ahora
-  agujerea la tarjeta dejando ver `--paper-dim` (crema, el fondo real de la
-  página en modo claro) en lugar de la tinta oscura.
+- `.sort-select` and `.library-search-input` — `color: var(--ink)` (they used
+  `--paper` as text color).
+- `.item-card__perforation` — the "movie ticket" perforation now
+  holes the card letting `--paper-dim` (cream, the actual page background
+  in light mode) show through instead of the dark ink.
 
 #### Meta theme-color
 
-`js/app.js`: el color del `<meta name="theme-color">` para el modo claro se
-actualizó de `#faf6f0` (color antiguo de `--paper`) a `#f5f0e8` (el nuevo
-`--paper-dim`, que es el color real del fondo en modo claro). El valor del
-modo oscuro se mantiene en `#171512`.
+`js/app.js`: the `<meta name="theme-color">` color for light mode was
+updated from `#faf6f0` (old `--paper` color) to `#f5f0e8` (the new
+`--paper-dim`, which is the actual background color in light mode). The dark
+mode value remains `#171512`.
 
-### Alternativas descartadas
+### Rejected alternatives
 
-| Alternativa | Motivo del descarte |
-|-------------|---------------------|
-| **Preprocesador CSS (Sass/LESS)** | Añade una dependencia de build innecesaria; el proyecto es HTML+CSS+JS plano alojado en GitHub Pages sin paso de compilación. Las variables CSS nativas resuelven el problema. |
-| **`prefers-color-scheme` (media query)** | No da control al usuario para cambiar de tema manualmente. Podría combinarse como valor por defecto, pero el proyecto prioriza la elección explícita del usuario. |
-| **Tema vía JavaScript (inyección de estilos)** | Más complejo y menos accesible; las CSS variables son declarativas, más rápidas y funcionan con el DevTools del navegador. |
-| **Dos hojas de estilo separadas** | Duplicación masiva de CSS; difícil de mantener. Con variables compartidas un solo conjunto de reglas funciona para ambos temas. |
-| **Invertir las variables `--ink`/`--paper` por completo en modo claro** (cambio de rol semántico) | Se descartó en la actualización de 2026-08-03: rompería todos los componentes que asumen `--paper` como color de tarjeta clara y `--ink` como tinta. Se optó por mantener la semántica de las variables y añadir overrides explícitos solo donde hay inversión de rol (fondo vs. texto). |
+| Alternative | Reason for rejection |
+|-------------|----------------------|
+| **CSS preprocessor (Sass/LESS)** | Adds an unnecessary build dependency; the project is plain HTML+CSS+JS hosted on GitHub Pages with no build step. Native CSS variables solve the problem. |
+| **`prefers-color-scheme` (media query)** | Gives the user no control to change the theme manually. Could be combined as a default, but the project prioritizes the user's explicit choice. |
+| **Theming via JavaScript (style injection)** | More complex and less accessible; CSS variables are declarative, faster and work with the browser DevTools. |
+| **Two separate stylesheets** | Massive CSS duplication; hard to maintain. With shared variables a single set of rules works for both themes. |
+| **Fully inverting the `--ink`/`--paper` variables in light mode** (semantic role change) | Rejected in the 2026-08-03 update: it would break all components that assume `--paper` as the light card color and `--ink` as ink. The choice was to keep the variables' semantics and add explicit overrides only where roles are inverted (background vs. text). |
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **El modo claro es ahora genuinamente claro**: fondo crema `#f5f0e8`,
-  texto oscuro `#2c2822` y tarjetas blancas `#ffffff`. La diferencia visual
-  con el modo oscuro es evidente.
-- **Contraste WCAG AA/AAA**: texto principal `#2c2822` sobre fondo `#f5f0e8`
-  ≈ 12.7:1 (supera con holgura WCAG AAA de 7:1); texto secundario `--ink-soft`
-  `#6b6355` ≈ 5:1 (supera WCAG AA de 4.5:1). Sobre tarjetas blancas el
-  contraste es aún mayor (≈14.6:1 y ≈5.9:1 respectivamente).
-- **Modo oscuro sin regresiones**: el bloque `:root` no se modificó; los
-  overrides añadidos están todos scoped bajo `[data-theme="light"]`, por lo
-  que el modo oscuro (por defecto) se comporta exactamente igual que antes.
-- Los bordes, hovers y focos en modo claro usan tinta translúcida, legibles
-  sobre el fondo crema.
-- El `<meta name="theme-color">` coincide con el color real del fondo en cada
-  modo (nativo en navegadores móviles).
-- Se mantienen las ventajas del sistema original: persistencia de preferencia
-  en `localStorage`, Chart.js adaptativo, botón de alternancia accesible
-  (`role="switch"`, `aria-checked`, `aria-label` dinámicos) y `ocio/ocio.css`
-  compatible con ambos temas.
+- **Light mode is now genuinely light**: cream background `#f5f0e8`,
+  dark text `#2c2822` and white cards `#ffffff`. The visual difference
+  from dark mode is evident.
+- **WCAG AA/AAA contrast**: main text `#2c2822` on `#f5f0e8` background
+  ≈ 12.7:1 (comfortably exceeds WCAG AAA of 7:1); secondary text `--ink-soft`
+  `#6b6355` ≈ 5:1 (exceeds WCAG AA of 4.5:1). On white cards the
+  contrast is even higher (≈14.6:1 and ≈5.9:1 respectively).
+- **Dark mode with no regressions**: the `:root` block was not modified; the
+  added overrides are all scoped under `[data-theme="light"]`, so
+  dark mode (default) behaves exactly as before.
+- Borders, hovers and focus rings in light mode use translucent ink, readable
+  against the cream background.
+- The `<meta name="theme-color">` matches the actual background color in each
+  mode (native on mobile browsers).
+- The advantages of the original system remain: preference persistence
+  in `localStorage`, adaptive Chart.js, accessible toggle button
+  (`role="switch"`, `aria-checked`, dynamic `aria-label`) and `ocio/ocio.css`
+  compatible with both themes.
 
-### Negativas
+### Negative
 
-- El modo claro añade ~100 líneas de CSS de overrides puntuales
-  (`[data-theme="light"]` + selectores) repartidas entre `css/styles.css` y
-  `ocio/ocio.css`. Cada componente nuevo que use `--ink` como fondo o
-  `--paper` como texto necesitará un override adicional.
-- El conflicto semántico de `--ink`/`--paper` (fondo vs. tinta según el
-  elemento) permanece latente en la arquitectura: los overrides son la forma
-  de resolverlo, pero hay que mantenerlos al añadir componentes.
-- La lógica JS añade ~30 líneas y un event listener.
-- `localStorage` es síncrono y puede no estar disponible en contextos
-  de terceros (no aplica en GitHub Pages, pero es una limitación conocida).
-- Los gráficos de Chart.js no se repintan automáticamente al cambiar de
-  tema en caliente — requieren recargar la vista de perfil o
-  reconstruir los charts.
+- Light mode adds ~100 lines of targeted override CSS
+  (`[data-theme="light"]` + selectors) split between `css/styles.css` and
+  `ocio/ocio.css`. Every new component using `--ink` as background or
+  `--paper` as text will need an additional override.
+- The semantic conflict of `--ink`/`--paper` (background vs. ink depending on the
+  element) remains latent in the architecture: the overrides are the way to
+  resolve it, but they must be maintained when adding components.
+- The JS logic adds ~30 lines and one event listener.
+- `localStorage` is synchronous and may be unavailable in third-party
+  contexts (not applicable on GitHub Pages, but a known limitation).
+- Chart.js charts are not repainted automatically when changing theme on
+  the fly — they require reloading the profile view or
+  rebuilding the charts.
 
-### Neutras
+### Neutral
 
-- El número total de variables CSS es de ~45 (compartidas entre ambos temas,
-  redefiniendo solo las que cambian).
-- El proyecto no incorpora ninguna dependencia nueva.
-- `--teal-reel`, `--ochre-spine`, `--stamp` y sus variantes oscuras y alpha
-  son idénticas en ambos temas (colores semánticos compartidos).
+- The total number of CSS variables is ~45 (shared between both themes,
+  redefining only those that change).
+- The project does not incorporate any new dependency.
+- `--teal-reel`, `--ochre-spine`, `--stamp` and their dark and alpha
+  variants are identical in both themes (shared semantic colors).
 
-## Archivos modificados
+## Files modified
 
-| Archivo | Cambio |
-|---------|--------|
-| `css/styles.css` | Añadido bloque `:root` con variables de modo oscuro (sin cambios posteriores); bloque `[data-theme="light"]` **completamente reescrito** (2026-08-03) con la nueva paleta, alpha invertidas y sombras suavizadas; añadida sección de overrides `[data-theme="light"]` por elemento (html/body, auth-screen, profile-view, botones, selects, inputs, buscador global, feed de actividad, switch); variable `--date-picker-filter`; estilos `.theme-toggle`. |
-| `ocio/ocio.css` | Sustituidos valores de color hardcodeados por variables CSS; añadido bloque `[data-theme="light"]` (2026-08-03) para `.sort-select`, `.library-search-input` y `.item-card__perforation`. |
-| `index.html` | Añadido botón `#btn-theme-toggle` con icono y atributos ARIA en el header de la app. |
-| `js/app.js` | Añadidas funciones `setTheme()`, `getSavedTheme()`, constante `STORAGE_KEY_THEME`, y event listener para el toggle; meta theme-color del modo claro actualizado a `#f5f0e8` (2026-08-03). |
-| `js/profile.js` | Modificados colores de Chart.js para leer de `getComputedStyle` en lugar de valores fijos. |
+| File | Change |
+|------|--------|
+| `css/styles.css` | Added `:root` block with dark mode variables (unchanged since); `[data-theme="light"]` block **completely rewritten** (2026-08-03) with the new palette, inverted alphas and softened shadows; added per-element `[data-theme="light"]` overrides section (html/body, auth-screen, profile-view, buttons, selects, inputs, global search, activity feed, switch); variable `--date-picker-filter`; `.theme-toggle` styles. |
+| `ocio/ocio.css` | Replaced hardcoded color values with CSS variables; added `[data-theme="light"]` block (2026-08-03) for `.sort-select`, `.library-search-input` and `.item-card__perforation`. |
+| `index.html` | Added button `#btn-theme-toggle` with icon and ARIA attributes in the app header. |
+| `js/app.js` | Added functions `setTheme()`, `getSavedTheme()`, constant `STORAGE_KEY_THEME`, and event listener for the toggle; light mode meta theme-color updated to `#f5f0e8` (2026-08-03). |
+| `js/profile.js` | Modified Chart.js colors to read from `getComputedStyle` instead of fixed values. |
 
-## Estructura de datos persistida
+## Persisted data structure
 
 ```json
-// localStorage clave "mi-registro-theme"
-"dark"    // por defecto
-"light"   // si el usuario activó el modo claro
+// localStorage key "mi-registro-theme"
+"dark"    // default
+"light"   // if the user enabled light mode
 ```

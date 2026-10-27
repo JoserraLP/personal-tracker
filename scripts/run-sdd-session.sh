@@ -1,78 +1,77 @@
 #!/usr/bin/env bash
 # =============================================================================
-# run-sdd-session.sh — Ejecuta una sesión headless de opencode con protección
-# contra estancamiento y límite de duración (issue #145, iteración 2).
+# run-sdd-session.sh — Runs a headless opencode session with stall protection
+# and a duration limit (issue #145, iteration 2).
 #
-# Sustituye al antiguo "timeout 5400 opencode run ..." del workflow
-# auto-resolve-issues.yml: si la sesión falla (tokens del modelo free
-# agotados, push rechazado, fallo de un subagente...) opencode podía quedar
-# vivo y silencioso hasta 1 hora sin hacer nada, quemando minutos gratuitos
-# de GitHub Actions. Este script:
+# It replaces the old "timeout 5400 opencode run ..." from the workflow
+# auto-resolve-issues.yml: if the session fails (free model tokens
+# exhausted, rejected push, subagent failure...) opencode could stay alive
+# and silent for up to an hour doing nothing, burning free GitHub Actions
+# minutes. This script:
 #
-#   1. Lanza opencode en background con setsid (grupo de procesos propio,
-#      para poder matar también las tools hijas con kill -9 -PID).
-#   2. Mantiene el log en vivo en stdout con tail -f (mismo comportamiento
-#      que antes: el log de la action muestra la sesión en directo).
-#   3. Watchdog POR ACTIVIDAD REAL (iteración 2): la señal de estancamiento
-#      NO es el tamaño del log crudo (opencode no emite la salida de los
-#      subagentes en el stream, así que el log no crecía mientras un
-#      subagente trabajaba → falsos positivos). En su lugar, cada iteración
-#      consulta la BD local de opencode (dump-session-transcript.py
-#      --activity) y considera actividad el MAX(time_updated) de mensajes y
-#      parts de TODAS las sesiones del árbol (primaria + subagentes). Solo
-#      se mata la sesión si NO hay actividad en todo el árbol durante
-#      SESSION_STALL_LIMIT_SEC (default 1200 s = 20 min) o si se supera
-#      SESSION_TOTAL_LIMIT_SEC (default 5400 s = 90 min).
-#   4. Si la BD no está disponible (3 sondas fallidas consecutivas), entra
-#      en MODO DEGRADADO: avisa con ::warning:: y deja de matar por
-#      estancamiento (solo aplica el límite total) — política elegida para
-#      eliminar de raíz los falsos positivos (el fallback de tamaño de log
-#      fue precisamente lo que mató la sesión de la issue #135).
-#   5. STREAMING EN VIVO de los subagentes: lanza dump-session-transcript.py
-#      --watch en background, que imprime en stdout los mensajes de las
-#      sesiones hijas a medida que se completan (issue #145, iteración 2).
-#   6. Siempre (éxito o fallo) vuelca la transcripción completa de la
-#      sesión, INCLUIDOS los logs de los subagentes (modo dump).
-#   7. En fallo escribe el motivo en $SESSION_FAIL_REASON (por defecto
-#      session-failure.txt) para que el paso de rollback del workflow lo
-#      incluya en el comentario de la issue.
-#   8. Verificación de finalización real (issue #314): opencode run --auto
-#      devuelve exit 0 cuando el modelo emite su mensaje final, y el modelo
-#      free a veces lo emite EN MITAD del flujo SDD (p. ej. tras el escaneo
-#      de seguridad, antes del publisher): exit 0 pero tarea sin completar.
-#      Si el título de la sesión es "auto: issue #N" (sesiones automáticas
-#      de CI), este script consulta tras el exit 0 la label status: * de la
-#      issue: si sigue en 'status: in-progress' → falso éxito: escribe el
-#      motivo en el archivo de fallo y devuelve exit 1 (el workflow lo trata
-#      como fallo de sesión: wip-save + relanzamiento automático, issue
-#      #226). Cualquier otro status (needs-review, blocked, done, todo o
-#      ninguno) → OK. El uso local (título distinto) no verifica. Fail-closed
-#      deliberado: si no se puede leer el estado en una sesión "auto: issue
-#      #N", también se falla (relanzar es seguro; no verificar reintroduciría
-#      el falso éxito).
-#      NOTA de entorno: el GITHUB_TOKEN de la sesión (GitHub App) no tiene
-#      permiso workflows, así que GitHub rechaza push/refs que modifiquen
-#      .github/workflows/* (verificado 2026-08-20: git push y Git Data API).
-#      Este fix vive en scripts/ (publicable con el token de sesión), no en
-#      el workflow.
+#   1. Launches opencode in background with setsid (its own process group,
+#      so the child tools can also be killed with kill -9 -PID).
+#   2. Streams the live log to stdout with tail -f (same behavior as
+#      before: the action log shows the session live).
+#   3. Watchdog BY REAL ACTIVITY (iteration 2): the stall signal is NOT the
+#      size of the raw log (opencode doesn't emit subagent output in the
+#      stream, so the log didn't grow while a subagent worked → false
+#      positives). Instead, each iteration queries the local opencode DB
+#      (dump-session-transcript.py --activity) and considers activity the
+#      MAX(time_updated) of messages and parts of ALL sessions in the tree
+#      (primary + subagents). The session is only killed if there is NO
+#      activity in the whole tree for SESSION_STALL_LIMIT_SEC (default
+#      1200 s = 20 min) or if SESSION_TOTAL_LIMIT_SEC (default 5400 s =
+#      90 min) is exceeded.
+#   4. If the DB is not available (3 consecutive failed probes), it enters
+#      DEGRADED MODE: warns with ::warning:: and stops killing for stalls
+#      (only the total limit applies) — policy chosen to eliminate false
+#      positives at the root (the log-size fallback was precisely what
+#      killed the session of issue #135).
+#   5. LIVE STREAMING of the subagents: launches dump-session-transcript.py
+#      --watch in background, which prints the nested sessions' messages to
+#      stdout as they complete (issue #145, iteration 2).
+#   6. Always (success or failure) dumps the full session transcript,
+#      INCLUDING the subagent logs (dump mode).
+#   7. On failure it writes the reason to $SESSION_FAIL_REASON (default
+#      session-failure.txt) so the workflow's rollback step includes it in
+#      the issue comment.
+#   8. Verification of actual completion (issue #314): opencode run --auto
+#      returns exit 0 when the model emits its final message, and the free
+#      model sometimes emits it IN THE MIDDLE of the SDD flow (e.g. after
+#      the security scan, before the publisher): exit 0 but task incomplete.
+#      If the session title is "auto: issue #N" (CI automatic sessions),
+#      this script checks after the exit 0 the status: * label of the
+#      issue: if still in 'status: in-progress' → false success: writes the
+#      reason to the failure file and returns exit 1 (the workflow treats
+#      it as a session failure: wip-save + automatic relaunch, issue #226).
+#      Any other status (needs-review, blocked, done, todo or none) → OK.
+#      Local usage (different title) doesn't verify. Deliberately
+#      fail-closed: if the state can't be read in an "auto: issue #N"
+#      session, it also fails (relaunching is safe; not verifying would
+#      reintroduce the false success).
+#      Environment note: the session's GITHUB_TOKEN (GitHub App) has no
+#      workflows permission, so GitHub rejects pushes/refs modifying
+#      .github/workflows/* (verified 2026-08-20: git push and Git Data API).
+#      This fix lives in scripts/ (publishable with the session token), not
+#      in the workflow.
 #
-# Variables de entorno (todas con default):
-#   SESSION_STALL_LIMIT_SEC  segundos sin actividad (BD) antes de matar (1200)
-#   SESSION_TOTAL_LIMIT_SEC  duración máxima total de la sesión (5400)
-#   SESSION_WATCH_POLL_SEC   intervalo de polling del streaming (5)
-#   SESSION_AGENT            agente opencode (sdd-master)
-#   SESSION_MODEL            modelo opencode (opencode/deepseek-v4-flash-free)
-#   SESSION_VARIANT          variante del modelo (max)
-#   SESSION_OUT_LOG          archivo de salida cruda (opencode-session.log)
-#   SESSION_FAIL_REASON      archivo del motivo de fallo (session-failure.txt)
+# Environment variables (all with defaults):
+#   SESSION_STALL_LIMIT_SEC  seconds without activity (DB) before killing (1200)
+#   SESSION_TOTAL_LIMIT_SEC  maximum total session duration (5400)
+#   SESSION_WATCH_POLL_SEC   polling interval of the streaming (5)
+#   SESSION_AGENT            opencode agent (sdd-master)
+#   SESSION_MODEL            opencode model (opencode/deepseek-v4-flash-free)
+#   SESSION_VARIANT          model variant (max)
+#   SESSION_OUT_LOG          raw output file (opencode-session.log)
+#   SESSION_FAIL_REASON      failure reason file (session-failure.txt)
 #
-# Uso: run-sdd-session.sh <prompt-file> <titulo-sesion>
+# Usage: run-sdd-session.sh <prompt-file> <session-title>
 # =============================================================================
 set -euo pipefail
 
-# Raíz del repo: permite invocar el script desde cualquier directorio
-# (p. ej. en CI el CWD es $GITHUB_WORKSPACE, pero también se puede probar
-# en local desde /tmp).
+# Repo root: allows invoking the script from any directory (e.g. in CI the
+# CWD is $GITHUB_WORKSPACE, but it can also be tested locally from /tmp).
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 PROMPT_FILE="${1:-}"
@@ -104,8 +103,8 @@ START_TS_MS="$(date +%s%N | cut -c1-13)"
 rm -f "$OUT" "$FAIL_REASON_FILE"
 : > "$OUT"
 
-# Lanzar en su propio grupo de procesos (setsid): kill -9 -PID mata también
-# las tools hijas (p. ej. un bash tool que ejecute npm install).
+# Launch in its own process group (setsid): kill -9 -PID also kills the child
+# tools (e.g. a bash tool running npm install).
 setsid opencode run \
   --agent "$AGENT" \
   -m "$MODEL" \
@@ -116,21 +115,21 @@ setsid opencode run \
   "$(cat "$PROMPT_FILE")" > "$OUT" 2>&1 &
 PID=$!
 
-# Mantener el log de la sesión en vivo en el log de la action.
+# Stream the session log live into the action log.
 tail -n +1 -f "$OUT" >&1 &
 TAIL_PID=$!
 
-# Streaming en vivo de los subagentes (best-effort): imprime los mensajes de
-# las sesiones hijas a medida que se completan. Termina con SIGTERM.
+# Live streaming of the subagents (best-effort): prints the nested sessions'
+# messages as they complete. Ends with SIGTERM.
 python3 "$ROOT/scripts/dump-session-transcript.py" --watch "$TITLE" "$START_TS_MS" "$WATCH_POLL_SEC" >&1 &
 WATCH_PID=$!
-# Red de seguridad: si el script muere (p. ej. por set -e), se limpian los
-# procesos en background (tail del log + watcher de subagentes).
+# Safety net: if the script dies (e.g. because of set -e), the background
+# processes are cleaned up (log tail + subagent watcher).
 trap 'kill "$TAIL_PID" 2>/dev/null || true; kill "$WATCH_PID" 2>/dev/null || true' EXIT
 
 # ---- Watchdog --------------------------------------------------------------
-# Actividad = MAX(time_updated) de mensajes/parts de TODAS las sesiones del
-# árbol (primaria + subagentes), vía sonda a la BD de opencode.
+# Activity = MAX(time_updated) of messages/parts of ALL sessions in the tree
+# (primary + subagents), via a probe to the opencode DB.
 LAST_ACTIVITY_TS=0
 LAST_ACTIVE="$START_TS"
 LAST_HEARTBEAT="$START_TS"
@@ -139,24 +138,24 @@ DEGRADED=0
 FAILURE_REASON=""
 
 probe_activity() {
-  # Sonda de actividad. Devuelve (en stdout) el epoch_ms del último cambio
-  # en la BD, o falla (exit 1) si la BD no está disponible. Best-effort.
+  # Activity probe. Returns (on stdout) the epoch_ms of the latest change in
+  # the DB, or fails (exit 1) if the DB is unavailable. Best-effort.
   python3 "$ROOT/scripts/dump-session-transcript.py" --activity "$TITLE" "$START_TS_MS" 2>/dev/null
 }
 
 # -----------------------------------------------------------------------------
-# verify_completion (issue #314): solo en sesiones automáticas de CI (título
-# "auto: issue #N"). Tras un exit 0 de opencode, comprueba que la tarea se
-# completó realmente: la issue debe haber salido de 'status: in-progress'
-# (el flujo SDD normal termina en needs-review vía publisher, o en
-# blocked/todo si decide parar). Si sigue en in-progress → falso éxito.
-# Devuelve 0 = OK (o no aplica); 1 = falso éxito / no verificable (escribe
-# el motivo en $FAIL_REASON_FILE).
+# verify_completion (issue #314): only for CI automatic sessions (title
+# "auto: issue #N"). After an exit 0 from opencode, it checks that the task
+# was actually completed: the issue must have left 'status: in-progress'
+# (the normal SDD flow ends in needs-review via the publisher, or in
+# blocked/todo if it decides to stop). If still in-progress → false success.
+# Returns 0 = OK (or not applicable); 1 = false success / unverifiable
+# (writes the reason to $FAIL_REASON_FILE).
 # -----------------------------------------------------------------------------
 verify_completion() {
   local N LABELS STATUS REASON
-  # Opt-in por título: las sesiones del workflow usan "auto: issue #N";
-  # el uso local lleva títulos arbitrarios y NO verifica.
+  # Opt-in by title: workflow sessions use "auto: issue #N"; local usage
+  # carries arbitrary titles and does NOT verify.
   if [[ "$TITLE" =~ ^auto:\ issue\ #([0-9]+)$ ]]; then
     N="${BASH_REMATCH[1]}"
   else
@@ -186,11 +185,11 @@ while kill -0 "$PID" 2>/dev/null; do
   NOW="$(date +%s)"
   ELAPSED=$((NOW - START_TS))
 
-  # Sonda de actividad real por BD (solo si no estamos degradados).
+  # Real-activity DB probe (only if not degraded).
   if [ "$DEGRADED" -eq 0 ]; then
     if ACTIVITY_TS="$(probe_activity)"; then
       DB_PROBE_FAILURES=0
-      # Sanear: solo dígitos (un "0" es válido: sin sesión aún en BD).
+      # Sanitize: digits only (a "0" is valid: no session in the DB yet).
       ACTIVITY_TS="${ACTIVITY_TS//[^0-9]/}"
       ACTIVITY_TS="${ACTIVITY_TS:-0}"
       if [ "$ACTIVITY_TS" -gt "$LAST_ACTIVITY_TS" ]; then
@@ -233,7 +232,7 @@ while kill -0 "$PID" 2>/dev/null; do
   sleep 5
 done
 
-# Recolectar el exit code (con set +e para no abortar antes del volcado).
+# Collect the exit code (with set +e so we don't abort before the dump).
 set +e
 wait "$PID"
 CODE=$?
@@ -243,7 +242,7 @@ wait "$TAIL_PID" 2>/dev/null || true
 kill "$WATCH_PID" 2>/dev/null || true
 wait "$WATCH_PID" 2>/dev/null || true
 
-# ---- Transcripción (siempre: éxito o fallo) --------------------------------
+# ---- Transcript (always: success or failure) --------------------------------
 echo ""
 echo "==============================================================="
 echo "=== Transcripción completa de la sesión (incluye subagentes) ==="
@@ -251,7 +250,7 @@ echo "==============================================================="
 python3 "$ROOT/scripts/dump-session-transcript.py" "$TITLE" "$START_TS_MS" || \
   echo "(aviso: no se pudo volcar la transcripción; ver opencode-session.log)" >&2
 
-# ---- Resultado --------------------------------------------------------------
+# ---- Outcome -----------------------------------------------------------------
 if [ -n "$FAILURE_REASON" ]; then
   echo "$FAILURE_REASON" > "$FAIL_REASON_FILE"
   echo "::error::FALLO de la sesión automática: $FAILURE_REASON."
@@ -267,10 +266,11 @@ if [ "$CODE" -ne 0 ]; then
   exit 1
 fi
 
-# Verificación de finalización real (issue #314): opencode puede terminar
-# con exit 0 en mitad del flujo SDD (falso éxito). Si la issue sigue en
-# 'status: in-progress', se trata como fallo (escribe $FAIL_REASON_FILE y
-# exit 1 → el workflow lanza la maquinaria de fallo: wip-save + relanzamiento).
+# Verification of actual completion (issue #314): opencode may end with
+# exit 0 in the middle of the SDD flow (false success). If the issue is
+# still in 'status: in-progress', it is treated as a failure (writes to
+# $FAIL_REASON_FILE and exit 1 → the workflow triggers the failure machinery:
+# wip-save + relaunch).
 if ! verify_completion; then
   echo "::error::FALLO de la sesión automática: $(cat "$FAIL_REASON_FILE")"
   exit 1

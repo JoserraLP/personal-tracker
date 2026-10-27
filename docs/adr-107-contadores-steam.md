@@ -1,94 +1,96 @@
-# ADR-107: Contadores de «veces» e integración de Steam para los videojuegos
+# ADR-107: «Times» counters and Steam integration for video games
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-10-24
 
-## Contexto
+## Context
 
-Dos peticiones del propietario:
+Two requests from the owner:
 
-1. **Contador de cuántas veces se ha visto/leído/jugado** un elemento
-   (serie, capítulo, libro, película). La web YA registra cada
-   sesión/visionado con fecha en historiales (watchLog de películas,
-   readLog de libros con sesiones terminadas, playLog de
-   videojuegos, timesCompleted de series y times por episodio, D-105),
-   así que el contador natural ya existía; le faltaba verse como un
-   contador claro y poder ANOTAR/CORREGIR cuando el registró no
-   refleja la realidad.
-2. **Integración de bibliotecas de juegos (Steam, Epic Games)** para
-   obtener los juegos del usuario y SUS HORAS JUGADAS.
+1. **Counter of how many times an item has been watched/read/played**
+   (series, episode, book, movie). The web app ALREADY records each
+   session/viewing with a date in histories (movie watchLog, book
+   readLog with finished sessions, video game playLog, series
+   timesCompleted and per-episode times, D-105), so the natural counter
+   already existed; what it lacked was being shown as a clear counter
+   and the ability to ANNOTATE/CORRECT when the record does not reflect
+   reality.
+2. **Game library integration (Steam, Epic Games)** to fetch the
+   user's games and THEIR PLAYED HOURS.
 
-Restricciones técnicas investigadas:
+Technical restrictions investigated:
 
-- **Steam**: la API oficial (api.steampowered.com, por ejemplo
-  `IPlayerService/GetOwnedGames`) exige una clave propietaria
-  (STEAM_API_KEY) y NO responde con CORS del navegador. La clave no
-  puede ir en la SPA.
-- **Epic Games**: NO existe una API pública que devuelva la
-  biblioteca de un usuario ni sus horas de juego (requeriría
-  OAuth de la tienda con permisos de desarrollador y no hay
-  endpoint público de tiempo de juego). SIN integración posible
-  para un tercero sin partner de Epic.
+- **Steam**: the official API (api.steampowered.com, e.g.
+  `IPlayerService/GetOwnedGames`) requires a proprietary key
+  (STEAM_API_KEY) and does NOT respond with browser CORS. The key
+  cannot live in the SPA.
+- **Epic Games**: there is NO public API returning a user's library or
+  their playtime (it would require store OAuth with developer
+  permissions and there is no public playtime endpoint). NO integration
+  possible for a third party without an Epic partnership.
 
-## Decisión
+## Decision
 
-### 1. Contadores (js/counter.js, puro y testado)
+### 1. Counters (js/counter.js, pure and tested)
 
-- `naturalTimes(item)`: nº natural según el tipo (len del log
-  correspondiente; en series, `timesCompleted`).
-- `timesCount(item)`: lo que VISUALIZA la web — la anotación manual
-  (`seenCount`, siempre que sea >= 1) si hay; si no, el natural.
-  Nunca muestra menos de lo registrado (max(natural, manual)).
-- **Chip «×N» en las tarjetas** (grid y lista) en los 4 medios
-  cuando vale >= 1 (`.item-card__counter`).
-- **Ajuste manual en el modal de edición** (abierto desde la ficha
-  de cualquier ítem): campo numérico "Veces vista / completada /
-  leído / jugada" con validación (entero >= 1; vacío = cuenta
-  automática; valor igual al natural = no se anota nada).
-- El contador NO multiplica nada por sí solo: los avisos de
-  estrenos/episodios y estadísticas siguen funcionando con sus
-  historiales (el `seenCount` es presentación/corrección).
+- `naturalTimes(item)`: natural count by type (length of the
+  corresponding log; for series, `timesCompleted`).
+- `timesCount(item)`: what the web app DISPLAYS — the manual
+  annotation (`seenCount`, as long as it is >= 1) if present;
+  otherwise, the natural count. Never shows less than recorded
+  (max(natural, manual)).
+- **«×N» chip on the cards** (grid and list) in the 4 media types when
+  the value is >= 1 (`.item-card__counter`).
+- **Manual adjustment in the edit modal** (opened from any item's
+  card): numeric field "Veces vista / completada / leído / jugada"
+  [Times watched / completed / read / played] with validation
+  (integer >= 1; empty = automatic count; value equal to the natural
+  one = nothing is annotated).
+- The counter does NOT multiply anything by itself: release/episode
+  notices and statistics keep working with their histories (the
+  `seenCount` is presentation/correction).
 
 ### 2. Steam (cloudflare/steam-proxy + js/api-steam.js)
 
-- **Worker nuevo `cloudflare/steam-proxy/`** (mismo patrón que el
-  igdb-proxy existente): guarda `STEAM_API_KEY` como secreto de
-  Cloudflare, expone `GET /owned?steamid=<SteamID64>`, llama a
-  `IPlayerService/GetOwnedGames` (con `include_appinfo` y
-  `include_played_free_games`), y devuelve una lista normalizada
-  `{ appid, name, playtimeHours, lastPlayedAt }` ordenada por horas,
-  con CORS y verificación de origen opcional (`ALLOWED_ORIGIN`).
-- **Cliente `js/api-steam.js`** (puramente componible con config):
-  sanitiza el SteamID64 (17 dígitos), normaliza horas ("134,7 h"),
-  y pide la biblioteca al worker con errores claros.
-- **Config `STEAM_PROXY_URL`** (""): card de Ajustes advierte si no
-  hay proxy desplegado; las instrucciones de despliegue viven en
-  `cloudflare/steam-proxy/README.md` (wrangler secret put +
-  deploy) con verificación paso a paso.
-- **UI en Ajustes → Integración de Steam**: SteamID64
-  (recuerda el último valor con el mismo storage de ajustes),
-  botón «Buscar mis juegos de Steam», y una lista con horas jugadas
-  y día del último juego. El **alta en el registro** añade el juego
-  como ítem manual (`steamAppId` y `steamPlaytimeHours`) con UNA
-  sesión de juego que agrupa las horas (suman en la estadística
-  "horas jugadas" del perfil), status "completado" (= "Jugado");
-  duplicados marcados "Añadido ✓".
+- **New Worker `cloudflare/steam-proxy/`** (same pattern as the
+  existing igdb-proxy): stores `STEAM_API_KEY` as a Cloudflare secret,
+  exposes `GET /owned?steamid=<SteamID64>`, calls
+  `IPlayerService/GetOwnedGames` (with `include_appinfo` and
+  `include_played_free_games`), and returns a normalized list
+  `{ appid, name, playtimeHours, lastPlayedAt }` sorted by hours, with
+  CORS and optional origin verification (`ALLOWED_ORIGIN`).
+- **Client `js/api-steam.js`** (purely composable with config):
+  sanitizes the SteamID64 (17 digits), normalizes hours ("134,7 h"),
+  and requests the library from the worker with clear errors.
+- **Config `STEAM_PROXY_URL`** (""): a Settings card warns if no proxy
+  is deployed; deployment instructions live in
+  `cloudflare/steam-proxy/README.md` (wrangler secret put + deploy)
+  with step-by-step verification.
+- **UI in Ajustes → Integración de Steam** [Settings → Steam
+  Integration]: SteamID64 (remembers the last value with the same
+  settings storage), button «Buscar mis juegos de Steam» [Search my
+  Steam games], and a list with played hours and day of the last
+  session. **Registering in the tracker** adds the game as a manual item
+  (`steamAppId` and `steamPlaytimeHours`) with ONE play session that
+  groups the hours (they add up in the profile's "played hours"
+  statistic), status "completado" [completed] (= "Played"); duplicates
+  marked "Añadido ✓" [Added ✓].
 
 ### 3. Epic Games
 
-Queda **fuera** con nota: sin API pública no se puede implementar
-una sincronización oficial. Si Epic saca una API pública o un export
-oficial, se añadiría con un nuevo ADR.
+Stays **out** with a note: without a public API an official
+synchronization cannot be implemented. If Epic releases a public API or
+an official export, it would be added with a new ADR.
 
-## Consecuencias
+## Consequences
 
-- El usuario ve "×N" en sus títulos y puede corregir la cuenta
-  cuando el registro no refleje la realidad.
-- La integración Steam no requiere ningún server nuevo: reutiliza el
-  patrón de Worker de Cloudflare ya existente y no expone secretos.
-- Riesgo conocido: la lista de Steam llega en inglés (nombre
-  original) y SIN portadas; si el juego usa otro nombre en IGDB, el
-  usuario lo corrige desde la ficha (editar título).
+- The user sees "×N" on their titles and can correct the count when the
+  record does not reflect reality.
+- The Steam integration requires no new server: it reuses the existing
+  Cloudflare Worker pattern and exposes no secrets.
+- Known risk: the Steam list arrives in English (original name) and
+  WITHOUT covers; if the game uses a different name on IGDB, the user
+  corrects it from the card (edit title).

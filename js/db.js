@@ -1,23 +1,23 @@
 // =============================================================
-// Acceso a datos. Cada tipo vive en su propia colección, para que
-// sea fácil inspeccionarlas por separado en la consola de Firebase:
+// Data access. Each type lives in its own collection, so it
+// is easy to inspect them separately in the Firebase console:
 //   users/{uid}/movies/{id}
 //   users/{uid}/series/{id}
 //   users/{uid}/books/{id}
 //   users/{uid}/games/{id}
 //   users/{uid}/notifications/{id}
 //   users/{uid}/recipes/{id}         (issue #64)
-//   users/{uid}/ingredients/{id}     (catálogo de ingredientes, #64)
-//   users/{uid}/menus/{id}           (menús semanales, #64)
-//   users/{uid}/tags/{id}            (etiquetas personalizadas, #64)
-//   users/{uid}/gym-workouts/{id}    (entrenos de gimnasio, #62)
-//   users/{uid}/gym-exercises/{id}   (catálogo de ejercicios, #62)
-// Además, users/{uid} (el propio documento, no una subcolección)
-// guarda un pequeño perfil con el email y la fecha del último aviso
-// de estrenos comprobado.
-// Las reglas de Firestore (rules_version '2') con comodín recursivo
-// cubren tanto el documento de perfil como las subcolecciones, así
-// que no hace falta tocar firestore.rules.
+//   users/{uid}/ingredients/{id}     (ingredient catalog, #64)
+//   users/{uid}/menus/{id}           (weekly menus, #64)
+//   users/{uid}/tags/{id}            (custom tags, #64)
+//   users/{uid}/gym-workouts/{id}    (gym workouts, #62)
+//   users/{uid}/gym-exercises/{id}   (exercise catalog, #62)
+// Also, users/{uid} (the document itself, not a subcollection)
+// stores a small profile with the email and the date of the last release
+// alert check.
+// The Firestore rules (rules_version '2') with the recursive wildcard
+// cover both the profile document and the subcollections, so
+// firestore.rules doesn't need to be touched.
 // =============================================================
 
 import {
@@ -56,9 +56,9 @@ export async function getUserProfile(uid) {
   return snap.exists() ? snap.data() : null;
 }
 
-// Perfiles de todos los usuarios registrados (para la lista de amigos).
-// Como todos los que pueden registrarse ya están "autorizados", cualquier
-// usuario puede leer los perfiles de los demás (ver firestore.rules).
+// Profiles of all registered users (for the friends list).
+// Since everyone who can register is already "authorized", any
+// user can read the profiles of others (see firestore.rules).
 export async function getAllUserProfiles() {
   const snap = await getDocs(collection(db, "users"));
   const profiles = [];
@@ -66,8 +66,8 @@ export async function getAllUserProfiles() {
   return profiles;
 }
 
-// Lectura puntual (sin suscripción en vivo) de los items de OTRO usuario,
-// para verlos de solo lectura desde la sección de amigos.
+// One-time read (no live subscription) of ANOTHER user's items,
+// to view them read-only from the friends section.
 export async function getItemsOnce(uid, type) {
   const snap = await getDocs(itemsRef(uid, type));
   const items = [];
@@ -75,13 +75,13 @@ export async function getItemsOnce(uid, type) {
   return items;
 }
 
-// Se suscribe en tiempo real a los items de un tipo concreto.
-// Se ordena por addedAt (la fecha en la que TÚ lo añadiste, que no
-// cambia nunca) y no por updatedAt (que se actualiza con cualquier
-// escritura, incluida la revisión diaria en segundo plano que rellena
-// metadatos) — así, que se complete información de una ficha no la hace
-// saltar al principio de "Añadidas recientemente".
-// Devuelve una función para cancelar la suscripción.
+// Subscribes in real time to the items of a specific type.
+// It sorts by addedAt (the date when YOU added it, which never
+// changes) and not by updatedAt (which changes with any
+// write, including the background daily pass that fills
+// metadata) — so having an item's details completed does not make it
+// jump to the top of "Recently added".
+// Returns a function to cancel the subscription.
 export function subscribeToItems(uid, type, onChange, onError) {
   const q = query(itemsRef(uid, type), orderBy("addedAt", "desc"));
   return onSnapshot(
@@ -118,7 +118,7 @@ export async function deleteItem(uid, type, itemId) {
   return deleteDoc(doc(db, "users", uid, COLLECTION_BY_TYPE[type], itemId));
 }
 
-/* ---------- Notificaciones (estrenos) ---------- */
+/* ---------- Notifications (releases) ---------- */
 
 function notificationsRef(uid) {
   return collection(db, "users", uid, "notifications");
@@ -155,7 +155,7 @@ export async function deleteNotification(uid, notificationId) {
   return deleteDoc(doc(db, "users", uid, "notifications", notificationId));
 }
 
-/* ---------- Recetas (issue #64) ---------- */
+/* ---------- Recipes (issue #64) ---------- */
 
 function recipesRef(uid) {
   return collection(db, "users", uid, "recipes");
@@ -195,7 +195,7 @@ export async function deleteRecipe(uid, recipeId) {
   return deleteDoc(doc(db, "users", uid, "recipes", recipeId));
 }
 
-/* ---------- Ingredientes (catálogo, issue #64) ---------- */
+/* ---------- Ingredients (catalog, issue #64) ---------- */
 
 function ingredientsRef(uid) {
   return collection(db, "users", uid, "ingredients");
@@ -220,10 +220,10 @@ export async function addIngredient(uid, ingredient) {
   return addDoc(ingredientsRef(uid), {
     nombre: ingredient.nombre,
     categoriaId: ingredient.categoriaId || "",
-    // Campos opcionales de la ficha (issue #224): tiendas donde se
-    // puede comprar el ingrediente y cantidad del paquete (número +
-    // unidad). La foto (URL, issue #232) sigue el patrón de las recetas.
-    // Solo se persisten si vienen definidos en el alta.
+    // Optional fields of the detail record (issue #224): stores where
+    // the ingredient can be bought and package quantity (number +
+    // unit). The photo (URL, issue #232) follows the recipes pattern.
+    // They are only persisted if provided when creating.
     ...(ingredient.supermercados !== undefined && { supermercados: ingredient.supermercados }),
     ...(ingredient.paqueteCantidad !== undefined && { paqueteCantidad: ingredient.paqueteCantidad }),
     ...(ingredient.paqueteUnidad !== undefined && { paqueteUnidad: ingredient.paqueteUnidad }),
@@ -233,9 +233,9 @@ export async function addIngredient(uid, ingredient) {
   });
 }
 
-// Actualización parcial de un ingrediente del catálogo (issue #224):
-// solo los campos pasados en `fields`. Para supermercados se envía el
-// array completo nuevo.
+// Partial update of a catalog ingredient (issue #224):
+// only the fields passed in `fields`. For supermercados the
+// complete new array is sent.
 export async function updateIngredient(uid, ingredientId, fields) {
   return updateDoc(doc(db, "users", uid, "ingredients", ingredientId), {
     ...fields,
@@ -247,7 +247,7 @@ export async function deleteIngredient(uid, ingredientId) {
   return deleteDoc(doc(db, "users", uid, "ingredients", ingredientId));
 }
 
-/* ---------- Etiquetas personalizadas (issue #64) ---------- */
+/* ---------- Custom tags (issue #64) ---------- */
 
 function tagsRef(uid) {
   return collection(db, "users", uid, "tags");
@@ -279,7 +279,7 @@ export async function deleteTag(uid, tagId) {
   return deleteDoc(doc(db, "users", uid, "tags", tagId));
 }
 
-/* ---------- Menús semanales (issue #64) ---------- */
+/* ---------- Weekly menus (issue #64) ---------- */
 
 function menusRef(uid) {
   return collection(db, "users", uid, "menus");
@@ -300,7 +300,7 @@ export function subscribeToMenus(uid, onChange, onError) {
   );
 }
 
-// Crea un documento de menú y devuelve la referencia (con el id nuevo).
+// Creates a menu document and returns the reference (with the new id).
 export async function addMenu(uid, menu) {
   return addDoc(menusRef(uid), {
     ...menu,
@@ -309,7 +309,7 @@ export async function addMenu(uid, menu) {
   });
 }
 
-// Sobrescribe los campos del menú (los arrays/días se guardan enteros).
+// Overwrites the menu fields (arrays/days are stored whole).
 export async function updateMenu(uid, menuId, menu) {
   return updateDoc(doc(db, "users", uid, "menus", menuId), {
     ...menu,
@@ -321,14 +321,14 @@ export async function deleteMenu(uid, menuId) {
   return deleteDoc(doc(db, "users", uid, "menus", menuId));
 }
 
-/* ---------- Entrenos de gimnasio (issue #62) ---------- */
+/* ---------- Gym workouts (issue #62) ---------- */
 
 function gymWorkoutsRef(uid) {
   return collection(db, "users", uid, "gym-workouts");
 }
 
-// Se suscribe en tiempo real a los entrenos del usuario. Se ordenan por
-// fechaISO (la fecha del entreno, "YYYY-MM-DD") descendente.
+// Subscribes in real time to the user's workouts. They are sorted by
+// fechaISO (the workout date, "YYYY-MM-DD") descending.
 export function subscribeToGymWorkouts(uid, onChange, onError) {
   const q = query(gymWorkoutsRef(uid), orderBy("fechaISO", "desc"));
   return onSnapshot(
@@ -344,8 +344,8 @@ export function subscribeToGymWorkouts(uid, onChange, onError) {
   );
 }
 
-// Alta de un entreno. El peso canónico SIEMPRE es kg (la conversión a
-// lbs es solo de presentación, issue #62).
+// Creates a workout. The canonical weight is ALWAYS kg (the conversion to
+// lbs is display-only, issue #62).
 export async function addGymWorkout(uid, workout) {
   return addDoc(gymWorkoutsRef(uid), {
     fechaISO: workout.fechaISO,
@@ -368,14 +368,14 @@ export async function deleteGymWorkout(uid, workoutId) {
   return deleteDoc(doc(db, "users", uid, "gym-workouts", workoutId));
 }
 
-/* ---------- Catálogo de ejercicios (issue #62) ---------- */
+/* ---------- Exercise catalog (issue #62) ---------- */
 
 function gymExercisesRef(uid) {
   return collection(db, "users", uid, "gym-exercises");
 }
 
-// Se suscribe en tiempo real al catálogo de ejercicios, ordenado por
-// nombre alfabético (mismo patrón que el catálogo de ingredientes).
+// Subscribes in real time to the exercise catalog, sorted by
+// name alphabetically (same pattern as the ingredient catalog).
 export function subscribeToGymExercises(uid, onChange, onError) {
   const q = query(gymExercisesRef(uid), orderBy("nombre", "asc"));
   return onSnapshot(
@@ -412,12 +412,12 @@ export async function deleteGymExercise(uid, exerciseId) {
   return deleteDoc(doc(db, "users", uid, "gym-exercises", exerciseId));
 }
 
-/* ---------- Lista de deseos (Compras) ---------- */
+/* ---------- Wishlist (Shopping) ---------- */
 
-// Lista personal de cosas que comprar: título, descripción, precio
-// (opcional), URL del producto (opcional), foto por URL (opcional) y
-// si ya está comprada. Privat-collection patrón equal al resto:
-// sub en vivo con orden por fecha de creación desc.
+// Personal list of things to buy: title, description, price
+// (optional), product URL (optional), photo by URL (optional) and
+// whether it is already bought. Private collection with pattern equal to the rest:
+// live sub sorted by creation date desc.
 
 function wishlistRef(uid) {
   return collection(db, "users", uid, "wishlist");

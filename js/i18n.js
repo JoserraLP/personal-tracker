@@ -1,34 +1,34 @@
 // =============================================================
-// i18n — idioma switchable Español/English (ADR-110).
+// i18n — switchable Spanish/English language (ADR-110).
 //
-// Modelo: el español es la FUENTE DE VERDAD (marcados estáticos y
-// strings dinámicos de la app se escriben siempre en español) y el
-// inglés es un diccionario de TRADUCCIÓN APLICADA AL DOM:
-//   - Nodos de texto: coincidencia exacta normalizada (espacios
-//     colapsados) contra el diccionario. Si el texto ya está en
-//     inglés no está en el dict y no se toca (sin bucles).
-//   - Atributos translate: placeholder, aria-label y title.
-// Aplicación:
-//   1. Al arrancar (initializeI18n): traduce el document completo
-//      y observa mutaciones (los renders dinámicos que reescriben
-//      español se traducen en el acto).
-//   2. Al cambiar de idioma: reaplica sobre todo el document.
-// Persistencia: localStorage "mi-registro-lang" (independiente del
-// usuario para permitir elegir idioma en la pantalla de acceso).
-// Cobertura v1: toda la marqueta estática + etiquetas centrales de
-// estado. Los mensajes dinámicos de toasts/errores siguen en
-// español hasta la siguiente iteración (documentado en ADR-110).
+// Model: Spanish is the SOURCE OF TRUTH (the app's static markers and
+// dynamic strings are always written in Spanish) and
+// English is a dictionary of TRANSLATION APPLIED TO THE DOM:
+//   - Text nodes: exact match normalized (collapsed spaces)
+//     against the dictionary. If the text is already in
+//     English it is not in the dict and is not touched (no loops).
+//   - Translated attributes: placeholder, aria-label and title.
+// Application:
+//   1. On boot (initializeI18n): translates the whole document
+//      and watches mutations (dynamic renders that rewrite
+//      Spanish are translated on the spot).
+//   2. On language change: re-applies over the whole document.
+// Persistence: localStorage "mi-registro-lang" (independent of the
+// user so the language can be chosen on the login screen).
+// v1 coverage: all the static chrome + core status labels.
+// Dynamic toast/error messages remain in
+// Spanish until the next iteration (documented in ADR-110).
 // =============================================================
 
 const LANG_KEY = "mi-registro-lang";
 const SUPPORTED = { es: "Español", en: "English" };
 
 // -------------------------------------------------------------
-// Diccionario: texto visible EXACTO (español) → texto EN.
-// La clave se normaliza (espacios colapsados + trim) al aplicar.
+// Dictionary: EXACT visible text (Spanish) → EN text.
+// The key is normalized (collapsed spaces + trim) when applying.
 // -------------------------------------------------------------
 const EN_TEXT = {
-  // Marca / acceso
+  // Brand / login
   "Mi Registro — pelis, series, libros, videojuegos, recetas y gimnasio":
     "Mi Registro — movies, TV shows, books, video games, recipes and gym",
   "Saltar al contenido principal": "Skip to main content",
@@ -39,7 +39,7 @@ const EN_TEXT = {
   "Cargando…": "Loading…",
   "Cargando.": "Loading.",
 
-  // Navegación y perfil
+  // Navigation and profile
   "Notificaciones": "Notifications",
   "Borrar todas": "Clear all",
   "No tienes notificaciones.": "You have no notifications.",
@@ -47,14 +47,14 @@ const EN_TEXT = {
   "Ajustes": "Settings",
   "Cerrar sesión": "Sign out",
 
-  // Pestañas y paneles
+  // Tabs and panels
   "Series": "TV Shows",
   "Películas": "Movies",
   "Libros": "Books",
   "Videojuegos": "Video Games",
   "Compras": "Shopping",
 
-  // Estados (chips, filtros y etiquetas de estado de ui.js/constants.js)
+  // Statuses (chips, filters and status labels of ui.js/constants.js)
   "Todos": "All",
   "Todas": "All",
   "Pendiente": "Pending",
@@ -77,7 +77,7 @@ const EN_TEXT = {
   "Abandonadas": "Abandoned",
   "Abandonados": "Abandoned",
 
-  // Orden/filtros de biblioteca
+  // Library sort/filters
   "Actividad reciente": "Recent activity",
   "Fecha de visionado": "Watch date",
   "Fecha de lectura": "Reading date",
@@ -87,7 +87,7 @@ const EN_TEXT = {
   "Año de publicación": "Publication year",
   "Año de lanzamiento": "Release year",
 
-  // Estados vacíos
+  // Empty states
   "Aún no hay nada aquí. Busca una serie arriba y pulsa «Añadir».":
     "Nothing here yet. Search for a show above and press «Add».",
   "Aún no hay nada aquí. Busca un título arriba y pulsa «Añadir».":
@@ -99,12 +99,12 @@ const EN_TEXT = {
   "Tu lista de cosas que comprar está vacía. Pulsa «Añadir cosa» para registrar la primera.":
     "Your shopping list is empty. Press «Add item» to register the first one.",
 
-  // Compras
+  // Shopping
   "Por comprar": "To buy",
   "Compradas": "Bought",
   "Añadir cosa": "Add item",
 
-  // Estadísticas
+  // Statistics
   "Siempre": "All time",
   "Este año": "This year",
   "Este mes": "This month",
@@ -116,7 +116,7 @@ const EN_TEXT = {
   "Géneros": "Genres",
   "Plataformas": "Platforms",
 
-  // Ajustes
+  // Settings
   "Apariencia": "Appearance",
   "Tema": "Theme",
   "Idioma": "Language",
@@ -166,7 +166,7 @@ const EN_TEXT = {
     "Import your whole TV history from the JSON file you export in the TV Time app. They are added as manual shows, without a TMDB connection.",
   "Importar desde TV Time": "Import from TV Time",
 
-  // Recetas
+  // Recipes
   "Recetas": "Recipes",
   "Ingredientes": "Ingredients",
   "Menú": "Menu",
@@ -185,7 +185,7 @@ const EN_TEXT = {
     "They are added once and are NOT multiplied by the diners (e.g. one pizza dough for the whole week). Add them with «+ Add recipe» choosing «Whole week».",
   "+ Ítem extra": "+ Extra item",
 
-  // Gimnasio
+  // Gym
   "Resumen": "Summary",
   "Entrenos": "Workouts",
   "Ejercicios": "Exercises",
@@ -203,7 +203,7 @@ const EN_TEXT = {
 
 const ATTR_PREFIX_RE = /^([@#%])([\s\S]+)$/;
 
-// Diccionario de atributos (@placeholder, #aria-label, %title).
+// Attribute dictionary (@placeholder, #aria-label, %title).
 const EN_ATTR = {
   "@Buscar películas, series, libros o videojuegos...":
     "Search movies, shows, books or video games...",
@@ -232,15 +232,15 @@ const EN_ATTR = {
 };
 
 // -------------------------------------------------------------
-// Núcleo puro (testeable sin DOM)
+// Pure core (testable without DOM)
 // -------------------------------------------------------------
 
-/** Normaliza una cadena para matching: colapsa espacios y trims. */
+/** Normalizes a string for matching: collapses spaces and trims. */
 export function normalizeText(s) {
   return (s || "").replace(/\s+/g, " ").trim();
 }
 
-/** Índices normalizados de los diccionarios (se precompilan). */
+/** Normalized indexes of the dictionaries (precompiled). */
 const TEXT_INDEX = new Map();
 for (const [es, en] of Object.entries(EN_TEXT)) {
   TEXT_INDEX.set(normalizeText(es), en);
@@ -253,19 +253,19 @@ for (const [key, en] of Object.entries(EN_ATTR)) {
 }
 
 /**
- * Traduce un valor de nodo de texto (o null si no hay traducción).
- * Función pura para los tests.
+ * Translates a text node value (or null if there is no translation).
+ * Pure function for the tests.
  */
 export function translateText(raw, lang = "en") {
   if (lang !== "en") return null;
   return TEXT_INDEX.get(normalizeText(raw)) || null;
 }
 
-// Prefijo de diccionario por atributo translate.
+// Dictionary prefix per translated attribute.
 const ATTR_FOR = { placeholder: "@", "aria-label": "#", title: "%" };
 
 /**
- * Traduce un par (attr, valor) o null. attr: "placeholder" |
+ * Translates an (attr, value) pair or null. attr: "placeholder" |
  * "aria-label" | "title".
  */
 export function translateAttr(attr, raw, lang = "en") {
@@ -276,17 +276,17 @@ export function translateAttr(attr, raw, lang = "en") {
 }
 
 // -------------------------------------------------------------
-// Aplicación al DOM
+// Application to the DOM
 // -------------------------------------------------------------
 
 const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "SVG", "NOSVG", "CODE"]);
 
-/** Aplica el idioma activo a un subárbol (por defecto todo el doc). */
+/** Applies the active language to a subtree (the whole doc by default). */
 export function applyI18n(root = document, lang = getLang()) {
   if (!root || typeof document === "undefined" || lang === "es") return false;
   let changed = false;
 
-  // Nodos de texto (TreeWalker por eficiencia).
+  // Text nodes (TreeWalker for efficiency).
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       const p = node.parentElement;
@@ -305,7 +305,7 @@ export function applyI18n(root = document, lang = getLang()) {
     textNode = walker.nextNode();
   }
 
-  // Atributos translate: el subárbol y el propio root.
+  // Translated attributes: the subtree and the root itself.
   const ATTR_SELECTOR = "[placeholder], [aria-label], [title]";
   let els = [];
   if (root.querySelector) {
@@ -327,8 +327,8 @@ export function applyI18n(root = document, lang = getLang()) {
 }
 
 /**
- * Idioma activo: localStorage. Solo "es" | "en"; cualquier otro
- * valor cae a "es" (defensivo, mismo patrón que el tema).
+ * Active language: localStorage. Only "es" | "en"; any other
+ * value falls back to "es" (defensive, same pattern as the theme).
  */
 export function getLang() {
   try {
@@ -339,13 +339,13 @@ export function getLang() {
   }
 }
 
-/** Cambia el idioma (persistente) y lo aplica a todo el document. */
+/** Changes the language (persisted) and applies it to the whole document. */
 export function setLang(lang, root = document) {
   if (!SUPPORTED[lang]) return false;
   try {
     localStorage.setItem(LANG_KEY, lang);
   } catch {
-    /* sin storage: se aplica igualmente en memoria */
+    /* no storage: applied anyway in memory */
   }
   applyI18n(root, lang);
   return true;
@@ -354,9 +354,9 @@ export function setLang(lang, root = document) {
 let observer = null;
 
 /**
- * Arranca i18n: aplica el idioma guardado y observa mutaciones para
- * que los renders dinámicos (español, fuente de verdad) se traduzcan
- * en el acto si el usuario eligió English.
+ * Boots i18n: applies the saved language and watches mutations so
+ * dynamic renders (Spanish, source of truth) are translated
+ * on the spot if the user chose English.
  */
 export function initializeI18n() {
   if (typeof document === "undefined") return;
@@ -364,7 +364,7 @@ export function initializeI18n() {
   if (getLang() !== "en" || observer) return;
   observer = new MutationObserver((mutations) => {
     for (const m of mutations) {
-      // Nodos añadidos (subárbol) y nodos de texto reescritos.
+      // Added nodes (subtree) and rewritten text nodes.
       if (m.type === "childList") {
         m.addedNodes.forEach((n) => {
           if (n.nodeType === Node.ELEMENT_NODE) applyI18n(n, "en");
@@ -386,7 +386,7 @@ export function initializeI18n() {
   });
 }
 
-/** Como vite: detiene el observador (tests / logout). */
+/** Like vite: stops the observer (tests / logout). */
 export function stopI18n() {
   if (observer) {
     observer.disconnect();

@@ -1,108 +1,108 @@
-# ADR-020: Ítems sin fecha de estreno se tratan como no estrenados (fix issue #27)
+# ADR-020: Items without a release date are treated as unreleased (fix issue #27)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
-Agosto 2026
+## Date
+August 2026
 
-**Nota (alcance ampliado por ADR-023):** este documento describe el fix original de la issue #27 (PR #33). Tras la reapertura de la issue —caso `next_episode_to_air = null` en series entre temporadas sin fecha anunciada (p. ej. «Dune: La Profecía» T2)—, el alcance aquí definido queda **ampliado/supersedido** por el [ADR-023](adr-023-episode-unreleased-no-date.md): los checkboxes de episodios individuales, el botón "Marcar todo" de temporada y el badge cuando TMDB no devuelve `next_episode_to_air` ahora SÍ están cubiertos.
+**Note (scope expanded by ADR-023):** this document describes the original fix for issue #27 (PR #33). After the issue's reopening —the `next_episode_to_air = null` case in series between seasons with no announced date (e.g. "Dune: La Profecía" S2)—, the scope defined here is **expanded/superseded** by [ADR-023](adr-023-episode-unreleased-no-date.md): the individual episode checkboxes, the season's "Marcar todo" button and the badge when TMDB does not return `next_episode_to_air` are NOW covered.
 
-**Nota (clases CSS renombradas y tratamiento uniforme por ADR-024):** tras la 2ª reapertura de la issue #27 (tratamiento uniforme en todos los niveles: rayas, relegación al final y badge "Aún no estrenado/a" iguales para ítems sin fecha y con fecha futura), las clases CSS citadas en la sección 4 (`item-card--episode-unreleased` / `list-row--episode-unreleased`) se renombraron a `item-card--unreleased` / `list-row--unreleased`, y el tratamiento visual y de ordenación pasa a cubrir **cualquier** ítem no estrenado —películas incluidas— vía el predicado unificado `isItemUnreleased`, no solo series con episodio sin estrenar. Ver [adr-024-unreleased-uniform-treatment.md](adr-024-unreleased-uniform-treatment.md).
+**Note (CSS classes renamed and uniform treatment by ADR-024):** after the 2nd reopening of issue #27 (uniform treatment at all levels: stripes, relegation to the end and the "Aún no estrenado/a" badge identical for items without a date and with a future date), the CSS classes cited in section 4 (`item-card--episode-unreleased` / `list-row--episode-unreleased`) were renamed to `item-card--unreleased` / `list-row--unreleased`, and the visual and sorting treatment now covers **any** unreleased item —movies included— via the unified predicate `isItemUnreleased`, not only series with an unaired episode. See [adr-024-unreleased-uniform-treatment.md](adr-024-unreleased-uniform-treatment.md).
 
-## Contexto
+## Context
 
-TMDB devuelve la fecha de estreno vacía para películas/episodios sin fecha oficial, y `js/api-movies.js` la normaliza a `null` (`releaseDate: data.release_date || null`). El frontend controlaba el caso de "no estrenado" con el patrón `if (fecha && fecha > todayISO())` en todos los puntos de marcado como visto: al ser `null` falsy, un ítem sin fecha se consideraba **ya estrenado** y podía marcarse como visto **sin ningún aviso**, aunque en realidad no se sabía si había salido.
+TMDB returns an empty release date for movies/episodes without an official date, and `js/api-movies.js` normalizes it to `null` (`releaseDate: data.release_date || null`). The frontend handled the "not released" case with the pattern `if (fecha && fecha > todayISO())` at all mark-as-watched points: since `null` is falsy, an item without a date was considered **already released** and could be marked as watched **without any warning**, even though in reality it was not known whether it had come out.
 
-La issue #27 establece el criterio: **sin fecha de estreno ⇒ se supone que el ítem NO está estrenado** ⇒ mismo tratamiento que una fecha futura (no se puede marcar como visto sin confirmación).
+Issue #27 establishes the criterion: **no release date ⇒ the item is assumed NOT released** ⇒ same treatment as a future date (cannot be marked as watched without confirmation).
 
-Los puntos afectados eran: el alta de ítems (flag `awaitingRelease`), el marcado como visto (modal de película y acciones rápidas), el badge de episodios sin estrenar de series (`isNextEpisodeUnreleased`) y la comprobación diaria de backfill.
+The affected points were: item creation (`awaitingRelease` flag), marking as watched (movie modal and quick actions), series' unreleased next episode badge (`isNextEpisodeUnreleased`) and the daily backfill check.
 
 Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27
 
-## Decisión
+## Decision
 
-Adoptar un criterio único centralizado: **un ítem sin fecha de estreno oficial se trata igual que uno con fecha futura (no estrenado)**, con confirmación suave (`window.confirm`) al marcarlo como visto, flag `awaitingRelease` en el alta y backfill progresivo de los ítems existentes. Componentes:
+Adopt a single centralized criterion: **an item without an official release date is treated the same as one with a future date (unreleased)**, with soft confirmation (`window.confirm`) when marking it as watched, the `awaitingRelease` flag on creation, and progressive backfill of existing items. Components:
 
-### 1. `js/release.js` (nuevo): criterio único y mensajes de confirmación
+### 1. `js/release.js` (new): single criterion and confirmation messages
 
-Módulo que centraliza la lógica de "no estrenado":
+Module that centralizes the "not released" logic:
 
-- **`isUnreleasedDate(dateStr)`**: devuelve `true` si `!dateStr || dateStr > todayISO()` — es decir, fecha vacía/`null`, o fecha futura (comparación de strings `YYYY-MM-DD`).
-- **`unreleasedConfirmMessage(item)`**: devuelve el mensaje de `window.confirm` apropiado, o `null` si no aplica:
-  - **Películas**: manual ⇒ `null` (sin aviso); estrenada ⇒ `null`; con fecha futura ⇒ mensaje con fecha (texto idéntico al preexistente); **sin fecha** ⇒ mensaje «no tiene fecha de estreno oficial en TMDB; suponemos que aún no está estrenada».
-  - **Series**: solo si `nextEpisodeToAir` coincide con `nextEpisode` (misma temporada y episodio); `airDate` futura ⇒ mensaje con fecha; `airDate` `null` ⇒ mensaje sin fecha; resto de casos ⇒ `null`.
-  - **Resto de tipos** ⇒ `null`.
+- **`isUnreleasedDate(dateStr)`**: returns `true` if `!dateStr || dateStr > todayISO()` — that is, an empty/`null` date, or a future date (string comparison `YYYY-MM-DD`).
+- **`unreleasedConfirmMessage(item)`**: returns the appropriate `window.confirm` message, or `null` if not applicable:
+  - **Movies**: manual ⇒ `null` (no warning); released ⇒ `null`; with a future date ⇒ message with the date (text identical to the pre-existing one); **no date** ⇒ message «no tiene fecha de estreno oficial en TMDB; suponemos que aún no está estrenada».
+  - **Series**: only if `nextEpisodeToAir` matches `nextEpisode` (same season and episode); future `airDate` ⇒ message with the date; `null` `airDate` ⇒ message without a date; other cases ⇒ `null`.
+  - **Other types** ⇒ `null`.
 
-### 2. Alta de ítems (`js/search.js`, `js/modal-handlers.js`): flag `awaitingRelease` con fecha vacía
+### 2. Item creation (`js/search.js`, `js/modal-handlers.js`): `awaitingRelease` flag with an empty date
 
-En `handleAdd` (`js/search.js`) y en `addSagaMovie`/`addFromRecommendation` (`js/modal-handlers.js`), el alta de película/serie ahora usa `details.<fecha> !== undefined && isUnreleasedDate(details.<fecha>)` (`releaseDate` para películas, `firstAirDate` para series) en lugar de `fecha && fecha > todayISO()`:
+In `handleAdd` (`js/search.js`) and in `addSagaMovie`/`addFromRecommendation` (`js/modal-handlers.js`), movie/series creation now uses `details.<fecha> !== undefined && isUnreleasedDate(details.<fecha>)` (`releaseDate` for movies, `firstAirDate` for series) instead of `fecha && fecha > todayISO()`:
 
-- Sin fecha oficial ⇒ `awaitingRelease = true` (tratada como no estrenada).
-- El guard `!== undefined` evita flaggear ítems cuando la API falla de forma transitoria: `getMovieDetails`/`getTvExtraDetails` devuelven `{}` en el `catch` (el alta no se bloquea si este paso extra falla).
+- No official date ⇒ `awaitingRelease = true` (treated as unreleased).
+- The `!== undefined` guard avoids flagging items when the API fails transiently: `getMovieDetails`/`getTvExtraDetails` return `{}` in the `catch` (creation is not blocked if this extra step fails).
 
-### 3. Marcado como visto (`js/ui.js`, `js/quick-actions.js`): confirmación unificada
+### 3. Marking as watched (`js/ui.js`, `js/quick-actions.js`): unified confirmation
 
-El control ad-hoc de cada punto de marcado se sustituye por `unreleasedConfirmMessage(item)` + `window.confirm`:
+The ad-hoc control at each marking point is replaced by `unreleasedConfirmMessage(item)` + `window.confirm`:
 
-- `js/ui.js` — handler de `#btn-add-watch` del modal de película (`openMovieModal`).
-- `js/quick-actions.js` — `quickMarkMovie` y `quickMarkTv`.
+- `js/ui.js` — handler of `#btn-add-watch` in the movie modal (`openMovieModal`).
+- `js/quick-actions.js` — `quickMarkMovie` and `quickMarkTv`.
 
-Se mantiene el **patrón suave** de las fechas futuras (confirmación, no bloqueo duro): si el usuario confirma, el marcado procede.
+The **soft pattern** for future dates is kept (confirmation, not hard block): if the user confirms, the marking proceeds.
 
-### 4. Episodios de series (`js/sorting.js`): badge también con `airDate` null
+### 4. Series episodes (`js/sorting.js`): badge also with `null` `airDate`
 
-En `isNextEpisodeUnreleased` se eliminó el `Boolean(item.nextEpisodeToAir.airDate)` del operador `&&`: ahora un `nextEpisodeToAir` **sin fecha** también se considera no estrenado (vía `isUnreleasedDate`). Consecuentemente, el badge "Aún no estrenado", la clase CSS `item-card--episode-unreleased` / `list-row--episode-unreleased` y el orden por actividad (ítems bloqueados al final) aplican también cuando `airDate` es `null`.
+In `isNextEpisodeUnreleased`, the `Boolean(item.nextEpisodeToAir.airDate)` was removed from the `&&` operator: a `nextEpisodeToAir` **without a date** is now also considered unreleased (via `isUnreleasedDate`). Consequently, the "Aún no estrenado" badge, the CSS class `item-card--episode-unreleased` / `list-row--episode-unreleased` and the activity-based sorting (blocked items at the end) also apply when `airDate` is `null`.
 
-### 5. Backfill de ítems existentes (`js/daily-check.js`): comprobación diaria
+### 5. Backfill of existing items (`js/daily-check.js`): daily check
 
-En `checkForUpdates`, si un ítem no tiene fecha, no está visto y no tiene `awaitingRelease`, se setea el flag:
+In `checkForUpdates`, if an item has no date, is not watched and does not have `awaitingRelease`, the flag is set:
 
-- **Películas**: `needsCheck` se amplía con `(!movie.releaseDate && !(movie.watchLog && movie.watchLog.length))`; nuevo bloque que fija `updates.awaitingRelease = true` cuando `!movie.awaitingRelease && fresh.releaseDate !== undefined && !(movie.watchLog && movie.watchLog.length) && isUnreleasedDate(fresh.releaseDate)`.
-- **Series**: nuevo helper `hasAnyWatchedEpisode(show)` — recorre `watched` (temporada → episodio → `{ date, rating }`) y tolera el formato antiguo de fecha como texto plano vía `normalizeEntry` de `tv-progress.js`; el flag se setea con `fresh.firstAirDate !== undefined` y `isUnreleasedDate(fresh.firstAirDate)`.
-- **Auto-cura**: cuando TMDB publique la fecha, el flujo existente (`updates.releaseDate = fresh.releaseDate` y el aviso de estreno con `fresh.releaseDate <= today`, que también limpia `awaitingRelease`) la rellena y notifica el estreno.
+- **Movies**: `needsCheck` is expanded with `(!movie.releaseDate && !(movie.watchLog && movie.watchLog.length))`; a new block sets `updates.awaitingRelease = true` when `!movie.awaitingRelease && fresh.releaseDate !== undefined && !(movie.watchLog && movie.watchLog.length) && isUnreleasedDate(fresh.releaseDate)`.
+- **Series**: new helper `hasAnyWatchedEpisode(show)` — traverses `watched` (season → episode → `{ date, rating }`) and tolerates the old format of dates as plain text via `normalizeEntry` from `tv-progress.js`; the flag is set with `fresh.firstAirDate !== undefined` and `isUnreleasedDate(fresh.firstAirDate)`.
+- **Self-healing**: when TMDB publishes the date, the existing flow (`updates.releaseDate = fresh.releaseDate` and the release notice with `fresh.releaseDate <= today`, which also clears `awaitingRelease`) fills it in and notifies the release.
 
-### Alcance explícitamente excluido
+### Scope explicitly excluded
 
-- **Checkboxes de episodios individuales del modal de serie**: NO se tocaron. Las series manuales tienen `airDate: null` en todos sus episodios; aplicar el control ahí rompería el flujo de progreso manual. La protección del "próximo episodio" (`isNextEpisodeUnreleased` + `unreleasedConfirmMessage`) cubre la vía principal de progreso de series con datos de TMDB.
-- **`js/export-ics.js`**: ya excluía los ítems sin fecha (`if (!item.releaseDate) continue;`), por lo que no requirió cambios.
-- **SUPERSEDIDO por ADR-023**: la reapertura de la issue #27 (serie entre temporadas con `next_episode_to_air = null`, p. ej. «Dune: La Profecía» T2) llevó a cubrir lo excluido en los puntos anteriores. El ADR-023 sí protege el checkbox de episodio individual (con guard `!item.manual`, que preserva el flujo de series manuales) y el botón "Marcar todo" de temporada (confirmación contando episodios sin estrenar), y también cubre el badge "Aún no estrenado" cuando TMDB no devuelve `next_episode_to_air` (campo persistido `nextEpisodeAirDate` + `getNextEpisodeAirInfo`). Ver [adr-023-episode-unreleased-no-date.md](adr-023-episode-unreleased-no-date.md).
+- **Individual episode checkboxes in the series modal**: NOT touched. Manual series have `airDate: null` in all their episodes; applying the control there would break the manual progress flow. The protection of the "next episode" (`isNextEpisodeUnreleased` + `unreleasedConfirmMessage`) covers the main path of series progress with TMDB data.
+- **`js/export-ics.js`**: it already excluded items without a date (`if (!item.releaseDate) continue;`), so it required no changes.
+- **SUPERSEDED by ADR-023**: the reopening of issue #27 (series between seasons with `next_episode_to_air = null`, e.g. "Dune: La Profecía" S2) led to covering what was excluded in the points above. ADR-023 does protect the individual episode checkbox (with the guard `!item.manual`, which preserves the manual-series flow) and the season's "Marcar todo" button (confirmation counting unaired episodes), and also covers the "Aún no estrenado" badge when TMDB does not return `next_episode_to_air` (persisted field `nextEpisodeAirDate` + `getNextEpisodeAirInfo`). See [adr-023-episode-unreleased-no-date.md](adr-023-episode-unreleased-no-date.md).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Bloqueo duro (impedir marcar sin confirmación)**: descartado porque el patrón establecido para fechas futuras era confirmación suave (`window.confirm`) y un bloqueo duro sería inconsistente con él; además, un ítem sin fecha oficial puede estar realmente estrenado, y exigir confirmación (no impedirlo) mantiene la flexibilidad sin perder el aviso.
-- **Tocar los checkboxes de episodios del modal de serie**: descartado porque las series manuales tienen `airDate: null` en todos sus episodios, de modo que el control bloquearía todo el flujo de progreso manual. La protección del próximo episodio cubre la vía principal de avance de una serie sin afectar al caso manual. *(Esta decisión queda ampliada por el ADR-023: la reapertura de la issue #27 añadió el control al checkbox individual y a "Marcar todo" con el guard `!item.manual`, que deja intacto el flujo de las series manuales.)*
-- **No hacer backfill**: descartado porque los ítems existentes (creados antes del fix) sin fecha y sin `awaitingRelease` seguirían marcables sin aviso; la ampliación de `checkForUpdates` los cura de forma progresiva en la comprobación diaria.
+- **Hard block (prevent marking without confirmation)**: rejected because the established pattern for future dates was soft confirmation (`window.confirm`) and a hard block would be inconsistent with it; in addition, an item without an official date may actually be released, and requiring confirmation (not preventing) keeps flexibility without losing the warning.
+- **Touching the episode checkboxes in the series modal**: rejected because manual series have `airDate: null` in all their episodes, so the control would block the whole manual progress flow. Next-episode protection covers the main path of a series' progress without affecting the manual case. *(This decision is expanded by ADR-023: the reopening of issue #27 added the control to the individual checkbox and to "Marcar todo" with the guard `!item.manual`, which leaves the manual-series flow intact.)*
+- **Not doing backfill**: rejected because existing items (created before the fix) without a date and without `awaitingRelease` would remain markable without warning; expanding `checkForUpdates` heals them progressively in the daily check.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **Criterio único y centralizado**: toda la lógica de "no estrenado" y sus mensajes viven en `js/release.js`; el resto de módulos consumen los helpers en lugar de repetir comparaciones de fechas con matices distintos.
-- **Sin avisos que se saltan**: un ítem sin fecha de estreno oficial ya no puede marcarse como visto sin confirmación, igual que uno con fecha futura (películas, series y próximos episodios).
-- **Cobertura de episodios sin fecha**: el badge "Aún no estrenado", la clase CSS de tarjeta y el orden por actividad ahora aplican también cuando `airDate` es `null`.
-- **Auto-cura de datos**: cuando TMDB publique la fecha de un ítem sin ella, la comprobación diaria la rellena, limpia el flag y notifica el estreno sin intervención del usuario.
-- **Textos preexistentes intactos**: los mensajes con fecha son idénticos a los anteriores, por lo que no cambia la experiencia para ítems con fecha futura.
+### Positive
+- **Single, centralized criterion**: all the "not released" logic and its messages live in `js/release.js`; the rest of the modules consume the helpers instead of repeating date comparisons with different nuances.
+- **No warnings that get skipped**: an item without an official release date can no longer be marked as watched without confirmation, just like one with a future date (movies, series and next episodes).
+- **Coverage of dateless episodes**: the "Aún no estrenado" badge, the card CSS class and the activity-based sorting now also apply when `airDate` is `null`.
+- **Self-healing data**: when TMDB publishes the date of an item that lacked one, the daily check fills it in, clears the flag and notifies the release without user intervention.
+- **Pre-existing texts intact**: the messages with a date are identical to the previous ones, so the experience does not change for items with a future date.
 
-### Negativas
-- **Confirmación extra al marcar películas sin fecha**: aunque la película esté realmente estrenada, si TMDB no tiene fecha oficial el usuario verá un `confirm` adicional al marcarla como vista.
-- **Llamada TMDB adicional por día**: la ampliación de `needsCheck` en películas hace que la comprobación diaria consulte la API por cada ítem sin fecha y sin historial de visionado (hasta que el flag `awaitingRelease` quede seteado o TMDB publique la fecha).
+### Negative
+- **Extra confirmation when marking dateless movies**: even if the movie is actually released, if TMDB has no official date the user will see an additional `confirm` when marking it as watched.
+- **Additional TMDB call per day**: expanding `needsCheck` for movies makes the daily check query the API for each item without a date and without watch history (until the `awaitingRelease` flag is set or TMDB publishes the date).
 
-### Neutras
-- **Nuevo módulo `js/release.js`**: es importado por `ui.js`, `quick-actions.js`, `search.js`, `sorting.js`, `modal-handlers.js` y `daily-check.js`. Incluido en `STATIC_ASSETS` de `service-worker.js` para su precacheo estático (consistencia con ADR-019).
-- **Los checkboxes de episodios del modal de serie quedan fuera del control** de "no estrenado" por diseño (series manuales), mientras que la vía principal (próximo episodio) sí queda protegida.
+### Neutral
+- **New module `js/release.js`**: imported by `ui.js`, `quick-actions.js`, `search.js`, `sorting.js`, `modal-handlers.js` and `daily-check.js`. Included in `STATIC_ASSETS` of `service-worker.js` for static precache (consistency with ADR-019).
+- **Series modal episode checkboxes remain outside the "unreleased" control** by design (manual series), while the main path (next episode) is protected.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/release.js` | **Nuevo**: `isUnreleasedDate(dateStr)` (`!dateStr \|\| dateStr > todayISO()`) y `unreleasedConfirmMessage(item)` con mensajes para películas (manual/fecha futura/sin fecha) y series (solo si `nextEpisodeToAir` coincide con `nextEpisode`; con fecha/sin fecha) |
-| `js/search.js` | `handleAdd`: alta de película/serie con `details.<fecha> !== undefined && isUnreleasedDate(...)` para setear `awaitingRelease` (guard contra `{}` de la API) |
-| `js/modal-handlers.js` | `addSagaMovie` y `addFromRecommendation` (ramas movie y tv): mismo criterio `!== undefined && isUnreleasedDate(...)` |
-| `js/ui.js` | Handler de `#btn-add-watch` del modal de película: control ad-hoc sustituido por `unreleasedConfirmMessage` + `window.confirm` |
-| `js/quick-actions.js` | `quickMarkMovie` y `quickMarkTv`: control ad-hoc sustituido por `unreleasedConfirmMessage` + `window.confirm` |
-| `js/sorting.js` | `isNextEpisodeUnreleased`: eliminado `Boolean(airDate)`; ahora usa `isUnreleasedDate(airDate)` (null también ⇒ no estrenado) |
-| `js/daily-check.js` | `checkForUpdates`: `needsCheck` ampliado para películas sin fecha; backfill de `awaitingRelease` para películas y series; nuevo helper `hasAnyWatchedEpisode` con `normalizeEntry` de `tv-progress.js` |
-| `service-worker.js` | `js/release.js` añadido a `STATIC_ASSETS` para precacheo estático |
-| `docs/adr-020-unreleased-without-date.md` | **Nuevo**: este documento |
+| `js/release.js` | **New**: `isUnreleasedDate(dateStr)` (`!dateStr \|\| dateStr > todayISO()`) and `unreleasedConfirmMessage(item)` with messages for movies (manual/future date/no date) and series (only if `nextEpisodeToAir` matches `nextEpisode`; with date/without date) |
+| `js/search.js` | `handleAdd`: movie/series creation with `details.<fecha> !== undefined && isUnreleasedDate(...)` to set `awaitingRelease` (guard against `{}` from the API) |
+| `js/modal-handlers.js` | `addSagaMovie` and `addFromRecommendation` (movie and tv branches): same criterion `!== undefined && isUnreleasedDate(...)` |
+| `js/ui.js` | Handler of `#btn-add-watch` in the movie modal: ad-hoc control replaced by `unreleasedConfirmMessage` + `window.confirm` |
+| `js/quick-actions.js` | `quickMarkMovie` and `quickMarkTv`: ad-hoc control replaced by `unreleasedConfirmMessage` + `window.confirm` |
+| `js/sorting.js` | `isNextEpisodeUnreleased`: removed `Boolean(airDate)`; now uses `isUnreleasedDate(airDate)` (null also ⇒ unreleased) |
+| `js/daily-check.js` | `checkForUpdates`: `needsCheck` expanded for dateless movies; `awaitingRelease` backfill for movies and series; new helper `hasAnyWatchedEpisode` with `normalizeEntry` from `tv-progress.js` |
+| `service-worker.js` | `js/release.js` added to `STATIC_ASSETS` for static precache |
+| `docs/adr-020-unreleased-without-date.md` | **New**: this document |
 
 Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27

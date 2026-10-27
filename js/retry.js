@@ -1,45 +1,45 @@
 // =============================================================
-// Reintento de suscripciones (issue #147).
+// Subscription retry (issue #147).
 //
-// Las suscripciones iniciales de datos (onSnapshot de Firestore)
-// pueden fallar por errores transitorios al entrar en la web (red,
-// conexión con Firestore...). Antes, un fallo dejaba la biblioteca
-// vacía hasta cerrar y volver a abrir la app, porque el callback
-// onError solo mostraba un aviso y nunca se reintentaba.
+// The initial data subscriptions (Firestore onSnapshot) can fail due
+// to transient errors when entering the site (network, connection to
+// Firestore...). Previously, a failure left the library empty until
+// closing and reopening the app, because the onError callback only
+// showed a warning and never retried.
 //
-// subscribeWithRetry() envuelve cualquier suscripción y la vuelve
-// a intentar con espera progresiva (backoff: 1s, 2s, 4s...) hasta
-// un máximo de reintentos. Si el dispositivo está sin conexión,
-// espera al evento "online" en lugar de quemar los reintentos.
-// Devuelve un cancel() estable que limpia la suscripción activa,
-// los temporizadores y el listener de red pendientes.
+// subscribeWithRetry() wraps any subscription and retries it with a
+// progressive wait (backoff: 1s, 2s, 4s...) up to a maximum number of
+// retries. If the device is offline, it waits for the "online" event
+// instead of burning the retries. It returns a stable cancel() that
+// cleans the active subscription, timers and pending network
+// listener.
 //
-// Además, cada intento tiene un watchdog (issue #286): si no llega
-// ningún snapshot con éxito en `initialTimeoutMs`, el intento se
-// trata como fallo transitorio (antes, una suscripción que ni
-// fallaba ni entregaba datos —p. ej. un stream colgado— dejaba el
-// «Cargando…» eterno sin posibilidad de reintento).
+// In addition, each attempt has a watchdog (issue #286): if no
+// successful snapshot arrives within `initialTimeoutMs`, the attempt
+// is treated as a transient failure (before, a subscription that
+// neither failed nor delivered data — e.g. a hung stream — left the
+// eternal «Cargando…» with no chance of retry).
 // =============================================================
 
 /**
- * Envuelve una suscripción con reintento automático.
+ * Wraps a subscription with automatic retry.
  *
  * @param {Object} options
  * @param {(handlers: { onChange: (data: any) => void, onError: (err: any) => void }) => () => void} options.subscribe
- *        Función que crea la suscripción y devuelve su función de cancelación.
- * @param {(data: any) => void} options.onChange  — callback de datos (se llama con cada snapshot con éxito).
- * @param {(err: any) => void} options.onError    — error FINAL tras agotar los reintentos.
- * @param {(attempt: number) => void} [options.onRetrying] — aviso informativo (solo la 1ª vez por episodio de fallo).
- * @param {number} [options.maxRetries = 3]       — reintentos tras el intento inicial (4 intentos en total).
- * @param {number} [options.baseDelayMs = 1000]   — espera base del backoff (baseDelay * 2^(n-1)).
- * @param {boolean} [options.waitForOnline = true]— si el dispositivo está offline, esperar al evento "online"
- *                                                 en vez de gastar los reintentos con temporizadores.
- * @param {number} [options.initialTimeoutMs = 12000] — watchdog del intento (issue #286): si no llega ningún
- *                                                 snapshot con éxito en ese tiempo, el intento se trata como
- *                                                 fallo transitorio y se reintenta con el backoff existente.
- *                                                 Poner 0 desactiva el watchdog.
- * @returns {() => void} cancel() — cancelación estable: anula la suscripción actual, los timers y
- *                                   el listener "online" pendientes. Es seguro llamarla varias veces.
+ *        Function that creates the subscription and returns its cancellation function.
+ * @param {(data: any) => void} options.onChange  — data callback (called with each successful snapshot).
+ * @param {(err: any) => void} options.onError    — FINAL error after retries are exhausted.
+ * @param {(attempt: number) => void} [options.onRetrying] — informational notice (only the 1st time per failure episode).
+ * @param {number} [options.maxRetries = 3]       — retries after the initial attempt (4 attempts in total).
+ * @param {number} [options.baseDelayMs = 1000]   — base backoff wait (baseDelay * 2^(n-1)).
+ * @param {boolean} [options.waitForOnline = true]— if the device is offline, wait for the "online" event
+ *                                                 instead of spending the retries with timers.
+ * @param {number} [options.initialTimeoutMs = 12000] — attempt watchdog (issue #286): if no
+ *                                                 successful snapshot arrives within that time, the attempt is treated
+ *                                                 as a transient failure and retried with the existing backoff.
+ *                                                 Setting 0 disables the watchdog.
+ * @returns {() => void} cancel() — stable cancellation: cancels the current subscription, timers and
+ *                                   the pending "online" listener. It is safe to call it several times.
  */
 export function subscribeWithRetry({
   subscribe,
@@ -66,13 +66,14 @@ export function subscribeWithRetry({
     }
   }
 
-  // Camino común de error: informa (si toca), decide si reintentar
-  // (con backoff) o esperar a estar online, y agota con onError final.
+  // Common error path: inform (if it is due), decide whether to retry
+  // (with backoff) or wait until online, and exhaust with a final onError.
   function handleError(err) {
     if (cancelled || retryTimer) return;
-    // El watchdog solo vigila el intento en curso: si el error real
-    // llega antes que él, se retira para no disparar un onError final
-    // doble cuando el timer del intento ya fallido siga pendiente.
+    // The watchdog only watches the attempt in progress: if the real
+    // error arrives before it, the watchdog is withdrawn to avoid
+    // firing a double final onError while the timer of the already
+    // failed attempt is still pending.
     clearTimeout(watchdogTimer);
     watchdogTimer = null;
 
@@ -81,11 +82,12 @@ export function subscribeWithRetry({
       onRetrying(attempts + 1);
     }
 
-    // Sin conexión: no gastar reintentos con timers. Al volver la red
-    // ("online") se re-suscribe al momento. Se limpia el listener
-    // anterior antes de registrar el nuevo: dos handleError seguidos
-    // estando offline (p. ej. watchdog + error real del stream) no
-    // deben apilar dos listeners "online" idénticos (issue #286).
+    // No connection: do not spend retries with timers. When the
+    // network comes back ("online") it re-subscribes right away. The
+    // previous listener is cleared before registering the new one:
+    // two consecutive handleError calls while offline (e.g. watchdog
+    // + real stream error) must not stack two identical "online"
+    // listeners (issue #286).
     if (waitForOnline && navigator.onLine === false) {
       clearOnlineHandler();
       onlineHandler = retry;
@@ -105,10 +107,11 @@ export function subscribeWithRetry({
 
   function start() {
     if (cancelled) return;
-    // Watchdog del intento (issue #286): si en `initialTimeoutMs` no
-    // llega ningún snapshot con éxito, el intento se trata como fallo
-    // transitorio. Se arma en CADA intento (start) y solo vigila el
-    // primer snapshot de ese intento: el onChange de éxito lo retira.
+    // Attempt watchdog (issue #286): if no successful snapshot arrives
+    // within `initialTimeoutMs`, the attempt is treated as a transient
+    // failure. It is armed on EVERY attempt (start) and only watches
+    // the first snapshot of that attempt: the successful onChange
+    // withdraws it.
     clearTimeout(watchdogTimer);
     watchdogTimer = null;
     if (initialTimeoutMs > 0) {
@@ -119,8 +122,8 @@ export function subscribeWithRetry({
     try {
       currentUnsubscribe = subscribe({
         onChange: (data) => {
-          // Éxito: se resetea el episodio de fallo para que un futuro
-          // error vuelva a avisar y reintentar desde cero.
+          // Success: the failure episode is reset so that a future
+          // error warns and retries from scratch again.
           if (cancelled) return;
           clearTimeout(watchdogTimer);
           watchdogTimer = null;
@@ -131,28 +134,29 @@ export function subscribeWithRetry({
         onError: handleError,
       });
     } catch (err) {
-      // onSnapshot puede lanzar de forma síncrona; se trata igual que
-      // un error asíncrono del listener.
+      // onSnapshot can throw synchronously; it is treated the same as
+      // an async listener error.
       handleError(err);
     }
   }
 
   function retry() {
     if (cancelled) return;
-    // Limpiar el timer ya disparado y el listener "online": si no, el
-    // guard `retryTimer` de handleError bloquearía los reintentos
-    // siguientes (el id del timer disparado sigue siendo truthy) y el
-    // listener dispararía re-suscripciones espurias en cada reconexión.
+    // Clear the already-fired timer and the "online" listener: if not,
+    // the `retryTimer` guard in handleError would block further
+    // retries (the id of the fired timer is still truthy) and the
+    // listener would fire spurious re-subscriptions on every
+    // reconnection.
     clearTimeout(retryTimer);
     retryTimer = null;
-    // Crítico: el watchdog del intento N debe morir aquí. Si no, su
-    // timer dispara a mitad del intento N+1 y provoca un reintento
-    // espurio (el nuevo intento arma su propio watchdog en start()).
+    // Critical: the watchdog of attempt N must die here. Otherwise its
+    // timer fires in the middle of attempt N+1 and causes a spurious
+    // retry (the new attempt arms its own watchdog in start()).
     clearTimeout(watchdogTimer);
     watchdogTimer = null;
     clearOnlineHandler();
-    // Nunca dejar dos suscripciones vivas: cancelar la rota antes de
-    // volver a crear (el unsubscribe de un stream ya muerto es inocuo).
+    // Never leave two live subscriptions: cancel the broken one before
+    // creating again (unsubscribing an already dead stream is harmless).
     if (currentUnsubscribe) {
       currentUnsubscribe();
       currentUnsubscribe = null;

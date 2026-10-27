@@ -1,164 +1,170 @@
-# ADR-067: Ocultar secciones y pestañas desde Ajustes (issue #97)
+# ADR-067: Hiding sections and tabs from Settings (issue #97)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-10
 
-## Contexto
+## Context
 
-La issue #97 pide poder **ocultar secciones** (y pestañas de cada
-sección) desde **Ajustes**. Hoy existe una sola sección —«Ocio», con
-las pestañas Series/Películas/Libros— pero el diseño debe ser
-**extensible a secciones futuras**. Cuando solo queda **una sección
-visible**, la barra lateral de navegación (drawer ☰) pierde sentido y
-se sustituye por un **botón engranaje en la cabecera** que abre
-Ajustes; al volver a haber más de una sección visible, la barra
-lateral reaparece.
+Issue #97 asks to be able to **hide sections** (and each
+section's tabs) from **Settings**. Today there is a single section —«Ocio», with
+the Series/Movies/Books tabs— but the design must be
+**extensible to future sections**. When only **one section
+remains visible**, the navigation sidebar (the ☰ drawer) loses
+its purpose and is replaced by a **gear button in the header**
+that opens Settings; when more than one section becomes visible
+again, the sidebar reappears.
 
-Criterios de aceptación clave: tarjeta «Secciones y pestañas» en
-Ajustes con un interruptor por sección y por pestaña, generados desde
-un registro central; ocultar una pestaña la retira de la barra de
-pestañas y de la vista (la activa cae a la primera visible y las URLs
-que apunten a una oculta se normalizan); guardas (no se puede ocultar
-la última sección ni la última pestaña visible de una sección);
-persistencia en localStorage (`mi-registro-settings`) y sincronización
-con Firestore (preferences) con debounce; correcta visualización en
-los cuatro modos de tema y sin scroll horizontal; manual de usuario
-actualizado.
+Key acceptance criteria: a «Secciones y pestañas» card in
+Settings with a switch per section and per tab, generated from
+a central registry; hiding a tab removes it from the tab bar and
+from the view (the active one falls to the first visible one and URLs
+pointing to a hidden one normalize); guards (the last section cannot
+be hidden nor the last visible tab of a section);
+persistence in localStorage (`mi-registro-settings`) and
+sync with Firestore (preferences) with debounce; correct
+display in the four theme modes and no horizontal scroll; updated
+user manual.
 
-## Decisión
+## Decision
 
-Registro central de secciones/pestañas en `js/settings.js`
-(`SECTION_REGISTRY`) como **única fuente de verdad**: añadir una
-sección futura solo requiere añadir una entrada
-(`{ id: { label, tabs } }`, con `panelId` por pestaña). Los estados
-viven en `DEFAULT_SETTINGS.visibleSections` / `visibleTabs` y se
-sanean al cargar con `sanitizeVisibility` (invariantes: nunca 0
-secciones ni 0 pestañas de una sección; claves fuera del registro se
-ignoran). El resto de módulos consume helpers de solo lectura
-(`isSectionVisible`, `countVisibleSections`, `normalizeTabKey`, …)
-que leen `loadSettings()` fresco en cada llamada.
+A central sections/tabs registry in `js/settings.js`
+(`SECTION_REGISTRY`) as the **single source of truth**: adding a
+future section only requires adding an entry
+(`{ id: { label, tabs } }`, with a `panelId` per tab). The states
+live in `DEFAULT_SETTINGS.visibleSections` / `visibleTabs` and are
+sanitized on load with `sanitizeVisibility` (invariants: never 0
+sections nor 0 tabs of a section; keys outside the registry are
+ignored). The rest of the modules consume read-only
+helpers (`isSectionVisible`, `countVisibleSections`, `normalizeTabKey`, …)
+that read a fresh `loadSettings()` on every call.
 
-### 1. Registro central y helpers (`js/settings.js`)
+### 1. Central registry and helpers (`js/settings.js`)
 
-- `SECTION_REGISTRY` exportado, con el orden de claves = orden de la
-  barra lateral y de la «primera visible».
-- Helpers exportados: `isSectionVisible(id)`,
+- `SECTION_REGISTRY` exported, with the keys' order = the
+  sidebar's order and the "first visible" one.
+- Exported helpers: `isSectionVisible(id)`,
   `getVisibleSectionIds()`, `countVisibleSections()`,
   `isTabVisible(key)`, `getFirstVisibleTabKey(sectionId)`,
-  `getFirstVisibleTabPanel(sectionId)` y
-  `normalizeTabKey(sectionId, key)` (clave → primera visible si la
-  pedida está oculta).
-- `sanitizeVisibility(settings)` al final de `loadSettings()`: si
-  ninguna sección está visible se activan todas; si una sección se
-  quedó sin pestañas visibles se activan todas sus pestañas; las
-  claves no registradas se descartan (tolerante). Se aplica también
-  en el retorno sin localStorage.
-- `scheduleFirestoreSync` guarda `preferences` con
+  `getFirstVisibleTabPanel(sectionId)` and
+  `normalizeTabKey(sectionId, key)` (key → the first visible
+  one if the requested one is hidden).
+- `sanitizeVisibility(settings)` at the end of `loadSettings()`: if
+  no section is visible all are enabled; if a section
+  was left with no visible tabs all its tabs are enabled; keys
+  not in the registry are discarded (tolerant). It is also applied
+  on the no-localStorage return.
+- `scheduleFirestoreSync` stores `preferences` with
   `notifications` + `visibleSections` + `visibleTabs`.
 
-### 2. Card «Secciones y pestañas» en Ajustes
+### 2. The «Secciones y pestañas» card in Settings
 
-- `renderSettings(ctx)` llama a `renderSectionsCard(settings)`, que
-  pinta en `#sections-visibility-list` (HTML estático en index.html,
-  entre las cards «Apariencia» y «Notificaciones») una fila por
-  sección (`.settings-row` con `label.settings-row__text` + switch
-  `data-vis-section`) y sus pestañas anidadas en `.settings-group`
-  (switch `data-vis-tab` + id
+- `renderSettings(ctx)` calls `renderSectionsCard(settings)`, which
+  paints in `#sections-visibility-list` (static HTML in index.html,
+  between the «Apariencia» and «Notificaciones» cards) one row per
+  section (`.settings-row` with `label.settings-row__text` + a switch
+  `data-vis-section`) and its tabs nested in `.settings-group`
+  (a switch `data-vis-tab` + an id
   `tab-visible-<sectionId>-<tabKey>`).
-- **Guardas**: el switch de la única sección visible queda
-  `disabled` con la nota «No puedes ocultar la última sección
-  visible.»; el de la última pestaña visible de una sección, con
-  «No puedes ocultar la última pestaña visible de <Label>.». La
-  defensa en profundidad en el handler (`wireVisibilityToggles`)
-  revierte el cambio si, aun así, quedaran 0 secciones o 0 pestañas
-  de la sección afectada.
-- El wiring es **delegación de `change`** sobre el contenedor: los
-  checks se re-renderizan tras cada cambio pero el listener se
-  registra una sola vez.
-- CSS mínimo con variables existentes: `opacity` + `cursor` para
-  switches deshabilitados y sangría con borde `--paper-line` para el
-  grupo de pestañas (válido en los cuatro temas sin overrides).
+- **Guards**: the single visible section's switch is
+  `disabled` with the note «No puedes ocultar la última sección
+  visible.»; the last visible tab of a section's, with
+  «No puedes ocultar la última pestaña visible de <Label>.». Defense
+  in depth in the handler (`wireVisibilityToggles`)
+  reverts the change if, despite that, 0 sections or 0 tabs
+  of the affected section were left.
+- The wiring is a **delegated `change`** on the container: the
+  checks re-render after every change but the listener is
+  registered only once.
+- Minimal CSS with existing variables: `opacity` + `cursor` for
+  disabled switches and an indent with a `--paper-line` border for the
+  tabs' group (valid in the four themes with no overrides).
 
-### 3. Retirada de pestañas de la barra y de la vista (`js/app.js`)
+### 3. Tab removal from the bar and the view (`js/app.js`)
 
-- `applyTabVisibility()`: añade/retira `hidden` a las pestañas
-  (`.tab[data-panel=…]`) y a los paneles según `isTabVisible`. Las
-  suscripciones y cargas de datos siguen activas.
-- Guard al inicio de `activatePanel`: si la pestaña pedida está
-  oculta, cae a `getFirstVisibleTabPanel("ocio")` y **normaliza el
-  hash in-place con `history.replaceState`** (sin `router.navigate`
-  ni `location.hash`: no dispara hashchange y evita bucles). No usa
-  `router` a propósito: en la carga inicial `onRoute` se ejecuta
-  dentro de `initRouter()`, antes de que la `const router` esté
-  asignada (TDZ), así que la normalización es directa sobre la URL.
-- Consumidores que navegan a una pestaña usan `normalizeTabKey`:
-  entrada «Ocio» de la sidebar (`onGoOcio`) y vuelta del perfil
-  (`btn-close-profile` en profile.js).
+- `applyTabVisibility()`: adds/removes `hidden` on the tabs
+  (`.tab[data-panel=…]`) and the panels per `isTabVisible`. The
+  subscriptions and data loads stay active.
+- A guard at `activatePanel`'s start: if the requested tab is
+  hidden, it falls to `getFirstVisibleTabPanel("ocio")` and
+  **normalizes the hash in-place with `history.replaceState`**
+  (no `router.navigate` nor `location.hash`: it does not fire
+  hashchange and avoids loops). It deliberately does not use
+  `router`: on the initial load `onRoute` runs
+  inside `initRouter()`, before the `const router` is
+  assigned (TDZ), so the normalization is done directly on the
+  URL.
+- Consumers navigating to a tab use `normalizeTabKey`:
+  the sidebar's «Ocio» entry (`onGoOcio`) and the profile's return
+  (`btn-close-profile` in profile.js).
 
-### 4. Barra lateral ☰ ↔ engranaje ⚙ (`js/sidebar.js` + index.html)
+### 4. Sidebar ☰ ↔ gear ⚙ (`js/sidebar.js` + index.html)
 
-- `setupSidebar` recibe el predicado `isSectionVisible` por
-  **inyección** (sidebar.js no importa settings.js: sin ciclos);
-  registra el clic del nuevo `#btn-header-settings` (HTML estático en
-  `.app-header__top`, junto al toggle ☰, con la clase `hidden` por
-  defecto) que abre Ajustes (mismo callback que la entrada pinned).
-- Nuevo export `renderSidebar()`: re-render de nav (solo secciones
-  visibles) y footer (pinned, sin filtro) más
-  `updateHeaderNavButtons()`, que muestra ☰ o ⚙ según
-  `countVisibleSections() <= 1`. Si el drawer está abierto y se queda
-  sin secciones, se cierra antes. `setupSidebar` llama a
-  `renderSidebar()` al final (estado inicial).
-- `app.js` conecta el refresco: `setupSettings(ctx,
+- `setupSidebar` receives the `isSectionVisible` predicate by
+  **injection** (sidebar.js does not import settings.js: no cycles);
+  it registers the click of the new `#btn-header-settings` (static
+  HTML in `.app-header__top`, next to the ☰ toggle, with the
+  `hidden` class by default) that opens Settings (the same callback as
+  the pinned entry).
+- New export `renderSidebar()`: a nav re-render (only visible
+  sections) and footer (pinned, unfiltered) plus
+  `updateHeaderNavButtons()`, which shows ☰ or ⚙ depending on
+  `countVisibleSections() <= 1`. If the drawer is open and left with no
+  sections, it closes first. `setupSidebar` calls
+  `renderSidebar()` at the end (initial state).
+- `app.js` wires the refresh: `setupSettings(ctx,
   { onVisibilityChange: refreshNavigation })` →
-  `applyTabVisibility()` + `renderSidebar()`, y llama
-  `applyTabVisibility()` una vez tras el arranque.
+  `applyTabVisibility()` + `renderSidebar()`, and calls
+  `applyTabVisibility()` once after startup.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Guardar el estado de visibilidad por separado (otra clave de
-  localStorage o campo Firestore distinto)**: se descarta por
-  coherencia con las notificaciones (todo en `preferences`) y para
-  que el backup/restore existente lo incluya sin cambios.
-- **Ocultar secciones/pestañas solo en memoria (sin persistencia)**:
-  la preferencia se perdería en cada recarga; el criterio de
-  aceptación exige persistencia y sincronización.
-- **Reutilizar `router.navigate` en el guard de `activatePanel`**:
-  descartado por el TDZ de la carga inicial (ver decisión 3); además
-  dispararía `hashchange` y recompondría la ruta.
-- **Filtering por sección en el footer del drawer**: «Ajustes» es
-  pinned y siempre necesaria (sobre todo con el ⚙ solo visible cuando
-  hay una única sección), así que el filtro de visibilidad solo se
-  aplica a las entradas no pinned del nav.
+- **Storing the visibility state separately (another
+  localStorage key or a different Firestore field)**: rejected for
+  coherence with notifications (everything in `preferences`) and so
+  the existing backup/restore includes it unchanged.
+- **Hiding sections/tabs only in memory (without persistence)**:
+  the preference would be lost on every reload; the acceptance
+  criterion requires persistence and sync.
+- **Reusing `router.navigate` in `activatePanel`'s guard**:
+  rejected due to the initial load's TDZ (see decision 3); it would
+  also fire `hashchange` and re-frame the route.
+- **Filtering by section in the drawer's footer**: «Ajustes» is
+  pinned and always needed (especially with the ⚙ only visible when
+  there is a single section), so the visibility filter only applies
+  to the nav's non-pinned entries.
 
-## Consecuencias
+## Consequences
 
-- La web permite ocultar secciones y pestañas desde Ajustes; la
-  barra lateral se sustituye por el engranaje de la cabecera con una
-  sola sección visible y reaparece al tener más de una.
-- Añadir una sección futura es solo registrar una entrada en
-  `SECTION_REGISTRY` (y su panel/tabs en HTML): barra lateral,
-  tarjeta de Ajustes, guardas y normalización de URL se adaptan solos.
-- `sidebar.js` sigue sin importar settings.js (predicado inyectado);
-  `settings.js` sigue sin importar sidebar/app/router.
-- El manual de usuario documenta la nueva funcionalidad (secciones 3
-  y 14). Versión PWA incrementada a `20260839`
+- The web allows hiding sections and tabs from Settings; the
+  sidebar is replaced by the header's gear with a
+  single visible section and reappears with more than one.
+- Adding a future section is only registering an entry in
+  `SECTION_REGISTRY` (and its panel/tabs in HTML): the sidebar,
+  the Settings card, the guards and the URL normalization adapt by
+  themselves.
+- `sidebar.js` still does not import settings.js (an injected
+  predicate); `settings.js` still does not import sidebar/app/router.
+- The user manual documents the new feature (sections 3 and 14).
+  PWA version bumped to `20260839`
   (scripts/bump-version.sh).
 
-## Archivos creados/modificados
+## Created/modified files
 
-- `js/settings.js`: registro, helpers, sanitización, card de Ajustes,
-  wire de toggles y sync Firestore extendida.
-- `js/sidebar.js`: predicado inyectado, `renderSidebar`,
+- `js/settings.js`: registry, helpers, sanitization, the Settings
+  card, the toggles' wiring and the extended Firestore sync.
+- `js/sidebar.js`: injected predicate, `renderSidebar`,
   `#btn-header-settings` wiring.
-- `js/app.js`: `applyTabVisibility`, guard de `activatePanel`,
-  `refreshNavigation`, imports y wiring.
-- `js/profile.js`: `normalizeTabKey` en la vuelta del perfil.
-- `index.html`: botón ⚙ en la cabecera y card «Secciones y pestañas».
-- `css/styles.css`: guardas y `.settings-group`.
-- `js/config.js`, `service-worker.js`, `index.html`: bump a 20260839.
-- `docs/manual-de-usuario.md`: secciones 3 y 14.
+- `js/app.js`: `applyTabVisibility`, `activatePanel`'s guard,
+  `refreshNavigation`, imports and wiring.
+- `js/profile.js`: `normalizeTabKey` on the profile's return.
+- `index.html`: the header's ⚙ button and the «Secciones y
+  pestañas» card.
+- `css/styles.css`: guards and `.settings-group`.
+- `js/config.js`, `service-worker.js`, `index.html`: bump to
+  20260839.
+- `docs/manual-de-usuario.md`: sections 3 and 14.
 
 Related issue: #97 — https://github.com/gonzalitojh/Registro-personal/issues/97

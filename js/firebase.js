@@ -1,7 +1,7 @@
 // =============================================================
-// Inicialización de Firebase (Auth + Firestore).
-// Se importa el SDK modular directamente desde el CDN de Google:
-// no hace falta npm ni ningún paso de compilación.
+// Firebase initialization (Auth + Firestore).
+// The modular SDK is imported directly from Google's CDN:
+// no npm or build step needed.
 // =============================================================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
@@ -50,8 +50,8 @@ export function watchAuthState(callback) {
   return onAuthStateChanged(auth, callback);
 }
 
-// Re-exportamos las funciones de Firestore que necesita db.js,
-// para que solo este archivo conozca las URLs del CDN.
+// Re-export the Firestore functions that db.js needs,
+// so only this file knows the CDN URLs.
 export {
   collection,
   doc,

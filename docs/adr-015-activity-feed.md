@@ -1,177 +1,165 @@
-# ADR-015: Feed de actividad de amigos
+# ADR-015: Friend activity feed
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Contexto
-La aplicación ya contaba con una sección de "Amigos" donde se podía ver
-el perfil, las estadísticas y la biblioteca detallada de cada amigo
-(películas, series y libros de forma individual). Sin embargo, no había
-una vista consolidada y cronológica que permitiera al usuario enterarse
-de forma rápida de qué están haciendo sus amigos: qué películas han
-visto, qué series han empezado o completado, y qué libros están leyendo
-o han terminado.
+## Context
+The application already had a "Friends" section where it was possible to
+view the profile, statistics and detailed library of each friend (movies,
+series and books individually). However, there was no consolidated,
+chronological view that allowed the user to quickly find out what their
+friends are doing: which movies they watched, which series they started or
+completed, and which books they are reading or finished.
 
-Para obtener esta información, el usuario tenía que abrir manualmente la
-ficha de cada amigo y examinar su biblioteca, lo cual era tedioso e
-impedía tener una visión general de la actividad reciente. Además, la
-aplicación ya disponía de un toggle de notificaciones "Actividad de
-amigos" en los ajustes, pero no existía el feed correspondiente que
-mostrara dicha actividad.
+To obtain this information, the user had to manually open each friend's
+profile and browse their library, which was tedious and prevented having
+an overview of recent activity. In addition, the application already had
+an "Actividad de amigos" notification toggle in the settings, but the
+corresponding feed showing this activity did not exist.
 
-## Decisión
-Implementar un **feed de actividad de amigos** que agregue las acciones
-recientes de todos los amigos del usuario, ordenadas cronológicamente
-de más reciente a más antiguo, y lo muestre en una nueva sección
-"Actividad" dentro de la vista de perfil.
+## Decision
+Implement a **friend activity feed** that aggregates the recent actions of
+all the user's friends, ordered chronologically from most recent to oldest,
+and shows it in a new "Actividad" section inside the profile view.
 
-### Arquitectura del feed
+### Feed architecture
 
-Se crea un nuevo módulo independiente (`js/activity-feed.js`) que
-genera eventos de actividad a partir de los datos existentes de cada
-amigo (películas, series y libros). El feed es **generado
-exclusivamente del lado del cliente**: no se crean colecciones nuevas
-en Firestore ni se persisten eventos. Cada vez que el usuario accede a
-la pestaña de actividad, se leen los datos actuales de todos los amigos
-y se reconstruye el feed en tiempo real.
+A new standalone module (`js/activity-feed.js`) generates activity events
+from the existing data of each friend (movies, series and books). The feed
+is **generated exclusively on the client side**: no new collections are
+created in Firestore and no events are persisted. Each time the user
+accesses the activity tab, the current data of all friends is read and the
+feed is rebuilt in real time.
 
-### Flujo de datos
+### Data flow
 
 ```
 Usuario hace clic en pestaña "Actividad"
   → profile.js: loadActivityFeed()
-    → Obtiene perfiles de todos los usuarios
-    → Filtra para excluir al usuario actual
-    → Para cada amigo, carga en paralelo: movies, series, books
+    → Gets the profiles of all the
+      users
+    → Filters to exclude the current user
+    → For each friend, loads in parallel: movies, series, books
     → activity-feed.js: buildGlobalFeed(friendsData)
-      → Por cada amigo: buildFriendFeed(name, movies, series, books)
-        → Genera eventos según el contenido de cada categoría
-      → Combina y ordena por fecha descendente
+      → Per friend: buildFriendFeed(name, movies, series, books)
+        → Generates events according to each category's content
+      → Combines and sorts by desc date
     → ui.js: renderActivityFeed(container, events, onItemClick)
-      → Agrupa eventos por fecha ("Hoy", "Ayer", "DD de Mes, AAAA")
-      → Renderiza tarjetas con portada, nombre, acción y título
-      → Cada evento es cliqueable → modal de solo lectura
+      → Groups the events by date ("Hoy", "Ayer", "DD de Mes, AAAA")
+      → Renders cards with a cover, a name, an action and a title
+      → Each event is clickable → a read-only modal
 ```
 
-### Tipos de eventos detectados
+### Detected event types
 
-| Evento                   | Constante             | Label                  | Condición de disparo                                     |
+| Event                    | Constant              | Label                  | Trigger condition                                        |
 |--------------------------|-----------------------|------------------------|----------------------------------------------------------|
-| Película vista           | `MOVIE_WATCHED`       | "Vio la película"      | Entrada en `watchLog`, o `status === "completado"`       |
-| Serie empezada           | `SERIES_STARTED`      | "Empezó la serie"      | Un único episodio con fecha (serie no completada)        |
-| Serie completada         | `SERIES_COMPLETED`    | "Completó la serie"    | `status === "completado"` (desde watched o lastWatchedAt)|
-| Episodios vistos         | `SERIES_EPISODES`     | "Vio episodios de"     | Múltiples episodios con fecha (serie en curso)           |
-| Libro empezado           | `BOOK_STARTED`        | "Está leyendo"         | Entrada en `readLog` con `startedAt` sin `finishedAt`    |
-| Libro terminado          | `BOOK_FINISHED`       | "Terminó de leer"      | Entrada en `readLog` con `finishedAt`                    |
+| Movie watched            | `MOVIE_WATCHED`       | "Vio la película"      | Entry in `watchLog`, or `status === "completado"`        |
+| Series started           | `SERIES_STARTED`      | "Empezó la serie"      | A single episode with a date (series not completed)      |
+| Series completed         | `SERIES_COMPLETED`    | "Completó la serie"    | `status === "completado"` (from watched or lastWatchedAt)|
+| Episodes watched         | `SERIES_EPISODES`     | "Vio episodios de"     | Multiple episodes with dates (ongoing series)            |
+| Book started             | `BOOK_STARTED`        | "Está leyendo"         | Entry in `readLog` with `startedAt` and no `finishedAt`  |
+| Book finished            | `BOOK_FINISHED`       | "Terminó de leer"      | Entry in `readLog` with `finishedAt`                     |
 
-### Eventos adicionales (series)
+### Additional events (series)
 
-El módulo también procesa el historial de recompletados (`history`) de
-series, generando eventos adicionales de tipo `SERIES_STARTED` y
-`SERIES_COMPLETED` para cada re-visión registrada. Además, si una serie
-está marcada como completada pero no tiene episodios individuales
-marcados, se usa `lastWatchedAt` o `updatedAt` como fecha de
-referencia.
+The module also processes the series re-watches history (`history`),
+generating additional `SERIES_STARTED` and `SERIES_COMPLETED` events for
+each re-watch recorded. In addition, if a series is marked as completed
+but has no individually marked episodes, `lastWatchedAt` or `updatedAt`
+is used as the reference date.
 
-### Integración en la UI
+### UI integration
 
-- **Nueva pestaña "Actividad"** en la barra de subpestañas del perfil
-  (junto a Estadísticas, Amigos, Datos y Ajustes).
-- **Contenedor** `#profile-section-activity` con un área de carga
-  (`#activity-feed-loading`) y un contenedor de eventos
+- **New "Actividad" tab** in the profile sub-tab bar (alongside
+  Statistics, Friends, Data and Settings).
+- **Container** `#profile-section-activity` with a loading area
+  (`#activity-feed-loading`) and an events container
   (`#activity-feed-container`).
-- **Estados vacíos**: mensaje "Todavía no hay actividad reciente de tus
-  amigos." cuando no hay eventos, y "No se pudo cargar la actividad de
-  amigos." en caso de error.
-- **Agrupación por fecha**: los eventos se agrupan bajo encabezados
-  "Hoy", "Ayer" o la fecha completa (ej. "15 de Julio, 2026").
-- **Cada evento muestra**: portada del contenido, nombre del amigo (en
-  negrita), acción realizada, título del contenido (en cursiva) y un
-  icono representativo. Al hacer clic se abre un modal de solo lectura
-  con los detalles del ítem.
-- **Carga paralela**: los datos de cada amigo se obtienen con
-  `Promise.all`, minimizando el tiempo de espera.
+- **Empty states**: message "Todavía no hay actividad reciente de tus
+  amigos." when there are no events, and "No se pudo cargar la actividad
+  de amigos." in case of error.
+- **Date grouping**: events are grouped under headers "Hoy", "Ayer" or
+  the full date (e.g. "15 de Julio, 2026").
+- **Each event shows**: content cover, friend name (in bold), action
+  performed, content title (in italics) and a representative icon. When
+  clicked, a read-only modal opens with the item's details.
+- **Parallel loading**: each friend's data is fetched with `Promise.all`,
+  minimizing waiting time.
 
-### Implementación técnica
+### Technical implementation
 
-- **Módulo nuevo**: `js/activity-feed.js` (233 líneas) con dos
-  exportaciones principales:
-  - `buildFriendFeed(friendName, movies, series, books)` → eventos de
-    un amigo.
-  - `buildGlobalFeed(friendsData)` → eventos combinados y ordenados
-    globalmente.
-- **Helper interno**: `maybePushDateEvent(events, date, type, label,
-  friendName, item, detail)` que valida y convierte fechas (soporta
-  strings ISO, Timestamp de Firestore con `.toDate()`, y objetos con
-  `.seconds`) antes de añadir el evento.
-- **Íconos por tipo**: definidos en `ui.js` con `eventIcon()`: 🎬
-  (película), 📺 (serie), 🏁 (serie completada), 📖 (leyendo), 📚
-  (terminado).
-- **Lógica de fechas**: la función `formatDateLabel()` produce etiquetas
-  "Hoy", "Ayer" o "DD de Mes, AAAA" para agrupar visualmente los
-  eventos.
+- **New module**: `js/activity-feed.js` (233 lines) with two main exports:
+  - `buildFriendFeed(friendName, movies, series, books)` → events for a
+    friend.
+  - `buildGlobalFeed(friendsData)` → events combined and sorted globally.
+- **Internal helper**: `maybePushDateEvent(events, date, type, label,
+  friendName, item, detail)` which validates and converts dates (supports
+  ISO strings, Firestore Timestamp with `.toDate()`, and objects with
+  `.seconds`) before adding the event.
+- **Icons per type**: defined in `ui.js` with `eventIcon()`: 🎬 (movie),
+  📺 (series), 🏁 (completed series), 📖 (reading), 📚 (finished).
+- **Date logic**: the `formatDateLabel()` function produces "Hoy", "Ayer"
+  or "DD de Mes, AAAA" labels to visually group events.
 
-## Alternativas consideradas
+## Alternatives considered
 
-- **Feed persistido en Firestore**: Almacenar eventos en una colección
-  `/activity/{eventId}` cada vez que un usuario realiza una acción.
-  Descartado porque:
-  - Requiere escrituras adicionales en cada acción del usuario,
-    aumentando el costo de Firestore.
-  - Los eventos existentes no tendrían este registro, por lo que
-    igualmente habría que migrarlos o generarlos client-side.
-  - Complejidad añadida para mantener la consistencia (ej. acciones
-    deshechas, ediciones de fecha).
-- **Notificaciones push como feed**: Usar el sistema de notificaciones
-  existente para doblar como feed histórico. Descartado porque las
-  notificaciones tienen un propósito diferente (avisos puntuales, no
-  un registro cronológico completo).
+- **Feed persisted in Firestore**: Storing events in an
+  `/activity/{eventId}` collection each time a user performs an action.
+  Rejected because:
+  - It requires additional writes on every user action, increasing the
+    cost of Firestore.
+  - Existing events would not have this record, so they would also have to
+    be migrated or generated client-side.
+  - Added complexity to maintain consistency (e.g. undone actions, date
+    edits).
+- **Push notifications as feed**: Using the existing notification system
+  to double as a historical feed. Rejected because notifications have a
+  different purpose (one-off alerts, not a complete chronological log).
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- Los usuarios pueden ver de un vistazo la actividad reciente de todos
-  sus amigos, ordenada cronológicamente.
-- No requiere cambios en el modelo de datos de Firestore ni en las
-  reglas de seguridad.
-- Reutiliza el sistema existente de carga de datos de amigos y el modal
-  de solo lectura, minimizando el nuevo código.
-- Los eventos se generan siempre con los datos más actualizados (no hay
-  lag de sincronización).
-- La carga en paralelo de los datos de cada amigo ofrece un rendimiento
-  aceptable incluso con varios amigos.
+### Positive
+- Users can see at a glance the recent activity of all their friends,
+  ordered chronologically.
+- No changes to the Firestore data model or security rules are required.
+- Reuses the existing friend data loading system and the read-only modal,
+  minimizing new code.
+- Events are always generated with the most up-to-date data (no
+  synchronization lag).
+- Parallel loading of each friend's data offers acceptable performance
+  even with several friends.
 
-### Negativas
-- El feed se genera completamente en el cliente cada vez que se accede
-  a la pestaña, lo que puede ser lento para usuarios con muchos amigos
-  y grandes bibliotecas. No hay caché ni paginación.
-- No hay soporte para "carga infinita" o "ver más": todos los eventos
-  se renderizan a la vez, lo que podría degradar el rendimiento en
-  pantalla con muchos eventos.
-- Los eventos desaparecen si el amigo elimina o modifica el ítem (por
-  diseño, ya que se genera en tiempo real), pero esto puede resultar
-  confuso si un evento desaparece del feed sin aviso.
-- Dependencia de que los datos de los amigos tengan fechas bien
-  formadas: los eventos sin fecha se omiten silenciosamente.
-- Los nombres de los amigos se resuelven a partir del perfil en el
-  momento de la carga; si un amigo cambia su nombre, los eventos
-  anteriores aparecerán con el nombre nuevo.
+### Negative
+- The feed is generated entirely on the client each time the tab is
+  accessed, which can be slow for users with many friends and large
+  libraries. There is no cache or pagination.
+- No support for "infinite loading" or "see more": all events are
+  rendered at once, which could degrade on-screen performance with many
+  events.
+- Events disappear if the friend deletes or modifies the item (by design,
+  since it is generated in real time), but this can be confusing if an
+  event disappears from the feed without warning.
+- Dependency on friend data having well-formed dates: undated events are
+  silently omitted.
+- Friend names are resolved from the profile at load time; if a friend
+  changes their name, earlier events will appear with the new name.
 
-### Neutras
-- El feed incluye al usuario actual si aparece en la lista de perfiles
-  (se filtra por UID, no por relación de amistad explícita, ya que la
-  app no implementa un sistema de amistad formal — todos los usuarios
-  registrados son visibles entre sí).
-- Los eventos de series tienen un tratamiento más complejo que los de
-  películas y libros, debido a la naturaleza episódica del progreso.
+### Neutral
+- The feed includes the current user if they appear in the profile list
+  (filtered by UID, not by an explicit friendship relation, since the app
+  does not implement a formal friendship system — all registered users
+  are visible to each other).
+- Series events have a more complex treatment than movie and book events
+  due to the episodic nature of the progress.
 
-## Archivos creados/modificados
-- `js/activity-feed.js` — Nuevo módulo generador del feed (233 líneas).
-- `js/profile.js` — Integración: nueva pestaña "Actividad", función
-  `loadActivityFeed()`, importación de `buildGlobalFeed`.
-- `js/ui.js` — Añadidas `renderActivityFeed()`, `formatDateLabel()`,
-  `eventIcon()` y constante `PLACEHOLDER_COVER_SMALL`.
-- `index.html` — Añadido `#profile-section-activity` con contenedor de
-  feed y estado de carga.
-- `css/styles.css` — Añadidos estilos para `.activity-feed`,
-  `.activity-group`, `.activity-event` y sus variantes.
+## Created/modified files
+- `js/activity-feed.js` — New feed generation module (233 lines).
+- `js/profile.js` — Integration: new "Actividad" tab, `loadActivityFeed()`
+  function, import of `buildGlobalFeed`.
+- `js/ui.js` — Added `renderActivityFeed()`, `formatDateLabel()`,
+  `eventIcon()` and constant `PLACEHOLDER_COVER_SMALL`.
+- `index.html` — Added `#profile-section-activity` with the feed container
+  and loading state.
+- `css/styles.css` — Added styles for `.activity-feed`, `.activity-group`,
+  `.activity-event` and their variants.

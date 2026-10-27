@@ -1,21 +1,21 @@
 /* =========================================================
-   MI REGISTRO — hoja de estilos base (armazón de la app)
-   Variables de color/tipografía, pantalla de acceso, cabecera,
-   pestañas, modal (el armazón, no su contenido), pie, perfil,
-   estadísticas, amigos y notificaciones.
-   El contenido específico de cada sección (hoy, "ocio": pelis,
-   series y libros) vive en su propia carpeta con su propio CSS,
-   por ejemplo ocio/ocio.css.
+   MI REGISTRO — base stylesheet (app shell)
+   Color/typography variables, sign-in screen, header,
+   tabs, modal (the shell, not its contents), footer, profile,
+   statistics, friends and notifications.
+   The specific content of each section (currently "ocio": movies,
+   series and books) lives in its own folder with its own CSS,
+   e.g. ocio/ocio.css.
    ========================================================= */
 
 /* =========================================================
-   MI REGISTRO — hoja de estilos
-   Concepto: cuaderno de fichas de biblioteca + entradas de cine
-   sobre un fondo de "mesa de lectura" oscura.
+   MI REGISTRO — stylesheet
+   Concept: a library card-catalog notebook + cinema entries
+   over a dark "reading desk" background.
    ========================================================= */
 
 :root {
-  /* Paleta — modo oscuro (por defecto) */
+  /* Palette — dark mode (default) */
   --ink: #171512;
   --ink-raised: #211e19;
   --ink-soft: #948a76;
@@ -31,18 +31,18 @@
   --games: #7a5a9e;
   --games-dark: #5d4780;
 
-  /* Neutros */
+  /* Neutrals */
   --white: #ffffff;
   --backdrop: rgba(10, 9, 7, 0.65);
 
-  /* Opacidades de ink (fondo oscuro) */
+  /* Ink opacities (dark background) */
   --ink-alpha-06: rgba(23, 21, 18, 0.06);
   --ink-alpha-08: rgba(23, 21, 18, 0.08);
   --ink-alpha-10: rgba(23, 21, 18, 0.10);
   --ink-alpha-15: rgba(23, 21, 18, 0.15);
   --ink-alpha-20: rgba(23, 21, 18, 0.20);
 
-  /* Opacidades de paper (fondo claro) */
+  /* Paper opacities (light background) */
   --paper-alpha-10: rgba(241, 234, 217, 0.10);
   --paper-alpha-14: rgba(241, 234, 217, 0.14);
   --paper-alpha-20: rgba(241, 234, 217, 0.20);
@@ -51,7 +51,7 @@
   --paper-alpha-40: rgba(241, 234, 217, 0.40);
   --paper-alpha-92: rgba(241, 234, 217, 0.92);
 
-  /* Opacidades de acentos */
+  /* Accent opacities */
   --teal-alpha-06: rgba(43, 100, 89, 0.06);
   --teal-alpha-18: rgba(43, 100, 89, 0.18);
   --ochre-alpha-08: rgba(185, 130, 46, 0.08);
@@ -59,16 +59,16 @@
   --ochre-alpha-14: rgba(185, 130, 46, 0.14);
   --stamp-alpha-12: rgba(166, 59, 46, 0.12);
 
-  /* Fondos de estado para tarjetas (compartidos por ambos temas) */
+  /* Status backgrounds for cards (shared by both themes) */
   --bg-state-en_curso: #c3ddd6;
   --bg-state-completado: #f0d9a3;
   --bg-state-standby: #d9d2c0;
   --bg-state-abandonado: #f0c2b8;
 
-  /* Filtros para el icono del date picker */
+  /* Filters for the date picker icon */
   --date-picker-filter: invert(1);
 
-  /* Tipografía */
+  /* Typography */
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", "Courier New", monospace;
@@ -79,22 +79,21 @@
 }
 
 /* =========================================================
-   NEGRO PURO (issues #43 y #165)
-   Delta block sobre :root ampliado en la issue #165: además
-   del fondo en negro absoluto, TODAS las superficies de la
-   familia oscura (tarjetas, secciones, dropdowns, modales,
-   entradas, estados) pasan a negro/near-black y la tinta a
-   papel, para que el modo concuerde con el tema igual que
-   el blanco puro con la familia clara. Las superficies que
-   usan --paper como fondo requieren los overrides de la
-   sección "AJUSTES PUNTUALES DEL TEMA — MODO NEGRO PURO"
-   más abajo (mismo patrón de selectores agrupados que la
-   familia clara).
-   Contraste (sobre #000/#0a0a0a): --paper #f1ead9 ≈ 17.5:1
-   (AAA); --ink-soft #948a76 ≈ 6.2:1 (AA); acentos claros
+   PURE BLACK (issues #43 and #165)
+   Delta block over the :root expanded in issue #165: besides
+   the absolute black background, ALL surfaces of the dark
+   family (cards, sections, dropdowns, modals, inputs, status
+   states) become black/near-black and the ink becomes paper,
+   so the mode matches the theme just like pure white does
+   with the light family. Surfaces using --paper as background
+   require the overrides in the section "THEME POINT ADJUSTMENTS
+   — PURE BLACK MODE" further below (same grouped-selectors
+   pattern as the light family).
+   Contrast (on #000/#0a0a0a): --paper #f1ead9 ≈ 17.5:1
+   (AAA); --ink-soft #948a76 ≈ 6.2:1 (AA); light accents
    --teal-reel-dark #4f9c8e ≈ 6.6:1, --ochre-spine-dark
    #c99a4e ≈ 8.4:1, --stamp-dark #cf6655 ≈ 4.8:1 (AA);
-   fondos de estado oscuros con texto papel ≈ 10:1 (AAA).
+   dark status backgrounds with paper text ≈ 10:1 (AAA).
    ========================================================= */
 [data-theme="black"] {
   --ink: #000000;
@@ -102,29 +101,26 @@
   --paper-dim: #111111;
   --white: #0f0f0f;
 
-  /* Bordes sutiles claros sobre superficies oscuras */
+  /* Subtle light borders over dark surfaces */
   --paper-line: rgba(241, 234, 217, 0.28);
 
-  /* Tintes de papel (claro translúcido): hovers, focos, líneas
-     divisorias y sombras sobre las superficies ahora oscuras */
+  /* Paper tints (translucent light): hovers, focus, divider lines
+     and shadows over the now-dark surfaces */
   --ink-alpha-06: rgba(241, 234, 217, 0.06);
   --ink-alpha-08: rgba(241, 234, 217, 0.08);
   --ink-alpha-10: rgba(241, 234, 217, 0.10);
   --ink-alpha-15: rgba(241, 234, 217, 0.15);
   --ink-alpha-20: rgba(241, 234, 217, 0.20);
 
-  /* Estados de tarjeta en versión oscura: mismo matiz semántico
-     con fondo oscuro (los sellos de las tarjetas, que se
-     mantienen claros sobre papel, usan los hex originales
-     hardcodeados en los overrides) */
+  /* Card states in dark version: same semantic shade with dark
+     background (the stamps of the cards, which stay light on paper,
+     use the hardcoded original hex values in the overrides) */
   --bg-state-en_curso: #12372f;
   --bg-state-completado: #33291a;
   --bg-state-standby: #26241e;
   --bg-state-abandonado: #3d1f18;
 
-  /* Acentos oscuros → variantes claras legibles sobre las
-     superficies oscuras (los usos sobre fondos claros quedan
-     cubiertos por los overrides de los sellos) */
+  /* Dark accents → light variants legible over the dark surfaces (their uses on light backgrounds are already covered by the stamp overrides) */
   --teal-reel-dark: #4f9c8e;
   --ochre-spine-dark: #c99a4e;
   --stamp-dark: #cf6655;
@@ -132,16 +128,16 @@
 }
 
 /* =========================================================
-   MODO CLARO
+   LIGHT MODE
    ---------------------------------------------------------
-   Semántica de colores (común a ambos modos):
-     --ink   = color de tinta (texto principal) y, en el modo
-               oscuro, fondo general de la app
-     --paper = color de papel (superficies/tarjetas) y, en el
-               modo oscuro, texto principal
-   En modo claro se invierte la relación fondo/texto: el fondo
-   general es claro (--paper-dim) y la tinta oscura (--ink),
-   mientras que las tarjetas siguen siendo blancas (--paper).
+   Color semantics (common to both modes):
+     --ink   = ink color (main text) and, in dark mode,
+              the general background of the app
+     --paper = paper color (surfaces/cards) and, in dark
+              mode, the main text
+   In light mode the background/text relationship is inverted: the general
+   background is light (--paper-dim) and the ink dark (--ink),
+   while cards remain white (--paper).
    ========================================================= */
 [data-theme="light"] {
   --ink: #2c2822;
@@ -162,17 +158,14 @@
   --white: #ffffff;
   --backdrop: rgba(0, 0, 0, 0.25);
 
-  /* Opacidades de ink (tinta oscura): tintes de hover/foco
-     que funcionan sobre las superficies claras */
+  /* Ink opacities (dark ink): hover/focus tints that work over the light surfaces */
   --ink-alpha-06: rgba(44, 40, 34, 0.06);
   --ink-alpha-08: rgba(44, 40, 34, 0.08);
   --ink-alpha-10: rgba(44, 40, 34, 0.10);
   --ink-alpha-15: rgba(44, 40, 34, 0.15);
   --ink-alpha-20: rgba(44, 40, 34, 0.20);
 
-  /* Opacidades de paper: los que se usan como bordes sobre el
-     fondo claro pasan a ser oscuros; el 92% se mantiene blanco
-     porque hace de fondo translúcido de los sellos de las tarjetas */
+  /* Paper opacities: the ones used as borders over the light background become dark; the 92% one stays white because it acts as the translucent background of the card stamps */
   --paper-alpha-10: rgba(255, 255, 255, 0.10);
   --paper-alpha-14: rgba(44, 40, 34, 0.14);
   --paper-alpha-20: rgba(44, 40, 34, 0.20);
@@ -200,16 +193,9 @@
 }
 
 /* =========================================================
-   BLANCO PURO (issue #43)
-   Delta block sobre :root con la paleta de la familia clara
-   llevada al extremo: fondo, tarjetas y superficies en blanco
-   absoluto (#ffffff) y tinta negra pura (#000000). Los
-   elementos que usan --ink como fondo / --paper como texto
-   requieren los mismos overrides que el modo claro: ver la
-   sección "Ajustes puntuales" más abajo, donde cada selector
-   de [data-theme="light"] se repite para [data-theme="white"].
-   Contraste: #000 sobre #fff = 21:1 (AAA); --ink-soft #6b6355
-   sobre #fff ≈ 5.9:1 (AA).
+   PURE WHITE (issue #43)
+   Delta block over :root with the light-family palette taken   to the extreme: background, cards and surfaces in absolute   white (#ffffff) and pure black ink (#000000). The elements   that use --ink as background / --paper as text require the   same overrides as light mode: see the "Point adjustments"   section below, where every [data-theme="light"] selector is   repeated for [data-theme="white"].
+   Contrast: #000 on #fff = 21:1 (AAA); --ink-soft #6b6355 on   #fff ≈ 5.9:1 (AA).
    ========================================================= */
 [data-theme="white"] {
   --ink: #000000;
@@ -221,15 +207,14 @@
 
   --backdrop: rgba(0, 0, 0, 0.25);
 
-  /* Opacidades de ink (negro puro): tintes de hover/foco */
+  /* Ink opacities (pure black): hover/focus tints */
   --ink-alpha-06: rgba(0, 0, 0, 0.06);
   --ink-alpha-08: rgba(0, 0, 0, 0.08);
   --ink-alpha-10: rgba(0, 0, 0, 0.10);
   --ink-alpha-15: rgba(0, 0, 0, 0.15);
   --ink-alpha-20: rgba(0, 0, 0, 0.20);
 
-  /* Opacidades de paper: bordes oscuros sobre fondo blanco;
-     el 10% y el 92% se mantienen blancos (sellos translúcidos) */
+  /* Paper opacities: dark borders over white background;     the 10% and 92% ones stay white (translucent stamps) */
   --paper-alpha-10: rgba(255, 255, 255, 0.10);
   --paper-alpha-14: rgba(0, 0, 0, 0.14);
   --paper-alpha-20: rgba(0, 0, 0, 0.20);
@@ -238,8 +223,7 @@
   --paper-alpha-40: rgba(0, 0, 0, 0.40);
   --paper-alpha-92: rgba(255, 255, 255, 0.92);
 
-  /* Sombra algo más fuerte que en claro: única separación de
-     las tarjetas blancas sobre fondo blanco puro */
+  /* Shadow slightly stronger than in light mode: the only     separation of white cards over a pure white background */
   --date-picker-filter: none;
 
   --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -247,12 +231,11 @@
 }
 
 /* =========================================================
-   AJUSTES PUNTUALES DE TEMA
-   La sección "Ajustes puntuales del modo claro" que sigue lo
-   es también del modo blanco puro: los elementos que usan
-   --ink como fondo (fondo general) o --paper como color de
-   texto necesitan inversión explícita en toda la familia
-   clara (light y white).
+   THEME POINT ADJUSTMENTS
+   The "Point adjustments of light mode" section that follows
+   is also for pure white mode: the elements that use --ink
+   as background (general background) or --paper as text color
+   need explicit inversion across the whole light family   (light and white).
    ========================================================= */
 
 [data-theme="light"] html,
@@ -331,17 +314,14 @@
 [data-theme="white"] .global-search__input {
   color: var(--ink);
 }
-/* El dropdown de resultados y sus ítems usan --paper como fondo y
-   --ink como texto en ambos temas (ver sección Buscador global), así
-   que no necesitan override específico de modo claro. */
+/* The results dropdown and its items use --paper as background and   --ink as text in both themes (see Global search section), so   they don't need a light-mode specific override. */
 
 [data-theme="light"] .activity-event__text,
 [data-theme="white"] .activity-event__text {
   color: var(--ink);
 }
 
-/* En blanco puro el dropdown es blanco y su hover usa --paper-dim
-   (#ffffff), que lo haría invisible: se usa un tinte de tinta */
+/* In pure white the dropdown is white and its hover uses   --paper-dim (= #ffffff), which would make it invisible: an ink tint is used */
 [data-theme="white"] .profile-dropdown__item:hover {
   background: var(--ink-alpha-06);
 }
@@ -352,18 +332,17 @@
 }
 
 /* =========================================================
-   AJUSTES PUNTUALES DEL TEMA — MODO NEGRO PURO (issue #165)
-   La familia oscura usa --paper como superficie (fondo) y
-   --ink como texto sobre ella. En negro puro las superficies
-   pasan a oscuras (--ink-raised) y el texto a papel, igual
-   que la familia clara invierte los mismos papeles al revés
-   (--ink fondo / --paper texto). Selectores agrupados: una
-   sola fuente de verdad por regla, mismo patrón que los
-   overrides de light/white.
+   THEME POINT ADJUSTMENTS — PURE BLACK MODE (issue #165)
+   The dark family uses --paper as surface (background) and
+   --ink as text over it. In pure black the surfaces become
+   dark (--ink-raised) and the text paper, just as the light
+   family inverts the same roles the other way around
+   (--ink background / --paper text). Grouped selectors: a
+   single source of truth per rule, same pattern as the
+   light/white overrides.
    ========================================================= */
 
-/* Superficies de papel → superficies oscuras. Borde sutil:
-   en negro puro las sombras sobre fondo negro no separan. */
+/* Paper surfaces → dark surfaces. Subtle border: in pure   black shadows over a black background don't separate. */
 [data-theme="black"] .skip-link,
 [data-theme="black"] .btn--primary,
 [data-theme="black"] .library-card,
@@ -390,17 +369,17 @@
   border: 1px solid var(--paper-alpha-20);
 }
 
-/* Hover del botón primario: tinte claro sobre la superficie oscura */
+/* Primary button hover: light tint over the dark surface */
 [data-theme="black"] .btn--primary:hover {
   background: var(--paper-alpha-14);
 }
 
-/* Icono de la pestaña activa: seguía a --ink (ahora #000, invisible) */
+/* Active tab icon: followed --ink (now #000, invisible) */
 [data-theme="black"] .tab.is-active svg {
   color: var(--paper);
 }
 
-/* Texto que usaba tinta sobre superficies ahora oscuras */
+/* Text that used ink over now-dark surfaces */
 [data-theme="black"] .app-sidebar__link,
 [data-theme="black"] .app-sidebar__close:hover,
 [data-theme="black"] .modal__close:hover,
@@ -415,13 +394,12 @@
   color: var(--paper);
 }
 
-/* Cierre del modal: tinta suave legible sobre el chip oscuro */
+/* Modal close: soft ink legible over the dark chip */
 [data-theme="black"] .modal__close {
   color: var(--ink-soft);
 }
 
-/* Enlaces y avisos con acento de peligro: variante clara del
-   acento (--stamp-dark pasa a #cf6655 en negro puro) */
+/* Links and alerts with danger accent: light variant of the   accent (--stamp-dark becomes #cf6655 in pure black) */
 [data-theme="black"] .profile-dropdown__item--logout,
 [data-theme="black"] .notif-dropdown__header .btn-link,
 [data-theme="black"] .auth-error,
@@ -429,24 +407,17 @@
 [data-theme="black"] .notif-row__delete:hover {
   color: var(--stamp-dark);
 }
-/* El hover de .btn--danger no se toca: su fondo pasa a --stamp y el
-   texto a --paper (5.33:1), como en el modo oscuro */
+/* .btn--danger hover is not touched: its background becomes   --stamp and the text --paper (5.33:1), as in dark mode */
 
-/* Píldoras y selects del menú (issue #220): en negro puro no hace
-   falta override — --ink-raised es #0a0a0a (fondo casi negro) con
-   texto --paper claro y borde --paper-alpha-30, y el hover usa
-   --paper-alpha-10 (tinte claro sobre negro). La píldora de borrar
-   usa --stamp-dark de la regla de arriba y su hover rellena --stamp. */
+/* Menu pills and selects (issue #220): in pure black no   override is needed — --ink-raised is #0a0a0a (nearly black   background) with light --paper text and --paper-alpha-30   border, and the hover uses --paper-alpha-10 (light tint on   black). The delete pill uses --stamp-dark from the rule above   and its hover fills with --stamp. */
 
-/* Filas de notificación: sobre el dropdown oscuro, un tono distinto
-   y un borde sutil para separarlas */
+/* Notification rows: on the dark dropdown, a different shade   and a subtle border to separate them */
 [data-theme="black"] .notif-row {
   background: var(--ink);
   border: 1px solid var(--paper-alpha-10);
 }
 
-/* Botón "marcar como visto" y "alta manual" de la búsqueda global:
-   acento claro sobre el dropdown oscuro */
+/* "Mark as watched" and "manual entry" buttons of the global   search: light accent over the dark dropdown */
 [data-theme="black"] .global-search__item-seen,
 [data-theme="black"] .global-search__item-seen:disabled,
 [data-theme="black"] .global-search__manual-add {
@@ -457,9 +428,7 @@
   border-color: var(--teal-reel-dark);
 }
 
-/* Hover de botones con acento (fondo claro + tinta oscura):
-   las variantes claras de los acentos como fondo mantienen
-   contraste AA con la tinta negra */
+/* Hover of accent buttons (light background + dark ink):   the light variants of the accents as background keep AA   contrast with the black ink */
 [data-theme="black"] .toast__btn:hover,
 [data-theme="black"] .global-search__item-add:hover {
   background: var(--teal-reel-dark);
@@ -474,36 +443,30 @@
   color: var(--ink);
 }
 
-/* Barra de acento de la pestaña activa: variante clara del acento
-   para el umbral gráfico 3:1 sobre la superficie oscura */
+/* Active tab accent bar: light variant of the accent for   the 3:1 graphic threshold over the dark surface */
 [data-theme="black"] .tab--tv.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
 [data-theme="black"] .tab--movies.is-active { box-shadow: inset 0 3px 0 var(--stamp-dark); }
 [data-theme="black"] .tab--books.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
 [data-theme="black"] .tab--games.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
-/* Pestaña Compras (ADR-105): variante clara del ocre (umbral 3:1) */
+/* Shopping tab (ADR-105): light variant of the ochre (3:1 threshold) */
 [data-theme="black"] .tab--wishlist.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
-/* Pestañas de Recetas (issue #208): mismo patrón que las de Ocio,
-   reutilizando los acentos de la paleta con sus variantes claras
-   para el modo negro puro. */
+/* Recipes tabs (issue #208): same pattern as the Ocio ones,   reusing the palette accents with their light variants for   pure black mode. */
 [data-theme="black"] .tab--recipes.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
 [data-theme="black"] .tab--ingredients.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
 [data-theme="black"] .tab--menu.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
 [data-theme="black"] .tab--shopping.is-active { box-shadow: inset 0 3px 0 var(--stamp-dark); }
-/* Pestañas de Gimnasio (issue #62): mismo patrón que el resto.
-   Resumen (issue #269) reutiliza el violeta de los videojuegos. */
+/* Gym tabs (issue #62): same pattern as the rest. Summary   (issue #269) reuses the violet of video games. */
 [data-theme="black"] .tab--gym-summary.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
 [data-theme="black"] .tab--gym-workouts.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
 [data-theme="black"] .tab--gym-exercises.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
 
-/* Iconos de los títulos de grupo de la búsqueda global: acentos
-   claros sobre el dropdown oscuro (en oscuro ya estaban sobre
-   papel, no sobre tinta) */
+/* Global search group title icons: light accents over the   dark dropdown (in dark mode they were already on paper,   not on ink) */
 [data-theme="black"] .global-search__group-title--tv svg { color: var(--teal-reel-dark); }
 [data-theme="black"] .global-search__group-title--movies svg { color: var(--stamp-dark); }
 [data-theme="black"] .global-search__group-title--books svg { color: var(--ochre-spine-dark); }
 [data-theme="black"] .global-search__group-title--games svg { color: var(--games-dark); }
 
-/* Interruptor: la bolita pasa a oscura (seguía siendo papel) */
+/* Toggle switch: the knob becomes dark (it was still paper) */
 [data-theme="black"] .switch__slider::before {
   background: var(--ink-raised);
   border: 1px solid var(--paper-alpha-30);
@@ -513,13 +476,10 @@
   box-sizing: border-box;
 }
 
-/* Issue #92: nunca zoom automático al enfocar. iOS Safari y Android Chrome
-   hacen zoom si el font-size del campo es < 16px. Todos los campos >= 16px. */
+/* Issue #92: never auto-zoom on focus. iOS Safari and Android Chrome   zoom in if the input's font-size is < 16px. All inputs >= 16px. */
 input, textarea, select { font-size: 16px; }
 
-/* Issue #275: nunca zoom por doble toque en interacciones.
-   touch-action: manipulation mantiene el panning y el pinch zoom
-   (accesibilidad: no deshabilita el zoom manual, ADR-042/ADR-016). */
+/* Issue #275: never zoom on double tap in interactions.   touch-action: manipulation keeps panning and pinch zoom   (accessibility: it doesn't disable manual zoom, ADR-042/ADR-016). */
 button, a, input, select, textarea { touch-action: manipulation; }
 
 html, body {
@@ -549,7 +509,7 @@ button {
 }
 
 /* =========================================================
-   Skip link — visible solo al recibir foco
+   Skip link — visible only when focused
    ========================================================= */
 
 .skip-link {
@@ -574,7 +534,7 @@ button {
 }
 
 /* =========================================================
-   Foco visible mejorado para todos los elementos
+   Enhanced visible focus for all elements
    ========================================================= */
 
 :focus-visible {
@@ -583,7 +543,7 @@ button {
   border-radius: var(--radius);
 }
 
-/* Foco específico para componentes */
+/* Component-specific focus */
 
 .friend-card:focus-visible {
   outline: 2px solid var(--teal-reel);
@@ -643,7 +603,7 @@ button {
 
 
 /* =========================================================
-   Botones
+   Buttons
    ========================================================= */
 
 .btn {
@@ -672,10 +632,7 @@ button {
   font-size: 0.8rem;
 }
 
-/* Variante píldora (issue #220): mismas métricas que
-   .sort-select / .ingredients-filter__btn de Ocio. Declarada ANTES
-   de .btn--danger: para .btn--pill.btn--danger, este último gana
-   fondo/borde/color de peligro y el pill aporta radio/padding. */
+/* Pill variant (issue #220): same metrics as Ocio's   .sort-select / .ingredients-filter__btn. Declared BEFORE   .btn--danger: for .btn--pill.btn--danger, the latter wins   background/border/danger color and the pill contributes radius/padding. */
 .btn--pill {
   background: var(--ink-raised);
   color: var(--paper);
@@ -699,7 +656,7 @@ button {
 }
 
 /* =========================================================
-   Pantalla de acceso (ficha de socio)
+   Sign-in screen (member card)
    ========================================================= */
 
 .auth-screen {
@@ -762,17 +719,10 @@ button {
 
 
 /* =========================================================
-   Cabecera de la app
+   App header
    ========================================================= */
 
-/* Cabecera fija en todos los dispositivos (issue #79): visible
-   siempre, aunque se haga scroll. Su fondo es el mismo que el de la
-   web (--ink en el tema papel / --paper-dim en claro) y no tiene
-   línea separadora (feedback iteración 4): cabecera y barra de
-   pestañas se integran con la página. z-index 46: un punto por
-   encima de la barra de pestañas (45) para que los dropdowns
-   anclados a la cabecera (hijos suyos) se pinten siempre completos
-   y por debajo de modales, backdrop del drawer y drawer. */
+/* Header fixed on all devices (issue #79): always visible,   even when scrolling. Its background is the same as the   web's (--ink in the paper theme / --paper-dim in light)   and it has no divider line (feedback iteration 4): header   and tabs bar blend with the page. z-index 46: just one   point above the tabs bar (45) so the dropdowns anchored   to the header (its children) always paint complete and   below modals, drawer backdrop and drawer. */
 .app-header {
   position: fixed;
   top: 0;
@@ -780,9 +730,7 @@ button {
   right: 0;
   z-index: 46;
   background: var(--ink);
-  /* Deslizamiento suave al ocultarse/mostrarse con el scroll
-     (issue #137): la transición de visibility va retardada para que
-     el elemento siga siendo "clickeable" mientras se desliza. */
+  /* Smooth slide when hiding/showing with the scroll     (issue #137): the visibility transition is delayed so the     element stays "clickable" while sliding. */
   transition: transform 0.25s ease, visibility 0s 0s;
 }
 [data-theme="light"] .app-header,
@@ -793,16 +741,11 @@ button {
 .app {
   max-width: 980px;
   margin: 0 auto;
-  /* Padding superior: hueco para la cabecera fija (--header-h) +
-     1rem de aire. Padding inferior: hueco para la barra de pestañas
-     fija (--tabs-bar-h + margen seguro) + 1.5rem: la última fila y
-     el pie nunca quedan tapados por la barra (issue #79). */
+  /* Top padding: room for the fixed header (--header-h) +     1rem of air. Bottom padding: room for the fixed tabs bar     (--tabs-bar-h + safe margin) + 1.5rem: the last row and     footer are never covered by the bar (issue #79). */
   padding: calc(var(--header-h) + 1rem) 1.25rem calc(var(--tabs-bar-h) + env(safe-area-inset-bottom, 0px) + 1.5rem);
 }
 
-/* En escritorio (≥768px) la barra de pestañas también es fija, bajo
-   la cabecera: el padding superior acumula ambos huecos y el inferior
-   vuelve al original de 4rem (ya no hay barra abajo). */
+/* On desktop (≥768px) the tabs bar is also fixed, below the   header: top padding accumulates both gaps and the bottom   padding returns to the original 4rem (there's no bar below anymore). */
 @media (min-width: 768px) {
   .app {
     padding: calc(var(--header-h) + var(--tabs-bar-h) + 1rem) 1.25rem 4rem;
@@ -813,8 +756,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  /* Altura fija: el header no envuelve (nowrap) y el contenido queda
-     alineado con #app (max-width 980px + 1.25rem de margen lateral) */
+  /* Fixed height: the header doesn't wrap (nowrap) and the     content stays aligned with #app (max-width 980px + 1.25rem     side margin) */
   height: var(--header-h);
   flex-wrap: nowrap;
   gap: 1rem;
@@ -825,9 +767,7 @@ button {
   padding: 0 1.25rem;
 }
 
-/* #main-content es el destino del enlace "Saltar al contenido" y del
-   foco al cambiar de pestaña (js/app.js): el scroll-margin-top evita
-   que el foco/ancla queden ocultos bajo la cabecera fija (issue #79). */
+/* #main-content is the destination of the "Skip to content" link   and of focus when switching tabs (js/app.js): scroll-margin-top   prevents the focus/anchor from being hidden under the fixed   header (issue #79). */
 #main-content {
   scroll-margin-top: calc(var(--header-h) + 1rem);
 }
@@ -837,32 +777,23 @@ button {
   }
 }
 
-/* Barra de búsqueda global de la cabecera (issue #46): contenedor
-   relativo para anclar el dropdown de resultados bajo el input. */
+/* Global search bar of the header (issue #46): relative   container to anchor the results dropdown under the input. */
 .search-bar-wrap {
   position: relative;
   flex: 1;
   min-width: 0;
 }
 
-/* Iconos SVG de los botones de la cabecera (hamburguesa, campana):
-   plano, trazo currentColor y ~1.15rem como el resto de icon-btn. */
+/* SVG icons of the header buttons (hamburger, bell):   flat, currentColor stroke and ~1.15rem like the rest of icon-btn. */
 .icon-btn svg {
   display: block;
   width: 1.15rem;
   height: 1.15rem;
 }
 
-/* Issue #253: con la búsqueda global abierta, la hamburguesa del
-   toggle de la cabecera se transforma en una ✕ (al pulsarla se cierra
-   la búsqueda). Las 3 líneas del SVG (viewBox 24x24, y=6/12/18) rotan
-   sobre su propio centro (transform-box: fill-box) y las líneas 1 y 3
-   se trasladan 6px para cruzarse en (12,12); la central se desvanece.
-   La clase is-search-open la gestiona js/global-search.js. La ✕ hereda
-   currentColor de .icon-btn (var(--paper); var(--ink) en claro/blanco
-   puro), así que no necesita overrides de tema. Con prefers-reduced-
-   motion la transición se anula globalmente (media query de la línea
-   623). */
+/* Issue #253: with global search open, the hamburger of the   header toggle turns into a ✕ (pressing it closes the   search). The 3 lines of the SVG (viewBox 24x24, y=6/12/18)   rotate around their own center (transform-box: fill-box)   and lines 1 and 3 translate 6px to cross at (12,12); the   middle one fades out. The is-search-open class is handled in   js/global-search.js. The ✕ inherits currentColor from
+   .icon-btn (var(--paper); var(--ink) in light/pure   white), so it needs no theme overrides. With prefers-reduced-
+   motion the transition is globally disabled (media query on line   623). */
 #btn-sidebar-toggle svg line {
   transform-box: fill-box;
   transform-origin: center;
@@ -879,13 +810,11 @@ button {
 }
 
 /* =========================================================
-   Barra lateral de navegación (issue #46)
-   Drawer fijo a la izquierda estilo Gmail: sale de pantalla con
-   translateX(-100%) y entra con transición de 0.25s. Usa la
-   "superficie de papel" (--paper/--ink) como los dropdowns de
-   notificaciones y perfil, válida en ambos temas. Al cerrar vuelve
-   a quedar fuera de pantalla (position:fixed no empuja el
-   contenido de .app).
+   Navigation sidebar (issue #46)
+   Fixed left drawer in Gmail style: goes off screen with
+   translateX(-100%) and comes in with a 0.25s transition. It uses
+   the "paper surface" (--paper/--ink) like the notification
+   and profile dropdowns, valid in both themes. When closed it   goes back off screen (position:fixed doesn't push the   content of .app).
    ========================================================= */
 
 .app-sidebar {
@@ -953,8 +882,7 @@ button {
   gap: 0.2rem;
 }
 
-/* Footer inferior del drawer (issue #75): entradas pinned como
-   «Ajustes», empujadas al borde inferior y separadas con una línea. */
+/* Drawer bottom footer (issue #75): pinned entries like   "Settings", pushed to the bottom edge and separated with a line. */
 .app-sidebar__footer {
   margin-top: auto;
   display: flex;
@@ -998,8 +926,7 @@ button {
   align-items: center;
   gap: 0.6rem;
   position: relative;
-  /* margin-left: auto lo empuja a la derecha del header (de una sola
-     fila en todos los anchos) */
+  /* margin-left: auto pushes it to the right of the header (single     row at all widths) */
   margin-left: auto;
 }
 
@@ -1010,12 +937,7 @@ button {
   border: 1px solid var(--paper-alpha-40);
 }
 
-/* Cabecera compacta en móvil (comentario de la issue #75): en ≤480px
-   TODO va en una sola fila — hamburguesa + barra de búsqueda
-   (flex:1, min-width:0) + campana + avatar — para que los iconos no
-   queden por debajo de la barra de búsqueda. La barra de búsqueda se
-   estrecha y absorbe el ancho sobrante; verificado a 360px sin
-   desborde horizontal. */
+/* Compact header on mobile (comment in issue #75): at ≤480px   EVERYTHING goes in a single row — hamburger + search bar   (flex:1, min-width:0) + bell + avatar — so the icons don't   fall below the search bar. The search bar narrows and   absorbs the leftover width; verified at 360px with no   horizontal overflow. */
 @media (max-width: 480px) {
   .app-header__top {
     gap: 0.5rem;
@@ -1023,26 +945,25 @@ button {
   }
   .user-badge {
     gap: 0.4rem;
-    /* Permanece en la misma fila que la búsqueda (sin flex-basis:100%):
-       los iconos no saltan a una segunda línea. */
+    /* Stays on the same row as the search (no flex-basis:100%):       the icons don't jump to a second line. */
     flex-shrink: 0;
     justify-content: flex-end;
   }
 }
 
 /* =========================================================
-   Barra de pestañas fija (issue #79)
-   Series / Películas / Libros viven en una barra fija: en la
-   parte baja de la pantalla en móvil (≤768px) y pegada bajo la
-   cabecera en escritorio (≥768px); el scroll solo desplaza el
-   contenido de .app. Cada pestaña define su propio color de
-   acento (--tab-accent) con la paleta base.
+   Fixed tabs bar (issue #79)
+   Series / Movies / Books live in a fixed bar: at the
+   bottom of the screen on mobile (≤768px) and right below
+   the header on desktop (≥768px); scrolling only moves the
+   content of .app. Each tab defines its own accent color
+   (--tab-accent) from the base palette.
    ========================================================= */
 
-/* Altura de la cabecera fija y de la barra: móvil con icono sobre
-   nombre (~3.75rem). En PC y tablet la barra de pestañas tiene la
-   MISMA altura que la barra de búsqueda (--tabs-bar-h = --header-h
-   = 3.5rem; feedback iteración 4). */
+/* Height of the fixed header and the bar: mobile with icon
+   above name (~3.75rem). On PC and tablet the tabs bar has
+   the SAME height as the search bar (--tabs-bar-h = --header-h
+   = 3.5rem; feedback iteration 4). */
 :root {
   --header-h: 3.5rem;
   --tabs-bar-h: 3.75rem;
@@ -1053,11 +974,10 @@ button {
   }
 }
 
-/* Cascarón fijo que abraza el borde inferior del viewport en móvil
-   (con el margen seguro del iPhone); el contenedor interior se
-   alinea con #app (max-width 980px, centrado). Su fondo es el mismo
-   que el de la web y no tiene línea separadora (feedback iteración
-   4: cabecera y pestañas se integran con la página). */
+/* Fixed shell hugging the bottom edge of the viewport on mobile   (with the iPhone safe margin); the inner container aligns with
+   #app (max-width 980px, centered). Its background is the same as
+   the web's and it has no divider line (feedback iteration 4:
+   header and tabs blend into the page). */
 .tabs--bar {
   position: fixed;
   left: 0;
@@ -1066,8 +986,7 @@ button {
   z-index: 45;
   background: var(--ink);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  /* Deslizamiento suave al ocultarse/mostrarse con el scroll
-     (issue #137), igual que la cabecera. */
+  /* Smooth slide when hiding/showing with the scroll     (issue #137), same as the header. */
   transition: transform 0.25s ease, visibility 0s 0s;
 }
 [data-theme="light"] .tabs--bar,
@@ -1075,11 +994,8 @@ button {
   background: var(--paper-dim);
 }
 
-/* En PC y tablet (≥768px) la barra se pega bajo la cabecera fija:
-   bottom: auto y top: var(--header-h), con la misma altura que la
-   cabecera (--tabs-bar-h 3.5rem). El padding del margen seguro
-   inferior se anula: en el iPad producía un espacio bajo las
-   pestañas que no existe en PC (feedback iteración 4). */
+/* On PC and tablet (≥768px) the bar sticks below the fixed header:   bottom: auto and top: var(--header-h), with the same height as   the header (--tabs-bar-h 3.5rem). The safe-margin bottom padding
+   is removed: on the iPad it created a gap under the tabs that   doesn't exist on PC (feedback iteration 4). */
 @media (min-width: 768px) {
   .tabs--bar {
     top: var(--header-h);
@@ -1089,20 +1005,18 @@ button {
 }
 
 /* =========================================================
-   Ocultar navegación al desplazar (issue #137)
+   Hide navigation on scroll (issue #137)
    =========================================================
-   Al hacer scroll hacia abajo en las listas, la cabecera y la
-   barra de pestañas se ocultan deslizándose "hacia su borde" y
-   reaparecen al subir (o al interactuar con la navegación).
-   La animación es un simple translateY: la cabecera sale por el
-   borde superior y las pestañas por su borde correspondiente
-   (abajo en móvil, bajo la cabecera en ≥768px). Con
-   prefers-reduced-motion la transición se anula globalmente y el
-   cambio es instantáneo, sin desplazamiento visible. */
+   When scrolling down in the lists, the header and tabs bar
+   hide by sliding "toward their edge" and reappear when
+   scrolling up (or when interacting with the navigation).
+   The animation is a simple translateY: the header exits
+   through the top edge and the tabs through the corresponding
+   edge (bottom on mobile, below the header at ≥768px). With
+   prefers-reduced-motion the transition is globally disabled
+   and the change is instant, with no visible sliding. */
 
-/* Cabecera: sube por completo (translateY(-100%) incluye su altura
-   completa aunque varíe). El visibility se retrasa para que el
-   deslizamiento sea visible y no se corte a mitad. */
+/* Header: slides up completely (translateY(-100%) covers its full   height even if it varies). The visibility is delayed so the   slide is visible and doesn't get cut halfway. */
 body.is-nav-hidden .app-header {
   transform: translateY(-100%);
   visibility: hidden;
@@ -1112,27 +1026,20 @@ body.is-nav-hidden .tabs--bar {
   visibility: hidden;
   transition: transform 0.25s ease, visibility 0s 0.25s;
 }
-/* Móvil: las pestañas cuelgan del borde inferior, bajan por él. */
+/* Mobile: tabs hang from the bottom edge and slide down along it. */
 @media (max-width: 767.98px) {
   body.is-nav-hidden .tabs--bar {
     transform: translateY(100%);
   }
 }
-/* ≥768px: las pestañas viven bajo la cabecera, suben con ella
-   (header + su propia altura = borde superior del viewport). */
+/* ≥768px: tabs live under the header and slide up with it   (header + their own height = the top edge of the viewport). */
 @media (min-width: 768px) {
   body.is-nav-hidden .tabs--bar {
     transform: translateY(calc(-100% - var(--header-h)));
   }
 }
 
-/* Botón flotante "Volver arriba" (issue #137): centrado arriba,
-   flotando sobre la lista (position: fixed, no ocupa una línea).
-   Solo se muestra cuando los filtros de la lista han quedado
-   totalmente fuera de vista y la navegación está oculta; lo
-   controla js/auto-hide-nav.js con body.is-back-to-top-visible.
-   z-index 44: por debajo de la cabecera (46) y las pestañas (45)
-   para no taparlas cuando reaparecen, pero sobre el contenido. */
+/* Floating "Back to top" button (issue #137): centered at the top,   floating over the list (position: fixed, doesn't take a line).   Only shown when the list filters are fully out of view and the   navigation is hidden; controlled by js/auto-hide-nav.js with   body.is-back-to-top-visible. z-index 44: below the header (46)   and the tabs (45) so it doesn't cover them when they reappear,   but above the content. */
 .back-to-top {
   position: fixed;
   top: 0.75rem;
@@ -1173,9 +1080,7 @@ body.is-back-to-top-visible .back-to-top {
   gap: 0.4rem;
   width: 100%;
   max-width: 980px;
-  /* Padding lateral alineado con el header (.app-header__top) y con
-     el contenido de #app, de modo que las pestañas ocupen exactamente
-     el mismo ancho que la barra de búsqueda (issue #79). */
+  /* Side padding aligned with the header (.app-header__top) and     the content of #app, so the tabs occupy exactly the same     width as the search bar (issue #79). */
   padding: 0 1.25rem;
   margin: 0 auto;
   height: var(--tabs-bar-h);
@@ -1199,26 +1104,19 @@ body.is-back-to-top-visible .back-to-top {
   transition: color 0.15s ease, background 0.15s ease;
 }
 
-/* Cada pestaña con su color de acento (los tres distintos entre
-   sí), reutilizando la paleta existente: series verde, películas
-   rojo, libros ocre y videojuegos violeta, válido en ambos temas. */
+/* Each tab with its accent color (three distinct ones),   reusing the existing palette: series green, movies red,   books ochre and video games violet, valid in both themes. */
 .tab--tv { --tab-accent: var(--teal-reel); }
 .tab--movies { --tab-accent: var(--stamp); }
 .tab--books { --tab-accent: var(--ochre-spine); }
 .tab--games { --tab-accent: var(--games); }
-/* Pestaña Compras (ADR-105): reutiliza el ocre de la paleta */
+/* Shopping tab (ADR-105): reuses the palette ochre */
 .tab--wishlist { --tab-accent: var(--ochre-spine); }
-/* Pestañas de Recetas (issue #208): acentos de la paleta existente
-   (ocre, verde y rojo), con sus variantes -dark para negro puro en
-   los overrides de [data-theme="black"] (mismo patrón que Ocio). */
+/* Recipes tabs (issue #208): accents from the existing palette   (ochre, green and red), with their -dark variants for pure black   in the [data-theme="black"] overrides (same pattern as Ocio). */
 .tab--recipes { --tab-accent: var(--ochre-spine); }
 .tab--ingredients { --tab-accent: var(--games); }
 .tab--menu { --tab-accent: var(--teal-reel); }
 .tab--shopping { --tab-accent: var(--stamp); }
-/* Pestañas de Gimnasio (issue #62): acentos de la paleta existente
-   (Resumen morado, Entrenos teal, Ejercicios ocre), con sus
-   variantes -dark para negro puro en los overrides de
-   [data-theme="black"]. */
+/* Gym tabs (issue #62): accents from the existing palette   (Summary purple, Workouts teal, Exercises ochre), with their   -dark variants for pure black in the [data-theme="black"]   overrides. */
 .tab--gym-summary { --tab-accent: var(--games); }
 .tab--gym-workouts { --tab-accent: var(--teal-reel); }
 .tab--gym-exercises { --tab-accent: var(--ochre-spine); }
@@ -1240,16 +1138,13 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink);
 }
 
-/* Etiquetas largas de pestaña (issue #208, p. ej. «Ingredientes» en
-   Recetas): el texto envuelve dentro del ancho de la pestaña en
-   lugar de desbordarla; nunca se trunca (AGENTS.md: sin texto fuera
-   de pantalla). Inofensivo para las etiquetas cortas de Ocio. */
+/* Long tab labels (issue #208, e.g. "Ingredients" in Recipes):   text wraps within the tab width instead of overflowing it;   never truncated (AGENTS.md: no text off screen). Harmless for   the short Ocio labels. */
 .tabs--bar .tab span {
   max-width: 100%;
   overflow-wrap: break-word;
 }
 
-/* Escritorio (>768px): icono y nombre en la misma línea */
+/* Desktop (>768px): icon and name on the same line */
 @media (min-width: 768px) {
   .tab {
     flex-direction: row;
@@ -1265,8 +1160,7 @@ body.is-back-to-top-visible .back-to-top {
 
 
 /* =========================================================
-   Modal (armazón compartido: lo que se pinta dentro es cosa
-   de cada sección, por ejemplo ocio/ocio.css)
+   Modal (shared shell: what gets painted inside is up to   each section, e.g. ocio/ocio.css)
    ========================================================= */
 
 .modal__backdrop {
@@ -1297,19 +1191,14 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 .modal__close {
-  /* Sticky: el padre .modal__card es el scroll container, así la ✕
-     queda visible en todo momento al hacer scroll dentro del modal.
-     Al estar en flujo, en reposo no se superpone al contenido
-     (corrige el solapamiento latente con títulos largos del header).
-     Issue #26. */
+  /* Sticky: the parent .modal__card is the scroll container, so the ✕     stays visible at all times when scrolling inside the modal.     Being in flow, at rest it doesn't overlap the content     (fixes the latent overlap with long header titles).     Issue #26. */
   position: sticky;
   top: 0.7rem;
   right: 0.7rem;
   display: block;
   width: fit-content;
   margin-left: auto;
-  background: var(--paper); /* chip del color del card: tapa limpio el
-                               contenido que pasa por debajo al scrollear */
+  background: var(--paper); /* chip in the card's color: cleanly covers the                                content scrolling underneath */
   border: none;
   font-size: 1.1rem;
   color: var(--ink-soft);
@@ -1321,8 +1210,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink);
 }
 
-/* Ventana de valoración emergente (issue #21): se superpone a los
-   modales de detalle, así que va por encima en el eje z. */
+/* Rating popup window (issue #21): it overlays the detail   modals, so it goes above them in the z-axis. */
 .modal--top {
   z-index: 70;
 }
@@ -1332,7 +1220,7 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 /* =========================================================
-   Pie y aviso
+   Footer and alert
    ========================================================= */
 
 .app-footer {
@@ -1346,8 +1234,7 @@ body.is-back-to-top-visible .back-to-top {
 .toast {
   position: fixed;
   left: 50%;
-  /* En móvil, por encima de la barra de pestañas fija inferior
-     (issue #79) */
+  /* On mobile, above the fixed bottom tabs bar (issue #79) */
   bottom: calc(var(--tabs-bar-h) + env(safe-area-inset-bottom, 0px) + 1rem);
   transform: translateX(-50%);
   background: var(--paper);
@@ -1358,28 +1245,25 @@ body.is-back-to-top-visible .back-to-top {
   font-size: 0.85rem;
   max-width: min(480px, calc(100vw - 2rem));
   overflow-wrap: anywhere;
-  /* Por encima de cualquier modal (el más alto es la ventana de
-     valoración, .modal--top con 70) para que los avisos siempre
-     sean visibles */
+  /* Above any modal (the tallest is the rating window,     .modal--top with 70) so alerts are always visible */
   z-index: 80;
 }
 
-/* En escritorio (≥768px) la barra de pestañas está arriba: el toast
-   vuelve al margen inferior original. */
+/* On desktop (≥768px) the tabs bar is at the top: the toast   returns to the original bottom margin. */
 @media (min-width: 768px) {
   .toast {
     bottom: 1.4rem;
   }
 }
 
-/* Toast con botón de deshacer (undo delete) */
+/* Toast with undo button (undo delete) */
 .toast--undo {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.6rem 1.1rem 0.6rem 1.4rem;
 }
-/* El texto del toast puede envolverse; solo el botón mantiene nowrap */
+/* The toast text can wrap; only the button keeps nowrap */
 .toast--undo span {
   flex: 1;
   min-width: 0;
@@ -1404,7 +1288,7 @@ body.is-back-to-top-visible .back-to-top {
 
 
 /* =========================================================
-   Enlace "Añadir manualmente"
+   "Add manually" link
    ========================================================= */
 
 .btn-link {
@@ -1425,7 +1309,7 @@ body.is-back-to-top-visible .back-to-top {
 
 
 /* =========================================================
-   Botón outline (para usar sobre fondo claro, dentro de modales)
+   Outline button (to use over light backgrounds, inside modals)
    ========================================================= */
 
 .btn--outline {
@@ -1448,7 +1332,7 @@ body.is-back-to-top-visible .back-to-top {
 
 
 /* =========================================================
-   Notificaciones
+   Notifications
    ========================================================= */
 
 .notif-wrap {
@@ -1497,10 +1381,7 @@ body.is-back-to-top-visible .back-to-top {
   z-index: 40;
 }
 
-/* En móvil el dropdown se ancla al viewport (no al botón): si el header
-   envuelve en dos filas, el ancla quedaría a la izquierda de la pantalla
-   y el panel desbordaría. Fixed con márgenes laterales garantiza que
-   nunca se sale del ancho visible. */
+/* On mobile the dropdown anchors to the viewport (not the button):   if the header wraps into two rows, the anchor would be left of   the screen and the panel would overflow. Fixed with side margins   guarantees it never leaves the visible width. */
 @media (max-width: 600px) {
   .notif-dropdown {
     position: fixed;
@@ -1641,10 +1522,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--stamp-dark);
 }
 
-/* En móvil el menú de perfil se ancla al viewport (igual que el dropdown
-   de notificaciones): si el header envuelve en dos filas, el ancla quedaría
-   a la izquierda de la pantalla y el panel desbordaría. Fixed con márgenes
-   laterales garantiza que nunca se sale del ancho visible. */
+/* On mobile the profile menu anchors to the viewport (same as the   notifications dropdown): if the header wraps into two rows, the   anchor would be left of the screen and the panel would overflow.   Fixed with side margins guarantees it never leaves the visible width. */
 @media (max-width: 600px) {
   .profile-dropdown {
     position: fixed;
@@ -1664,7 +1542,7 @@ body.is-back-to-top-visible .back-to-top {
 
 
 /* =========================================================
-   Perfil y estadísticas
+   Profile and statistics
    ========================================================= */
 
 .profile-view {
@@ -1673,10 +1551,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--paper);
   max-width: 980px;
   margin: 0 auto;
-  /* Padding superior: aire simple de 1.5rem. La cabecera global NO se
-     muestra en el perfil (issue #206, iteración 2026-08-11): el
-     usuario prefiere la flecha de volver y las pestañas en la misma
-     fila, así que no hace falta reservar el hueco de --header-h. */
+  /* Top padding: simple 1.5rem of air. The global header is NOT     shown on the profile (issue #206, 2026-08-11 iteration): the     user prefers the back arrow and the tabs on the same row,     so no --header-h gap needs to be reserved. */
   padding: 1.5rem 1.25rem 4rem;
 }
 
@@ -1785,7 +1660,7 @@ body.is-back-to-top-visible .back-to-top {
 
 
 /* =========================================================
-   Perfil: subpestañas Estadísticas / Amigos
+   Profile: Statistics / Friends subtabs
    ========================================================= */
 
 .profile-subtabs,
@@ -1811,8 +1686,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink);
 }
 
-/* Subpestañas del perfil en móvil: se compactan (sin ocultar ninguna)
-   y envuelven en varias líneas para no desbordar el viewport */
+/* Profile subtabs on mobile: they compact (without hiding any)   and wrap into several lines so they don't overflow the viewport */
 @media (max-width: 480px) {
   .profile-subtabs,
   .friend-subtabs {
@@ -1827,7 +1701,7 @@ body.is-back-to-top-visible .back-to-top {
 
 
 /* =========================================================
-   Amigos: lista y detalle
+   Friends: list and detail
    ========================================================= */
 
 .friends-list {
@@ -1904,9 +1778,9 @@ body.is-back-to-top-visible .back-to-top {
 
 
 /* =========================================================
-   Ajustes: apartado Datos (issue #135). La pestaña «Datos» del
-   perfil se unificó en Ajustes; los botones se apilan en
-   vertical para mantener el aspecto de las antiguas tarjetas.
+   Settings: Data section (issue #135). The profile's "Data" tab
+   was unified into Settings; the buttons stack vertically to
+   keep the look of the old cards.
    ========================================================= */
 
 .settings-card--data .btn {
@@ -1921,7 +1795,7 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 /* =========================================================
-   Ajustes (Settings)
+   Settings
    ========================================================= */
 
 .settings-card {
@@ -1978,7 +1852,7 @@ body.is-back-to-top-visible .back-to-top {
   margin: 0.2rem 0 0;
 }
 
-/* Select de tema */
+/* Theme select */
 .settings-select {
   background: var(--ink);
   color: var(--paper);
@@ -2032,14 +1906,13 @@ body.is-back-to-top-visible .back-to-top {
   outline-offset: 3px;
 }
 
-/* Guardas de visibilidad (issue #97): switch deshabilitado = última
-   sección/pestaña visible; solo opacidad+cursor, válido en los 4 temas. */
+/* Visibility guards (issue #97): disabled switch = last visible   section/tab; only opacity+cursor, valid in all 4 themes. */
 .switch__input:disabled + .switch__slider {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* Pestañas de una sección, anidadas bajo su fila (issue #97). */
+/* Tabs within a section, nested under their row (issue #97). */
 .settings-group {
   display: flex;
   flex-direction: column;
@@ -2053,13 +1926,13 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 /* =============================================================
-   Buscador global (issue #46)
-   La barra de búsqueda vive en la cabecera (input #global-search-input
-   dentro de .search-bar-wrap) y los resultados se muestran en un
-   dropdown anclado bajo ella (#global-search-results). El dropdown
-   usa la superficie de papel (--paper fondo / --ink texto) en ambos
-   temas, así que no hace falta override de modo claro y no quedan
-   fallbacks hardcodeados.
+   Global search (issue #46)
+   The search bar lives in the header (input #global-search-input
+   inside .search-bar-wrap) and results are shown in a dropdown
+   anchored below it (#global-search-results). The dropdown uses
+   the paper surface (--paper background / --ink text) in both
+   themes, so no light-mode override is needed and there are no
+   hardcoded fallbacks.
    ============================================================= */
 
 .global-search__input {
@@ -2080,8 +1953,7 @@ body.is-back-to-top-visible .back-to-top {
 .global-search__input::placeholder {
   color: var(--ink-soft);
 }
-/* Ocultar la ✕ nativa de los input[type=search] de WebKit: la
-   limpieza la gestiona nuestro propio botón #global-search-clear. */
+/* Hide the native ✕ of WebKit input[type=search]: the clearing   is handled by our own button #global-search-clear. */
 .global-search__input::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
@@ -2130,7 +2002,7 @@ body.is-back-to-top-visible .back-to-top {
   font-style: italic;
 }
 
-/* Botones de tipo (Serie / Película / Libro): búsqueda en el catálogo */
+/* Type buttons (Series / Movie / Book): catalog search */
 .global-search__type-buttons {
   display: flex;
   gap: 8px;
@@ -2153,9 +2025,7 @@ body.is-back-to-top-visible .back-to-top {
   cursor: pointer;
   transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
 }
-/* Acento por tipo de medio: mismos colores que las pestañas
-   (--teal-reel series, --stamp películas, --ochre-spine libros) y los
-   mismos SVGs (MEDIA_ICONS, issue #134). */
+/* Accent per media type: same colors as the tabs   (--teal-reel series, --stamp movies, --ochre-spine books) and   the same SVGs (MEDIA_ICONS, issue #134). */
 .global-search__type-btn--tv { --type-accent: var(--teal-reel); }
 .global-search__type-btn--movies { --type-accent: var(--stamp); }
 .global-search__type-btn--books { --type-accent: var(--ochre-spine); }
@@ -2178,12 +2048,12 @@ body.is-back-to-top-visible .back-to-top {
 .global-search__type-btn.is-active .global-search__type-icon svg {
   color: inherit;
 }
-/* Sobre el ocre el texto oscuro (--ink) contrasta mejor que el papel */
+/* Over ochre, dark text (--ink) contrasts better than paper */
 .global-search__type-btn--books.is-active {
   color: var(--ink);
 }
 
-/* Estado de las secciones del catálogo (buscando / error / vacío) */
+/* State of the catalog sections (searching / error / empty) */
 .global-search__status {
   font-style: italic;
   color: var(--ink-soft);
@@ -2193,7 +2063,7 @@ body.is-back-to-top-visible .back-to-top {
   font-size: 0.82rem;
 }
 
-/* Botón «Añadir» de los resultados del catálogo */
+/* "Add" button of the catalog results */
 .global-search__item-add {
   font-size: 0.72rem;
   padding: 3px 10px;
@@ -2231,9 +2101,7 @@ body.is-back-to-top-visible .back-to-top {
   background: var(--games-dark);
 }
 
-/* Botón «Marcar visto» de los resultados del catálogo (issue #115):
-   mismo esqueleto compacto que Añadir pero en estilo outline para
-   diferenciar la acción. */
+/* "Mark watched" button of the catalog results (issue #115):   the same compact skeleton as Add but in outline style to   differentiate the action. */
 .global-search__item-seen {
   font-size: 0.72rem;
   padding: 3px 10px;
@@ -2248,7 +2116,7 @@ body.is-back-to-top-visible .back-to-top {
 .global-search__item-seen:hover { background: var(--teal-reel); color: var(--paper); }
 .global-search__item-seen:disabled { opacity: 0.55; cursor: default; background: transparent; color: var(--teal-reel); }
 
-/* Fila «Añadir manualmente» al final de cada sección del catálogo */
+/* "Add manually" row at the end of each catalog section */
 .global-search__manual-add {
   display: block;
   width: 100%;
@@ -2267,7 +2135,7 @@ body.is-back-to-top-visible .back-to-top {
   background: var(--ink-alpha-06);
 }
 
-/* Grupo */
+/* Group */
 .global-search__group-title {
   display: flex;
   align-items: center;
@@ -2280,9 +2148,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink-soft);
 }
 
-/* Iconos de los títulos de grupo: SVGs de las pestañas (MEDIA_ICONS)
-   coloreados con el acento de cada tipo (issue #134). friends conserva
-   su emoji "👤" y no lleva modificador. */
+/* Group title icons: SVGs from the tabs (MEDIA_ICONS)   colored with each type's accent (issue #134). friends keeps   its "👤" emoji and has no modifier. */
 .global-search__group-title svg {
   width: 1rem;
   height: 1rem;
@@ -2302,7 +2168,7 @@ body.is-back-to-top-visible .back-to-top {
   line-height: 1.4;
 }
 
-/* Item (película, serie, libro) */
+/* Item (movie, series, book) */
 .global-search__item {
   display: flex;
   align-items: center;
@@ -2356,18 +2222,14 @@ body.is-back-to-top-visible .back-to-top {
   font-weight: 500;
 }
 
-/* El estado como "etiqueta" sobre el papel del dropdown: el .chip
-   base (ocio.css) es transparente con texto --ink-soft, pensado para
-   fondos oscuros. Aquí, sobre --paper, hace falta fondo y texto con
-   contraste; specificity mayor que .chip para vencer el orden de
-   carga de ocio.css. */
+/* The status as a "label" over the dropdown's paper: the base   .chip (ocio.css) is transparent with --ink-soft text, meant for   dark backgrounds. Here, on --paper, background and text with   contrast are needed; higher specificity than .chip to beat the   load order of ocio.css. */
 .global-search__item-status.chip {
   background: var(--paper-dim);
   color: var(--ink);
   border-color: var(--paper-line);
 }
 
-/* Amigos */
+/* Friends */
 .global-search__friend {
   display: flex;
   align-items: center;
@@ -2409,10 +2271,7 @@ body.is-back-to-top-visible .back-to-top {
   background: var(--ink-alpha-06);
 }
 
-/* En móvil el dropdown se ancla al viewport (patrón exacto de
-   .notif-dropdown): el wrap de la barra es estrecho y el panel
-   desbordaría. Fixed con márgenes laterales garantiza que nunca se
-   sale del ancho visible. */
+/* On mobile the dropdown anchors to the viewport (exact pattern   of .notif-dropdown): the bar wrap is narrow and the panel   would overflow. Fixed with side margins guarantees it never   leaves the visible width. */
 @media (max-width: 600px) {
   .global-search__results {
     position: fixed;
@@ -2427,8 +2286,7 @@ body.is-back-to-top-visible .back-to-top {
     flex-wrap: wrap;
   }
 
-  /* En móvil los títulos/metadatos pueden envolverse a 2 líneas
-     (en desktop conservan nowrap + ellipsis + title) */
+  /* On mobile titles/metadata can wrap to 2 lines     (on desktop they keep nowrap + ellipsis + title) */
   .global-search__item-title,
   .global-search__item-meta {
     white-space: normal;
@@ -2440,7 +2298,7 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 /* =========================================================
-   Feed de actividad de amigos
+   Friends activity feed
    ========================================================= */
 
 .activity-feed {
@@ -2548,18 +2406,16 @@ body.is-back-to-top-visible .back-to-top {
 
 
 /* =========================================================
-   Indicador de carga de los paneles de Ocio (issue #178)
+   Loading indicator of the Ocio panels (issue #178)
    ---------------------------------------------------------
-   Cada pestaña carga su contenido (HTML y datos) la primera
-   vez que se abre (lazy loading); mientras tanto se muestra
-   este marcador, que renderLibraryFor retira al pintar.
-   Colores con variables de tema: texto y arco del spinner en
-   --ink-soft (legible en los cuatro modos: ≈6.2:1 sobre
-   oscuro/negro puro, ≈4.6:1 sobre claro/blanco puro; AA) y
-   pista del arco con --ink-alpha-XX de la misma familia, que
-   en negro puro se invierte a tinta clara automáticamente —
-   no hacen falta overrides por familia. No se usan colores
-   hardcodeados.
+   Each tab loads its content (HTML and data) the first
+   time it is opened (lazy loading); meanwhile this placeholder
+   is shown, which renderLibraryFor removes when painting.
+   Colors with theme variables: spinner text and arc in
+   --ink-soft (legible in the four modes: ≈6.2:1 on dark/pure
+   black, ≈4.6:1 on light/pure white; AA) and arc track with
+   --ink-alpha-XX of the same family, which in pure black inverts
+   to light ink automatically — no per-family overrides needed.   No hardcoded colors are used.
    ========================================================= */
 
 .panel-loading {
@@ -2572,12 +2428,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink-soft);
 }
 
-/* Estado final de error de un panel (issue #286): sustituye al
-   marcador de carga cuando una suscripción agota los reintentos o
-   el fetch del partial falla. Mismo patrón de .panel-loading, solo
-   con variables de tema (--ink-soft: legible en los cuatro modos,
-   ver nota de .panel-loading); el botón «Reintentar» reutiliza
-   .btn--small. No se usan colores hardcodeados. */
+/* Final error state of a panel (issue #286): replaces the loading   placeholder when a subscription exhausts its retries or the   fetch of the partial fails. Same pattern as .panel-loading,   only with theme variables (--ink-soft: legible in all four   modes, see note on .panel-loading); the "Retry" button reuses   .btn--small. No hardcoded colors are used. */
 .panel-error {
   display: flex;
   flex-direction: column;
@@ -2609,37 +2460,30 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 /* =========================================================
-   Sección de recetas (issue #64): Recetas, Menú y Lista de
-   la compra. Vista de primer nivel hermana de profile-view.
+   Recipes section (issue #64): Recipes, Menu and Shopping
+   list. First-level view, sibling of profile-view.
    ========================================================= */
 
-/* --- Vista y cabecera (patrón profile-view) --- */
+/* --- View and header (profile-view pattern) --- */
 
 .recipes-view {
-  /* Padding superior: hueco para la cabecera global fija (--header-h)
-     + 1rem de aire (issue #206). Padding inferior: hueco para la
-     barra de pestañas fija (--tabs-bar-h + margen seguro) + 1.5rem,
-     mismo patrón que .app (issue #208). */
+  /* Top padding: room for the fixed global header (--header-h)     + 1rem of air (issue #206). Bottom padding: room for the     fixed tabs bar (--tabs-bar-h + safe margin) + 1.5rem,     same pattern as .app (issue #208). */
   padding: calc(var(--header-h) + 1rem) 1.25rem
            calc(var(--tabs-bar-h) + env(safe-area-inset-bottom, 0px) + 1.5rem);
-  /* Ancho alineado con #app, la cabecera global y la barra de
-     pestañas (.tabs, max-width 980px): el contenido de Recetas ocupa
-     exactamente el mismo ancho que el de Ocio (issue #208). */
+  /* Width aligned with #app, the global header and the tabs     bar (.tabs, max-width 980px): the Recipes content occupies     exactly the same width as the Ocio content (issue #208). */
   max-width: 980px;
   margin: 0 auto;
   width: 100%;
 }
 
-/* En PC y tablet (≥768px) la barra de pestañas también es fija, bajo
-   la cabecera: el padding superior acumula ambos huecos y el inferior
-   vuelve al original de 4rem (ya no hay barra abajo). */
+/* On PC and tablet (≥768px) the tabs bar is also fixed, below the   header: top padding accumulates both gaps and the bottom   padding returns to the original 4rem (there's no bar below anymore). */
 @media (min-width: 768px) {
   .recipes-view {
     padding: calc(var(--header-h) + var(--tabs-bar-h) + 1rem) 1.25rem 4rem;
   }
 }
 
-/* --- Barra de herramientas de la pestaña Recetas --- */
+/* --- Recipes tab toolbar --- */
 
 .recipes-toolbar {
   display: flex;
@@ -2649,7 +2493,7 @@ body.is-back-to-top-visible .back-to-top {
   margin-bottom: 1rem;
 }
 
-/* --- Grid de recetas --- */
+/* --- Recipes grid --- */
 
 .recipes-grid {
   display: grid;
@@ -2668,8 +2512,7 @@ body.is-back-to-top-visible .back-to-top {
   gap: 0.5rem;
   min-width: 0;
   overflow-wrap: break-word;
-  /* Toda la tarjeta es el botón (issue #234): se abre el detalle en
-     modo lectura al pulsarla. */
+  /* The whole card is the button (issue #234): opens the     detail in read mode when pressed. */
   cursor: pointer;
 }
 
@@ -2734,22 +2577,16 @@ body.is-back-to-top-visible .back-to-top {
   margin: 0;
 }
 
-/* Píldora base de las etiquetas de la tarjeta (issue #234). Los
-   colores por tipo vienen de los modificadores --alergeno (teal) y
-   --tipo (ocre), agrupados con los de la vista de lectura más abajo
-   (una sola fuente de verdad por regla, AGENTS.md §4.3). */
+/* Base pill of the card tags (issue #234). Per-type colors come   from the --alergeno (teal) and --tipo (ochre) modifiers, grouped   with the read-view ones further below (a single source of truth   per rule, AGENTS.md §4.3). */
 .recipe-card__tag {
   font-size: 0.72rem;
   border-radius: 999px;
   padding: 0.15rem 0.5rem;
 }
 
-/* --- Filtros de la pestaña Recetas (issue #234) --- */
+/* --- Recipes tab filters (issue #234) --- */
 
-/* Desplegables de filtro por alérgenos y por tipo de comida
-   (multiselección, todas marcadas por defecto). Mismo patrón visual
-   que el filtro por categorías de Ingredientes, con el acento ocre de
-   la pestaña Recetas para la marca de seleccionado. */
+/* Filter dropdowns by allergens and by meal type   (multi-select, all checked by default). Same visual pattern   as the Ingredients category filter, with the Recipes tab   ochre accent for the selected mark. */
 .recipes-filter {
   position: relative;
   display: inline-flex;
@@ -2817,12 +2654,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink);
 }
 
-/* Marca del checkbox (ocre, acento de la pestaña) con el mismo
-   patrón que el filtro de Ingredientes: input oculto + estado en el
-   label. Texto blanco sobre --ochre-spine-dark ≈ 6.2:1 (AA; el ocre
-   claro --ochre-spine no alcanza 4.5:1 con blanco). En negro puro
-   --ochre-spine-dark es la variante clara (#c99a4e) y el texto pasa
-   a --white (casi negro): contraste ≈ 7.4:1. */
+/* Checkbox mark (ochre, the tab's accent) with the same   pattern as the Ingredients filter: hidden input + state on the   label. White text on --ochre-spine-dark ≈ 6.2:1 (AA; the light   ochre --ochre-spine doesn't reach 4.5:1 with white). In pure   black --ochre-spine-dark is the light variant (#c99a4e) and the   text becomes --white (nearly black): contrast ≈ 7.4:1. */
 .recipes-filter__all.is-checked,
 .recipes-filter__item.is-checked {
   background: var(--ochre-spine-dark);
@@ -2844,7 +2676,7 @@ body.is-back-to-top-visible .back-to-top {
   pointer-events: none;
 }
 
-/* En móvil el panel se ancla al viewport (patrón de Ingredientes). */
+/* On mobile the panel anchors to the viewport (Ingredients   pattern). */
 @media (max-width: 767px) {
   .recipes-filter__panel {
     position: fixed;
@@ -2856,7 +2688,7 @@ body.is-back-to-top-visible .back-to-top {
   }
 }
 
-/* --- Catálogo de ingredientes (issue #218): estética tipo Ocio --- */
+/* --- Ingredients catalog (issue #218): Ocio-like aesthetic --- */
 
 .ingredients-toolbar {
   display: flex;
@@ -2867,8 +2699,7 @@ body.is-back-to-top-visible .back-to-top {
   max-width: 100%;
 }
 
-/* Dropdown de filtro por categorías (multiselección, todas por
-   defecto). El botón es una píldora igual que .sort-select (ocio). */
+/* Category filter dropdown (multi-select, all by   default). The button is a pill just like .sort-select (ocio). */
 .ingredients-filter {
   position: relative;
   display: inline-flex;
@@ -2936,8 +2767,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink);
 }
 
-/* Marca del checkbox (violeta, acento de la pestaña) con el mismo
-   patrón que .recipe-form__chip: input oculto + estado en el label. */
+/* Checkbox mark (violet, the tab's accent) with the same   pattern as .recipe-form__chip: hidden input + state on the label. */
 .ingredients-filter__all.is-checked,
 .ingredients-filter__item.is-checked {
   background: var(--games);
@@ -2959,10 +2789,7 @@ body.is-back-to-top-visible .back-to-top {
   pointer-events: none;
 }
 
-/* En móvil el panel se ancla al viewport (patrón .profile-dropdown):
-   si el toolbar envuelve en varias filas, el ancla al botón podría
-   dejar el panel fuera del ancho visible. Solo cuenta la cabecera
-   (--tabs-bar-h se omite: en móvil la barra de pestañas está abajo). */
+/* On mobile the panel anchors to the viewport (pattern .profile-dropdown): if the toolbar wraps into several rows, anchoring to the button could leave the panel outside the visible width. Only the header counts (--tabs-bar-h is skipped: on mobile the tabs bar is at the bottom). */
 @media (max-width: 767px) {
   .ingredients-filter__panel {
     position: fixed;
@@ -3046,7 +2873,7 @@ body.is-back-to-top-visible .back-to-top {
   outline-offset: 2px;
 }
 
-/* El acento de la pestaña Recetas es ocre (mismo patrón que la tarjeta). */
+/* The Recipes tab accent is ochre (same pattern as the card). */
 .recipes-filter__btn:focus-visible,
 .recipes-filter__all:focus-visible,
 .recipes-filter__item:focus-visible {
@@ -3054,7 +2881,7 @@ body.is-back-to-top-visible .back-to-top {
   outline-offset: 2px;
 }
 
-/* --- Modal de ingrediente (issue #218) --- */
+/* --- Ingredient modal (issue #218) --- */
 
 .ingredient-modal__title {
   margin: 0 0 0.8rem;
@@ -3063,9 +2890,7 @@ body.is-back-to-top-visible .back-to-top {
   min-width: 0;
 }
 
-/* Vista de solo lectura (issue #232): foto opcional (solo se muestra
-   si el ingrediente tiene una; sin ella no aparece ningún placeholder),
-   etiquetas de campo y valores como texto corriente. */
+/* Read-only view (issue #232): optional photo (shown only   if the ingredient has one; without it no placeholder appears),   field labels and values as plain text. */
 .ingredient-modal__photo {
   display: block;
   width: 100%;
@@ -3108,7 +2933,7 @@ body.is-back-to-top-visible .back-to-top {
   border: 1px solid var(--paper-line);
   border-radius: var(--radius);
   padding: 0.45rem 0.6rem;
-  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-size: 1rem; /* ADR-042: never < 16px on inputs */
   min-width: 0;
 }
 
@@ -3144,12 +2969,7 @@ body.is-back-to-top-visible .back-to-top {
   margin-top: 1rem;
 }
 
-/* Supermercados y cantidad del paquete del ingrediente (issue #224):
-   chips de selección en el alta y el detalle, con color de marca por
-   supermercado. Los colores de marca están hardcodeados A PROPÓSITO
-   (AGENTS.md §4.4): son colores corporativos idénticos en los 4 modos
-   de tema; solo los chips desmarcados usan variables (--paper-dim,
-   --paper-line, --ink) y por eso necesitan override en negro puro. */
+/* Supermarkets and package size of the ingredient (issue #224):   selection chips in the entry form and detail, with a brand   color per supermarket. Brand colors are hardcoded ON PURPOSE   (AGENTS.md §4.4): they are corporate colors identical across   the 4 theme modes; only unchecked chips use variables   (--paper-dim, --paper-line, --ink) and therefore need an   override in pure black. */
 
 .ingredient-modal__chips {
   display: flex;
@@ -3182,16 +3002,13 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--paper-alpha-20);
 }
 
-/* Foco de teclado visible en los chips (issue #224): el input está
-   oculto, así que el anillo se dibuja sobre el label contenedor.
-   Mismo color que el resto de :focus-visible del catálogo. */
+/* Visible keyboard focus on the chips (issue #224): the input is   hidden, so the ring is drawn on the container label.   Same color as the rest of the catalog's :focus-visible. */
 .supermarket-chip:focus-within {
   outline: 2px solid var(--teal-reel);
   outline-offset: 2px;
 }
 
-/* Etiqueta de supermercado no interactiva (mismo aspecto que el chip
-   marcado; queda lista para vistas de solo lectura). */
+/* Non-interactive supermarket label (same look as the checked   chip; ready for read-only views). */
 .supermarket-tag {
   display: inline-flex;
   align-items: center;
@@ -3201,11 +3018,7 @@ body.is-back-to-top-visible .back-to-top {
   font-weight: 600;
 }
 
-/* Colores de marca hardcodeados A PROPÓSITO (AGENTS.md §4.4): son los
-   colores corporativos de cada supermercado, no variables de tema, y
-   deben verse igual en los 4 modos. Contraste AA verificado: texto
-   blanco sobre #0050AA, #002B5C, #A50F26, #004E9F y #00543F; texto
-   negro sobre el amarillo #FFCB05 de Mercadona. */
+/* Brand colors hardcoded ON PURPOSE (AGENTS.md §4.4): they are the   corporate colors of each supermarket, not theme variables, and   must look the same in the 4 modes. AA contrast verified: white   text on #0050AA, #002B5C, #A50F26, #004E9F and #00543F; black   text on the #FFCB05 yellow of Mercadona. */
 .supermarket-chip--lidl.is-checked,
 .supermarket-tag--lidl { background: #0050AA; border-color: #0050AA; color: #fff; }
 .supermarket-chip--aldi.is-checked,
@@ -3219,9 +3032,7 @@ body.is-back-to-top-visible .back-to-top {
 .supermarket-chip--el_corte_ingles.is-checked,
 .supermarket-tag--el_corte_ingles { background: #00543F; border-color: #00543F; color: #fff; }
 
-/* Fila «Cantidad del paquete» (issue #224): el número ocupa el resto
-   del ancho y la unidad un ancho fijo; en móvil envuelve en dos filas
-   para que la unidad no se quede corta ni desborde. */
+/* "Package size" row (issue #224): the number takes the rest   of the width and the unit a fixed width; on mobile it wraps   into two rows so the unit is neither too short nor overflows. */
 .ingredient-modal__qty-row {
   display: flex;
   gap: 0.5rem;
@@ -3249,7 +3060,7 @@ body.is-back-to-top-visible .back-to-top {
   }
 }
 
-/* --- Menú semanal --- */
+/* --- Weekly menu --- */
 
 .menu-toolbar {
   display: flex;
@@ -3292,10 +3103,7 @@ body.is-back-to-top-visible .back-to-top {
   outline-offset: 2px;
 }
 
-/* Rejilla día × comida: en móvil se permite scroll horizontal
-   DENTRO del contenedor (patrón permitido por AGENTS.md). Desde la
-   issue #242 el menú cubre dos comidas (almuerzo y cena), así que la
-   rejilla tiene 3 columnas: día + 2 comidas. */
+/* Day × meal grid: on mobile horizontal scrolling is allowed   WITHIN the container (pattern allowed by AGENTS.md). Since   issue #242 the menu covers two meals (lunch and dinner), so   the grid has 3 columns: day + 2 meals. */
 .menu-grid {
   display: grid;
   grid-template-columns: 7.5rem repeat(2, minmax(170px, 1fr));
@@ -3305,11 +3113,7 @@ body.is-back-to-top-visible .back-to-top {
   min-width: 0;
 }
 
-/* js/menu.js envuelve cabecera y filas en .menu-grid__head y
-   .menu-grid__row (grupos de celdas). Sin caja propia, sus celdas
-   participan directamente en el grid de 3 columnas: cabecera en la
-   fila 1 y cada día en su fila. Sin esto, cada wrapper se auto-coloca
-   en UNA celda estrecha y todo se aplasta y se superpone (issue #215). */
+/* js/menu.js wraps the header and rows in .menu-grid__head and   .menu-grid__row (cell groups). Without their own box, their   cells participate directly in the 3-column grid: header in   row 1 and each day in its row. Without this, each wrapper   auto-places into ONE narrow cell and everything crams and   overlaps (issue #215). */
 .menu-grid__head,
 .menu-grid__row {
   display: contents;
@@ -3355,14 +3159,7 @@ body.is-back-to-top-visible .back-to-top {
   gap: 0.3rem;
 }
 
-/* Tarjeta de receta dentro de una celda (issue #242, iteración): la
-   tarjeta del buscador en miniatura — foto, nombre y etiquetas — y
-   clicable para abrir la receta en modo lectura (js/menu.js). El chip
-   usa el tinte translúcido de papel y hereda el texto de la celda
-   (papel sobre --ink-raised en la familia oscura, tinta sobre blanco
-   en la clara). En la familia clara el override de abajo cambia el
-   tinte a --ink-alpha-10: el de papel es blanco translúcido y quedaría
-   invisible sobre la celda blanca. */
+/* Recipe card inside a cell (issue #242, iteration): a   miniature of the picker card — photo, name and tags — and   clickable to open the recipe in read mode (js/menu.js). The   chip uses the translucent paper tint and inherits the cell's   text color (paper on --ink-raised in the dark family, ink on   white in the light one). In the light family the override   below changes the tint to --ink-alpha-10: the paper one is   translucent white and would be invisible on the white cell. */
 .menu-meal__card {
   display: flex;
   align-items: center;
@@ -3382,8 +3179,7 @@ body.is-back-to-top-visible .back-to-top {
   outline: none;
 }
 
-/* Excluida de la lista de la compra (issue #225): el tachado va solo
-   al nombre, la foto y las etiquetas conservan su lectura. */
+/* Excluded from the shopping list (issue #225): the strikethrough   applies only to the name; the photo and tags keep their look. */
 .menu-meal__card.is-excluded {
   opacity: 0.6;
 }
@@ -3398,9 +3194,7 @@ body.is-back-to-top-visible .back-to-top {
   object-fit: cover;
   border-radius: var(--radius);
   flex-shrink: 0;
-  /* Tinte sutil que funciona sobre el chip translúcido en ambas
-     familias (--ink-alpha-* es tinte de tinta en la clara y de papel
-     en la oscura). */
+  /* Subtle tint that works over the translucent chip in both     families (--ink-alpha-* is an ink tint in the light one and     a paper tint in the dark one). */
   background: var(--ink-alpha-08);
 }
 
@@ -3425,38 +3219,21 @@ body.is-back-to-top-visible .back-to-top {
   min-width: 0;
 }
 
-/* Etiquetas en miniatura: misma píldora .recipe-card__tag (una sola
-   fuente de verdad por regla), solo se reduce su tamaño dentro de la
-   tarjeta de celda. */
+/* Miniature tags: the same .recipe-card__tag pill (a single   source of truth per rule), only its size shrinks inside the   cell card. */
 .menu-meal__card-tags .recipe-card__tag {
   font-size: 0.64rem;
   padding: 0.1rem 0.4rem;
 }
 
-/* Comensales propios de una receta del menú (issue #242): distintivo
-   pequeño junto al nombre; si no aparece, la receta hereda los
-   comensales globales de la semana. Sobre la tarjeta .menu-meal__card
-   (--paper-alpha-10 sobre la celda --ink-raised), --ink-soft solo da
-   ≈ 3.73:1 en el tema Oscuro (no AA): se usa papel translúcido al 92%,
-   mismo patrón que .recipe-pick__empty (issue #242, iteración). */
+/* Diners belonging to a menu recipe (issue #242): a small   badge next to the name; if absent, the recipe inherits the   global diners of the week. On the .menu-meal__card card   (--paper-alpha-10 over the --ink-raised cell), --ink-soft only   gives ≈ 3.73:1 in the Dark theme (not AA): translucent 92%   paper is used, same pattern as .recipe-pick__empty (issue #242,   iteration). */
 .menu-meal__comensales {
   font-size: 0.68rem;
   color: var(--paper-alpha-92);
   margin-left: 0.2rem;
 }
 
-/* ✕ de quitar receta (celdas y «recetas a la semana», issue #242,
-   iteración): botón circular con hover y animación de pulsación. El
-   tinte del círculo usa --paper-alpha-14 (papel translúcido en la
-   familia oscura, tinta translúcida en la clara: visible sobre el
-   chip en ambas) y al pulsar el botón se encoge ligeramente (patrón
-   de .btn:active / .trailer-btn:active). Área táctil de 1.5rem
-   (24 px, WCAG 2.2 AA 2.5.8).
-   Rojo claro hardcodeado #d16a59 (≈ 4.7:1, AA) porque --stamp
-   (#a63b2e ≈ 2:1) no llega al umbral 3:1 de componentes gráficos
-   sobre el chip oscuro — mismo patrón y comentario que
-   .shopping-line__remove (issue #225); en la familia clara se
-   oscurece al --stamp (≈ 5.3:1 sobre el chip claro, AA). */
+/* ✕ for removing a recipe (cells and "recipes of the week", issue #242,   iteration): round button with hover and press animation.   The circle's tint uses --paper-alpha-14 (translucent paper in   the dark family, translucent ink in the light one: visible over   the chip in both) and on press the button slightly shrinks   (pattern of .btn:active / .trailer-btn:active). 1.5rem touch   target (24 px, WCAG 2.2 AA 2.5.8).
+   Light red hardcoded #d16a59 (≈ 4.7:1, AA) because --stamp   (#a63b2e ≈ 2:1) doesn't reach the 3:1 graphic components   threshold over the dark chip — same pattern and comment as   .shopping-line__remove (issue #225); in the light family it   darkens to --stamp (≈ 5.3:1 over the light chip, AA). */
 .menu-meal__remove {
   background: none;
   border: none;
@@ -3485,10 +3262,7 @@ body.is-back-to-top-visible .back-to-top {
   transform: scale(0.8);
 }
 
-/* Buscador de recetas del menú (issue #242): ventana modal que
-   sustituye al desplegable de añadir receta. Tarjetas con foto a la
-   izquierda, nombre arriba y etiquetas de alérgenos / tipo de plato
-   debajo; toolbar con buscador de texto y filtros por etiquetas. */
+/* Menu recipe picker (issue #242): modal window that   replaces the add-recipe dropdown. Cards with photo on the   left, name on top and allergen / dish-type tags below;   toolbar with text search and tag filters. */
 
 .recipe-pick {
   display: flex;
@@ -3501,11 +3275,7 @@ body.is-back-to-top-visible .back-to-top {
   font-size: 1.05rem;
 }
 
-/* Selector de destino del botón «+ Añadir receta» (issue #242,
-   iteración): día de la semana (o «Toda la semana») y comida. Mismo
-   patrón de campo que el buscador (--paper-dim/--ink) porque el modal
-   es papel en la familia oscura; en negro puro se invierte como el
-   resto de campos (override abajo). */
+/* Destination picker of the "+ Add recipe" button (issue #242,   iteration): day of the week (or "Whole week") and meal. Same   field pattern as the picker (--paper-dim/--ink) because the   modal is paper in the dark family; in pure black it inverts   like the rest of the fields (override below). */
 .recipe-pick__target {
   display: flex;
   flex-wrap: wrap;
@@ -3518,8 +3288,7 @@ body.is-back-to-top-visible .back-to-top {
   flex-direction: column;
   gap: 0.2rem;
   font-size: 0.78rem;
-  /* Sobre el modal de papel del tema Oscuro, --ink-soft (#948a76) solo
-     da ≈ 2.8:1 (no AA): tinta del contenido (patrón de .recipe-pick__empty). */
+  /* Over the paper modal of the Dark theme, --ink-soft (#948a76) only     gives ≈ 2.8:1 (not AA): content ink (pattern of     .recipe-pick__empty). */
   color: var(--ink);
 }
 
@@ -3532,7 +3301,7 @@ body.is-back-to-top-visible .back-to-top {
   border: 1px solid var(--paper-line);
   border-radius: 999px;
   padding: 0.3rem 0.75rem;
-  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-size: 1rem; /* ADR-042: never < 16px on inputs */
 }
 
 .recipe-pick__field select:focus-visible {
@@ -3544,9 +3313,7 @@ body.is-back-to-top-visible .back-to-top {
   opacity: 0.55;
 }
 
-/* Aviso del destino «Toda la semana» (issue #242, iteración): la
-   receta se añade una vez y no se multiplica por los comensales.
-   Tinta del contenido sobre el modal papel (patrón de .recipe-pick__empty). */
+/* Notice of the "Whole week" destination (issue #242, iteration): the   recipe is added once and not multiplied by the diners.   Content ink over the paper modal (pattern of   .recipe-pick__empty). */
 .recipe-pick__week-hint {
   margin: 0;
   font-size: 0.8rem;
@@ -3560,12 +3327,8 @@ body.is-back-to-top-visible .back-to-top {
   align-items: center;
 }
 
-/* El campo de búsqueda crece y los filtros se mantienen a la
-   derecha; en móvil todo pasa a columna (sin desbordar). 1rem por
-   ADR-042 (nada de < 16px en inputs).
-   El modal del buscador es papel en la familia oscura, así que el
-   campo va en la familia clara (--paper-dim/--ink), patrón de
-   .ingredient-modal__field input / .recipe-form__field input. */
+/* The search field grows and the filters stay on the   right; on mobile everything goes to a column (without   overflowing). 1rem per ADR-042 (no < 16px on inputs).
+   The picker modal is paper in the dark family, so the   field goes in the light family (--paper-dim/--ink), pattern of   .ingredient-modal__field input / .recipe-form__field input. */
 .recipe-pick__search {
   flex: 1 1 200px;
   min-width: 0;
@@ -3579,10 +3342,7 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 .recipe-pick__search::placeholder {
-  /* Sobre el campo claro de la familia oscura, --ink-soft (#948a76)
-     solo da ≈ 2.45:1 (no AA): tinta del contenido, mismo patrón que
-     .recipe-pick__empty. En negro puro el campo es tinta y la base
-     sería invisible: override abajo. */
+  /* Over the light field of the dark family, --ink-soft (#948a76)     only gives ≈ 2.45:1 (not AA): content ink, same pattern as     .recipe-pick__empty. In pure black the field is ink and the     placeholder would be invisible: override below. */
   color: var(--ink);
 }
 
@@ -3591,23 +3351,14 @@ body.is-back-to-top-visible .back-to-top {
   outline-offset: 2px;
 }
 
-/* Botones de filtro dentro del buscador: la píldora base de la
-   pestaña Recetas es un chip oscuro (--ink-raised/--paper) pensado
-   para la página oscura; dentro del modal papel invertiría el
-   contraste, así que pasan a la familia clara como el resto de
-   controles del buscador (issue #242, iteración). En negro puro el
-   modal es superficie oscura y vuelven al chip oscuro en los
-   overrides de abajo. */
+/* Filter buttons inside the picker: the base pill of the   Recipes tab is a dark chip (--ink-raised/--paper) meant   for the dark page; inside the paper modal it would invert   the contrast, so they switch to the light family like the   rest of the picker controls (issue #242, iteration). In pure   black the modal is a dark surface and they return to the   dark chip in the overrides below. */
 .recipe-pick .recipes-filter__btn {
   background: var(--paper-dim);
   color: var(--ink);
   border-color: var(--paper-line);
 }
 
-/* Paneles de filtro a la derecha del campo: anclados debajo del
-   botón, anchos limitados para no salirse de la tarjeta del modal.
-   En móvil se conserva el patrón fijo de .recipes-filter__panel
-   (anclado al viewport bajo la cabecera). */
+/* Filter panels to the right of the field: anchored below   the button, widths limited so they don't leave the modal   card. On mobile the fixed pattern of .recipes-filter__panel   is kept (anchored to the viewport below the header). */
 @media (min-width: 768px) {
   .recipe-pick__panel.recipes-filter__panel {
     width: min(300px, calc(100vw - 3.5rem));
@@ -3627,13 +3378,7 @@ body.is-back-to-top-visible .back-to-top {
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
-  /* Tarjeta de la familia clara (patrón de .recipe-card y de los
-     inputs de los modales): el modal del buscador es papel en la
-     familia oscura, así que la tarjeta va en --paper-dim con tinta
-     --ink — el nombre queda oscuro y legible y no se invierte el
-     contraste dentro de la ventana (issue #242, iteración). En negro
-     puro el modal es superficie oscura y la tarjeta vuelve al chip
-     oscuro en los overrides de abajo. */
+  /* Card of the light family (pattern of .recipe-card and the     inputs of the modals): the picker modal is paper in the     dark family, so the card goes in --paper-dim with --ink     ink — the name stays dark and legible and the contrast     isn't inverted inside the window (issue #242, iteration).     In pure black the modal is a dark surface and the card     returns to the dark chip in the overrides below. */
   background: var(--paper-dim);
   color: var(--ink);
   border: 1px solid var(--paper-line);
@@ -3663,9 +3408,7 @@ body.is-back-to-top-visible .back-to-top {
   object-fit: cover;
   border-radius: var(--radius);
   flex-shrink: 0;
-  /* Tinte sutil que funciona sobre la tarjeta clara en la familia
-     oscura y sobre la oscura en negro puro (--ink-alpha-* es un
-     tinte de tinta en la familia clara y de papel en la oscura). */
+  /* Subtle tint that works over the light card in the dark     family and over the dark one in pure black (--ink-alpha-* is     an ink tint in the light family and a paper tint in the     dark one). */
   background: var(--ink-alpha-08);
 }
 
@@ -3694,12 +3437,7 @@ body.is-back-to-top-visible .back-to-top {
   white-space: nowrap;
 }
 
-/* Fila de comensales de la tarjeta (issue #242): número opcional
-   (vacío = hereda los del menú) y botones Añadir / Cancelar. Sobre la
-   tarjeta clara de la familia oscura, --ink-soft solo daría ≈ 2.45:1:
-   tinta del contenido (mismo patrón que .recipe-pick__empty); en
-   negro puro la tarjeta es oscura y vuelve a --ink-soft en los
-   overrides de abajo. */
+/* Diners row of the card (issue #242): optional number   (empty = inherits the menu's) and Add / Cancel buttons. Over   the light card of the dark family, --ink-soft would only give   ≈ 2.45:1: content ink (same pattern as .recipe-pick__empty); in   pure black the card is dark and returns to --ink-soft in the   overrides below. */
 .recipe-pick__comensales {
   display: flex;
   align-items: center;
@@ -3717,19 +3455,17 @@ body.is-back-to-top-visible .back-to-top {
   border: 1px solid var(--paper-line);
   border-radius: var(--radius);
   padding: 0.28rem 0.5rem;
-  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-size: 1rem; /* ADR-042: never < 16px on inputs */
 }
 
 .recipe-pick__empty {
   margin: 0;
   font-size: 0.82rem;
-  /* Sobre el modal de papel en el tema Oscuro, --ink-soft (#948a76)
-     solo da ≈ 2.8:1 (no alcanza AA): se usa la tinta del contenido,
-     mismo patrón que .recipe-view__meta (issue #242, iteración). */
+  /* Over the paper modal in the Dark theme, --ink-soft (#948a76)     only gives ≈ 2.8:1 (doesn't reach AA): the content ink is     used, same pattern as .recipe-view__meta (issue #242,     iteration). */
   color: var(--ink);
 }
 
-/* Recetas a la semana (no escalan) */
+/* Recipes of the week (they don't scale) */
 
 .menu-weekly {
   margin-top: 1rem;
@@ -3750,12 +3486,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink-soft);
 }
 
-/* Lista de «recetas a la semana» (issue #242, iteración): las mismas
-   tarjetas .menu-meal__card que las celdas de la rejilla, apiladas
-   con el mismo hueco. El fondo del bloque (.menu-weekly, --ink-raised)
-   coincide con el de las celdas, así que las tarjetas se ven igual
-   que las del menú por días (los overrides de tema de .menu-meal__card
-   ya cubren la familia clara y el negro puro). */
+/* List of "recipes of the week" (issue #242, iteration): the same   .menu-meal__card cards as the grid cells, stacked with the   same gap. The block's background (.menu-weekly, --ink-raised)   matches the cells', so the cards look the same as the menu's   by-day ones (the .menu-meal__card theme overrides already   cover the light family and pure black). */
 #menu-weekly-list {
   display: flex;
   flex-direction: column;
@@ -3769,7 +3500,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink-soft);
 }
 
-/* --- Lista de la compra --- */
+/* --- Shopping list --- */
 
 .shopping-toolbar {
   display: flex;
@@ -3801,7 +3532,7 @@ body.is-back-to-top-visible .back-to-top {
   border: 1px solid var(--paper-alpha-30);
   border-radius: 999px;
   padding: 0.3rem 0.75rem;
-  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-size: 1rem; /* ADR-042: never < 16px on inputs */
   min-width: 0;
 }
 
@@ -3812,8 +3543,7 @@ body.is-back-to-top-visible .back-to-top {
   outline-offset: 2px;
 }
 
-/* El combobox de ingrediente (issue #249) ocupa el ancho que tenía el
-   nombre libre; cantidad y unidad mantienen su flex fijo. */
+/* The ingredient combobox (issue #249) takes the width the   free-form name used to have; quantity and unit keep their fixed flex. */
 .shopping-extra-form__row .ing-combo {
   flex: 2 1 180px;
 }
@@ -3826,14 +3556,12 @@ body.is-back-to-top-visible .back-to-top {
   flex: 0 1 90px;
 }
 
-/* Unidad de medida como desplegable (issue #249, iteración): mismo
-   flex fijo que tenía el input libre. */
+/* Measurement unit as a dropdown (issue #249, iteration): same   fixed flex as the old free-form input. */
 .shopping-extra-form__row #extra-unidad {
   flex: 0 1 100px;
 }
 
-/* Aviso bajo el formulario de ítem extra (issue #249): el nombre sale
-   del catálogo, no se escribe libre. */
+/* Notice under the extra item form (issue #249): the name comes   from the catalog, it isn't typed freely. */
 .shopping-extra-form__hint {
   margin: 0.4rem 0 0;
   font-size: 0.78rem;
@@ -3846,10 +3574,7 @@ body.is-back-to-top-visible .back-to-top {
   gap: 0.4rem;
 }
 
-/* Variante shopping del patrón «píldora» del ADR-083. No reutiliza
-   .btn--pill porque la PR #222 (issue #220) aún abierta lo define; en
-   negro puro no necesita override: --ink-raised (#0a0a0a) + texto
-   --paper claro + hover --paper-alpha-10 ya son correctos. */
+/* Shopping variant of the ADR-083 "pill" pattern. It doesn't   reuse .btn--pill because PR #222 (issue #220) still in progress   defines it; in pure black it needs no override: --ink-raised   (#0a0a0a) + light --paper text + --paper-alpha-10 hover are   already correct. */
 .shopping-btn--ghost {
   background: var(--ink-raised);
   color: var(--paper);
@@ -3894,8 +3619,7 @@ body.is-back-to-top-visible .back-to-top {
   gap: 0.35rem;
 }
 
-/* Chips de selección de semanas (issue #225): mismo patrón que
-   .recipe-form__chip — input oculto + estado en el label. */
+/* Week selection chips (issue #225): same pattern as   .recipe-form__chip — hidden input + state on the label. */
 .shopping-week-chips {
   display: flex;
   flex-wrap: wrap;
@@ -3933,8 +3657,7 @@ body.is-back-to-top-visible .back-to-top {
   pointer-events: none;
 }
 
-/* Foco de teclado visible en los chips (issue #225): el input está
-   oculto, así que el outline va al label cuando recibe el foco. */
+/* Visible keyboard focus on the chips (issue #225): the input is   hidden, so the outline goes to the label when it receives focus. */
 .shopping-week-chip:focus-within {
   outline: 2px solid var(--teal-reel);
   outline-offset: 1px;
@@ -3944,18 +3667,12 @@ body.is-back-to-top-visible .back-to-top {
   outline-color: var(--teal-reel-dark);
 }
 
-/* Fila de la lista: envoltorio con el fondo rojo del swipe debajo.
-   El contenido (superficie normal) se desplaza a la izquierda al
-   deslizar (issue #225). El fondo se ve solo durante el gesto o en
-   el estado revelado; el hover ya NO lo revela (issue #225,
-   iteración: al pulsar solo se marca la línea). */
+/* List row: wrapper with the red swipe background underneath.   The content (normal surface) shifts left when swiping   (issue #225). The background is visible only during the gesture   or in the revealed state; hover NO LONGER reveals it (issue #225,   iteration: pressing only marks the line). */
 .shopping-line-wrap {
   position: relative;
   border-radius: var(--radius);
   overflow: hidden;
-  /* Fondo del swipe: rojo de peligro (--stamp, comentado por ser el
-     mismo acento de .btn--danger; en negro puro se aclara a
-     --stamp-dark para mantener contraste AA con el texto). */
+  /* Swipe background: danger red (--stamp, noted because it's     the same accent as .btn--danger; in pure black it lightens     to --stamp-dark to keep AA contrast with the text). */
   background: var(--stamp);
   touch-action: pan-y;
 }
@@ -3969,12 +3686,8 @@ body.is-back-to-top-visible .back-to-top {
   padding-right: 0.7rem;
 }
 
-/* ✕ decorativa del fondo rojo (issue #225, iteración): solo se ve
-   DURANTE el arrastre del swipe (.is-dragging), nunca en reposo ni
-   al quedar revelada la línea — si se mostrara en el estado
-   revelado se superpondría a la ✕ roja de eliminar, siempre
-   visible (iteración 2). El borrado se dispara con el
-   desplazamiento extra, no pulsando este icono. */
+/* Decorative ✕ of the red background (issue #225, iteration): only   visible DURING the swipe drag (.is-dragging), never at rest nor   when the line stays revealed — if it were shown in the   revealed state it would overlap the red delete ✕, which is
+   always visible (iteration 2). Deletion is triggered by the   extra offset, not by pressing this icon. */
 .shopping-line__swipe-icon {
   color: var(--white);
   font-size: 0.95rem;
@@ -4002,11 +3715,7 @@ body.is-back-to-top-visible .back-to-top {
   gap: 0.5rem;
   font-size: 0.88rem;
   padding: 0.35rem 0.3rem;
-  /* Sin border-radius a propósito: las esquinas ya las recorta el wrap
-     (.shopping-line-wrap, que tiene overflow: hidden + border-radius).
-     Tener el mismo radio en contenido y wrap dejaba un halo rojo
-     subpixel en las esquinas de cada ítem por el anti-aliasing sobre
-     el fondo del swipe (issue #225, iteración 3). */
+  /* No border-radius on purpose: the corners are already clipped by     the wrap (.shopping-line-wrap, which has overflow: hidden +       border-radius). Having the same radius in content and wrap     left a subpixel red halo in the corners of each item due to     anti-aliasing over the swipe background (issue #225,     iteration 3). */
   background: var(--ink-raised);
   transition: transform 0.2s ease;
 }
@@ -4015,9 +3724,7 @@ body.is-back-to-top-visible .back-to-top {
   transition: none;
 }
 
-/* Estado de borrado inminente (issue #225, iteración): al cruzar el
-   desplazamiento extra el fondo rojo se oscurece para comunicar que
-   al soltar se elimina. */
+/* Imminent-deletion state (issue #225, iteration): when crossing   the extra offset the red background darkens to signal that   releasing will delete the item. */
 .shopping-line-wrap.is-deleting {
   filter: brightness(0.85);
 }
@@ -4026,12 +3733,7 @@ body.is-back-to-top-visible .back-to-top {
   transform: translateX(-88px);
 }
 
-/* Hover: solo marca la línea (fundido suave); nunca revela el estado
-   de eliminar (issue #225, iteración: «al pulsar estaría marcando
-   el item, no eliminándolo»). El marcado se pinta con sombra interior
-   ENCIMA del fondo base --ink-raised (no lo reemplaza), de modo que el
-   fondo rojo del swipe nunca se transparenta ni tiñe la línea
-   (issue #225, iteración 3). */
+/* Hover: only marks the line (soft fade); it never reveals the   delete state (issue #225, iteration: "pressing would be marking   the item, not deleting it"). The marking is painted with an   inner shadow ON TOP of the base background --ink-raised (it   doesn't replace it), so the swipe's red background never   shows through nor tints the line (issue #225, iteration 3). */
 .shopping-line-wrap:hover .shopping-line__content {
   box-shadow: inset 0 0 0 999px var(--paper-alpha-10);
 }
@@ -4083,7 +3785,7 @@ body.is-back-to-top-visible .back-to-top {
 
 .shopping-line__stepper {
   flex-shrink: 0;
-  /* ≥ 24 px de área táctil (WCAG 2.2 AA, 2.5.8): 1.5rem */
+  /* ≥ 24 px touch target (WCAG 2.2 AA, 2.5.8): 1.5rem */
   width: 1.5rem;
   height: 1.5rem;
   display: inline-flex;
@@ -4126,11 +3828,7 @@ body.is-back-to-top-visible .back-to-top {
   cursor: pointer;
   font-size: 0.85rem;
   padding: 0 0.1rem;
-  /* Rojo claro para texto sobre fondo oscuro (issue #225): el --stamp
-     (#a63b2e ≈ 2,6:1) no llega a AA 4,5:1; #d16a59 ≈ 4,7:1 sobre
-     --ink-raised (#211e19). En negro puro casi coincide con
-     --stamp-dark; en la familia clara se oscurece al --stamp
-     (6,4:1 sobre blanco). */
+  /* Light red for text over dark background (issue #225): the --stamp     (#a63b2e ≈ 2.6:1) doesn't reach AA 4.5:1; #d16a59 ≈ 4.7:1 over     --ink-raised (#211e19). In pure black it nearly matches     --stamp-dark; in the light family it darkens to --stamp     (6.4:1 over white). */
   color: #d16a59;
 }
 
@@ -4139,11 +3837,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--stamp);
 }
 
-/* ✕ roja de eliminar, siempre visible a la derecha de cada línea
-   (issue #225, iteración): área táctil de 1.75rem (≥ 24 px, WCAG
-   2.2 AA 2.5.8). Mismo rojo claro que .shopping-line__pkgreset
-   (#d16a59 ≈ 4,7:1 sobre --ink-raised); en la familia clara se
-   oscurece al --stamp (6,4:1 sobre blanco). */
+/* Red delete ✕, always visible to the right of each line   (issue #225, iteration): 1.75rem touch target (≥ 24 px, WCAG   2.2 AA 2.5.8). Same light red as .shopping-line__pkgreset   (#d16a59 ≈ 4.7:1 over --ink-raised); in the light family it   darkens to --stamp (6.4:1 over white). */
 .shopping-line__remove {
   flex-shrink: 0;
   width: 1.75rem;
@@ -4183,7 +3877,7 @@ body.is-back-to-top-visible .back-to-top {
   text-decoration: underline;
   cursor: pointer;
   font-size: 0.8rem;
-  /* Mismo rojo claro que .shopping-line__pkgreset (AA sobre oscuro). */
+  /* Same light red as .shopping-line__pkgreset (AA over dark). */
   color: #d16a59;
 }
 
@@ -4192,12 +3886,8 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--stamp);
 }
 
-/* Checkboxes de la lista de la compra (marcar comprado) con el acento
-   de la pestaña (--stamp, rojo), mismo patrón que .saga-row
-   input[type="checkbox"] en Ocio: accent-color nativo + tamaño fijo.
-   --stamp (#a63b2e) da check blanco ≈6.4:1 en Oscuro y en la familia
-   clara; en negro puro pasa a --stamp-dark (#cf6655, umbral gráfico
-   3:1 sobre negro, patrón de ocio.css). */
+/* Shopping list checkboxes (mark purchased) with the tab's   accent (--stamp, red), same pattern as .saga-row   input[type="checkbox"] in Ocio: native accent-color + fixed
+   size. --stamp (#a63b2e) gives a white check ≈6.4:1 in Dark and   in the light family; in pure black it switches to --stamp-dark   (#cf6655, graphic threshold 3:1 over black, ocio.css pattern). */
 .shopping-line__main input[type="checkbox"] {
   accent-color: var(--stamp);
   width: 18px;
@@ -4236,7 +3926,7 @@ body.is-back-to-top-visible .back-to-top {
   margin: 0.4rem 0 0;
 }
 
-/* --- Formulario / modal de receta --- */
+/* --- Recipe form / modal --- */
 
 .modal__card--wide {
   width: min(720px, 100%);
@@ -4281,7 +3971,7 @@ body.is-back-to-top-visible .back-to-top {
   border: 1px solid var(--paper-line);
   border-radius: var(--radius);
   padding: 0.4rem 0.6rem;
-  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-size: 1rem; /* ADR-042: never < 16px on inputs */
 }
 
 .recipe-form__hint {
@@ -4314,16 +4004,12 @@ body.is-back-to-top-visible .back-to-top {
   border: 1px solid var(--paper-line);
   border-radius: var(--radius);
   padding: 0.45rem 0.6rem;
-  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-size: 1rem; /* ADR-042: never < 16px on inputs */
   font-family: var(--font-body);
   min-width: 0;
 }
 
-/* Select de unidad del formulario de receta (issue #251): rellena su
-   celda del grid (1.4fr 0.7fr 0.9fr auto y las dos columnas de móvil)
-   sin desbordarla; el min-content del select (la opción más ancha, p.
-   ej. una unidad legada larga de texto libre) lo contienen min-width: 0
-   de la regla agrupada y este width: 100% (patrón .ing-combo .ing-nombre). */
+/* Unit select of the recipe form (issue #251): it fills its   grid cell (1.4fr 0.7fr 0.9fr auto and the two mobile columns)   without overflowing it; the select's min-content (the widest   option, e.g. a long legacy free-text unit) is contained by the   min-width: 0 of the grouped rule and this width: 100%   (pattern .ing-combo .ing-nombre). */
 .recipe-form__ingrediente select {
   width: 100%;
 }
@@ -4352,19 +4038,14 @@ body.is-back-to-top-visible .back-to-top {
 
 .recipe-form__ingrediente {
   display: grid;
-  /* Issue #240: sin columna de categoría — el nombre es un combobox
-     sobre el catálogo y la categoría viene de ahí. */
+  /* Issue #240: no category column — the name is a combobox     over the catalog and the category comes from there. */
   grid-template-columns: 1.4fr 0.7fr 0.9fr auto;
   gap: 0.35rem;
   margin-bottom: 0.35rem;
   min-width: 0;
 }
 
-/* Combobox de ingrediente del formulario de receta (issue #240):
-   input con buscador + desplegable con las opciones del catálogo.
-   El desplegable se posiciona bajo el campo (absolute sobre la fila)
-   y hace de "nativo" dentro del modal: al hacer scroll del formulario
-   se desplaza con el contenido. */
+/* Ingredient combobox of the recipe form (issue #240):   input with search + dropdown with the catalog options.   The dropdown is positioned below the field (absolute on the   row) and acts as "native" inside the modal: scrolling the   form moves it with the content. */
 .ing-combo {
   position: relative;
   min-width: 0;
@@ -4383,9 +4064,7 @@ body.is-back-to-top-visible .back-to-top {
   transform: translateY(-50%);
   background: none;
   border: none;
-  /* Tinta plena (no --ink-soft): sobre el fondo del input (--paper-dim)
-     el --ink-soft del modo oscuro daba ≈ 2.4:1, por debajo del 3:1 AA
-     para componentes gráficos (hallazgo de QA, issue #240). */
+  /* Full ink (not --ink-soft): over the input background     (--paper-dim) the dark-mode --ink-soft gave ≈ 2.4:1, below     the 3:1 AA for graphic components (QA finding, issue #240). */
   color: var(--ink);
   font-size: 0.8rem;
   line-height: 1;
@@ -4427,9 +4106,7 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 .ing-combo__list .ing-combo__empty {
-  /* Tinta plena (no --ink-soft): el --ink-soft del modo oscuro sobre
-     --paper daba ≈ 2.8:1, por debajo del 4.5:1 AA para texto (hallazgo
-     de QA, issue #240); en negro puro un override lo devuelve a papel. */
+  /* Full ink (not --ink-soft): the dark-mode --ink-soft over     --paper gave ≈ 2.8:1, below the 4.5:1 AA for text (QA     finding, issue #240); in pure black an override returns it     to paper. */
   color: var(--ink);
   cursor: default;
 }
@@ -4522,9 +4199,7 @@ body.is-back-to-top-visible .back-to-top {
   justify-content: flex-end;
 }
 
-/* Responsividad del formulario: en móvil las filas de ingrediente
-   pasan a dos columnas (nunca desbordan el viewport); el combobox
-   ocupa la fila entera para que el desplegable tenga todo el ancho. */
+/* Form responsiveness: on mobile the ingredient rows go   to two columns (they never overflow the viewport); the   combobox takes the whole row so the dropdown has the full width. */
 @media (max-width: 560px) {
   .recipe-form__ingrediente {
     grid-template-columns: 1fr 1fr;
@@ -4537,12 +4212,9 @@ body.is-back-to-top-visible .back-to-top {
   }
 }
 
-/* --- Vista de receta en modo lectura (issue #236) --- */
+/* --- Recipe read-mode view (issue #236) --- */
 
-/* La ventana de lectura no es el formulario con campos deshabilitados:
-   es una vista de texto propia (foto, nombre como título, etiquetas,
-   descripción, porciones, listas de ingredientes e instrucciones y
-   enlaces). Sin recuadros ni nombres de campo. */
+/* The read window isn't the form with disabled fields:   it's its own text view (photo, name as title, tags,   description, servings, ingredient and instruction lists and   links). No boxes or field names. */
 
 .recipe-view {
   display: flex;
@@ -4573,16 +4245,8 @@ body.is-back-to-top-visible .back-to-top {
   min-width: 0;
 }
 
-/* Etiquetas de alérgenos y de tipo de plato con colores propios para
-   que no se confundan (issue #236). Píldoras rellenas con pares de
-   contraste AA: teal + texto blanco ≈ 6.7:1 y ocre oscuro + texto
-   blanco ≈ 5.2:1 (≥ 4.5:1). El estilo translúcido (teal-alpha-18) no
-   vale aquí: el ocre sobre papel (≈ 4.32:1) no alcanzaría el umbral
-   de texto. En negro puro se usan las variantes claras con texto tinta
-   (bloque más abajo). Las tarjetas de recetas comparten estos mismos
-   colores por tipo (issue #236, iteración): los modificadores de
-   .recipe-card__tag se agrupan con los de la vista para tener una
-   sola fuente de verdad por regla. */
+/* Allergen and dish-type tags with their own colors so   they aren't confused (issue #236). Filled pills with AA   contrast pairs: teal + white text ≈ 6.7:1 and dark ochre +   white text ≈ 5.2:1 (≥ 4.5:1). The translucent style   (teal-alpha-18) doesn't work here: ochre on paper (≈ 4.32:1)   wouldn't reach the text threshold. In pure black the light
+   variants are used with ink text (block below). The recipe   cards share these same per-type colors (issue #236,   iteration): the .recipe-card__tag modifiers are grouped with   the view's to have a single source of truth per rule. */
 .recipe-view__tag {
   font-size: 0.78rem;
   border-radius: 999px;
@@ -4607,9 +4271,7 @@ body.is-back-to-top-visible .back-to-top {
   overflow-wrap: break-word;
 }
 
-/* Porciones en tinta plena: --ink-soft (#948a76) sobre papel en el
-   tema Oscuro solo da ≈ 2.6:1 (no alcanza AA), así que el texto
-   secundario de la vista de lectura usa la tinta del contenido. */
+/* Servings in full ink: --ink-soft (#948a76) over paper in   the Dark theme only gives ≈ 2.6:1 (doesn't reach AA), so the   secondary text of the read view uses the content ink. */
 .recipe-view__meta {
   margin: 0;
   font-size: 0.85rem;
@@ -4632,9 +4294,7 @@ body.is-back-to-top-visible .back-to-top {
   flex-direction: column;
   gap: 0.3rem;
   min-width: 0;
-  /* Las <ul> de ingredientes y enlaces no llevan viñetas: quitar el
-     padding-inline-start por defecto (~40px) que dejaría un hueco
-     huérfano; la numeración la aporta solo el <ol> de instrucciones. */
+  /* The <ul> of ingredients and links carry no bullets: remove     the default padding-inline-start (~40px) that would leave     an orphan gap; the numbering is provided only by the <ol> of     instructions. */
   list-style: none;
   padding-left: 0;
 }
@@ -4658,11 +4318,7 @@ body.is-back-to-top-visible .back-to-top {
   overflow-wrap: break-word;
 }
 
-/* Las instrucciones son un <ol> nativo: recuperar display block para
-   que los ::marker de numeración se rendericen (un contenedor flex
-   blockifica los <li> y los números desaparecen, verificado en QA).
-   Se restaura la viñeta decimal y el padding que el reset de
-   .recipe-view__list quitó, para que la numeración se vea. */
+/* Instructions are a native <ol>: restore display block so   the numbering ::markers render (a flex container blockifies   the <li>s and the numbers disappear, verified in QA).   The decimal bullet and the padding that the .recipe-view__list   reset removed are restored so the numbering is visible. */
 .recipe-view__pasos {
   display: block;
   list-style: decimal;
@@ -4692,9 +4348,7 @@ body.is-back-to-top-visible .back-to-top {
   justify-content: flex-end;
 }
 
-/* Responsividad de la vista de lectura: en móvil la cantidad larga
-   ("250 mililitros") baja a su propia línea en lugar de apretar el
-   nombre (nunca desborda el viewport). */
+/* Read-view responsiveness: on mobile the long quantity   ("250 milliliters") drops to its own line instead of   squeezing the name (never overflows the viewport). */
 @media (max-width: 560px) {
   .recipe-view__ingrediente {
     flex-wrap: wrap;
@@ -4707,20 +4361,16 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 /* =========================================================
-   Sección de gimnasio (issue #62): Entrenos y Ejercicios.
-   Vista de primer nivel hermana de recipes-view.
+   Gym section (issue #62): Workouts and Exercises.   First-level view, sibling of recipes-view.
    ========================================================= */
 
-/* --- Vista y cabecera (patrón recipes-view, issue #208) --- */
+/* --- View and header (recipes-view pattern, issue #208) --- */
 
 .gym-view {
-  /* Padding superior: hueco para la cabecera global fija (--header-h)
-     + 1rem de aire (issue #206). Padding inferior: hueco para la
-     barra de pestañas fija (--tabs-bar-h + margen seguro) + 1.5rem,
-     mismo patrón que .recipes-view (issue #208). */
+  /* Top padding: room for the fixed global header (--header-h)     + 1rem of air (issue #206). Bottom padding: room for the     fixed tabs bar (--tabs-bar-h + safe margin) + 1.5rem,     same pattern as .recipes-view (issue #208). */
   padding: calc(var(--header-h) + 1rem) 1.25rem
            calc(var(--tabs-bar-h) + env(safe-area-inset-bottom, 0px) + 1.5rem);
-  /* Ancho alineado con #app y .recipes-view (max-width 980px). */
+  /* Width aligned with #app and .recipes-view (max-width 980px). */
   max-width: 980px;
   margin: 0 auto;
   width: 100%;
@@ -4732,11 +4382,9 @@ body.is-back-to-top-visible .back-to-top {
   }
 }
 
-/* --- Selector de unidad de peso (kg/lbs, issue #62) --- */
+/* --- Weight unit selector (kg/lbs, issue #62) --- */
 
-/* Fila bajo las pestañas, visible en toda la sección. El select es
-   una píldora compacta (patrón de .recipes-filter__btn: fondo
-   --ink-raised y texto --paper, invertidos en la familia clara). */
+/* Row under the tabs, visible across the whole section. The   select is a compact pill (pattern of .recipes-filter__btn:   --ink-raised background and --paper text, inverted in the   light family). */
 .gym-units {
   display: flex;
   align-items: center;
@@ -4763,7 +4411,7 @@ body.is-back-to-top-visible .back-to-top {
   min-width: 0;
 }
 
-/* --- Barra de herramientas de las pestañas (patrón .recipes-toolbar) --- */
+/* --- Tab toolbars (pattern .recipes-toolbar) --- */
 
 .gym-toolbar {
   display: flex;
@@ -4773,7 +4421,7 @@ body.is-back-to-top-visible .back-to-top {
   margin-bottom: 1rem;
 }
 
-/* --- Grids de entrenos y catálogo de ejercicios --- */
+/* --- Grids for workouts and the exercise catalog --- */
 
 .gym-workouts-grid,
 .gym-exercises-grid {
@@ -4782,10 +4430,9 @@ body.is-back-to-top-visible .back-to-top {
   gap: 0.9rem;
 }
 
-/* --- Tarjetas (patrón .recipe-card, issue #234) --- */
+/* --- Cards (pattern .recipe-card, issue #234) --- */
 
-/* Toda la tarjeta es el botón: click (o Enter/Espacio) abre el
-   detalle en modo lectura. Mismo armazón para entrenos y ejercicios. */
+/* The whole card is the button: click (or Enter/Space) opens the   detail in read mode. Same skeleton for workouts and exercises. */
 .gym-workout-card,
 .gym-exercise-card {
   background: var(--paper);
@@ -4830,7 +4477,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink-soft);
 }
 
-/* --- Chip de grupo muscular --- */
+/* --- Muscle group chip --- */
 
 .gym-muscle-chip {
   display: inline-flex;
@@ -4845,10 +4492,9 @@ body.is-back-to-top-visible .back-to-top {
   align-self: flex-start;
 }
 
-/* --- Resumen de periodo (issue #269) --- */
+/* --- Period summary (issue #269) --- */
 
-/* Selector de periodo: chips tipo .friend-chip + recuadro del rango
-   libre, en línea con salto en pantallas estrechas. */
+/* Period selector: .friend-chip-style chips + the free-range box,   inline with wrapping on narrow screens. */
 .gym-summary-selector {
   display: flex;
   flex-wrap: wrap;
@@ -4858,10 +4504,7 @@ body.is-back-to-top-visible .back-to-top {
   min-width: 0;
 }
 
-/* Chips con el armazón de .friend-chip: borde sutil, píldora, sin
-   fondo. .is-active invierte a superficie papel; el override de
-   negro puro lo cubre el selector agrupado que ya incluye
-   .friend-chip.is-active (misma regla, mismo armazón). */
+/* Chips with the .friend-chip skeleton: subtle border, pill,   no background. .is-active inverts to paper surface; pure   black is covered by the grouped selector that already   includes .friend-chip.is-active (same rule, same skeleton). */
 .gym-summary-chip {
   background: transparent;
   border: 1px solid var(--paper-alpha-30);
@@ -4879,12 +4522,7 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--paper);
 }
 
-/* Recuadro del rango libre (issue #269): un ÚNICO control para
-   elegir desde/hasta (iteración 3 del comentario del usuario). El
-   trigger es el recuadro visible — etiqueta + rango ya elegido — y
-   al pulsarlo se abre el calendario donde el primer click fija
-   «desde» y el segundo «hasta»; oculto salvo con la opción «Rango»
-   (controla el atributo hidden js/gym.js). */
+/* Free-range box (issue #269): a SINGLE control to pick   from/to (iteration 3 of the user's comment). The trigger   is the visible box — label + already chosen range — and   pressing it opens the calendar where the first click sets   "from" and the second "to"; hidden except with the "Range"   option (the hidden attribute is controlled by js/gym.js). */
 .gym-summary-range {
   position: relative;
   min-width: 0;
@@ -4908,9 +4546,7 @@ body.is-back-to-top-visible .back-to-top {
   cursor: pointer;
 }
 .gym-summary-range__trigger[aria-expanded="true"] {
-  /* --games (no --ink-soft): el suave da ~2.45:1 sobre --paper-dim en
-     la familia oscura y el borde es un componente gráfico (3:1); el
-     override de Negro puro lo cubre el selector agrupado de abajo. */
+  /* --games (not --ink-soft): the soft one gives ~2.45:1 over     --paper-dim in the dark family and the border is a graphic     component (3:1); pure black is covered by the grouped     selector below. */
   border-color: var(--games);
 }
 
@@ -4919,19 +4555,13 @@ body.is-back-to-top-visible .back-to-top {
   white-space: nowrap;
 }
 .gym-summary-range__value {
-  /* --ink (no --ink-soft): sobre la superficie nueva --paper-dim el
-     suave daría ~2.45:1 en la familia oscura (regla 4 de
-     AGENTS.md); el override de Negro puro lo cubre el selector
-     agrupado de abajo. */
+  /* --ink (not --ink-soft): over the new --paper-dim surface the     soft one would give ~2.45:1 in the dark family (rule 4 of     AGENTS.md); pure black is covered by the grouped selector     below. */
   color: var(--ink);
   overflow-wrap: break-word;
   min-width: 0;
 }
 
-/* Calendario del rango (popover): una única caja donde elegir las
-   dos fechas (primer click desde, segundo hasta). Superficie papel
-   con sombra de tarjeta; se posiciona bajo el trigger y nunca más
-   ancho que la pantalla (en móvil pasa a flujo normal). */
+/* Calendar of the range (popover): a single box to pick the two   dates (first click from, second to). Paper surface with card   shadow; it positions below the trigger and is never wider   than the screen (on mobile it becomes normal flow). */
 .gym-summary-range__popover {
   position: absolute;
   top: calc(100% + 0.4rem);
@@ -4989,16 +4619,13 @@ body.is-back-to-top-visible .back-to-top {
 .gym-summary-range__cal-weekday {
   text-align: center;
   font-size: 0.7rem;
-  /* --ink (no --ink-soft): sobre la superficie --paper del popover el
-     suave daría ~2.84:1 en la familia oscura (regla 4 de AGENTS.md);
-     el override de Negro puro la cubre el selector agrupado de abajo. */
+  /* --ink (not --ink-soft): over the popover's --paper surface the     soft one would give ~2.84:1 in the dark family (rule 4 of     AGENTS.md); pure black is covered by the grouped selector below. */
   color: var(--ink);
   padding: 0.2rem 0;
   min-width: 0;
 }
 
-/* Rejilla de días: 7 columnas de ancho igual (en móvil caben en
-   360 px) y filas con altura fija para no saltar al navegar. */
+/* Day grid: 7 equal-width columns (they fit in 360 px on   mobile) and rows with fixed height so there's no jumping when navigating. */
 .gym-summary-range__cal-days {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -5021,16 +4648,12 @@ body.is-back-to-top-visible .back-to-top {
 .gym-summary-range__day:hover {
   background: var(--paper-dim);
 }
-/* El hover no puede tapar el estado de extremo del rango: el día
-   seleccionado conserva su fondo en las cuatro familias (especificidad
-   superior a .gym-summary-range__day:hover; el hover de Negro puro lo
-   cubre el selector agrupado de abajo). */
+/* The hover must not cover the range-endpoint state: the   selected day keeps its background in all four families   (higher specificity than .gym-summary-range__day:hover; pure   black hover is covered by the grouped selector below). */
 .gym-summary-range__day--selected:hover {
   background: var(--games);
 }
 .gym-summary-range__day--today {
-  /* --games (no --ink-soft): el borde es un componente gráfico (3:1)
-     y el suave da ~2.84:1 sobre --paper en la familia oscura. */
+  /* --games (not --ink-soft): the border is a graphic component     (3:1) and the soft one gives ~2.84:1 over --paper in the     dark family. */
   border-color: var(--games);
 }
 .gym-summary-range__day--selected {
@@ -5038,9 +4661,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--paper);
   font-weight: 600;
 }
-/* Días intermedios del rango: tinte violeta (--games al 22 %, no hay
-   variable alfa del acento; mismo valor en las cuatro familias) con
-   el texto en --ink, muy por encima de AA en todas ellas. */
+/* Intermediate days of the range: violet tint (--games at 22 %,   there is no alpha variable of the accent; same value in the   four families) with --ink text, well above AA in all of them. */
 .gym-summary-range__day--in-range {
   background: rgba(122, 90, 158, 0.22);
   color: var(--ink);
@@ -5053,10 +4674,7 @@ body.is-back-to-top-visible .back-to-top {
   margin-top: 0.6rem;
 }
 
-/* En pantallas estrechas y tablets (≤767 px; la banda 540–680 px con
-   el popover absoluto desbordaba el borde derecho de la página) el
-   popover pasa a flujo normal — nada de posicionamiento absoluto, no
-   puede desbordar — y el recuadro ocupa toda la fila del selector. */
+/* On narrow screens and tablets (≤767 px; the 540–680 px band   with the absolute popover overflowed the page's right edge)   the popover goes to normal flow — no absolute positioning,   it cannot overflow — and the box takes the whole selector row. */
 @media (max-width: 767px) {
   .gym-summary-range {
     flex: 1 1 100%;
@@ -5069,7 +4687,7 @@ body.is-back-to-top-visible .back-to-top {
   }
 }
 
-/* Cabecera del rango pintado («Periodo: DD/MM/YYYY – DD/MM/YYYY»). */
+/* Header of the painted range ("Period: DD/MM/YYYY – DD/MM/YYYY"). */
 .gym-summary-period {
   margin: 0 0 0.9rem;
   font-size: 0.85rem;
@@ -5077,9 +4695,7 @@ body.is-back-to-top-visible .back-to-top {
   overflow-wrap: break-word;
 }
 
-/* Tarjetas de totales: patrón .stat-tile/.friend-card (superficie
-   papel + sombra de tarjeta); el negro puro lo cubre el selector
-   agrupado que ya las incluye. */
+/* Total cards: .stat-tile/.friend-card pattern (paper   surface + card shadow); pure black is covered by the grouped   selector that already includes them. */
 .gym-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
@@ -5100,10 +4716,7 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 .gym-summary-card__label {
-  /* --ink (no --ink-soft): el suave daría ~2.45:1 sobre --paper en la
-     familia oscura (regla 4 de AGENTS.md); mismo criterio que el
-     texto del recuadro del rango. La jerarquía la mantienen
-     tamaño/peso (0.85rem normal vs 1.4rem bold del valor). */
+  /* --ink (not --ink-soft): the soft one would give ~2.45:1 over     --paper in the dark family (rule 4 of AGENTS.md); same     criterion as the range box text. The hierarchy is kept by     size/weight (0.85rem normal vs 1.4rem bold of the value). */
   font-size: 0.85rem;
   color: var(--ink);
 }
@@ -5115,9 +4728,8 @@ body.is-back-to-top-visible .back-to-top {
   min-width: 0;
 }
 
-/* Título de sección del resumen («Por grupos musculares»,
-   «Por ejercicio»): misma escala que los títulos de grupo del
-   resto de la web, con salto de palabra en pantallas estrechas. */
+/* Section title of the summary ("By muscle groups", "By   exercise"): same scale as the rest of the web's group
+   titles, with word wrapping on narrow screens. */
 .gym-summary-section-title {
   margin: 1.1rem 0 0.5rem;
   font-size: 0.9rem;
@@ -5127,10 +4739,7 @@ body.is-back-to-top-visible .back-to-top {
   min-width: 0;
 }
 
-/* Desglose por ejercicio y por grupos musculares: tablas con scroll
-   horizontal propio (el de página queda libre, regla 2 de
-   AGENTS.md) y bordes con la misma variable que usan el resto de
-   superficies de Gimnasio. */
+/* Breakdown by exercise and by muscle groups: tables with their   own horizontal scroll (the page one stays free, rule 2 of   AGENTS.md) and borders with the same variable used by the   rest of the Gym surfaces. */
 .gym-summary-table-wrap {
   overflow-x: auto;
   min-width: 0;
@@ -5156,7 +4765,7 @@ body.is-back-to-top-visible .back-to-top {
   white-space: nowrap;
 }
 
-/* Celda de nombre: nombres largos se ajustan a su contenedor. */
+/* Name cell: long names wrap within their container. */
 .gym-summary-table td:first-child {
   overflow-wrap: break-word;
   min-width: 0;
@@ -5166,36 +4775,27 @@ body.is-back-to-top-visible .back-to-top {
   margin-left: 0.4rem;
 }
 
-/* Diferencia de peso con color semántico (issue #269, iteración 5):
-   verde si aumentó (+), rojo si bajó (−) y color normal de la celda
-   si es cero (o sin pesos, «—»). Mismo patrón documentado que
-   .shopping-line__pkgreset (issue #225): en la familia oscura los
-   acentos base no llegan a AA 4.5:1 sobre --ink (--stamp #a63b2e
-   ≈ 2.85:1 y --teal-reel #2b6459 ≈ 2.66:1), así que se hardcodean
-   variantes claras con su contraste anotado; la familia clara usa
-   los acentos base (ambos AA sobre --paper-dim/--paper). El cero no
-   lleva clase: hereda --paper (oscuro) / --ink (claro), «blanco
-   como está ahora» de la iteración anterior. */
+/* Weight difference with semantic color (issue #269,   iteration 5): green if it increased (+), red if it dropped (−)   and the cell's normal color if zero (or no weights, "—").   Same documented pattern as .shopping-line__pkgreset (issue   #225): in the dark family the base accents don't reach AA   4.5:1 over --ink (--stamp #a63b2e ≈ 2.85:1 and --teal-reel   #2b6459 ≈ 2.66:1), so light variants are hardcoded with their   contrast annotated; the light family uses the base accents   (both AA over --paper-dim/--paper). Zero carries no class:   it inherits --paper (dark) / --ink (light), "white as it is   now" from the previous iteration. */
 .gym-summary-table__diff--up {
-  /* #4f9c8e ≈ 5.6:1 sobre --ink y ≈ 6.5:1 sobre #000 (AA) */
+  /* #4f9c8e ≈ 5.6:1 over --ink and ≈ 6.5:1 over #000 (AA) */
   color: #4f9c8e;
 }
 .gym-summary-table__diff--down {
-  /* #d16a59 ≈ 5.1:1 sobre --ink y ≈ 5.9:1 sobre #000 (AA) */
+  /* #d16a59 ≈ 5.1:1 over --ink and ≈ 5.9:1 over #000 (AA) */
   color: #d16a59;
 }
 [data-theme="light"] .gym-summary-table__diff--up,
 [data-theme="white"] .gym-summary-table__diff--up {
-  /* --teal-reel ≈ 6.0:1 sobre --paper-dim (AA) */
+  /* --teal-reel ≈ 6.0:1 over --paper-dim (AA) */
   color: var(--teal-reel);
 }
 [data-theme="light"] .gym-summary-table__diff--down,
 [data-theme="white"] .gym-summary-table__diff--down {
-  /* --stamp ≈ 5.6:1 sobre --paper-dim (AA) */
+  /* --stamp ≈ 5.6:1 over --paper-dim (AA) */
   color: var(--stamp);
 }
 
-/* --- Modal de entreno: constructor de ejercicios --- */
+/* --- Workout modal: exercise builder --- */
 
 .gym-modal__title {
   margin: 0 0 0.8rem;
@@ -5204,8 +4804,7 @@ body.is-back-to-top-visible .back-to-top {
   min-width: 0;
 }
 
-/* Etiquetas y valores de la vista de lectura (patrón
-   .ingredient-modal__field / __label / __text). */
+/* Labels and values of the read view (pattern   .ingredient-modal__field / __label / __text). */
 .gym-modal__label {
   font-size: 0.8rem;
   font-weight: 600;
@@ -5241,7 +4840,7 @@ body.is-back-to-top-visible .back-to-top {
   border: 1px solid var(--paper-line);
   border-radius: var(--radius);
   padding: 0.45rem 0.6rem;
-  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-size: 1rem; /* ADR-042: never < 16px on inputs */
   font-family: var(--font-body);
   min-width: 0;
   width: 100%;
@@ -5252,8 +4851,7 @@ body.is-back-to-top-visible .back-to-top {
   min-height: 4rem;
 }
 
-/* Bloque de un ejercicio dentro del constructor del entreno: panel
-   con el nombre/selección arriba y la tabla de series debajo. */
+/* Block of one exercise inside the workout builder: panel   with name/selection on top and the sets table below. */
 .gym-exercise-block {
   border: 1px solid var(--paper-line);
   border-radius: var(--radius);
@@ -5287,17 +4885,16 @@ body.is-back-to-top-visible .back-to-top {
   border: 1px solid var(--paper-line);
   border-radius: var(--radius);
   padding: 0.45rem 0.6rem;
-  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-size: 1rem; /* ADR-042: never < 16px on inputs */
   font-family: var(--font-body);
   min-width: 0;
   width: 100%;
 }
 
-/* --- Tabla de series (peso × repeticiones) --- */
+/* --- Sets table (weight × reps) --- */
 
-/* Filas en edición: dos inputs (peso y reps) + botón de quitar. En
-   lectura se reutiliza la misma fila con spans (la tercera columna
-   queda vacía), para que el contenido ajuste igual en móvil. */
+/* Rows in editing: two inputs (weight and reps) + a remove
+   button. In read mode the same row is reused with spans   (the third column stays empty), so the content fits the   same on mobile. */
 .gym-series-table {
   display: flex;
   flex-direction: column;
@@ -5320,7 +4917,7 @@ body.is-back-to-top-visible .back-to-top {
   border: 1px solid var(--paper-line);
   border-radius: var(--radius);
   padding: 0.4rem 0.55rem;
-  font-size: 1rem; /* ADR-042: nunca < 16px en inputs */
+  font-size: 1rem; /* ADR-042: never < 16px on inputs */
   font-family: var(--font-body);
   min-width: 0;
   width: 100%;
@@ -5331,10 +4928,7 @@ body.is-back-to-top-visible .back-to-top {
   min-width: 0;
 }
 
-/* Cabecera de la tabla de series (etiquetas Peso/Repeticiones, #265):
-   misma rejilla que las filas para alinear las columnas; texto
-   pequeño y atenuado que no compite con los inputs. Sin overrides de
-   tema: usa var(--ink-soft), ya cubierta en las cuatro familias. */
+/* Header of the sets table (Weight/Reps labels, #265):   same grid as the rows to align the columns; small, muted   text that doesn't compete with the inputs. No theme   overrides: it uses var(--ink-soft), already covered in all   four families. */
 .gym-series-row--head {
   font-size: 0.72rem;
   color: var(--ink-soft);
@@ -5347,8 +4941,7 @@ body.is-back-to-top-visible .back-to-top {
   visibility: hidden;
 }
 
-/* Botones del constructor: añadir serie (ghost con borde punteado) y
-   quitar serie/ejercicio (texto rojo). */
+/* Builder buttons: add set (ghost with dashed border) and   remove set/exercise (red text). */
 .gym-add-series-btn {
   background: none;
   border: 1px dashed var(--paper-line);
@@ -5365,10 +4958,7 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--ink-soft);
 }
 
-/* Fila de botones del constructor (añadir ejercicio / nuevo ejercicio
-   y añadir serie / duplicar serie): en línea, con salto en pantallas
-   estrechas. Sin overrides de tema: reutiliza .btn y
-   .gym-add-series-btn (ya cubiertos en las cuatro familias). */
+/* Builder button row (add exercise / new exercise and add   set / duplicate set): inline, wrapping on narrow screens.   No theme overrides: it reuses .btn and .gym-add-series-btn   (already covered in all four families). */
 .gym-block-button-row {
   display: flex;
   flex-wrap: wrap;
@@ -5391,8 +4981,7 @@ body.is-back-to-top-visible .back-to-top {
   background: var(--ink-alpha-10);
 }
 
-/* Aviso del constructor cuando el catálogo de ejercicios está vacío
-   (con botón que abre el modal de alta de ejercicio). */
+/* Builder notice when the exercise catalog is empty   (with a button that opens the exercise entry modal). */
 .gym-empty-hint {
   margin: 0 0 0.4rem;
   font-size: 0.8rem;
@@ -5408,7 +4997,7 @@ body.is-back-to-top-visible .back-to-top {
   margin-top: 1rem;
 }
 
-/* --- Overrides de la familia clara (Claro / Blanco puro) --- */
+/* --- Light family overrides (Light / Pure White) --- */
 
 [data-theme="light"] .recipe-card,
 [data-theme="white"] .recipe-card {
@@ -5436,8 +5025,7 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--ink-alpha-15);
 }
 
-/* La píldora del filtro usa --ink-raised como fondo y --paper como
-   texto (como .sort-select de ocio): en la familia clara se invierte. */
+/* The filter pill uses --ink-raised as background and   --paper as text (like ocio's .sort-select): in the light   family it inverts. */
 [data-theme="light"] .ingredients-filter__btn,
 [data-theme="white"] .ingredients-filter__btn,
 [data-theme="light"] .recipes-filter__btn,
@@ -5449,10 +5037,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink);
 }
 
-/* Píldoras de la barra del menú (issue #220): mismo patrón que
-   .sort-select en la familia clara — el texto pasa a --ink sobre el
-   fondo claro. El :not(.btn--danger) deja intacto el color peligro
-   de la píldora de borrar semana en claro. */
+/* Menu bar pills (issue #220): same pattern as .sort-select   in the light family — the text becomes --ink over the light   background. The :not(.btn--danger) leaves the danger color of   the delete-week pill intact in light. */
 [data-theme="light"] .btn--pill:not(.btn--danger),
 [data-theme="white"] .btn--pill:not(.btn--danger) {
   color: var(--ink);
@@ -5464,38 +5049,25 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink);
 }
 
-/* Tarjeta de receta de las celdas en la familia clara (issue #242,
-   iteración): el tinte de papel de la base (--paper-alpha-10) es
-   blanco translúcido en Claro/Blanco puro y quedaría invisible sobre
-   la celda blanca; vuelve al tinte de tinta, patrón del hover de
-   .btn--pill en la familia clara. */
+/* Recipe card of the cells in the light family (issue #242,   iteration): the base's paper tint (--paper-alpha-10) is   translucent white in Light/Pure White and would be invisible   over the white cell; it returns to the ink tint, pattern of   .btn--pill hover in the light family. */
 [data-theme="light"] .menu-meal__card,
 [data-theme="white"] .menu-meal__card {
   background: var(--ink-alpha-10);
 }
 
-/* ✕ de las tarjetas del menú en la familia clara (issue #242,
-   iteración): la base usa el rojo claro #d16a59 pensado para el chip
-   oscuro; sobre el chip claro vuelve al --stamp (≈ 5.3:1, AA), patrón
-   de .shopping-line__remove en la familia clara. */
+/* ✕ of the menu cards in the light family (issue #242,   iteration): the base uses the light red #d16a59 meant for the   dark chip; over the light chip it returns to --stamp   (≈ 5.3:1, AA), pattern of .shopping-line__remove in the light   family. */
 [data-theme="light"] .menu-meal__remove,
 [data-theme="white"] .menu-meal__remove {
   color: var(--stamp);
 }
 
-/* Distintivo de comensales en la familia clara (issue #242,
-   iteración): en Claro/Blanco puro el papel translúcido de la base
-   es blanco y quedaría invisible sobre la tarjeta clara; vuelve a la
-   tinta suave (5.93:1, AA), patrón agrupado de .menu-meal__card. */
+/* Diners badge in the light family (issue #242, iteration):   in Light/Pure White the base's translucent paper is white   and would be invisible on the light card; it returns to soft   ink (5.93:1, AA), grouped pattern of .menu-meal__card. */
 [data-theme="light"] .menu-meal__comensales,
 [data-theme="white"] .menu-meal__comensales {
   color: var(--ink-soft);
 }
 
-/* Campo de búsqueda del buscador en la familia clara: la base ya es
-   --paper-dim/--ink (misma fuente de verdad que el resto de inputs
-   del modal); el override solo refuerza el borde como los demás
-   campos agrupados. */
+/* Picker search field in the light family: the base is already   --paper-dim/--ink (same source of truth as the rest of the   modal's inputs); the override only reinforces the border like   the other grouped fields. */
 [data-theme="light"] .menu-comensales input,
 [data-theme="white"] .menu-comensales input,
 [data-theme="light"] .recipe-pick__search,
@@ -5529,9 +5101,7 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--ink-alpha-20);
 }
 
-/* Píldora ghost y ✕ de la lista de la compra en la familia clara:
-   el texto pasa a --ink y el hover a un tinte de tinta (patrón de
-   .btn--pill de la issue #220). */
+/* Ghost pill and ✕ of the shopping list in the light family:   the text becomes --ink and the hover an ink tint (pattern of   the issue #220 .btn--pill). */
 [data-theme="light"] .shopping-btn--ghost,
 [data-theme="white"] .shopping-btn--ghost { color: var(--ink); }
 [data-theme="light"] .shopping-btn--ghost:hover,
@@ -5541,8 +5111,7 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="light"] .shopping-line__remove,
 [data-theme="white"] .shopping-line__remove { color: var(--stamp); }
 
-/* Overrides de la familia oscura en negro puro (mismas superficies
-   que el resto de la app: --ink-raised con texto papel). */
+/* Dark family overrides in pure black (same surfaces as the   rest of the app: --ink-raised with paper text). */
 [data-theme="black"] .recipe-card {
   background: var(--ink-raised);
   color: var(--paper);
@@ -5575,8 +5144,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--ink-soft);
 }
 
-/* Tarjetas y panel del filtro: superficies de papel → superficies
-   oscuras (patrón de las tarjetas de receta en negro puro). */
+/* Cards and filter panel: paper surfaces → dark surfaces   (pattern of the recipe cards in pure black). */
 [data-theme="black"] .ingredient-card {
   background: var(--ink-raised);
   color: var(--paper);
@@ -5599,20 +5167,13 @@ body.is-back-to-top-visible .back-to-top {
   background: var(--paper-alpha-10);
 }
 
-/* En negro puro el hover genérico (--paper-alpha-10 sobre fondo oscuro)
-   ganaría al .is-checked y dejaría el texto --ink ilegible: el hover de
-   un ítem marcado mantiene el fondo violeta oscuro. */
+/* In pure black the generic hover (--paper-alpha-10 over dark   background) would beat .is-checked and leave --ink text   illegible: the hover of a checked item keeps the dark violet   background. */
 [data-theme="black"] .ingredients-filter__all.is-checked:hover,
 [data-theme="black"] .ingredients-filter__item.is-checked:hover {
   background: var(--games-dark);
 }
 
-/* Filtro de Recetas (issue #234): en negro puro el panel usa superficie
-   oscura (--ink-raised) y texto papel, como el filtro de Ingredientes.
-   El hover genérico (--paper-alpha-10) ganaría al .is-checked y dejaría
-   el texto --white ilegible: el hover de un ítem marcado mantiene el
-   ocre (--ochre-spine-dark es la variante clara #c99a4e en negro puro
-   con texto casi negro, contraste ≈ 7.4:1). */
+/* Recipes filter (issue #234): in pure black the panel uses dark   surface (--ink-raised) and paper text, like the Ingredients   filter. The generic hover (--paper-alpha-10) would beat   .is-checked and leave --white text illegible: the hover of a   checked item keeps the ochre (--ochre-spine-dark is the light   variant #c99a4e in pure black with near-black text, contrast   ≈ 7.4:1). */
 [data-theme="black"] .recipes-filter__panel {
   background: var(--ink-raised);
   color: var(--paper);
@@ -5645,59 +5206,44 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--paper-alpha-20);
 }
 
-/* Número de comensales del buscador en negro puro: la base usa
-   --paper-dim/--ink, que en este tema son casi negros (texto
-   invisible ≈ 1.07:1); se invierte como los demás campos de
-   formulario (patrón de ingredient-modal__field). */
+/* Diners number of the picker in pure black: the base uses   --paper-dim/--ink, which in this theme are nearly black   (invisible text ≈ 1.07:1); it inverts like the other form   fields (pattern of ingredient-modal__field). */
 [data-theme="black"] .recipe-pick__comensales input {
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
 }
 
-/* Campo de búsqueda del buscador en negro puro: sin override, la
-   base (--ink-raised) quedaría con el mismo fondo que el modal
-   (también --ink-raised en este tema), y el campo no se distinguiría
-   del modal; se usa el patrón de los demás inputs (--ink + borde
-   claro), mismo bloque que .recipe-pick__comensales input. */
+/* Picker search field in pure black: without an override, the   base (--ink-raised) would have the same background as the   modal (also --ink-raised in this theme), and the field   wouldn't be distinguishable from the modal; the other inputs'   pattern is used (--ink + light border), same block as   .recipe-pick__comensales input. */
 [data-theme="black"] .recipe-pick__search {
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
 }
 
-/* Selectores del destino (día / comida) en negro puro: la base usa
-   --paper-dim/--ink, casi negros en este tema (texto invisible ≈
-   1.07:1 sobre el modal #111); se invierten como los demás campos,
-   mismo bloque que .recipe-pick__search. */
+/* Destination selects (day / meal) in pure black: the base uses   --paper-dim/--ink, nearly black in this theme (invisible text
+   ≈ 1.07:1 over the #111 modal); they invert like the other   fields, same block as .recipe-pick__search. */
 [data-theme="black"] .recipe-pick__field select {
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
 }
 
-/* Etiquetas del selector y aviso de «Toda la semana» en negro puro:
-   la base usa --ink (#000) y quedaría invisible sobre el modal
-   oscuro; papel, patrón de .recipe-pick__empty. */
+/* Picker labels and "Whole week" notice in pure black: the   base uses --ink (#000) and would be invisible over the dark   modal; paper, pattern of .recipe-pick__empty. */
 [data-theme="black"] .recipe-pick__field,
 [data-theme="black"] .recipe-pick__week-hint {
   color: var(--paper);
 }
 
-/* Mensaje de lista vacía del buscador en negro puro: la base usa
-   --ink (la tinta del contenido), que en este tema es #000 y quedaría
-   invisible sobre el modal oscuro (--ink-raised): vuelve a papel,
-   patrón de .recipe-view__meta en negro puro. */
+/* Empty-list message of the picker in pure black: the base uses   --ink (the content ink), which in this theme is #000 and
+   would be invisible over the dark modal (--ink-raised): it   returns to paper, pattern of .recipe-view__meta in pure black. */
 [data-theme="black"] .recipe-pick__empty {
   color: var(--paper);
 }
 
-/* Tarjeta del buscador en negro puro (issue #242, iteración): la base
-   (familia clara sobre el modal papel del tema Oscuro) usa
-   --paper-dim/--ink, casi negros en este tema (texto invisible ≈
-   1.07:1 sobre el fondo #111); vuelve al chip oscuro con texto papel,
-   patrón de .recipe-card en negro puro. El hover conserva el acento
-   en la variante clara del teal (#4f9c8e ≈ 6.6:1). */
+/* Picker card in pure black (issue #242, iteration): the base   (light family over the paper modal of the Dark theme) uses   --paper-dim/--ink, nearly black in this theme (invisible text
+   ≈ 1.07:1 over the #111 background); it returns to the dark chip   with paper text, pattern of .recipe-card in pure black. The
+   hover keeps the accent in the teal light variant (#4f9c8e ≈
+   6.6:1). */
 [data-theme="black"] .recipe-pick__card {
   background: var(--ink-raised);
   color: var(--paper);
@@ -5709,24 +5255,19 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--teal-reel-dark);
 }
 
-/* Píldoras de filtro del buscador en negro puro: misma inversión que
-   la tarjeta (la base clara sería texto #000 sobre fondo #111). */
+/* Picker filter pills in pure black: same inversion as the   card (the light base would be #000 text on a #111 background). */
 [data-theme="black"] .recipe-pick .recipes-filter__btn {
   background: var(--ink-raised);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
 }
 
-/* Fila de comensales de la tarjeta en negro puro: la base usa --ink
-   (#000) y quedaría invisible sobre la tarjeta oscura; tinta suave
-   clara, patrón de .menu-weekly__hint (≈ 6.2:1, AA). */
+/* Diners row of the card in pure black: the base uses --ink   (#000) and would be invisible over the dark card; light soft   ink, pattern of .menu-weekly__hint (≈ 6.2:1, AA). */
 [data-theme="black"] .recipe-pick__comensales {
   color: var(--ink-soft);
 }
 
-/* Placeholder del campo de búsqueda en negro puro: la base usa --ink
-   (#000) y sería invisible sobre el campo también --ink (#000);
-   tinta suave clara (#948a76 ≈ 6.2:1, AA). */
+/* Search field placeholder in pure black: the base uses --ink   (#000) and would be invisible over a field that is also --ink   (#000); light soft ink (#948a76 ≈ 6.2:1, AA). */
 [data-theme="black"] .recipe-pick__search::placeholder {
   color: var(--ink-soft);
 }
@@ -5747,10 +5288,8 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--paper-alpha-20);
 }
 
-/* Combobox de ingrediente en negro puro (issue #240): el desplegable
-   usa superficie oscura (--ink-raised) y texto papel, patrón de los
-   paneles de filtro; el hover/is-active un tinte claro translúcido
-   (--paper-alpha-10, texto papel sobre él ≈ AA). */
+/* Ingredient combobox in pure black (issue #240): the dropdown   uses dark surface (--ink-raised) and paper text, pattern of
+   the filter panels; hover/is-active a translucent light tint   (--paper-alpha-10, paper text over it ≈ AA). */
 [data-theme="black"] .ing-combo__list {
   background: var(--ink-raised);
   color: var(--paper);
@@ -5767,8 +5306,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--paper);
 }
 
-/* El mensaje «Sin coincidencias…» vuelve a papel en negro puro (el
-   --ink base sería tinta #000 sobre la superficie oscura del listado). */
+/* The "No matches…" message returns to paper in pure black (the   base --ink would be #000 ink over the dark surface of the list). */
 [data-theme="black"] .ing-combo__list .ing-combo__empty {
   color: var(--paper);
 }
@@ -5783,12 +5321,7 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--paper-alpha-20);
 }
 
-/* Vista de receta en modo lectura (issue #236) en negro puro: las
-   píldoras de etiquetas usan las variantes claras (teal #4f9c8e ≈
-   6.6:1 y ocre #c99a4e ≈ 7.4:1 sobre tinta) con texto casi negro
-   (--ink), patrón de .recipe-form__chip.is-checked; los enlaces la
-   variante clara del teal como .ingredient-modal__link. Las tarjetas
-   de recetas comparten los mismos pares (selectores agrupados). */
+/* Recipe read-mode view (issue #236) in pure black: the tag pills   use the light variants (teal #4f9c8e ≈ 6.6:1 and ochre #c99a4e   ≈ 7.4:1 over ink) with near-black text (--ink), pattern of   .recipe-form__chip.is-checked; links use the teal light   variant like .ingredient-modal__link. The recipe cards share   the same pairs (grouped selectors). */
 [data-theme="black"] .recipe-view__tag--alergeno,
 [data-theme="black"] .recipe-card__tag--alergeno {
   background: var(--teal-reel-dark);
@@ -5805,8 +5338,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--teal-reel-dark);
 }
 
-/* En negro puro la tinta es #000 sobre la superficie del modal
-   (--ink-raised): el texto secundario vuelve a papel como el resto. */
+/* In pure black the ink is #000 over the modal surface   (--ink-raised): the secondary text returns to paper like the rest. */
 [data-theme="black"] .recipe-view__meta {
   color: var(--paper);
 }
@@ -5817,11 +5349,9 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--paper-alpha-20);
 }
 
-/* Tarjeta de receta de las celdas en negro puro: el tinte translúcido
-   de papel de la base ya funciona sobre la celda oscura; se reafirma
-   para agruparlo con el resto de superficies del tema. El hover/focus
-   conserva el acento en la variante clara del teal (patrón de
-   .recipe-pick__card en negro puro). */
+/* Recipe card of the cells in pure black: the base's   translucent paper tint already works over the dark cell; it   is restated to group it with the rest of the theme's
+   surfaces. Hover/focus keeps the accent in the teal light
+   variant (pattern of .recipe-pick__card in pure black). */
 [data-theme="black"] .menu-meal__card {
   background: var(--paper-alpha-10);
 }
@@ -5831,8 +5361,7 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--teal-reel-dark);
 }
 
-/* Negro puro: mismo marcado hover con sombra interior; el fondo del
-   swipe nunca se transparenta (issue #225, iteración 3). */
+/* Pure black: same hover marking with inner shadow; the swipe's   background never shows through (issue #225, iteration 3). */
 [data-theme="black"] .shopping-line-wrap:hover .shopping-line__content {
   box-shadow: inset 0 0 0 999px var(--paper-alpha-10);
 }
@@ -5841,38 +5370,33 @@ body.is-back-to-top-visible .back-to-top {
   border-left-color: var(--ochre-spine);
 }
 
-/* En negro puro los inputs del form de ítem extra vuelven a --ink:
-   la píldora base (--ink-raised) quedaría sin límite sobre el
-   propio --ink-raised del formulario (patrón de ingredient-modal__field).
-   .shopping-btn--ghost y .shopping-line__remove:hover no necesitan
-   override: la base ya funciona en negro puro. */
+/* In pure black the extra-item form inputs return to --ink:   the base pill (--ink-raised) would have no edge over the   form's own --ink-raised (pattern of
+   ingredient-modal__field). .shopping-btn--ghost and   .shopping-line__remove:hover don't need overrides: the base   already works in pure black. */
 [data-theme="black"] .shopping-extra-form__row input,
 [data-theme="black"] .shopping-extra-form__row select,
 [data-theme="black"] .shopping-extra-form__row .ing-combo .ing-nombre { background: var(--ink); }
 
-/* Checkboxes de la lista de la compra en negro puro: el acento rojo
-   pasa a la variante clara (--stamp-dark #cf6655) para mantener el
-   umbral gráfico 3:1 sobre negro (patrón de episode-checkbox). */
+/* Shopping list checkboxes in pure black: the red accent   switches to the light variant (--stamp-dark #cf6655) to keep
+   the 3:1 graphic threshold over black (episode-checkbox
+   pattern). */
 [data-theme="black"] .shopping-line__main input[type="checkbox"] {
   accent-color: var(--stamp-dark);
 }
 
-/* --- Gimnasio (issue #62) en negro puro --- */
+/* --- Gym (issue #62) in pure black --- */
 
-/* Las tarjetas pasan a la superficie oscura levantada (mismo patrón
-   que .recipe-card en negro puro: texto papel sobre --ink-raised). */
+/* The cards become the raised dark surface (same pattern   as .recipe-card in pure black: paper text over --ink-raised). */
 [data-theme="black"] .gym-workout-card,
 [data-theme="black"] .gym-exercise-card {
   background: var(--ink-raised);
   color: var(--paper);
 }
 
-/* Los inputs/selects/textareas del modal de gimnasio vuelven a --ink
-   con texto papel (la base --paper-dim sería gris #111 casi igual a
-   la superficie del modal; patrón de .ingredient-modal__field). El
-   recuadro del rango del Resumen y su calendario (issue #269)
-   siguen el mismo patrón: en negro puro la superficie pasa a tinta
-   (--ink) y el texto a papel. */
+/* The gym modal's inputs/selects/textareas return to --ink with   paper text (the --paper-dim base would be #111 gray, nearly
+   identical to the modal surface; pattern of
+   .ingredient-modal__field). The Summary's range box and its
+   calendar (issue #269) follow the same pattern: in pure black
+   the surface becomes ink (--ink) and the text paper. */
 [data-theme="black"] .gym-form__field input,
 [data-theme="black"] .gym-form__field select,
 [data-theme="black"] .gym-form__field textarea,
@@ -5886,10 +5410,7 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--paper-alpha-20);
 }
 
-/* Textos interiores del recuadro del rango y del calendario en negro
-   puro: con el fondo invertido a --ink, la etiqueta, el rango
-   elegido, el título del mes, la navegación y los días pasan a papel
-   (el --ink-soft base quedaría negro sobre negro). */
+/* Inner texts of the range box and calendar in pure black:   with the background inverted to --ink, the label, the chosen   range, the month title, navigation and days become paper   (the --ink-soft base would be black on black). */
 [data-theme="black"] .gym-summary-range__label,
 [data-theme="black"] .gym-summary-range__value,
 [data-theme="black"] .gym-summary-range__cal-title,
@@ -5899,18 +5420,14 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--paper);
 }
 
-/* Hover del calendario en negro puro: tinte claro sobre la
-   superficie oscura (--paper-dim #111 sería invisible). */
+/* Calendar hover in pure black: light tint over the dark   surface (--paper-dim #111 would be invisible). */
 [data-theme="black"] .gym-summary-range__cal-nav:hover,
 [data-theme="black"] .gym-summary-range__day:hover {
   background: var(--paper-alpha-10);
 }
 
-/* Extremos del rango en negro puro: acento en su variante clara y
-   texto tinta (la variante base #7a5a9e con texto papel daría
-   ~2:1); los días intermedios usan un tinte claro neutro porque el
-   violeta al 22 % sobre negro casi no se ve. El hover conserva el
-   estado de extremo (regla posterior a la del hover genérico). */
+/* Range endpoints in pure black: accent in its light variant and
+   ink text (the base variant #7a5a9e with paper text would give   ~2:1); intermediate days use a neutral light tint because   violet at 22 % over black is barely visible. The hover keeps   the endpoint state (rule after the generic hover one). */
 [data-theme="black"] .gym-summary-range__day--selected {
   background: var(--games-dark);
   color: var(--ink);
@@ -5924,19 +5441,17 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--paper);
 }
 
-/* El trigger abierto marca su borde con el acento claro. */
+/* The open trigger marks its border with the light accent. */
 [data-theme="black"] .gym-summary-range__trigger[aria-expanded="true"] {
   border-color: var(--games-dark);
 }
 
-/* El panel del ejercicio del constructor usa el borde claro del
-   resto de superficies en negro puro. */
+/* The builder's exercise panel uses the light border of the   rest of the surfaces in pure black. */
 [data-theme="black"] .gym-exercise-block {
   border-color: var(--paper-alpha-20);
 }
 
-/* El botón «+ Añadir serie» (borde punteado y texto suave) y el chip
-   de grupo muscular conservan su contraste sobre negro: texto papel. */
+/* The "+ Add set" button (dashed border and soft text) and the   muscle group chip keep their contrast over black: paper text. */
 [data-theme="black"] .gym-add-series-btn {
   color: var(--paper);
 }
@@ -5946,28 +5461,18 @@ body.is-back-to-top-visible .back-to-top {
 }
 
 /* =========================================================
-   ADR-112 — Identidad visual IMDb (plana, sin vidrio)
+   ADR-112 — IMDb visual identity (flat, no glass)
    =========================================================
-   Re-skin completo referenciado a imdb.com: superficies SÓLIDAS
-   (nada de backdrop-filter/blur: se retira el "Liquid Glass" del
-   ADR-109), negro/casi negro en la familia oscura, dorado IMDb
-   como único acento de marca, tipografía de catálogo en
-   versalitas y tarjetas poster-forward con hairline.
-
-   CONTRASTE VERIFICADO EN LOS 4 TEMAS:
-   - dark: dorado #f5c518 sobre #171512 ≈ 8.9:1 y papel
-     #f1ead9 ≈ 13:1 (AAA); hairline papel 20 %.
-   - black: sobre #0a0a0a ≈ 10:1 (AAA).
-   - light/white: headings en --ink (el dorado sobre papel solo
-     1.7:1: como TEXTO está prohibido en la familia clara);
-     botón primario y escudo de valoración son auto-colored
-     (dorado con tinta oscura, 10:1) y valen en los 4 modos.
+   Full re-skin referenced to imdb.com: SOLID surfaces (no   backdrop-filter/blur: the ADR-109 "Liquid Glass" is   retired), black/near-black in the dark family, IMDb gold as   the only brand accent, catalog typography in small caps and   poster-forward cards with hairline.
+   
+   CONTRAST VERIFIED IN THE 4 THEMES:
+   - dark: gold #f5c518 on #171512 ≈ 8.9:1 and paper     #f1ead9 ≈ 13:1 (AAA); hairline paper 20 %.
+   - black: on #0a0a0a ≈ 10:1 (AAA).
+   - light/white: headings in --ink (gold over paper is only     1.7:1: as TEXT it's banned in the light family); the     primary button and rating shield are auto-colored (gold with     dark ink, 10:1) and work in all 4 modes.
    ========================================================= */
 
 :root {
-  /* Dorado de marca IMDb: auto-colored (SIEMPRE lleva su tinta
-     oscura encima o va sobre superficie oscura); como texto SOLO
-     en la familia oscura (--heading). */
+  /* IMDb brand gold: auto-colored (it ALWAYS carries its dark     ink on top or sits over a dark surface); as text ONLY in     the dark family (--heading). */
   --brand-gold: #f5c518;
   --brand-gold-ink: #171512;
   --heading: var(--brand-gold);
@@ -5978,11 +5483,9 @@ body.is-back-to-top-visible .back-to-top {
   --heading: var(--ink);
 }
 
-/* ---------- Cromática sólida de catálogo ---------- */
+/* ---------- Solid chromatics of the catalog ---------- */
 
-/* Cabecera y barra de pestañas: barras planas con hairline.
-   Re-afirmadas por familia (los overrides claros previos ya se
-   quedan coherentes porque usan --paper-dim sólido). */
+/* Header and tabs bar: flat bars with hairline. Reaffirmed   per family (the previous light overrides remain coherent   because they use solid --paper-dim). */
 .app-header,
 .tabs--bar {
   background: var(--ink);
@@ -5995,8 +5498,7 @@ body.is-back-to-top-visible .back-to-top {
   background: var(--paper-dim);
 }
 
-/* Titulares de seccion: sans en versalitas con tracking, color
-   por familia (dorado en oscura, tinta en clara). */
+/* Section headings: sans in small caps with tracking,   color per family (gold in dark, ink in light). */
 .app h2,
 .panel h2 {
   font-family: var(--font-body);
@@ -6006,7 +5508,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--heading);
 }
 
-/* Boton primario: escudo dorado de marca (10:1 en todas) */
+/* Primary button: brand gold shield (10:1 in all) */
 .btn--primary {
   background: var(--brand-gold);
   color: var(--brand-gold-ink);
@@ -6016,7 +5518,7 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--brand-gold-ink);
 }
 
-/* Dropdowns y toast: planos, hairline, radio de tarjeta */
+/* Dropdowns and toast: flat, hairline, card radius */
 .notif-dropdown,
 .profile-dropdown,
 .global-search__results,
@@ -6040,7 +5542,7 @@ body.is-back-to-top-visible .back-to-top {
   border-color: var(--ink-alpha-15);
 }
 
-/* Pantalla de acceso: ficha plana con la marca en dorado */
+/* Sign-in screen: flat card with the brand in gold */
 .auth-screen .library-card {
   background: var(--paper);
   border: 1px solid var(--paper-line);
@@ -6074,7 +5576,7 @@ body.is-back-to-top-visible .back-to-top {
   background: var(--ink-raised);
 }
 
-/* Modales: superficie de ficha plana, radio de catálogo */
+/* Modals: flat card surface, catalog radius */
 .modal__card {
   border-radius: var(--radius-card);
   border: 1px solid var(--paper-alpha-30);

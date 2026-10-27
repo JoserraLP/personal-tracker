@@ -1,7 +1,7 @@
-﻿// =============================================================
-// Renderizado del DOM. Este mÃ³dulo no habla con Firebase ni con
-// las APIs externas: recibe datos ya listos y devuelve HTML,
-// o dispara callbacks que app.js conecta con db.js / TMDB.
+// =============================================================
+// DOM rendering. This module does not talk to Firebase nor to the
+// external APIs: it receives ready-made data and returns HTML,
+// or fires callbacks that app.js wires with db.js / TMDB.
 // =============================================================
 
 import { todayISO, formatDateEs } from "./dates.js";
@@ -32,9 +32,8 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
-// HTML para un distintivo de puntuaciÃ³n de la comunidad (TMDB, IGDB
-// para videojuegos). Variante compacta (--sm) para filas de episodio
-// (issue #45).
+// HTML for a community score badge (TMDB, IGDB for video games).
+// Compact variant (--sm) for episode rows (issue #45).
 function communityRatingValueHtml(value, label = "TMDB") {
   const val = Number(value).toFixed(1);
   return `<span class="community-rating community-rating--sm">
@@ -43,8 +42,9 @@ function communityRatingValueHtml(value, label = "TMDB") {
   </span>`;
 }
 
-// HTML para la puntuaciÃ³n de la comunidad (TMDB) en tarjetas compactas.
-// Devuelve cadena vacÃ­a si no hay datos (no ocupa espacio en la cuadrÃ­cula).
+// HTML for the community score (TMDB) on compact cards.
+// Returns an empty string when there is no data (takes no space in
+// the grid).
 function communityRatingHtml(item) {
   if (item.communityRating == null) return "";
   const label = item.type === "game" ? "IGDB" : "TMDB";
@@ -54,8 +54,8 @@ function communityRatingHtml(item) {
   );
 }
 
-// Para modales: siempre muestra una lÃ­nea, ya sea la nota real o
-// un indicador de "Sin puntuaciones" cuando no hay datos de TMDB/IGDB.
+// For modals: it always shows one line, either the real score or
+// a "Sin puntuaciones" indicator when there is no TMDB/IGDB data.
 function communityRatingDisplay(item) {
   const label = item.type === "game" ? "IGDB" : "TMDB";
   if (item.communityRating != null) {
@@ -72,18 +72,18 @@ function communityRatingDisplay(item) {
   </div>`;
 }
 
-// HTML para el botÃ³n de trÃ¡iler de YouTube.
-// Devuelve cadena vacÃ­a si no hay URL de trÃ¡iler disponible.
+// HTML for the YouTube trailer button.
+// Returns an empty string when no trailer URL is available.
 function trailerButtonHtml(item) {
   if (!item.trailerUrl) return "";
-  return `<a href="${escapeHtml(item.trailerUrl)}" target="_blank" rel="noopener noreferrer" class="trailer-btn" aria-label="Ver trÃ¡iler en YouTube">
+  return `<a href="${escapeHtml(item.trailerUrl)}" target="_blank" rel="noopener noreferrer" class="trailer-btn" aria-label="Ver tráiler en YouTube">
     <span class="trailer-btn__icon" aria-hidden="true">â–¶</span>
-    <span class="trailer-btn__label">TrÃ¡iler</span>
+    <span class="trailer-btn__label">Tráiler</span>
   </a>`;
 }
 
 function typeLabel(type) {
-  if (type === "movie") return "PelÃ­cula";
+  if (type === "movie") return "Película";
   if (type === "tv") return "Serie";
   if (type === "game") return "Videojuego";
   return "Libro";
@@ -95,22 +95,22 @@ export const PLACEHOLDER_COVER =
     `<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300'><rect width='100%' height='100%' fill='#e3dac4'/><text x='50%' y='50%' font-family='sans-serif' font-size='16' fill='#948a76' text-anchor='middle'>Sin imagen</text></svg>`
   );
 
-/* ---------- Pantallas ---------- */
+/* ---------- Screens ---------- */
 
-// Placeholder de la barra de bÃºsqueda global (issue #46): al entrar
-// se muestra "Mi Registro" y a los 3.5 s pasa al placeholder por
-// defecto. El timer se limpia al cerrar sesiÃ³n. El placeholder por
-// defecto ya no menciona a los amigos: la bÃºsqueda se acota a la
-// secciÃ³n (issue #206) y solo se restaura en la pantalla de acceso.
-export const DEFAULT_SEARCH_PLACEHOLDER = "Buscar pelÃ­culas, series, libros y videojuegos...";
+// Placeholder of the global search bar (issue #46): on entry it
+// shows "Mi Registro" and after 3.5 s it switches to the default
+// placeholder. The timer is cleared on logout. The default
+// placeholder no longer mentions friends: the search is scoped to
+// the section (issue #206) and only restores in the access screen.
+export const DEFAULT_SEARCH_PLACEHOLDER = "Buscar películas, series, libros y videojuegos...";
 const SEARCH_BRAND_PLACEHOLDER = "Mi Registro";
 const SEARCH_PLACEHOLDER_SWITCH_MS = 3500;
 let searchPlaceholderTimer = null;
 
-// Placeholder y aria-label segÃºn la secciÃ³n activa (issue #206): la
-// bÃºsqueda superior se acota a la secciÃ³n (Ocio / Perfil / Recetas).
+// Placeholder and aria-label depending on the active section (issue #206): the
+// top search is scoped to the section (Ocio / Perfil / Recetas).
 const SEARCH_PLACEHOLDER_BY_SECTION = {
-  ocio: "Buscar pelÃ­culas, series, libros y videojuegos...",
+  ocio: "Buscar películas, series, libros y videojuegos...",
   perfil: "Buscar amigos...",
   recetas: "Buscar recetas...",
   gimnasio: "Buscar en tu gimnasio...",
@@ -123,10 +123,10 @@ const SEARCH_ARIA_BY_SECTION = {
 };
 let currentSearchSection = "ocio";
 
-// Cambia el placeholder de la barra al navegar de secciÃ³n (lo llama
-// el onRoute de app.js). Corta el placeholder animado de bienvenida:
-// si el usuario cambia de secciÃ³n durante los 3.5 s, el de la secciÃ³n
-// se muestra al momento.
+// Changes the bar's placeholder when navigating sections (called by
+// the onRoute of app.js). It cuts the animated welcome placeholder:
+// if the user switches section during the 3.5 s, the section's one
+// shows immediately.
 export function setSearchSection(section) {
   currentSearchSection = SEARCH_PLACEHOLDER_BY_SECTION[section] ? section : "ocio";
   const searchInput = getGlobalSearchInput();
@@ -142,7 +142,7 @@ function getGlobalSearchInput() {
 }
 
 export function showAuthScreen() {
-  // Al salir: parar la secuencia de placeholder y restaurar el normal
+  // On exit: stop the placeholder sequence and restore the normal one
   clearTimeout(searchPlaceholderTimer);
   searchPlaceholderTimer = null;
   const searchInput = getGlobalSearchInput();
@@ -150,18 +150,18 @@ export function showAuthScreen() {
 
   document.getElementById("auth-screen").classList.remove("hidden");
   document.getElementById("app").classList.add("hidden");
-  // Cabecera global (issue #206): solo es visible con sesiÃ³n iniciada
+  // Global header (issue #206): only visible while signed in
   document.getElementById("app-header")?.classList.add("hidden");
 }
 
 export function showApp(user) {
   document.getElementById("auth-screen").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  // Cabecera global visible en todas las secciones (issue #206)
+  // Global header visible in every section (issue #206)
   document.getElementById("app-header")?.classList.remove("hidden");
   document.getElementById("user-avatar").src = user.photoURL || PLACEHOLDER_COVER;
 
-  // Placeholder animado: "Mi Registro" â†’ placeholder de la secciÃ³n
+  // Animated placeholder: "Mi Registro" → section placeholder
   const searchInput = getGlobalSearchInput();
   if (searchInput) {
     clearTimeout(searchPlaceholderTimer);
@@ -185,28 +185,28 @@ export function setAuthError(message) {
   el.classList.remove("hidden");
 }
 
-/* ---------- Vista previa de resultados de bÃºsqueda (issue #22) ---------- */
+/* ---------- Preview of search results (issue #22) ---------- */
 
-// Muestra la informaciÃ³n de un resultado de bÃºsqueda en el modal de
-// detalle, como si ya estuviese aÃ±adido a la colecciÃ³n. El botÃ³n
-// "AÃ±adir" delega en onAdd (que devuelve true si el alta fue exitosa,
-// para que el llamador cierre el modal). Si se pasa onEnrich, se
-// cargan los detalles ampliados (duraciÃ³n, reparto, sinopsis, rating,
-// trÃ¡iler) sin re-renderizar la estructura del modal. Si se pasa
-// onClose, se invoca en lugar de cerrar el modal desde el botÃ³n
-// "Cerrar", la âœ•, el backdrop y la tecla Escape (lo usa la vista
-// previa de pelÃ­culas de la saga, issue #280, para restaurar la ficha
-// que se estaba viendo).
+// Shows the information of a search result in the detail modal,
+// as if it were already added to the collection. The "añadir"
+// button delegates to onAdd (which returns true when the add
+// succeeded, so the caller closes the modal). If onEnrich is
+// passed, the extended details (duration, cast, synopsis, rating,
+// trailer) are loaded without re-rendering the modal structure. If
+// onClose is passed, it is invoked instead of closing the modal
+// from the "Cerrar" button, the ✕ button, the backdrop and
+// Escape key (the saga movie preview uses it, issue #280, to
+// restore the detail view being seen).
 export function openSearchPreviewModal(item, { added = false, onAdd = null, onEnrich = null, onClose = null } = {}) {
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
   const metaLine =
     item.type === "book"
-      ? [item.author, item.year, item.pages ? `${item.pages} pÃ¡gs.` : null].filter(Boolean).join(" Â· ")
+      ? [item.author, item.year, item.pages ? `${item.pages} págs.` : null].filter(Boolean).join(" Â· ")
       : [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
   const editionsNote =
     item.type === "book" && item.editionsCount > 1
-      ? `<p class="book-confirm__editions">${item.editionsCount} ediciones â€” al aÃ±adir podrÃ¡s elegir portada</p>`
+      ? `<p class="book-confirm__editions">${item.editionsCount} ediciones â€” al añadir podrás elegir portada</p>`
       : "";
   const isBook = item.type === "book";
 
@@ -231,7 +231,7 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
       <button class="btn btn--outline" id="btn-preview-close">Cerrar</button>
       <button class="btn ${isBook ? "btn--accent-books" : "btn--accent-media"}"
               id="btn-preview-add" ${added ? "disabled" : ""}>
-        ${added ? "Ya aÃ±adido" : "AÃ±adir"}
+        ${added ? "Ya añadido" : "añadir"}
       </button>
     </div>
   `;
@@ -246,9 +246,9 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
     addBtn.addEventListener("click", () => onAdd(item, addBtn));
   }
 
-  // PatrÃ³n estÃ¡ndar de apertura del proyecto. El cierre personalizado
-  // (onClose) se guarda en el modal para que backdrop, âœ• y Escape lo
-  // respeten igual que el botÃ³n "Cerrar" (issue #280, QA D3).
+  // Standard opening pattern of the project. The custom close
+  // (onClose) is stored in the modal so the backdrop, the ✕ and
+  // Escape respect it the same as the "Cerrar" button (issue #280, QA D3).
   modal._onClose = onClose || null;
   modal._previousActiveElement = document.activeElement;
   modal.classList.remove("hidden");
@@ -263,12 +263,12 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
       try {
         details = await onEnrich(item);
       } catch (err) {
-        // Fallo de red/API: no bloqueamos la vista previa
+        // Network/API failure: we do not block the preview
       }
-      // El hint de carga se elimina siempre (Ã©xito o fallo)
+      // The loading hint is always removed (success or failure)
       if (loadingHint) loadingHint.remove();
 
-      // Guardas: el modal pudo cerrarse o re-renderizarse mientras tanto
+      // Guards: the modal may have been closed or re-rendered meanwhile
       if (!previewDetailsEl.isConnected || modal.classList.contains("hidden")) return;
       if (!details) return;
 
@@ -276,11 +276,11 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
       const hadTrailer = Boolean(item.trailerUrl);
       Object.assign(item, details);
 
-      // Solo se re-renderiza el bloque de detalles, no la estructura
+      // Only the details block is re-rendered, not the structure
       previewDetailsEl.innerHTML = gamePlatformsHtml(item) + extraInfoHtml(item) + previewPagesHtml(item) + previewSeasonsHtml(item);
 
-      // Si llegaron rating de comunidad o trÃ¡iler nuevos, refrescar
-      // esos bloques (pueden no existir: p. ej. libros)
+      // If a new community rating or trailer arrived, refresh those
+      // blocks (they may not exist: e.g. books)
       if (details.communityRating !== undefined && details.communityRating !== prevRating) {
         const ratingsEl = content.querySelector(".modal-detail__ratings");
         if (ratingsEl) ratingsEl.outerHTML = communityRatingDisplay(item);
@@ -290,9 +290,8 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
         if (trailerEl) {
           trailerEl.outerHTML = trailerButtonHtml(item);
         } else {
-          // Los resultados de bÃºsqueda nunca traen trailerUrl, asÃ­ que
-          // el botÃ³n no existe en el render inicial: insertarlo antes
-          // de las acciones del modal
+          // Search results never carry trailerUrl, so the button does not
+// exist in the initial render: insert it before the modal actions
           const actions = content.querySelector(".modal-actions");
           if (actions) actions.insertAdjacentHTML("beforebegin", trailerButtonHtml(item));
         }
@@ -351,7 +350,7 @@ function metaLineFor(item) {
     : [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
 }
 
-// Etiqueta corta del botÃ³n/acciÃ³n rÃ¡pida (modo lista y swipe).
+// Short label of the quick action button (list mode and swipe).
 function quickActionLabel(item) {
   if (item.type === "movie") return "Vista âœ“";
   if (item.type === "tv") {
@@ -378,11 +377,12 @@ function upcomingBadge(item) {
   if (item.type === "movie") {
     return `<div class="${cls}">AÃºn no estrenada${item.releaseDate ? ` Â· ${formatDateEs(item.releaseDate)}` : ""}</div>`;
   }
-  if (item.awaitingRelease && item.nextEpisode) { // serie sin estrenar (premiere)
+  if (item.awaitingRelease && item.nextEpisode) { // show not yet released (premiere)
     return `<div class="${cls}">AÃºn no estrenada${item.firstAirDate ? ` Â· ${formatDateEs(item.firstAirDate)}` : ""}</div>`;
   }
-  // Serie en curso con el prÃ³ximo episodio sin estrenar. isItemUnreleased
-  // garantiza que hay info, pero por seguridad si no la hay no se pinta.
+  // Ongoing show with the next episode not yet released. isItemUnreleased
+  // guarantees there is info, but for safety if there is none it is
+  // not painted.
   const info = getNextEpisodeAirInfo(item);
   if (!info) return "";
   return `<div class="${cls}">AÃºn no estrenado Â· T${info.season}E${info.episode}${info.airDate ? ` Â· ${formatDateEs(info.airDate)}` : ""}</div>`;
@@ -438,7 +438,7 @@ function attachSwipe(row, content, onTrigger) {
   let dragging = false;
   let lock = null; // null | 'vertical' | 'horizontal'
   let startTouchId = null;
-  const lockThreshold = 10; // slop de decisiÃ³n de direcciÃ³n
+  const lockThreshold = 10; // slop de decisión de dirección
   const threshold = 70;
 
   row.addEventListener(
@@ -458,21 +458,21 @@ function attachSwipe(row, content, onTrigger) {
     "touchmove",
     (e) => {
       if (!dragging) return;
-      // Seguir al dedo original por identifier (fallback al primero)
+      // Follow the original finger by identifier (fallback to the first)
       const touch =
         Array.from(e.touches).find((t) => t.identifier === startTouchId) ||
         e.touches[0];
       deltaX = touch.clientX - startX;
       const deltaY = touch.clientY - startY;
-      // Axis lock: al cruzar el slop se decide el eje y no se vuelve atrÃ¡s.
-      // El empate gana 'vertical' (el scroll siempre manda).
+      // Axis lock: when crossing the slop the axis is decided and not turned
+      // back. A tie wins 'vertical' (the scroll always rules).
       if (
         lock === null &&
         (Math.abs(deltaX) >= lockThreshold || Math.abs(deltaY) >= lockThreshold)
       ) {
         lock = Math.abs(deltaX) > Math.abs(deltaY) ? "horizontal" : "vertical";
       }
-      if (lock === "vertical") return; // gesto de scroll: sin transform ni toggle
+      if (lock === "vertical") return; // scroll gesture: no transform nor toggle
       if (lock === "horizontal") {
         const clamped = Math.max(-120, Math.min(120, deltaX));
         content.style.transform = `translateX(${clamped}px)`;
@@ -492,7 +492,7 @@ function attachSwipe(row, content, onTrigger) {
   };
 
   row.addEventListener("touchend", () => {
-    // Evaluar antes de resetGesture(): resetea lock y deltaX
+    // Evaluate before resetGesture(): it resets the lock and deltaX
     const shouldTrigger = lock !== "vertical" && Math.abs(deltaX) > threshold;
     resetGesture();
     if (shouldTrigger) onTrigger();
@@ -567,9 +567,9 @@ export function renderLibrary(gridEl, emptyEl, items, viewMode, { onOpen, onQuic
 
 /* ---------- Campos comunes ---------- */
 
-// Normaliza una valoraciÃ³n a pasos de 0.5 (0, 0.5, 1, ... 5). Los
-// pickers admiten medias estrellas (issue #276), asÃ­ que todo punto
-// de entrada pasa por aquÃ­ para sanear valores externos.
+// Normalizes a rating to 0.5 steps (0, 0.5, 1, ... 5). The pickers
+// accept half stars (issue #276), so every entry point goes through
+// here to sanitize external values.
 function normalizeRating(value) {
   const v = Number(value);
   if (!Number.isFinite(v)) return 0;
@@ -579,31 +579,31 @@ function normalizeRating(value) {
   return half;
 }
 
-// Etiqueta accesible de un botÃ³n del picker para el valor N (1-5).
+// Accessible label of a picker button for value N (1-5).
 function ratingButtonAriaLabel(n) {
   return n === 1 ? "1 estrella" : `${n} estrellas`;
 }
 
-// HTML informativo de las estrellas de un Ã­tem (tarjetas y ficha de
-// solo lectura). Las medias estrellas se muestran como Â«Â½Â» tras las
-// completas (p. ej. 2.5 â†’ Â«â˜…â˜…Â½Â») â€” issue #276.
+// Informational HTML of an item's stars (cards and read-only
+// detail view). Half stars show as «½» after the full ones
+// (e.g. 2.5) issue #276.
 export function ratingStarsHtml(rating) {
   const v = normalizeRating(rating);
   if (!v) return "";
-  const full = "â˜…".repeat(Math.floor(v));
-  return v % 1 === 0 ? full : full + "Â½";
+  const full = "...".repeat(Math.floor(v));
+  return v % 1 === 0 ? full : full + "";
 }
 
-// HTML del picker de estrellas (1-5, con medias desde la issue #276).
-// idPrefix evita ids duplicados cuando hay varios pickers en pantalla
-// a la vez (p. ej. el de la ventana de valoraciÃ³n emergente, que usa
-// "rm-rating"). Un valor como 2.5 pinta Â«is-activeÂ» en 1-2 y la media
-// estrella (Â«Â½Â») en el botÃ³n 3 (clase is-half).
+// HTML of the star picker (1-5, with halves since issue #276).
+// idPrefix avoids duplicate ids when several pickers are on screen
+// at once (e.g. the pop-up rating window's one, which uses
+// "rm-rating"). A value like 2.5 paints «is-active» on 1-2 and the
+// half star on button 3 (is-half class).
 export function ratingPickerHtml(rating, idPrefix = "field-rating", extraHtml = "") {
   const value = normalizeRating(rating);
   return `
     <div class="field-group">
-      <label>ValoraciÃ³n</label>
+      <label>Valoración</label>
       <div class="rating-picker" id="${idPrefix}">
         ${[1, 2, 3, 4, 5]
           .map((n) => {
@@ -621,8 +621,8 @@ export function ratingPickerHtml(rating, idPrefix = "field-rating", extraHtml = 
     </div>`;
 }
 
-// Media de valoraciÃ³n de los episodios valorados de la serie (issue #80).
-// Sin media: span oculto (placeholder que updateEpisodeAverage actualiza).
+// Average rating of the rated episodes of the show (issue #80).
+// No average: hidden span (placeholder updateEpisodeAverage updates).
 function episodeAverageHtml(watched, idPrefix) {
   const avg = computeEpisodeAverageRating(watched);
   if (!avg) {
@@ -640,10 +640,10 @@ function notesFieldHtml(notes) {
     </div>`;
 }
 
-// Wiring del picker con medias estrellas (issue #276). Ciclo de
-// pulsaciÃ³n sobre el mismo botÃ³n N: 1er pulso â†’ N; 2Âº pulso â†’ Nâˆ’0.5;
-// 3er pulso â†’ 0 (quitar valoraciÃ³n, como antes). Devuelve un getter
-// con el valor seleccionado (0 o mÃºltiplo de 0.5 entre 0.5 y 5).
+// Wiring of the picker with half stars (issue #276). Press cycle
+// on the same button N: 1st press → N; 2nd press → N−0.5;
+// 3rd press → 0 (clear the rating, as before). Returns a getter
+// with the selected value (0 or a multiple of 0.5 between 0.5 and 5).
 export function wireRatingAndGetValue(content, initialRating, idPrefix = "field-rating") {
   let selectedRating = normalizeRating(initialRating);
   const buttons = content.querySelectorAll(`#${idPrefix} button`);
@@ -674,7 +674,7 @@ export function wireRatingAndGetValue(content, initialRating, idPrefix = "field-
   return () => selectedRating;
 }
 
-// Botones de pausar / abandonar / retomar, comunes a series y libros.
+// Pause / abandon / resume buttons, shared by shows and books.
 function renderStatusActions(status) {
   if (status === "completado") return "";
   const buttons = [];
@@ -712,7 +712,7 @@ function wireStatusActions(content, handleStatusChange) {
   const abandonBtn = content.querySelector("#btn-status-abandon");
   if (abandonBtn) {
     abandonBtn.addEventListener("click", () => {
-      if (!window.confirm("Â¿Marcar como abandonado? No se perderÃ¡ tu progreso.")) return;
+      if (!window.confirm("¿Marcar como abandonado? No se perderá tu progreso.")) return;
       handleStatusChange("abandonado");
     });
   }
@@ -722,9 +722,9 @@ function wireStatusActions(content, handleStatusChange) {
   }
 }
 
-// InformaciÃ³n ampliada de TMDB (duraciÃ³n, gÃ©nero, director/creadores,
-// reparto, sinopsis) o de la fuente de libros (sinopsis). No todos
-// los campos estÃ¡n siempre disponibles, asÃ­ que cada lÃ­nea es opcional.
+// Extended TMDB info (duration, genre, director/creators,
+// cast, synopsis) or from the books source (synopsis). Not all
+// fields are always available, so each line is optional.
 function extraInfoHtml(item) {
   const lines = [];
   const metaBits = [];
@@ -757,10 +757,10 @@ function extraInfoHtml(item) {
       lines.push(`<p class="extra-info__line"><strong>Metacritic:</strong> ${escapeHtml(item.metacritic)}</p>`);
     }
     if (item.playtime) {
-      lines.push(`<p class="extra-info__line"><strong>DuraciÃ³n media:</strong> ~${escapeHtml(item.playtime)} horas</p>`);
+      lines.push(`<p class="extra-info__line"><strong>Duración media:</strong> ~${escapeHtml(item.playtime)} horas</p>`);
     }
     if (item.esrbName) {
-      lines.push(`<p class="extra-info__line"><strong>ClasificaciÃ³n:</strong> ${escapeHtml(item.esrbName)}</p>`);
+      lines.push(`<p class="extra-info__line"><strong>Clasificación:</strong> ${escapeHtml(item.esrbName)}</p>`);
     }
   }
   const overview = item.overview || item.description;
@@ -769,15 +769,17 @@ function extraInfoHtml(item) {
   return `<div class="extra-info">${lines.join("")}</div>`;
 }
 
-// Estado de los detalles de ficha bajo demanda (issue #200): si el
-// documento guarda solo la tarjeta (almacenamiento mÃ­nimo) y la ficha
-// aÃºn estÃ¡ cargando â€”o la red fallÃ³â€” se muestra una lÃ­nea informativa
-// en lugar de un bloque vacÃ­o (degradaciÃ³n elegante a Â«solo tarjetaÂ»).
-// Los libros conservan la sinopsis en el documento y los Ã­tems
-// manuales no tienen API que consultar: nunca aplican.
+// State of the on-demand detail (issue #200): if the
+// document stores only the card (minimal storage) and the detail
+// is still loading — or the network failed — an informative line
+// is shown instead of an empty block (graceful degradation to
+// «card only»).
+// Books keep the synopsis in the document and manual items have no
+// API to query: they never apply.
+
 function detailStatusHtml(item) {
   if (item._detailsFailed) {
-    return `<p class="extra-info__loading">No se pudieron cargar los detalles (revisa tu conexiÃ³n).</p>`;
+    return `<p class="extra-info__loading">No se pudieron cargar los detalles (revisa tu conexión).</p>`;
   }
   if (!item.manual && item.externalId) {
     if ((item.type === "movie" || item.type === "tv") && !item.overview) {
@@ -790,9 +792,9 @@ function detailStatusHtml(item) {
   return "";
 }
 
-// Bloque de temporadas para la vista previa de una serie: lista de
-// solo lectura (nÂº de episodios y fecha de emisiÃ³n por temporada)
-// mÃ¡s el total. VacÃ­o si no hay datos (sin seasonsMeta o vacÃ­o).
+// Seasons block for a show's preview: read-only list (episode
+// count and air date per season) plus the total. Empty when there
+// is no data (missing or empty seasonsMeta).
 function previewSeasonsHtml(item) {
   const seasons = item.seasonsMeta;
   if (!seasons || !seasons.length) return "";
@@ -815,24 +817,24 @@ function previewSeasonsHtml(item) {
   `;
 }
 
-// LÃ­nea de pÃ¡ginas de un libro para la vista previa. item.pages llega
-// como nÃºmero desde la API (pageCount || null); vacÃ­o si no existe.
+// Pages line of a book for the preview. item.pages arrives as a
+// number from the API (pageCount || null); empty when absent.
 function previewPagesHtml(item) {
   if (!item.pages) return "";
-  return `<p class="extra-info__line"><strong>PÃ¡ginas:</strong> ${item.pages}</p>`;
+  return `<p class="extra-info__line"><strong>Páginas:</strong> ${item.pages}</p>`;
 }
 
 function editButtonHtml() {
-  return `<button type="button" class="btn btn--small btn--outline edit-info-btn" id="btn-edit-item">âœŽ Editar informaciÃ³n</button>`;
+  return `<button type="button" class="btn btn--small btn--outline edit-info-btn" id="btn-edit-item">âœŽ Editar información</button>`;
 }
 
-/* ---------- Alta / ediciÃ³n de informaciÃ³n bÃ¡sica ---------- */
+/* ---------- Add / edit of basic information ---------- */
 
 function itemFormFields(type, values) {
   const isBook = type === "book";
   return `
     <div class="field-group">
-      <label for="form-title">TÃ­tulo *</label>
+      <label for="form-title">Título *</label>
       <input type="text" id="form-title" required value="${escapeHtml(values.title || "")}" />
     </div>
     ${
@@ -850,7 +852,7 @@ function itemFormFields(type, values) {
     ${
       isBook
         ? `<div class="field-group">
-            <label for="form-pages">PÃ¡ginas</label>
+            <label for="form-pages">Páginas</label>
             <input type="number" id="form-pages" min="0" value="${values.pages || ""}" />
           </div>`
         : ""
@@ -899,8 +901,8 @@ export function openEditModal(item, { onSave, onCancel }) {
       changes.pages = pagesRaw ? Number(pagesRaw) : null;
     }
     const seenRaw = sanitizeSeenCount(content.querySelector("#form-seen-count").value);
-    // Si el valor escrito coincide con lo ya registrado en los logs,
-    // no se anota nada (queda la cuenta automática).
+    // If the typed value matches what is already in the logs,
+    // nothing is recorded (the automatic count stays).
     changes.seenCount = seenRaw === naturalTimes(item) ? null : seenRaw;
     onSave(changes);
   });
@@ -919,12 +921,12 @@ export function openManualAddModal(type, onSubmit) {
 
   const titleText =
     type === "book"
-      ? "AÃ±adir libro manualmente"
+      ? "añadir libro manualmente"
       : type === "tv"
-      ? "AÃ±adir serie manualmente"
+      ? "añadir serie manualmente"
       : type === "game"
-      ? "AÃ±adir videojuego manualmente"
-      : "AÃ±adir pelÃ­cula manualmente";
+      ? "añadir videojuego manualmente"
+      : "añadir película manualmente";
 
   content.innerHTML = `
     <h3 class="modal-detail__title" style="margin-bottom:1rem">${titleText}</h3>
@@ -943,7 +945,7 @@ export function openManualAddModal(type, onSubmit) {
       }
       <div class="modal-actions">
         <button type="button" class="btn btn--outline" id="btn-manual-cancel">Cancelar</button>
-        <button type="submit" class="btn btn--primary">AÃ±adir</button>
+        <button type="submit" class="btn btn--primary">añadir</button>
       </div>
     </form>
   `;
@@ -977,7 +979,7 @@ export function openManualAddModal(type, onSubmit) {
   modal._focusTrapCleanup = trapFocus(modal.querySelector(".modal__card"));
 }
 
-/* ---------- Plataformas de streaming (watch providers) ---------- */
+/* ---------- Streaming platforms (watch providers) ---------- */
 
 function providersGroupHtml(providers, label) {
   if (!providers || !providers.length) return "";
@@ -1022,9 +1024,9 @@ function watchProvidersHtml(item) {
     </div>`;
 }
 
-// Chips con las plataformas jugables de un videojuego (IGDB), para
-// que se vean como etiquetas y no como texto plano. Devuelve cadena
-// vacÃ­a si no hay plataformas (no ocupa espacio en el modal).
+// Chips with the playable platforms of a video game (IGDB), so
+// they show as tags and not as plain text. Returns an empty string
+// when there are no platforms (takes no space in the modal).
 function gamePlatformsHtml(item) {
   if (!item.platforms || !item.platforms.length) return "";
   return `
@@ -1038,20 +1040,20 @@ function gamePlatformsHtml(item) {
     </div>`;
 }
 
-/* ---------- Recomendaciones (contenido similar) ---------- */
+/* ---------- Recommendations (similar content) ---------- */
 
 /**
- * Genera el HTML de la secciÃ³n de recomendaciones.
- * @param {Array}  items       - Items recomendados [{externalId, type, title, year, coverUrl}]
- * @param {Set}    existingIds - Set de externalId ya aÃ±adidos para deshabilitar botones
- * @param {string} group       - "movie" o "tv" (para clases de botÃ³n)
- * @param {boolean} interactive - true si se deben mostrar botones "AÃ±adir"
- * @param {Function} [onOpen]  - si es funciÃ³n, cada tarjeta pasa a ser
- *                               un botÃ³n pulsable que llama onOpen(rec)
- *                               para abrir la vista previa ampliada de
- *                               esa recomendaciÃ³n antes de aÃ±adirla
- *                               (issue #280, iteraciÃ³n)
- * @returns {string} HTML del bloque de recomendaciones, o cadena vacÃ­a
+ * Generates the HTML of the recommendations section.
+ * @param {Array}  items       - Recommended items [{externalId, type, title, year, coverUrl}]
+ * @param {Set}    existingIds - Set of already added externalIds to disable buttons
+ * @param {string} group       - "movie" or "tv" (for button classes)
+ * @param {boolean} interactive - true if "añadir" buttons must be shown
+ * @param {Function} [onOpen]  - when a function, each card becomes a
+ *                               pressable button calling onOpen(rec)
+ *                               to open the extended preview of
+ *                               that recommendation before adding it
+ *                               (issue #280, iteration)
+ * @returns {string} HTML of the recommendations block, or empty string
  */
 function renderRecommendations(items, existingIds, group, interactive, onOpen) {
   if (!items || !items.length) return "";
@@ -1061,24 +1063,24 @@ function renderRecommendations(items, existingIds, group, interactive, onOpen) {
       const added = existingIds.has(rec.externalId);
       const btnHtml = interactive
         ? `<button class="btn btn--small ${accentClass} rec-card__add" data-rec-index="${index}" ${added ? "disabled" : ""}>
-             ${added ? "AÃ±adido" : "AÃ±adir"}
+             ${added ? "añadido" : "añadir"}
            </button>`
         : "";
       if (typeof onOpen === "function") {
-        // Tarjeta pulsable (issue #280, iteraciÃ³n): misma mecÃ¡nica que
-        // las tarjetas de saga â€” el botÃ³n .rec-card__open envuelve
-        // portada y texto (phrasing content, por eso .rec-card__body es
-        // span), y el botÃ³n "AÃ±adir" queda como hermano, anclado abajo
-        // por el flex: 1 del botÃ³n open.
+        // Pressable card (issue #280, iteration): same mechanics as the
+        // saga cards — the .rec-card__open button wraps the cover and
+        // text (phrasing content, which is why .rec-card__body is a
+        // span), and the "añadir" button stays as a sibling, anchored
+        // at the bottom by the flex: 1 of the open button.
         return `
         <div class="rec-card rec-card--openable" data-rec-index="${index}">
           <button type="button" class="rec-card__open" data-rec-index="${index}"
-                  aria-label="Ver informaciÃ³n de ${escapeHtml(rec.title)}">
+                  aria-label="Ver información de ${escapeHtml(rec.title)}">
             <img class="rec-card__cover" src="${rec.coverUrl || PLACEHOLDER_COVER}" alt="" loading="lazy" />
             <span class="rec-card__body">
               <span class="rec-card__title">${escapeHtml(rec.title)}</span>
               <span class="rec-card__year">${escapeHtml(rec.year || "")}</span>
-              <span class="rec-card__hint">Ver informaciÃ³n</span>
+              <span class="rec-card__hint">Ver información</span>
             </span>
           </button>
           ${btnHtml}
@@ -1098,7 +1100,7 @@ function renderRecommendations(items, existingIds, group, interactive, onOpen) {
 
   return `
     <div class="recommendations">
-      <h4 class="recommendations__title">Si te gustÃ³ esto, quizÃ¡ te guste...</h4>
+      <h4 class="recommendations__title">Si te gustó esto, quizá te guste...</h4>
       <div class="recommendations__scroll">
         ${cardsHtml}
       </div>
@@ -1106,22 +1108,21 @@ function renderRecommendations(items, existingIds, group, interactive, onOpen) {
 }
 
 /**
- * Genera el HTML de la secciÃ³n Â«Otras pelÃ­culas de la sagaÂ» (issue
- * #280): las pelÃ­culas de la colecciÃ³n/saga a la que pertenece el
- * Ã­tem abierto, en tarjetas con el mismo aspecto que las
- * recomendaciones. Reutiliza las clases de tarjeta de
- * renderRecommendations (.rec-card, .recommendations__scroll); el
- * botÃ³n usa .saga-card__add (clase propia, distinta de
- * .rec-card__add, para no interferir con el wiring de
- * recomendaciones).
+ * Generates the HTML of the «Otras películas de la saga» section
+ * (issue #280): the movies of the collection/saga the open item
+ * belongs to, in cards with the same look as the recommendations.
+ * It reuses the card classes of renderRecommendations
+ * (.rec-card, .recommendations__scroll); the button uses
+ * .saga-card__add (own class, different from .rec-card__add, so it
+ * does not interfere with the recommendations wiring).
  * @param {Array}  sagaParts   - [{externalId, title, year, posterUrl}]
- * @param {Set}    existingIds - Set de externalId ya aÃ±adidos
- * @param {boolean} interactive - true si se muestran botones "AÃ±adir"
- * @param {Function} [onOpen]  - si es funciÃ³n, cada tarjeta pasa a ser
- *                               un botÃ³n pulsable que llama onOpen(movie)
- *                               para abrir la vista previa de esa
- *                               pelÃ­cula antes de aÃ±adirla (issue #280)
- * @returns {string} HTML de la secciÃ³n, o cadena vacÃ­a
+ * @param {Set}    existingIds - Set of already added externalIds
+ * @param {boolean} interactive - true if "añadir" buttons are shown
+ * @param {Function} [onOpen]  - when a function, each card becomes a
+ *                               pressable button calling onOpen(movie)
+ *                               to open the preview of that movie
+ *                               before adding it (issue #280)
+ * @returns {string} HTML of the section, or empty string
  */
 function renderSagaMovies(sagaParts, existingIds, interactive, onOpen) {
   if (!sagaParts || !sagaParts.length) return "";
@@ -1130,23 +1131,23 @@ function renderSagaMovies(sagaParts, existingIds, interactive, onOpen) {
       const added = existingIds.has(String(m.externalId));
       const btnHtml = interactive
         ? `<button class="btn btn--small btn--accent-media saga-card__add" data-saga-index="${index}" ${added ? "disabled" : ""}>
-             ${added ? "AÃ±adida" : "AÃ±adir"}
+             ${added ? "añadida" : "añadir"}
            </button>`
         : "";
       if (typeof onOpen === "function") {
-        // Tarjeta pulsable: el botÃ³n .saga-card__open envuelve portada
-        // y texto (phrasing content, por eso .rec-card__body es span),
-        // y el botÃ³n "AÃ±adir" queda como hermano, anclado abajo por
-        // el flex: 1 del botÃ³n open (issue #280, iteraciÃ³n).
+        // Pressable card: the .saga-card__open button wraps the cover
+        // and text (phrasing content, which is why .rec-card__body is a
+        // span), and the "añadir" button stays as a sibling, anchored
+        // at the bottom by the flex: 1 of the open button (issue #280, iteration).
         return `
         <div class="rec-card saga-card" data-saga-index="${index}">
           <button type="button" class="saga-card__open" data-saga-index="${index}"
-                  aria-label="Ver informaciÃ³n de ${escapeHtml(m.title)}">
+                  aria-label="Ver información de ${escapeHtml(m.title)}">
             <img class="rec-card__cover" src="${m.posterUrl || PLACEHOLDER_COVER}" alt="" loading="lazy" />
             <span class="rec-card__body">
               <span class="rec-card__title">${escapeHtml(m.title)}</span>
               <span class="rec-card__year">${escapeHtml(m.year || "")}</span>
-              <span class="saga-card__hint">Ver informaciÃ³n</span>
+              <span class="saga-card__hint">Ver información</span>
             </span>
           </button>
           ${btnHtml}
@@ -1166,14 +1167,14 @@ function renderSagaMovies(sagaParts, existingIds, interactive, onOpen) {
 
   return `
     <div class="saga-movies">
-      <h4 class="saga-movies__title">Otras pelÃ­culas de la saga</h4>
+      <h4 class="saga-movies__title">Otras películas de la saga</h4>
       <div class="recommendations__scroll">
         ${cardsHtml}
       </div>
     </div>`;
 }
 
-/* ---------- Modal de detalle: pelÃ­culas ---------- */
+/* ---------- Detail modal: movies ---------- */
 
 function renderWatchLogRows(watchLog) {
   if (!watchLog || !watchLog.length) {
@@ -1217,7 +1218,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
     ${item.collectionId ? `
     <div class="saga-banner">
       <span class="saga-banner__label"><strong>Saga:</strong> ${escapeHtml(item.collectionName)}</span>
-      <button type="button" class="btn btn--small btn--accent-media" id="btn-add-saga">AÃ±adir resto de la saga</button>
+      <button type="button" class="btn btn--small btn--accent-media" id="btn-add-saga">añadir resto de la saga</button>
     </div>
     ${renderSagaMovies(sagaParts, existingIds, !!onAddSagaMovie, onOpenSagaMovie)}` : ""}
 
@@ -1229,7 +1230,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
       <div class="log-add-row">
         <input type="date" id="field-new-watch-date" value="${todayISO()}" />
         <button type="button" class="btn btn--small btn--accent-media" id="btn-add-watch">
-          ${item.watchLog && item.watchLog.length ? "AÃ±adir otro visionado" : "Marcar como vista"}
+          ${item.watchLog && item.watchLog.length ? "añadir otro visionado" : "Marcar como vista"}
         </button>
       </div>
     </div>
@@ -1244,10 +1245,10 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
   `;
 
   const getRating = wireRatingAndGetValue(content, item.rating);
-  // Propaga todos los argumentos en el re-render (issue #280): tras
-  // marcar como vista, la secciÃ³n de saga (y las recomendaciones)
-  // permanece, y el botÃ³n "AÃ±adida" se mantiene gracias al Set
-  // existingIds compartido.
+  // Propagates all the arguments on re-render (issue #280): after
+  // marking as watched, the saga section (and the recommendations)
+  // stays, and the "añadida" button is kept thanks to the shared
+  // existingIds Set.
   const rerender = () => openMovieModal(item, callbacks, recommendations, existingIds, sagaParts);
 
   content.querySelector("#btn-edit-item").addEventListener("click", () => onEdit());
@@ -1259,7 +1260,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
     });
   }
 
-  // Wire recommendation "AÃ±adir" buttons
+  // Wire recommendation "añadir" buttons
   if (onAddRecommendation) {
     content.querySelectorAll(".rec-card__add").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1270,8 +1271,8 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
     });
   }
 
-  // Wire saga "AÃ±adir" buttons (issue #280). Clase propia
-  // .saga-card__add para no interferir con las recomendaciones.
+  // Wire saga "añadir" buttons (issue #280). Own class
+  // .saga-card__add so it does not interfere with the recommendations.
   if (onAddSagaMovie) {
     content.querySelectorAll(".saga-card__add").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1282,8 +1283,8 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
     });
   }
 
-  // Wire saga card open preview (issue #280, iteraciÃ³n): pulsar la
-  // tarjeta muestra la informaciÃ³n de la pelÃ­cula antes de aÃ±adirla.
+  // Wire saga card open preview (issue #280, iteration): pressing
+  // the card shows the movie's information before adding it.
   if (onOpenSagaMovie) {
     content.querySelectorAll(".saga-card__open").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1294,9 +1295,9 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
     });
   }
 
-  // Wire recommendation card open preview (issue #280, iteraciÃ³n):
-  // pulsar la tarjeta de recomendaciÃ³n tambiÃ©n muestra la informaciÃ³n
-  // ampliada antes de aÃ±adirla, igual que las tarjetas de saga.
+  // Wire recommendation card open preview (issue #280, iteration):
+  // pressing the recommendation card also shows the extended
+  // information before adding it, same as the saga cards.
   if (onOpenRecommendation) {
     content.querySelectorAll(".rec-card__open").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1326,7 +1327,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
 
   content.querySelectorAll(".watch-remove").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!window.confirm("Â¿Quitar este visionado del historial?")) return;
+      if (!window.confirm("¿Quitar este visionado del historial?")) return;
       await onRemoveWatch(Number(btn.dataset.index));
       rerender();
     });
@@ -1351,8 +1352,8 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
 
 /* ---------- Modal selector de sagas ---------- */
 
-// Muestra un modal con checklist de pelÃ­culas de una saga para que
-// el usuario seleccione cuÃ¡les quiere aÃ±adir a su registro.
+// Shows a modal with a checklist of the movies of a saga so the
+// user selects which ones to add to their record.
 export function openSagaSelectionModal(collectionName, movies, callbacks) {
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
@@ -1370,14 +1371,14 @@ export function openSagaSelectionModal(collectionName, movies, callbacks) {
 
   content.innerHTML = `
     <h3 class="modal-detail__title" style="margin-bottom:0.3rem">${escapeHtml(collectionName)}</h3>
-    <p class="saga-subtitle">Selecciona las pelÃ­culas que quieras aÃ±adir:</p>
+    <p class="saga-subtitle">Selecciona las películas que quieras añadir:</p>
     <div class="saga-list" id="saga-list">
       ${renderList()}
     </div>
     <p class="saga-count" id="saga-count">Seleccionadas: ${movies.length}/${movies.length}</p>
     <div class="modal-actions">
       <button type="button" class="btn btn--outline" id="btn-saga-cancel">Cancelar</button>
-      <button type="button" class="btn btn--accent-media" id="btn-saga-confirm">AÃ±adir seleccionadas</button>
+      <button type="button" class="btn btn--accent-media" id="btn-saga-confirm">añadir seleccionadas</button>
     </div>
   `;
 
@@ -1402,7 +1403,7 @@ export function openSagaSelectionModal(collectionName, movies, callbacks) {
       selectedIndices.push(Number(cb.dataset.index));
     });
     if (!selectedIndices.length) {
-      showToast("Selecciona al menos una pelÃ­cula.");
+      showToast("Selecciona al menos una película.");
       return;
     }
     callbacks.onConfirm(selectedIndices.map((i) => movies[i]));
@@ -1414,7 +1415,7 @@ export function openSagaSelectionModal(collectionName, movies, callbacks) {
   modal._focusTrapCleanup = trapFocus(modal.querySelector(".modal__card"));
 }
 
-/* ---------- Modal de detalle: libros ---------- */
+/* ---------- Detail modal: books ---------- */
 
 function renderReadLogRows(readLog) {
   if (!readLog || !readLog.length) {
@@ -1426,7 +1427,7 @@ function renderReadLogRows(readLog) {
         (entry, index) => `
         <div class="log-row">
           <input type="date" class="read-start" data-index="${index}" value="${entry.startedAt}" />
-          <span class="log-row__arrow">â†’</span>
+          <span class="log-row__arrow">→</span>
           ${
             entry.finishedAt
               ? `<input type="date" class="read-finish" data-index="${index}" value="${entry.finishedAt}" />`
@@ -1439,8 +1440,8 @@ function renderReadLogRows(readLog) {
   </div>`;
 }
 
-// Historial de sesiones de juego de un videojuego (espejo del de
-// lecturas, con su propia semÃ¡ntica; issue #47).
+// Play session history of a video game (mirror of the read
+// history, with its own semantics; issue #47).
 function renderPlayLogRows(playLog) {
   if (!playLog || !playLog.length) {
     return `<p class="log-empty">AÃºn no has empezado a jugarlo.</p>`;
@@ -1451,7 +1452,7 @@ function renderPlayLogRows(playLog) {
         (entry, index) => `
         <div class="log-row">
           <input type="date" class="play-start" data-index="${index}" value="${entry.startedAt}" />
-          <span class="log-row__arrow">â†’</span>
+          <span class="log-row__arrow">→</span>
           ${
             entry.finishedAt
               ? `<input type="date" class="play-finish" data-index="${index}" value="${entry.finishedAt}" />`
@@ -1494,7 +1495,7 @@ export function openBookModal(item, callbacks) {
 
     ${extraInfoHtml(item)}
 
-    ${renderStandbyBanner(item.status, item.progress ? `pÃ¡gina ${item.progress}` : "")}
+    ${renderStandbyBanner(item.status, item.progress ? `página ${item.progress}` : "")}
     ${renderStatusActions(item.status)}
 
     <div class="field-group">
@@ -1509,7 +1510,7 @@ export function openBookModal(item, callbacks) {
     </div>
 
     <div class="field-group">
-      <label for="field-progress">PÃ¡gina actual</label>
+      <label for="field-progress">Página actual</label>
       <input type="number" min="0" id="field-progress" value="${item.progress ?? ""}" />
     </div>
 
@@ -1553,7 +1554,7 @@ export function openBookModal(item, callbacks) {
 
   content.querySelectorAll(".read-remove").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!window.confirm("Â¿Quitar esta lectura del historial?")) return;
+      if (!window.confirm("¿Quitar esta lectura del historial?")) return;
       await onRemoveEntry(Number(btn.dataset.index));
       rerender();
     });
@@ -1583,7 +1584,7 @@ export function openBookModal(item, callbacks) {
   modal._focusTrapCleanup = trapFocus(modal.querySelector(".modal__card"));
 }
 
-/* ---------- Modal de detalle: videojuegos (sesiones de juego) ---------- */
+/* ---------- Detail modal: video games (play sessions) ---------- */
 
 export function openGameModal(item, callbacks) {
   const {
@@ -1601,8 +1602,9 @@ export function openGameModal(item, callbacks) {
   const metaLine = [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
   const isPlaying =
     item.playLog && item.playLog.length && !item.playLog[item.playLog.length - 1].finishedAt;
-  // Horas jugadas en la ficha (ADR-111): el total de las sesiones; la
-  // línea solo se muestra si hay horas que mostrar (puro + test).
+  // Played hours in the detail view (ADR-111): the total of the
+  // sessions; the line only shows when there are hours to show
+  // (pure + tested).
   const hoursLabel = steamHoursLabel(totalPlayHours(item));
 
   content.innerHTML = `
@@ -1673,9 +1675,9 @@ export function openGameModal(item, callbacks) {
     });
   });
 
-  // Horas de una sesiÃ³n: vacÃ­o se persiste como null (nunca undefined,
-  // Firestore lanza con updateDoc), valores invÃ¡lidos se ignoran y el
-  // resto se redondea a 1 decimal (issue #174).
+  // Hours of a session: empty is persisted as null (never undefined,
+  // Firestore throws with updateDoc), invalid values are ignored and
+  // the rest are rounded to 1 decimal (issue #174).
   content.querySelectorAll(".play-hours").forEach((input) => {
     input.addEventListener("change", async () => {
       const value = input.value;
@@ -1694,7 +1696,7 @@ export function openGameModal(item, callbacks) {
 
   content.querySelectorAll(".play-remove").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!window.confirm("Â¿Quitar esta sesiÃ³n del historial?")) return;
+      if (!window.confirm("¿Quitar esta sesión del historial?")) return;
       await onRemoveEntry(Number(btn.dataset.index));
       rerender();
     });
@@ -1722,11 +1724,11 @@ export function openGameModal(item, callbacks) {
   modal._focusTrapCleanup = trapFocus(modal.querySelector(".modal__card"));
 }
 
-/* ---------- Modal de detalle: series (temporadas y episodios) ---------- */
+/* ---------- Detail modal: shows (seasons and episodes) ---------- */
 
-// Sincroniza el estado VISUAL de una fila de episodio con su entrada
-// real (normalizada o null) en item.watched: checkbox, clase is-watched,
-// fecha, fila 2 (meta), contador y estrellas (issue #133/#136).
+// Syncs the VISUAL state of an episode row with its actual entry
+// (normalized or null) in item.watched: checkbox, is-watched class,
+// date, row 2 (meta), counter and stars (issue #133/#136).
 function applyEpisodeRowState(row, entry) {
   const checked = Boolean(entry && entry.date);
   const times = checked ? Math.max(1, Number(entry.times) || 1) : 0;
@@ -1778,8 +1780,8 @@ function renderSeasonBlock(s, watched) {
     </div>`;
 }
 
-// manual=true (series manuales): no se marcan episodios como "sin
-// estrenar" porque no tienen fechas reales de TMDB.
+// manual=true (manual shows): episodes are not marked as
+// "unreleased" because they have no real TMDB dates.
 function renderEpisodeRows(episodes, seasonWatched, { manual = false } = {}) {
   return episodes
     .map((e) => {
@@ -1789,8 +1791,8 @@ function renderEpisodeRows(episodes, seasonWatched, { manual = false } = {}) {
       const checked = Boolean(date);
       const times = checked ? Math.max(1, Number(entry.times) || 1) : 0;
       const future = !manual && isUnreleasedDate(e.airDate);
-      // Badge de nota TMDB: solo en series automÃ¡ticas y cuando el episodio
-      // tiene votos (episodeRating != null). Las series manuales no lo traen.
+      // TMDB score badge: only on automatic shows and when the episode
+      // has votes (episodeRating != null). Manual shows do not carry it.
       const communityBadge =
         !manual && e.episodeRating != null
           ? communityRatingValueHtml(e.episodeRating)
@@ -1920,7 +1922,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
               ${item.history
                 .map(
                   (h) =>
-                    `<li>${formatDateEs(h.startedAt)} â†’ ${formatDateEs(h.finishedAt)}</li>`
+                    `<li>${formatDateEs(h.startedAt)} → ${formatDateEs(h.finishedAt)}</li>`
                 )
                 .join("")}
             </ul>
@@ -1974,8 +1976,8 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       el.title = `Media de ${ratedLabel}`;
       el.innerHTML = `Media episodios: <strong>${avg.average.toFixed(1)}</strong>`;
     } else {
-      // Sin episodios valorados: ocultar y vaciar (evita texto obsoleto
-      // si el CSS por cualquier motivo dejara de respetar el [hidden]).
+      // No rated episodes: hide and empty (avoids stale text
+      // if the CSS ever stopped respecting the [hidden]).
       el.title = "";
       el.textContent = "";
     }
@@ -1990,21 +1992,21 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       const airDate = row.dataset.airDate;
 
       checkbox.addEventListener("change", async () => {
-        // Estado REAL antes del clic (el navegador ya conmutÃ³ el checkbox)
+        // REAL state before the click (the browser already toggled the checkbox)
         const currentEntry = normalizeEntry(
           (item.watched || {})[String(seasonNumber)]?.[String(episodeNumber)]
         );
         const wasWatched = Boolean(currentEntry && currentEntry.date);
 
-        // Episodio ya visto: preguntar quÃ© hacer (verlo de nuevo o
-        // desmarcarlo) en lugar de desmarcar a secas (issue #133).
+        // Episode already watched: ask what to do (watch again or
+        // unmark) instead of a bare unmark (issue #133).
         if (wasWatched) {
-          // El diÃ¡logo captura document.activeElement al abrir, pero el
-          // checkbox se deshabilita antes (el navegador mueve el foco a
-          // body): guardamos el elemento activo previo aquÃ­ para
-          // restaurar el foco a la casilla al cerrar (QA #133).
+          // The dialog captures document.activeElement when opening, but
+// the checkbox is disabled before (the browser moves focus to
+// body): we store the previous active element here to
+// restore focus to the checkbox on close (QA #133).
           const prevActive = document.activeElement;
-          checkbox.checked = true; // restaurar al instante (sin parpadeo)
+          checkbox.checked = true; // restore instantly (no flicker)
           checkbox.disabled = true;
           try {
             const choice = await openEpisodeActionsModal({
@@ -2018,9 +2020,9 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
             } else if (choice === "unmarked") {
               newProgress = await onSetEpisodeDate(seasonNumber, episodeNumber, null);
             }
-            // Repintado SIEMPRE derivado de item.watched (patrÃ³n issue #136):
-            // en el caso Â«cancelarÂ» la fila vuelve a su estado real (inofensivo)
-            // y no hay progreso nuevo que repintar en el banner.
+            // Repaint ALWAYS derived from item.watched (issue #136 pattern):
+            // on cancel the row goes back to its real state (harmless) and
+            // there is no new progress to repaint in the banner.
             const entry2 = normalizeEntry(
               (item.watched || {})[String(seasonNumber)]?.[String(episodeNumber)]
             );
@@ -2037,8 +2039,8 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
           return;
         }
 
-        // Episodio sin marcar: flujo actual (confirmaciÃ³n de sin estrenar
-        // y ventana de valoraciÃ³n posterior del lado de modal-handlers).
+        // Unmarked episode: current flow (unreleased confirmation and
+        // subsequent rating window on the modal-handlers side).
         if (checkbox.checked && !item.manual && isUnreleasedDate(airDate)) {
           const msg = episodeUnreleasedMessage(item.title, seasonNumber, episodeNumber, airDate);
           if (!window.confirm(msg)) {
@@ -2050,9 +2052,9 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
         const newDate = checkbox.checked ? todayISO() : null;
         try {
           const newProgress = await onSetEpisodeDate(seasonNumber, episodeNumber, newDate);
-          // Pintado DERIVADO de item.watched (no del checkbox pulsado):
-          // refleja tambiÃ©n un posible Â«DeshacerÂ» desde la ventana de
-          // valoraciÃ³n emergente (issue #136).
+          // Painting DERIVED from item.watched (not the pressed checkbox):
+          // it also reflects a possible Undo from the pop-up rating
+          // window (issue #136).
           const entry2 = normalizeEntry(
             (item.watched || {})[String(seasonNumber)]?.[String(episodeNumber)]
           );
@@ -2083,14 +2085,14 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       starButtons.forEach((btn) => {
         btn.addEventListener("click", async () => {
           const value = Number(btn.dataset.value);
-          // Estado REAL del rating (patrÃ³n issue #136: derivar del dato,
-          // no del conteo visual de estrellas activas).
+          // REAL state of the rating (issue #136 pattern: derive from the
+          // data, not from the visual count of active stars).
           const current = normalizeRating(
             normalizeEntry(
               (item.watched || {})[String(seasonNumber)]?.[String(episodeNumber)]
             )?.rating
           );
-          // Ciclo de medias estrellas (issue #276): N â†’ Nâˆ’0.5 â†’ quitar.
+          // Half-star cycle (issue #276): N → N-0.5 → clear.
           let newValue;
           if (current === value) newValue = value - 0.5;
           else if (current === value - 0.5) newValue = null;
@@ -2105,7 +2107,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
               const half = v === n - 0.5;
               b.classList.toggle("is-active", full && !half);
               b.classList.toggle("is-half", half);
-              b.textContent = half ? "Â½" : "â˜…";
+              b.textContent = half ? "1/2" : "";
               b.setAttribute(
                 "aria-label",
                 half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
@@ -2131,20 +2133,20 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
 
       if (!isHidden) {
         block.classList.add("hidden");
-        chevron.textContent = "â–¸";
+        chevron.textContent = "-";
         return;
       }
       block.classList.remove("hidden");
-      chevron.textContent = "â–¾";
+      chevron.textContent = "-";
       if (block.dataset.loaded) return;
 
       block.innerHTML = `<p class="episode-loading">Cargando episodiosâ€¦</p>`;
       try {
         const episodes = await onExpandSeason(seasonNumber);
-        // Si el siguiente episodio del usuario estÃ¡ en esta temporada,
-        // guardamos su fecha de emisiÃ³n (o null si TMDB no la tiene)
-        // para poder avisar del "no estrenado" sin mÃ¡s llamadas a la
-        // API. Fuego-y-olvido: un fallo aquÃ­ no rompe el modal.
+        // If the user's next episode is in this season, we store its air
+// date (or null when TMDB does not have it) to be able to warn
+// about the "unreleased" without further API calls.
+// Fire-and-forget: a failure here does not break the modal.
         if (
           !item.manual &&
           onUpdateNextEpisodeAirDate &&
@@ -2179,9 +2181,9 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       const episodeCount = Number(btn.closest(".season-block").dataset.episodeCount);
       const shouldMarkAll = btn.dataset.allWatched === "1";
 
-      // Al marcar toda una temporada, contar los episodios sin estrenar
-      // (sin fecha oficial o con fecha futura) y pedir confirmaciÃ³n.
-      // Las series manuales quedan excluidas: no tienen fechas reales.
+      // When marking a whole season, count the unreleased episodes
+      // (no official date or future date) and ask for confirmation.
+      // Manual shows are excluded: they have no real dates.
       let unreleasedCount = 0;
       if (shouldMarkAll && !item.manual) {
         const episodesBlock = content.querySelector(
@@ -2207,7 +2209,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       }
       if (unreleasedCount > 0) {
         const ok = window.confirm(
-          `Â«${item.title}Â» Â· Temporada ${seasonNumber}: ${unreleasedCount} episodio(s) sin estrenar (sin fecha oficial o con fecha futura). Â¿Marcarlos todos igualmente como vistos?`
+          `Â«${item.title}Â» Â· Temporada ${seasonNumber}: ${unreleasedCount} episodio(s) sin estrenar (sin fecha oficial o con fecha futura). ¿Marcarlos todos igualmente como vistos?`
         );
         if (!ok) return;
       }
@@ -2241,7 +2243,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
     rewatchBtn.addEventListener("click", async () => {
       if (
         !window.confirm(
-          `Â¿Volver a ver Â«${item.title}Â» desde el principio? Se guardarÃ¡ el visionado anterior en el historial.`
+          `¿Volver a ver Â«${item.title}Â» desde el principio? Se guardará el visionado anterior en el historial.`
         )
       ) {
         return;
@@ -2270,7 +2272,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
     onDelete();
   });
 
-  // Wire recommendation "AÃ±adir" buttons
+  // Wire recommendation "añadir" buttons
   if (onAddRecommendation) {
     content.querySelectorAll(".rec-card__add").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -2281,9 +2283,9 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
     });
   }
 
-  // Wire recommendation card open preview (issue #280, iteraciÃ³n):
-  // pulsar la tarjeta de recomendaciÃ³n muestra la informaciÃ³n ampliada
-  // antes de aÃ±adirla, igual que en la ficha de pelÃ­cula.
+  // Wire recommendation card open preview (issue #280, iteration):
+  // pressing the recommendation card shows the extended information
+  // before adding it, same as in the movie detail view.
   if (onOpenRecommendation) {
     content.querySelectorAll(".rec-card__open").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -2300,11 +2302,11 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
   modal._focusTrapCleanup = trapFocus(modal.querySelector(".modal__card"));
 }
 
-/* ---------- Modal de confirmaciÃ³n al aÃ±adir libro ---------- */
+/* ---------- Confirmation modal when adding a book ---------- */
 
-// Muestra un modal de selecciÃ³n cuando un libro tiene mÃºltiples
-// portadas o sinopsis (resultado de agrupar ediciones de Google Books).
-// Si no hay nada que elegir, llama directamente a onConfirm.
+// Shows a selection modal when a book has multiple covers or
+// synopses (result of grouping Google Books editions). If there
+// is nothing to choose, it calls onConfirm directly.
 export function openBookConfirmModal(item, { onConfirm, onCancel }) {
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
@@ -2312,7 +2314,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
   const hasMultipleCovers = item.allCovers && item.allCovers.length > 1;
   const hasMultipleDescriptions = item.allDescriptions && item.allDescriptions.length > 1;
 
-  // Si no hay nada que elegir, confirmar directamente
+  // If there is nothing to choose, confirm directly
   if (!hasMultipleCovers && !hasMultipleDescriptions) {
     onConfirm({ coverUrl: item.coverUrl, description: item.description || "" });
     return;
@@ -2324,7 +2326,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
       ? `<p class="book-confirm__editions">${item.editionsCount} ediciones encontradas</p>`
       : "";
 
-  // Selector de portadas
+  // Cover picker
   let coverPickerHtml = "";
   if (hasMultipleCovers) {
     coverPickerHtml = `
@@ -2335,7 +2337,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
             .map(
               (url, i) => `
             <button type="button" class="cover-picker__item ${i === 0 ? "is-selected" : ""}" data-index="${i}">
-              <img src="${url}" alt="EdiciÃ³n ${i + 1}" loading="lazy" />
+              <img src="${url}" alt="Edición ${i + 1}" loading="lazy" />
             </button>`
             )
             .join("")}
@@ -2343,7 +2345,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
       </div>`;
   }
 
-  // Selector de sinopsis
+  // Synopsis picker
   let descSelectorHtml = "";
   if (hasMultipleDescriptions) {
     descSelectorHtml = `
@@ -2363,7 +2365,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
   }
 
   content.innerHTML = `
-    <h3 class="modal-detail__title" style="margin-bottom:0.5rem">AÃ±adir libro</h3>
+    <h3 class="modal-detail__title" style="margin-bottom:0.5rem">añadir libro</h3>
     <div class="modal-detail__header" style="margin-bottom:0.5rem">
       <img class="modal-detail__cover" src="${item.coverUrl || PLACEHOLDER_COVER}" alt="" />
       <div>
@@ -2376,11 +2378,11 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
     ${descSelectorHtml}
     <div class="modal-actions">
       <button type="button" class="btn btn--outline" id="btn-confirm-cancel">Cancelar</button>
-      <button type="button" class="btn btn--accent-books" id="btn-confirm-add">AÃ±adir</button>
+      <button type="button" class="btn btn--accent-books" id="btn-confirm-add">añadir</button>
     </div>
   `;
 
-  // Wiring del selector de portadas
+  // Wiring of the cover picker
   let selectedCoverIndex = 0;
   if (hasMultipleCovers) {
     content.querySelectorAll("#cover-picker .cover-picker__item").forEach((btn) => {
@@ -2393,7 +2395,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
     });
   }
 
-  // Wiring del selector de sinopsis
+  // Wiring of the synopsis picker
   let selectedDescIndex = 0;
   if (hasMultipleDescriptions) {
     content.querySelectorAll("#desc-picker .desc-picker__item").forEach((btn) => {
@@ -2416,8 +2418,8 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
     });
   });
 
-  // Si venimos de otro modal (p. ej. la preview de bÃºsqueda), limpiar
-  // su focus trap antes de registrar el nuevo
+  // If we come from another modal (e.g. the search preview), clear
+  // its focus trap before registering the new one
   if (modal._focusTrapCleanup) modal._focusTrapCleanup();
 
   // Record previous focus and trap
@@ -2429,17 +2431,17 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
 export function closeModal() {
   const modal = document.getElementById("item-modal");
 
-  // Consume el cierre personalizado registrado (_onClose): evita que
-  // una preview cerrada re-dispare su onClose tras restaurar la ficha
-  // (issue #280, QA D3).
+  // Consumes the registered custom close (_onClose): avoids a
+// closed preview re-firing its onClose after restoring the
+// detail view (issue #280, QA D3).
   modal._onClose = null;
 
-  // Restaurar foco al elemento que lo tenÃ­a antes de abrir
+  // Restore focus to the element that had it before opening
   if (modal._previousActiveElement && typeof modal._previousActiveElement.focus === 'function') {
     modal._previousActiveElement.focus();
   }
 
-  // Limpiar focus trap
+  // Clear the focus trap
   if (modal._focusTrapCleanup) {
     modal._focusTrapCleanup();
     modal._focusTrapCleanup = null;
@@ -2450,7 +2452,7 @@ export function closeModal() {
   document.getElementById("modal-content").innerHTML = "";
 }
 
-/* ---------- Notificaciones (campana) ---------- */
+/* ---------- Notifications (bell) ---------- */
 
 export function renderNotifications(listEl, badgeEl, emptyEl, notifications, { onDelete }) {
   const unread = notifications.filter((n) => !n.read).length;
@@ -2483,10 +2485,10 @@ export function renderNotifications(listEl, badgeEl, emptyEl, notifications, { o
   });
 }
 
-/* ---------- Aviso flotante ---------- */
+/* ---------- Floating notice ---------- */
 
 let toastTimer = null;
-let undoState = null; // { hide } del toast de deshacer activo, o null
+let undoState = null; // { hide } of the active undo toast, or null
 
 function clearUndoState() {
   if (undoState) {
@@ -2496,7 +2498,7 @@ function clearUndoState() {
 }
 
 export function showToast(message) {
-  // Si hay un toast de deshacer activo, ocultarlo
+  // If there is an active undo toast, hide it
   clearUndoState();
   clearTimeout(toastTimer);
 
@@ -2507,29 +2509,29 @@ export function showToast(message) {
 }
 
 /**
- * Muestra un toast con mensaje y botÃ³n "Deshacer".
- * El toast NO se oculta automÃ¡ticamente â€” el llamador controla su
- * ciclo de vida mediante el mÃ©todo `hide()` del objeto devuelto.
+ * Shows a toast with a message and a "Deshacer" button.
+ * The toast is NOT hidden automatically — the caller controls its
+ * life cycle through the returned object's `hide()` method.
  *
- * @param {string}   title   - TÃ­tulo del Ã­tem que se eliminarÃ¡
- * @param {Function} onUndo  - Callback al hacer clic en "Deshacer"
+ * @param {string}   title   - Title of the item that will be deleted
+ * @param {Function} onUndo  - Callback when "Deshacer" is clicked
  * @returns {{ hide: () => void }}
  */
 export function showUndoToast(title, onUndo) {
-  // Si ya hay otro toast de deshacer visible, ocultarlo
+  // If another undo toast is already visible, hide it
   clearUndoState();
   clearTimeout(toastTimer);
 
   const toast = document.getElementById("toast");
   toast.innerHTML = `
-    <span>Â«${escapeHtml(title)}Â» se eliminarÃ¡â€¦</span>
+    <span>Â«${escapeHtml(title)}Â» se eliminaráâ€¦</span>
     <button class="toast__btn">Deshacer</button>
   `;
   toast.classList.add("toast--undo");
   toast.classList.remove("hidden");
 
   const hide = () => {
-    if (undoState !== state) return; // Otro toast ya tomÃ³ el control
+    if (undoState !== state) return; // Another toast already took over
     toast.classList.remove("toast--undo");
     toast.classList.add("hidden");
     toast.innerHTML = "";

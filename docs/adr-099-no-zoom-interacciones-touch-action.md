@@ -1,166 +1,291 @@
-# ADR-099: Nunca zoom en ninguna interacción: touch-action: manipulation y font-size >= 16px en todos los inputs (issue #275)
+# ADR-099: Never zoom on any interaction: the touch-action: manipulation and a font-size >= 16px on all the inputs (issue #275)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #275 reportaba **zoom automático en móvil** al pulsar sobre
-campos de texto, detectado en la **edición de ejercicios del gimnasio**
-(al introducir el nombre del ejercicio), con la exigencia de que la
-solución fuese **regla para TODA la web**: nunca zoom en ninguna
-interacción.
+Issue #275 reported
+an
+**automatic zoom on mobile** when pressing on
+text
+fields, detected on the
+**gym's exercises'
+edition** (when entering the
+exercise's name), with the
+requirement that the
+solution be a
+**rule for the WHOLE web**: never
+zoom on any
+interaction.
 
-El ADR-042 (issue #92) ya estableció la política de `font-size >= 16px`
-en todos los campos y la regla global `input, textarea, select {
-font-size: 16px; }` en `css/styles.css` y `ocio/ocio.css`. **PERO la
-regla global es una red de seguridad de baja especificidad**: 7 grupos
-de selectores específicos la sobreescribían con `font-size`
-0.85–0.9rem (13.6–14.4px), añadidos en desarrollos posteriores al
-ADR-042 (recetas, compra, ingredientes y la sección de gimnasio de la
-rama de la issue-62), reintroduciendo el zoom en sus campos. Los grupos:
+The ADR-042
+(issue #92) already
+established
+the
+`font-size >= 16px` policy on
+all the fields and the
+`input, textarea, select { font-size: 16px; }` global rule in
+the
+`css/styles.css` and the
+`ocio/ocio.css`. **BUT the
+global rule is a
+low-specificity safety net**: 7
+specific
+selector groups overwrote it with a
+`font-size` of
+0.85–0.9rem (the 13.6–14.4px), added on
+developments after
+the
+ADR-042 (the
+recipes, the
+shopping, the
+ingredients and the
+issue-62 branch's gym
+section), reintroducing the
+zoom on their fields. The
+groups:
 
-- `.ingredient-modal__field input/select` (0.9rem);
-- `.shopping-extra-form__row input/select` + `.ing-combo .ing-nombre`
-  (0.85rem);
-- `.recipe-form__import-row input` (0.85rem);
-- `.recipe-form__field input/textarea` + `.recipe-form__newtag`,
-  `.recipe-form__paso` y `.recipe-form__ingrediente input/select`
-  (0.88rem);
-- `.gym-form__field input/select/textarea` (0.9rem);
-- `.gym-exercise-block select/input[type="text"]` (0.9rem);
-- `.gym-series-row input` (0.9rem).
+- The `.ingredient-modal__field input/select` (the
+  0.9rem);
+- The `.shopping-extra-form__row input/select` + the
+  `.ing-combo .ing-nombre` (the 0.85rem);
+- The `.recipe-form__import-row input` (the
+  0.85rem);
+- The `.recipe-form__field input/textarea` + the
+  `.recipe-form__newtag`, the
+  `.recipe-form__paso` and the
+  `.recipe-form__ingrediente input/select` (the 0.88rem);
+- The `.gym-form__field input/select/textarea` (the
+  0.9rem);
+- The `.gym-exercise-block select/input[type="text"]` (the
+  0.9rem);
+- The `.gym-series-row input` (the
+  0.9rem).
 
-Además, el zoom también puede dispararse por **doble toque** sobre
-cualquier elemento interactivo (botones, enlaces, campos), con
-independencia del `font-size`, vía que el ADR-042 no cubría.
+Also, the zoom can also get triggered by a
+**double
+tap** on any
+interactive element (the
+buttons, the
+links, the
+fields), regardless of the
+`font-size`, an
+avenue the
+ADR-042 did not cover.
 
-Contexto de ramificación: la decisión se implementa en la rama
-`fix/issue-275-evitar-zoom` y se documenta a posteriori, como los ADR
-recientes (ADR-093, ADR-094, ADR-095, ADR-096, ADR-097, ADR-098).
+Branch
+context: the decision gets implemented on the
+`fix/issue-275-evitar-zoom`
+branch and documented retrospectively, like the recent ADRs (the
+ADR-093, the
+ADR-094, the
+ADR-095, the
+ADR-096, the
+ADR-097, the
+ADR-098).
 
 Related issue: #275 — https://github.com/gonzalitojh/Registro-personal/issues/275
 
-## Decisión
+## Decision
 
-### 1. Los 7 grupos de selectores específicos suben a 1rem
+### 1. The 7 specific selector groups rise to 1rem
 
-Se suben los 7 grupos listados en el contexto a `font-size: 1rem`
-(16px), **sin tocar colores, paddings ni selectores**, añadiendo en cada
-uno el comentario `/* ADR-042: nunca < 16px en inputs */`, siguiendo el
-precedente del mismo comentario ya presente en la hoja desde el ADR-042
-(líneas 3498/3683 antes del fix; el bloque de `touch-action` de esta
-issue las desplaza a ~3503 y ~3688 en el estado final).
+The 7 groups listed in the context rise to a
+`font-size: 1rem` (the
+16px), **without
+touching the colors, the paddings nor the selectors**, adding
+the
+`/* ADR-042: nunca < 16px en inputs */` comment on
+each one, following the
+precedent of the same comment already present on the stylesheet since the
+ADR-042 (the
+3498/3683 lines
+before the fix; this issue's `touch-action` block
+shifts
+them to ~3503 and ~3688 on the final state).
 
-### 2. Nueva regla global `touch-action: manipulation` en ambas hojas
+### 2. The new `touch-action: manipulation` global rule on both stylesheets
 
-Se añade en **ambas** hojas la regla:
+It gets added on **both**
+stylesheets
+:
 
 ```css
 button, a, input, select, textarea { touch-action: manipulation; }
 ```
 
-- en `css/styles.css`, justo **tras la regla global de inputs** del
-  ADR-042 (~línea 517);
-- en `ocio/ocio.css`, en la **misma posición** al inicio del fichero
-  (~línea 17);
+- on the
+  `css/styles.css`, right
+  **after the
+  ADR-042's global inputs
+  rule** (~line 517);
+- on the
+  `ocio/ocio.css`, on the
+  **same
+  position** at
+  the
+  file's start (~line 17);
 
-ambas con comentario que referencia la issue #275. La regla elimina el
-**zoom por doble toque** en cualquier interacción (botones, enlaces,
-campos) mientras **mantiene el panning y el pinch zoom**: no deshabilita
-el zoom manual, en línea con el ADR-042 y el ADR-016 (sin
-`user-scalable=no` ni `maximum-scale=1` en el meta viewport).
+both with a comment referencing the issue
+#275. The
+rule removes the
+**double-tap
+zoom** on any interaction (the
+buttons, the links, the
+fields) while **keeping the
+panning and the pinch zoom**: it does not disable the
+manual zoom, in
+line with the
+ADR-042 and the
+ADR-016 (with no
+`user-scalable=no` nor
+`maximum-scale=1` on
+the
+meta viewport).
 
-### 3. Auditoría sostenible: `scripts/audit-input-font-sizes.py`
+### 3. A sustainable audit: the
+  `scripts/audit-input-font-sizes.py`
 
-Nuevo script que cierra la brecha que dejó la red de seguridad del
-ADR-042 (insuficiente contra selectores específicos):
+A new script that closes
+the
+gap the
+ADR-042's safety net left
+(insufficient against the specific
+selectors):
 
-- detecta selectores que declaren `font-size < 16px` sobre
-  `input`/`select`/`textarea` en ambas hojas (`css/styles.css` y
-  `ocio/ocio.css`), y
-- verifica la **presencia de las dos reglas globales** (la de inputs del
-  ADR-042 y la de `touch-action` de esta issue).
+- it detects selectors declaring a
+  `font-size < 16px` on
+  the
+  `input`/`select`/`textarea` on both stylesheets (the
+  `css/styles.css` and the
+  `ocio/ocio.css`), and
+- it verifies the
+  **two global rules' presence** (the
+  ADR-042's inputs'
+  one and this issue's
+  `touch-action` one).
 
-Devuelve exit 0/1, por lo que es usable en CI y pre-commit como guard
-anti-regresión: cualquier campo nuevo por debajo del mínimo o la
-eliminación de una regla global falla la auditoría de forma automática.
+It returns an exit
+0/1, so it is usable on CI and pre-commit as an anti-regression guard: any new field below the
+minimum or the
+removal of a
+global rule fails the audit automatically.
 
-### 4. Bump de versión de la PWA a `20260929`
+### 4. The PWA's version bump
+  to the
+  `20260929`
 
-Versión `20260928` → `20260929` (vía `scripts/bump-version.sh`) en:
+The
+`20260928` version →
+the
+`20260929` (via the
+`scripts/bump-version.sh`) on:
 
-- `index.html`: `?v=20260929` en `css/styles.css`, `ocio/ocio.css` y
-  `js/app.js` (sin `user-scalable=no` / `maximum-scale=1` en el meta
-  viewport);
-- `js/config.js`: `APP_VERSION`;
-- `service-worker.js`: `STATIC_ASSETS`.
+- The
+  `index.html`: the
+  `?v=20260929` on the
+  `css/styles.css`, the
+  `ocio/ocio.css` and the
+  `js/app.js` (with no
+  `user-scalable=no` / the
+  `maximum-scale=1` on the meta viewport);
+- The
+  `js/config.js`: the
+  `APP_VERSION`;
+- The
+  `service-worker.js`: the
+  `STATIC_ASSETS`.
 
-Para invalidar la caché del service worker y forzar la entrega de los
-nuevos CSS.
+To invalidate the service worker's cache and force the new CSSs' delivery.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Deshabilitar el zoom en el meta viewport** (`user-scalable=no` /
-  `maximum-scale=1`): descartado — rompe la accesibilidad (WCAG 1.4.4:
-  redimensionado de texto sin pérdida de contenido), el mismo
-  razonamiento ya documentado en ADR-042 y ADR-016.
-- **Solo subir los campos del gimnasio**: descartado — el reporte venía
-  de ahí, pero la regla debe valer para **toda la web**: se auditaron y
-  arreglaron los 7 grupos, incluyendo recetas, compra e ingredientes,
-  que tenían el mismo defecto latente.
-- **Fix por JS** (capturar el foco, `scrollIntoView`, etc.): descartado
-  — el zoom por doble toque y al enfocar es comportamiento nativo del
-  navegador, no cancelable de forma fiable desde JS; la solución en CSS
-  es la vía estándar y sin coste de mantenimiento.
+- **Disabling the zoom on the meta viewport** (the
+  `user-scalable=no` /
+  the
+  `maximum-scale=1`): rejected — it breaks the accessibility (the
+  WCAG 1.4.4: the
+  text resizing without a
+  content loss), the same
+  reasoning already documented in
+  the
+  ADR-042 and the
+  ADR-016.
+- **Only raising the gym's fields**: rejected — the
+  report came from there, but the
+  rule must hold for the **whole web**: the
+  7 groups got audited and fixed, including the
+  recipes, the shopping and the ingredients, which had the same latent defect.
+- **A JS-based fix** (capturing the focus, the
+  `scrollIntoView`, etc.): rejected — the
+  double-tap
+  and focus-triggered zoom is the
+  browser's native behavior, not reliably cancelable from the
+  JS; the CSS solution is the standard and maintenance-free way.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Sin zoom en toda la web**: ni al enfocar campos (los 7 grupos ya
-  cumplen el mínimo de 16px) ni por doble toque en ninguna interacción
-  (botones, enlaces, campos), gracias a `touch-action: manipulation`.
-- **Pinch zoom manual conservado**: los usuarios con baja visión pueden
-  seguir ampliando la página; se mantiene el compromiso de
-  accesibilidad del ADR-042/ADR-016.
-- **Auditoría automatizada anti-regresión**: el nuevo
-  `scripts/audit-input-font-sizes.py` detecta en CI/pre-commit cualquier
-  selector que vuelva a bajar de 16px o la pérdida de una regla global;
-  la red de seguridad pasiva del ADR-042 queda reforzada con un guard
-  activo.
+- **No zoom on the whole web**: neither when
+  focusing the
+  fields (the 7 groups already meet the 16px minimum) nor by a
+  double tap on any interaction (the
+  buttons, the links, the fields), thanks to the
+  `touch-action: manipulation`.
+- **The manual pinch zoom kept**: the low-vision users can keep
+  enlarging the page; the
+  ADR-042/ADR-016's accessibility compromise stays.
+- **An automated anti-regression audit**: the new
+  `scripts/audit-input-font-sizes.py` detects on CI/pre-commit any selector dropping below
+  16px again or a
+  global rule's
+  loss; the ADR-042's passive
+  safety net gets
+  reinforced with an
+  active guard.
 
-### Neutras
+### Neutral
 
-- **Manual de usuario sin cambios**: fix puramente ergonómico, sin
-  funciones, estados ni ajustes nuevos; mismo precedente que el ADR-042
-  (regla 3 de AGENTS.md no aplica).
-- **Sin cambios de contrato en JS**: ninguna función de `js/*.js` se ve
-  afectada; solo cambian CSS, versionado y el nuevo script de auditoría.
+- **The user manual unchanged**: a purely ergonomic fix, with no
+  new features, states nor settings; the ADR-042's same precedent (the
+  AGENTS.md's rule 3 does not apply).
+- **No JS contract changes**: no function of the
+  `js/*.js` gets affected; only the CSS, the
+  versioning and the new
+  audit script change.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Campos de gym/recetas/compra/ingredientes ligeramente más grandes
-  en escritorio**: los inputs/selects de esos formularios pasan de
-  0.85–0.9rem a 1rem; es el coste asumido del mínimo de 16px, el mismo
-  que ya documentó el ADR-042. Verificar que los anchos flexibles de sus
-  contenedores absorben el incremento (ya disponen de `min-width: 0` /
-  unidades relativas, por la regla de responsividad de AGENTS.md).
-- **Ninguna otra conocida.**
+- **The gym/recipes/shopping/ingredients' fields slightly bigger
+  on desktop**: those forms' inputs/selects go
+  from the
+  0.85–0.9rem to the
+  1rem; it is the assumed cost of the 16px minimum, the same one the
+  ADR-042 already documented. Verify their
+  containers' flexible widths absorb the
+  increase (they
+  already have the
+  `min-width: 0` /
+  the relative units, per
+  the
+  AGENTS.md's responsiveness rule).
+- **No other known ones.**
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `css/styles.css` | **Modificado**: los 7 grupos de selectores específicos (ingredient-modal, shopping-extra-form, recipe-form import/field/newtag/paso/ingrediente, gym-form, gym-exercise-block, gym-series-row) suben de 0.85–0.9rem a `font-size: 1rem` con comentario `/* ADR-042: nunca < 16px en inputs */`; nueva regla global `button, a, input, select, textarea { touch-action: manipulation; }` tras la regla de inputs (~línea 517) con comentario de la issue #275 |
-| `ocio/ocio.css` | **Modificado**: nueva regla global `button, a, input, select, textarea { touch-action: manipulation; }` al inicio (~línea 17) con comentario de la issue #275 |
-| `index.html` | **Modificado**: `?v=20260928` → `?v=20260929` en `css/styles.css`, `ocio/ocio.css` y `js/app.js` (sin `user-scalable=no` / `maximum-scale=1` en el meta viewport) |
-| `js/config.js` | **Modificado**: `APP_VERSION` de `20260928` a `20260929` |
-| `service-worker.js` | **Modificado**: `STATIC_ASSETS` con `?v=20260929` (invalida las cachés de `20260928` y anteriores) |
-| `scripts/audit-input-font-sizes.py` | **Nuevo**: auditoría que detecta selectores `input`/`select`/`textarea` con `font-size < 16px` en ambas hojas y verifica la presencia de las dos reglas globales (inputs del ADR-042 y `touch-action` de la #275); exit 0/1 para CI/pre-commit |
-| `docs/adr-099-no-zoom-interacciones-touch-action.md` | **Nuevo**: este documento |
+| `css/styles.css` | **Modified**: the 7 specific selector groups (the ingredient-modal, the shopping-extra-form, the recipe-form import/field/newtag/paso/ingrediente, the gym-form, the gym-exercise-block, the gym-series-row) rise from the 0.85–0.9rem to a `font-size: 1rem` with the `/* ADR-042: nunca < 16px en inputs */` comment; the new global `button, a, input, select, textarea { touch-action: manipulation; }` rule after the inputs' one (~line 517) with the issue #275's comment |
+| `ocio/ocio.css` | **Modified**: the new global `button, a, input, select, textarea { touch-action: manipulation; }` rule at the start (~line 17) with the issue #275's comment |
+| `index.html` | **Modified**: the `?v=20260928` → the `?v=20260929` on the `css/styles.css`, the `ocio/ocio.css` and the `js/app.js` (with no `user-scalable=no` / the `maximum-scale=1` on the meta viewport) |
+| `js/config.js` | **Modified**: the `APP_VERSION` from the `20260928` to the `20260929` |
+| `service-worker.js` | **Modified**: the `STATIC_ASSETS` with the `?v=20260929` (it invalidates the `20260928` and earlier caches) |
+| `scripts/audit-input-font-sizes.py` | **New**: an audit that detects `input`/`select`/`textarea` selectors with a `font-size < 16px` on both stylesheets and verifies the two global rules' presence (the ADR-042's inputs and the #275's `touch-action`); an exit 0/1 for CI/pre-commit |
+| `docs/adr-099-no-zoom-interacciones-touch-action.md` | **New**: this document |
 
 Related issue: #275 — https://github.com/gonzalitojh/Registro-personal/issues/275

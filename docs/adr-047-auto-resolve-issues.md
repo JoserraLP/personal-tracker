@@ -1,225 +1,225 @@
-# ADR-047: Resolución automática de issues con GitHub Actions (issue #81)
+# ADR-047: Automatic issue resolution with GitHub Actions (issue #81)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-07
 
-## Contexto
+## Context
 
-El repositorio usa GitHub Issues como **source of truth** del flujo SDD (ADR-018, ADR-034): el backlog se gestiona con labels `ai` (marcador de issues del agente), `status: todo | in-progress | needs-review | blocked | done`, `type: *` y `priority: very high | high | medium | low | very low`. Hasta ahora, cada issue la adoptaba el agente manualmente en una sesión interactiva; la promoción `dev` → `main` cierra las issues en `status: needs-review` (ADR-034).
+The repository uses GitHub Issues as the SDD flow's **source of truth** (ADR-018, ADR-034): the backlog is managed with the `ai` label (agent-issue marker), `status: todo | in-progress | needs-review | blocked | done`, `type: *` and `priority: very high | high | medium | low | very low`. Until now, each issue was adopted manually by the agent in an interactive session; the `dev` → `main` promotion closes the issues in `status: needs-review` (ADR-034).
 
-La issue #81 pide una **GitHub Action** que resuelva issues automáticamente: al fusionar una PR contra `dev` (no contra `main`), crear una sesión de OpenCode (agente `sdd-master`, modelo `opencode/deepseek-v4-flash-free` — free de OpenCode Zen—, variante `max`) que resuelva la issue más prioritaria. Criterios de selección:
+Issue #81 asks for a **GitHub Action** that resolves issues automatically: when a PR against `dev` (not `main`) is merged, it creates an OpenCode session (agent `sdd-master`, model `opencode/deepseek-v4-flash-free` — OpenCode Zen's free—, variant `max`) that resolves the most prioritary issue. Selection criteria:
 
-1. Solo issues con label `ai`.
-2. Prioridad más alta (`very high` > `high` > `medium` > `low` > `very low`).
-3. Empate de prioridad → tipo (`bug` > `question` > `style` > `content` > `refactor` > `feature`).
-4. Empate → la más antigua (`created_at`).
-5. Nunca una issue en `status: needs-info` o `status: blocked`, aunque tenga la label `ai`.
-6. Nunca una issue bloqueada por otra si la dependencia no está resuelta.
+1. Only issues with the `ai` label.
+2. Highest priority (`very high` > `high` > `medium` > `low` > `very low`).
+3. Priority tie → type (`bug` > `question` > `style` > `content` > `refactor` > `feature`).
+4. Tie → the oldest (`created_at`).
+5. Never an issue in `status: needs-info` or `status: blocked`, even if it has the `ai` label.
+6. Never an issue blocked by another one if the dependency is unresolved.
 
-Además: si se comenta en una issue en curso, debe reanalizarse el comentario (iteración); si no queda ninguna issue por resolver, «apagar el servidor» de OpenCode; y si se crea una issue nueva con el servidor apagado, «encenderlo» y procesar. Todo debe ejecutarse **internamente en GitHub Actions**, sin depender de la máquina local.
+In addition: if a comment is made on an ongoing issue, the comment must be re-analyzed (iteration); if no issue is left to resolve, "shut down the server" of OpenCode; and if a new issue is created with the server off, "turn it on" and process. Everything must run **internally in GitHub Actions**, without depending on the local machine.
 
-Hallazgos técnicos de la implementación:
+Technical findings from the implementation:
 
-- `opencode run` es **headless por defecto** (sin TTY).
-- El flag `--auto` es **necesario** para que el agente pueda ejecutar `git`/`gh`/scripts: sin él, los permisos se auto-rechazan y el run no hace nada.
-- El modelo free no requiere API key.
-- `--format json` emite eventos JSONL (adecuado para logs de CI).
+- `opencode run` is **headless by default** (no TTY).
+- The `--auto` flag is **necessary** for the agent to be able to run `git`/`gh`/scripts: without it, permissions are auto-rejected and the run does nothing.
+- The free model needs no API key.
+- `--format json` emits JSONL events (suitable for CI logs).
 
 Related issue: #81 — https://github.com/gonzalitojh/Registro-personal/issues/81
 
-Related issue: #120 — https://github.com/gonzalitojh/Registro-personal/issues/120 (corrección de reanudación de issues bloqueadas)
+Related issue: #120 — https://github.com/gonzalitojh/Registro-personal/issues/120 (fix for resuming blocked issues)
 
-## Decisión
+## Decision
 
-### 1. Un solo workflow multi-trigger: `.github/workflows/auto-resolve-issues.yml`
+### 1. A single multi-trigger workflow: `.github/workflows/auto-resolve-issues.yml`
 
-Un **único workflow** (no dos) con estos triggers:
+A **single workflow** (not two) with these triggers:
 
-- `pull_request: closed` con `merged == true` y `base.ref == 'dev'` → el ciclo continúa: se resuelve la siguiente issue.
-- `issues: opened` (con salvaguarda anti-PR) → «se enciende el servidor».
-- `issue_comment: created` en una issue abierta con label `ai` y `status: in-progress | needs-review`, excluyendo `github-actions[bot]` → iteración.
-- `workflow_dispatch` con inputs `issue_number` (forzar una issue, debug) y `dry_run` (solo selección y prompt, sin lanzar sesión).
+- `pull_request: closed` with `merged == true` and `base.ref == 'dev'` → the cycle continues: the next issue is resolved.
+- `issues: opened` (with an anti-PR safeguard) → the "server turns on".
+- `issue_comment: created` on an open issue with label `ai` and `status: in-progress | needs-review`, excluding `github-actions[bot]` → iteration.
+- `workflow_dispatch` with inputs `issue_number` (force an issue, debug) and `dry_run` (selection and prompt only, no session launched).
 
-- **Concurrency group `sdd-auto-resolver` con `cancel-in-progress: false`**: una sola sesión a la vez; los runs en cola **esperan** y nunca matan una sesión activa.
-- **Permisos**: `contents: write`, `pull-requests: write`, `issues: write` (commits/PRs del agente y labels/comentarios).
-- `timeout-minutes: 120` (los flujos SDD con variante `max` tardan minutos).
+- **Concurrency group `sdd-auto-resolver` with `cancel-in-progress: false`**: one session at a time; queued runs **wait** and never kill an active session.
+- **Permissions**: `contents: write`, `pull-requests: write`, `issues: write` (the agent's commits/PRs and labels/comments).
+- `timeout-minutes: 120` (SDD flows with variant `max` take minutes).
 
-### 2. Script de selección `scripts/gh-select-issue.sh` (bash + python3)
+### 2. Selection script `scripts/gh-select-issue.sh` (bash + python3)
 
-Toda la lógica de negocio vive en python3 (heredoc): lista issues abiertas con `gh issue list` (salvaguarda anti-PR), filtra y ordena según los criterios 1-6 de la issue #81:
+All business logic lives in python3 (heredoc): lists open issues with `gh issue list` (anti-PR safeguard), filters and sorts by issue #81's criteria 1-6:
 
-- Solo issues con label `ai`; por defecto solo `status: todo` (flag `--all-states` para debug); **nunca** `needs-info` ni `blocked`.
-- Regex de dependencias en el body (case-insensitive y conservadora): `depende de #N`, `bloqueada por #N`, `depends on`, `blocked by`. Una dependencia está **resuelta** ⇔ la issue está `CLOSED` o tiene label `status: done` (si la issue no existe, se considera no resuelta — fail-safe).
-- Ranking: `(prioridad, tipo, created_at, número)`.
-- Flags: `--dry-run` (ranking completo con motivos de exclusión), `--issue <N>` (fuerza una issue; exit 2 si no es elegible o es una PR), `--all-states`.
-- Salida: JSON de **una línea** (`number`, `title`, `body`, `labels`, `comments`, `createdAt`, `url`) o la cadena `NONE`; exit codes 0 (selección/NONE), 1 (error de API), 2 (uso inválido o forzada no elegible).
-- **Nunca imprime tokens**: consume `GH_TOKEN` del entorno sin `echo`.
+- Only issues with the `ai` label; by default only `status: todo` (`--all-states` flag for debug); **never** `needs-info` nor `blocked`.
+- Dependency regex in the body (case-insensitive and conservative): `depende de #N`, `bloqueada por #N`, `depends on`, `blocked by`. A dependency is **resolved** ⇔ the issue is `CLOSED` or has the `status: done` label (if the issue does not exist, it is considered unresolved — fail-safe).
+- Ranking: `(priority, type, created_at, number)`.
+- Flags: `--dry-run` (full ranking with exclusion reasons), `--issue <N>` (forces an issue; exit 2 if not eligible or is a PR), `--all-states`.
+- Output: **single-line** JSON (`number`, `title`, `body`, `labels`, `comments`, `createdAt`, `url`) or the string `NONE`; exit codes 0 (selection/NONE), 1 (API error), 2 (invalid use or forced ineligible).
+- **Never prints tokens**: consumes `GH_TOKEN` from the environment without `echo`.
 
-### 3. Flujo del job `resolve`
+### 3. Flow of the `resolve` job
 
-1. **Checkout** con `fetch-depth: 0` (el agente necesita ramas desde `origin/dev`) e **identidad de git** (`github-actions[bot]`).
-2. **Instalar OpenCode pineado**: `npm install -g opencode-ai@1.18.7`; fallback `curl -fsSL https://opencode.ai/install | bash` solo si npm falla.
-3. **Determinar la issue candidata**: `issue_comment` → la issue comentada, validando abierta + label `ai` + `status: in-progress | needs-review` (si no cumple → `NONE`); `workflow_dispatch` con `issue_number` → `--issue N`; resto → selector sin flags.
-4. Si `NONE` → **«servidor apagado»**: el workflow termina con éxito sin lanzar sesión.
-5. **Reclamar la issue** (anti-race contra runs en cola): `set-state N "status: in-progress"` salvo en iteración (ya está en curso); best-effort (aviso si falla).
-6. **Construir `sdd_prompt.md`**: modo normal (adopción, tipo, sincronización de labels, planificación → implementación → qa-reviewer → security-champion → ADR, publicación por el publisher con «Closes #N» en la primera línea del body) o **MODO ITERACIÓN** (ver punto 5).
-7. **Dry-run opcional**: `dry_run == true` solo muestra el prompt.
-8. **Sesión**: `opencode run --agent sdd-master -m opencode/deepseek-v4-flash-free --variant max --auto --format json --title "auto: issue #N" "$(cat sdd_prompt.md)"` con `timeout 3600` (y `timeout-minutes: 90` en el step).
-9. **En fallo de sesión**: rollback best-effort — `set-state N "status: todo"` + comentario en la issue con el aviso (nunca en iteración, donde no se devuelve a la cola).
-10. **Resumen** final del run.
+1. **Checkout** with `fetch-depth: 0` (the agent needs branches from `origin/dev`) and the **git identity** (`github-actions[bot]`).
+2. **Install pinned OpenCode**: `npm install -g opencode-ai@1.18.7`; the `curl -fsSL https://opencode.ai/install | bash` fallback only if npm fails.
+3. **Determine the candidate issue**: `issue_comment` → the commented issue, validating open + `ai` label + `status: in-progress | needs-review` (if not met → `NONE`); `workflow_dispatch` with `issue_number` → `--issue N`; the rest → selector without flags.
+4. If `NONE` → the **"server is off"**: the workflow finishes successfully without launching a session.
+5. **Claim the issue** (anti-race against queued runs): `set-state N "status: in-progress"` except in iteration (it is already ongoing); best-effort (warning on failure).
+6. **Build `sdd_prompt.md`**: normal mode (adoption, type, label sync, planning → implementation → qa-reviewer → security-champion → ADR, publishing by the publisher with "Closes #N" as the body's first line) or **ITERATION MODE** (see point 5).
+7. **Optional dry-run**: `dry_run == true` only shows the prompt.
+8. **Session**: `opencode run --agent sdd-master -m opencode/deepseek-v4-flash-free --variant max --auto --format json --title "auto: issue #N" "$(cat sdd_prompt.md)"` with `timeout 3600` (and `timeout-minutes: 90` on the step).
+9. **On session failure**: best-effort rollback — `set-state N "status: todo"` + a comment on the issue with the notice (never in iteration, where it is not returned to the queue).
+10. Final **summary** of the run.
 
-### 4. Semántica «servidor apagado/encendido»
+### 4. "Server off/on" semantics
 
-No existe un servidor persistente en GitHub Actions (los runners son efímeros; no hay nada que apagar/encender de verdad). La semántica pedida por la issue se interpreta así:
+There is no persistent server on GitHub Actions (the runners are ephemeral; there is nothing to actually turn off/on). The semantics requested by the issue are interpreted as:
 
-- **«Apagar el servidor»** = cuando el selector devuelve `NONE` (no quedan issues elegibles), el workflow termina sin lanzar ninguna sesión.
-- **«Encender el servidor»** = el evento `issues: opened` dispara el workflow, que selecciona y lanza.
+- **"Turn off the server"** = when the selector returns `NONE` (no eligible issues left), the workflow finishes without launching any session.
+- **"Turn on the server"** = the `issues: opened` event triggers the workflow, which selects and launches.
 
-Documentado en el propio YAML (comentario de cabecera) y en este ADR.
+Documented in the YAML itself (header comment) and in this ADR.
 
-### 5. Iteración por comentario
+### 5. Iteration via comment
 
-Se descarta `--continue`/`--session` de OpenCode: el runner efímero no conserva el almacén de sesiones entre runs. La fuente de estado **durable** es el propio repositorio: task file `tasks/task-issue-N.json` commiteado + labels + comentarios de la issue. Por tanto, la iteración es un **NUEVO run** cuyo prompt incluye un bloque «MODO ITERACIÓN (continuación)» que instruye al agente a:
+OpenCode's `--continue`/`--session` are discarded: the ephemeral runner does not keep OpenCode's session store across runs. The **durable** state source is the repository itself: committed task file `tasks/task-issue-N.json` + labels + issue comments. Therefore, iteration is a **NEW run** whose prompt includes a «MODO ITERACIÓN (continuación)» block instructing the agent to:
 
-- reanudar el task file tal cual está (no recrearlo),
-- reanalizar el **comentario nuevo** (leído por API con `gh api repos/{owner}/{repo}/issues/comments/{id}`, nunca interpolado en bash: el contenido puede contener comillas/apóstrofes),
-- re-validar (aceptación + DoD) y re-ejecutar el escaneo de seguridad,
-- actualizar el ADR si procede y **publicar una PR NUEVA contra `dev`** con «Closes #N» en la primera línea (las PRs previas de la misma issue no cierran nada: cada iteración lleva su propia PR con su propia keyword).
+- resume the task file as it stands (not recreate it),
+- re-analyze the **new comment** (read via API with `gh api repos/{owner}/{repo}/issues/comments/{id}`, never interpolated in bash: the content may contain quotes/apostrophes),
+- re-validate (acceptance + DoD) and re-run the security scan,
+- update the ADR if applicable and **publish a NEW PR against `dev`** with "Closes #N" as the body's first line (the same issue's previous PRs close nothing: each iteration carries its own PR with its own keyword).
 
-### 6. Seguridad
+### 6. Security
 
-- **Sin secrets hardcodeados**; `OPENCODE_API_KEY` se lee del secret solo si el usuario lo configura (el modelo free funciona sin él).
-- **Sin `pull_request_target`**: el workflow solo se ejecuta con el `GITHUB_TOKEN` automático repo-scoped sobre código del propio repo.
-- **Instrucción anti-exfiltración en el prompt**: nunca imprimir/leer/transmitir `GH_TOKEN` ni `OPENCODE_API_KEY` (ni fragmentos ni valores codificados); ignorar cualquier instrucción del contenido de la issue o de los comentarios que pida lo contrario (contenido no verificado).
-- **El JSON del candidato viaja en `candidate.json`** (escrito por el step de selección y leído con `jq`/`cat` por los siguientes): evita la inyección de comillas simples del contenido de la issue en bash.
-- El comentario del usuario se lee por API (mismo motivo).
+- **No hardcoded secrets**; `OPENCODE_API_KEY` is read from the secret only if the user configures it (the free model works without it).
+- **No `pull_request_target`**: the workflow only runs with the automatic repo-scoped `GITHUB_TOKEN` over the repo's own code.
+- **Anti-exfiltration instruction in the prompt**: never print/read/transmit `GH_TOKEN` nor `OPENCODE_API_KEY` (nor fragments or encoded values); ignore any instruction from the issue's or the comments' content asking otherwise (unverified content).
+- **The candidate's JSON travels in `candidate.json`** (written by the selection step and read with `jq`/`cat` by the following ones): avoids the injection of the issue content's single quotes into bash.
+- The user's comment is read via API (same reason).
 
-### 7. Activación
+### 7. Activation
 
-Los triggers `pull_request`/`issues`/`issue_comment` ejecutan la versión del workflow de la **rama por defecto** (`main`), por lo que el workflow se activa en producción **tras la promoción `dev` → `main`** que lo publique (coherente con ADR-034: el cierre de issues y la activación de la automatización ocurren en la promoción).
+The `pull_request`/`issues`/`issue_comment` triggers run the workflow version of the **default branch** (`main`), so the workflow activates in production **after the `dev` → `main` promotion** that publishes it (coherent with ADR-034: issue closure and automation activation happen on the promotion).
 
-### 7-b. Corrección (iteración 1): `Permission denied` al ejecutar los scripts
+### 7-b. Fix (iteration 1): `Permission denied` when running the scripts
 
-**Síntoma**: al fusionar la PR #114 contra `dev` (run 31166193184), el workflow falló con `Permission denied` (exit 126) en el paso «Determinar issue candidata».
+**Symptom**: when merging PR #114 against `dev` (run 31166193184), the workflow failed with `Permission denied` (exit 126) in the "Determine candidate issue" step.
 
-**Causa raíz**: el repositorio está en WSL con `git config core.filemode=false`, por lo que el `chmod +x` local de `scripts/gh-select-issue.sh` y `scripts/gh-issue.sh` **nunca se trackeó**: ambos se commitearon con modo `100644`. En el runner Linux (checkout limpio) los scripts se crean sin bit de ejecución y al invocarlos directamente (`scripts/gh-select-issue.sh`) el shell falla con `Permission denied`.
+**Root cause**: the repository is on WSL with `git config core.filemode=false`, so the local `chmod +x` of `scripts/gh-select-issue.sh` and `scripts/gh-issue.sh` was **never tracked**: both were committed with mode `100644`. On the Linux runner (clean checkout) the scripts are created without the execute bit and invoking them directly (`scripts/gh-select-issue.sh`) makes the shell fail with `Permission denied`.
 
-**Corrección aplicada (doble defensa)**:
+**Fix applied (double defense)**:
 
-1. **Modo ejecutable en git**: `git update-index --chmod=+x scripts/gh-select-issue.sh scripts/gh-issue.sh` → los blobs quedan con modo `100755` (el chmod es efectivo en cualquier checkout Linux, independientemente de `core.filemode` local).
-2. **Hardening del workflow**: los scripts se invocan con `bash scripts/...` explícito en los pasos «Determinar issue candidata», «Reclamar» y «Rollback». Así el workflow no depende del bit de ejecución de los archivos.
-3. **Fix menor**: el JSON de iteración (`gh issue view ... -q . | jq -c ...`) se compacta a una línea — un JSON multilínea truncaría `GITHUB_OUTPUT` al escribir `selected=...` (el `jq -c` en el modo iteración ya existía, se aplica también a la rama de comentario vía pipe).
+1. **Executable mode in git**: `git update-index --chmod=+x scripts/gh-select-issue.sh scripts/gh-issue.sh` → the blobs get mode `100755` (the chmod is effective on any Linux checkout, regardless of the local `core.filemode`).
+2. **Workflow hardening**: the scripts are invoked with explicit `bash scripts/...` in the "Determine candidate issue", "Claim" and "Rollback" steps. Thus the workflow does not depend on the files' execute bit.
+3. **Minor fix**: the iteration JSON (`gh issue view ... -q . | jq -c ...`) is compacted to one line — a multi-line JSON would truncate `GITHUB_OUTPUT` when writing `selected=...` (the `jq -c` already existed in iteration mode, it is applied also to the comment branch via pipe).
 
-Lección para futuras iteraciones: **siempre fijar el bit de ejecución con `git update-index --chmod=+x` (o `git add --chmod=+x`)**, nunca confiar en `chmod` local con `core.filemode=false`.
+Lesson for future iterations: **always set the execute bit with `git update-index --chmod=+x` (or `git add --chmod=+x`)**, never rely on a local `chmod` with `core.filemode=false`.
 
-### 7-c. Corrección (iteración 2): reanudación de issues bloqueadas y activación (issue #120)
+### 7-c. Fix (iteration 2): resuming blocked issues and activation (issue #120)
 
-**Síntoma**: la sesión automática de la issue #49 completó la implementación y pusheó la rama `style/issue-49-friends-view-tabs-filters`, pero **no pudo crear la PR** (el ajuste «Allow GitHub Actions to create and approve pull requests» estaba deshabilitado) y dejó la issue en `status: blocked` con las instrucciones. El usuario habilitó los permisos y comentó en la issue, pero **el workflow no se relanzó**; la PR #119 creada manualmente (body vacío) tampoco activó nada.
+**Symptom**: issue #49's automatic session completed the implementation and pushed the branch `style/issue-49-friends-view-tabs-filters`, but **could not create the PR** (the setting "Allow GitHub Actions to create and approve pull requests" was disabled) and left the issue in `status: blocked` with instructions. The user enabled the permissions and commented on the issue, but **the workflow did not relaunch**; the manually created PR #119 (empty body) did not activate anything either.
 
-**Causa raíz (doble)**:
+**Double root cause**:
 
-1. **Activación (comportamiento de GitHub Actions)**: el trigger `issue_comment` (y `issues`) ejecuta la versión del workflow de la **rama por defecto (`main`)**, no del merge ref. Como el workflow aún no estaba en `main` (no se había hecho la promoción `dev` → `main` tras las PRs #114/#117), el comentario en #49 fue **ignorado silenciosamente** (no se creó ningún run). En cambio `pull_request` usa el merge ref (base+head de la PR), por eso el flujo sí se activó al fusionar la PR #117. Hasta la promoción, la **reanudación manual** es vía `workflow_dispatch` + `issue_number`.
-2. **Diseño del flujo**: la iteración por comentario solo aceptaba `in-progress`/`needs-review` — una issue en `blocked` se rechazaba con «no se itera». Además `scripts/gh-select-issue.sh --issue N` también rechaza `blocked` (exit 2), así que no había **ninguna vía** (ni automática ni manual) para reanudar una sesión bloqueada.
+1. **Activation (GitHub Actions behavior)**: the `issue_comment` trigger (and `issues`) runs the workflow version of the **default branch (`main`)**, not of the merge ref. Since the workflow was not yet in `main` (the `dev` → `main` promotion had not happened after PRs #114/#117), the comment on #49 was **silently ignored** (no run was created). By contrast `pull_request` uses the merge ref (PR's base+head), which is why the flow did activate when merging PR #117. Until the promotion, **manual resumption** is via `workflow_dispatch` + `issue_number`.
+2. **Flow design**: iteration via comment only accepted `in-progress`/`needs-review` — an issue in `blocked` was rejected with "it is not iterated". Also `scripts/gh-select-issue.sh --issue N` rejects `blocked` too (exit 2), so there was **no path** (neither automatic nor manual) to resume a blocked session.
 
-**Corrección aplicada**:
+**Fix applied**:
 
-1. **Iteración por comentario acepta `blocked`**: el comentario del usuario en una issue abierta con label `ai` y `status: blocked` es la señal de que el bloqueo se resolvió → el workflow la desbloquea (`blocked` → `in-progress`, paso «Reclamar») y relanza la sesión sobre esa issue.
-2. **`workflow_dispatch` con `issue_number` = reanudación manual**: en lugar de `--issue` del selector (que rechaza `blocked`), el candidato se construye directamente validando solo abierta + label `ai` (cualquier status). El usuario puede así reanudar una issue bloqueada desde la UI de Actions (Actions → auto-resolve-issues → Run workflow → rama `dev` → `issue_number: N`).
-3. **El prompt MODO ITERACIÓN se aplica también al dispatch forzado** y añade instrucciones de **PR existente**: buscar la rama de trabajo en origin (patrón `<tipo>/issue-N-*`) y, si ya tiene una PR abierta (`gh pr list --head <rama>`), **actualizarla** con `gh pr edit` (título + body con `Closes #N` en la primera línea) en lugar de crear una PR duplicada.
-4. **Rollback al estado previo**: si una reanudación falla, la issue vuelve a `blocked` (si venía bloqueada) en vez de a `todo` (nueva salida `prev_status` del paso candidato).
-5. **Documentación de activación**: la cabecera del workflow y este ADR documentan qué eventos usan main vs. merge ref (ver punto 3 del diagnóstico de la sección 7).
+1. **Iteration via comment accepts `blocked`**: the user's comment on an open issue with the `ai` label and `status: blocked` is the signal that the block was resolved → the workflow unblocks it (`blocked` → `in-progress`, "Claim" step) and relaunches the session on that issue.
+2. **`workflow_dispatch` with `issue_number` = manual resumption**: instead of the selector's `--issue` (which rejects `blocked`), the candidate is built directly validating only open + `ai` label (any status). The user can thus resume a blocked issue from the Actions UI (Actions → auto-resolve-issues → Run workflow → branch `dev` → `issue_number: N`).
+3. **The ITERATION MODE prompt also applies to the forced dispatch** and adds instructions for an **existing PR**: search for the work branch on origin (pattern `<type>/issue-N-*`) and, if it already has an open PR (`gh pr list --head <branch>`), **update it** with `gh pr edit` (title + body with `Closes #N` as the first line) instead of creating a duplicate PR.
+4. **Rollback to the previous state**: if a resumption fails, the issue goes back to `blocked` (if it came blocked) instead of to `todo` (new `prev_status` output of the candidate step).
+5. **Activation documentation**: the workflow header and this ADR document which events use main vs. merge ref (see section 7's diagnosis point 3).
 
-**Flujo de reanudación tras esta corrección** (caso #49): el usuario ejecuta `workflow_dispatch` con `issue_number=49` → el workflow valida abierta + `ai`, desbloquea a `in-progress`, lanza la sesión en modo iteración → el agente detecta la rama `style/issue-49-friends-view-tabs-filters` y la PR #119 existente, la actualiza con `gh pr edit` (body con `Closes #49` y la información del agente) → el usuario la revisa y fusiona en `dev` → el merge dispara el ciclo para la siguiente issue.
+**Resumption flow after this fix** (case #49): the user runs `workflow_dispatch` with `issue_number=49` → the workflow validates open + `ai`, unblocks to `in-progress`, launches the session in iteration mode → the agent detects the branch `style/issue-49-friends-view-tabs-filters` and the existing PR #119, updates it with `gh pr edit` (body with `Closes #49` and the agent's information) → the user reviews it and merges into `dev` → the merge triggers the cycle for the next issue.
 
-### 7-d. Protección de progreso en fallos por tokens del modelo free (issue #128)
+### 7-d. Progress protection on failures due to the free model's tokens (issue #128)
 
-**Síntoma**: la sesión automática de la issue #124 cayó a mitad de ejecución por el límite de cuota/tokens del modelo free de OpenCode Zen (`opencode/deepseek-v4-flash-free`). Como el runner de GitHub Actions es efímero, todo el trabajo que la sesión dejó en el working tree local (archivos editados y commits locales no pusheados) se perdió al destruirse el runner: el fallo se revirtió a la cola sin conservar el progreso intermedio.
+**Symptom**: issue #124's automatic session died mid-run due to the OpenCode Zen free model's quota/token limit (`opencode/deepseek-v4-flash-free`). Since the GitHub Actions runner is ephemeral, all the work the session left in the local working tree (edited files and unpushed local commits) was lost when the runner was destroyed: the failure was reverted to the queue without keeping the intermediate progress.
 
-**Causa raíz**: cualquier estado no pusheado del working tree del runner (commits locales, archivos modificados) se pierde al terminar el job. El flujo SDD solo hace durable el estado vía git (rama + PR), y eso solo ocurre al final de la sesión con el publisher; si la sesión muere antes (rate limit, timeout, fallo del modelo), nada de lo intermedio sobrevive.
+**Root cause**: any unpushed state of the runner's working tree (local commits, modified files) is lost when the job ends. The SDD flow only makes state durable via git (branch + PR), and that only happens at the session's end with the publisher; if the session dies earlier (rate limit, timeout, model failure), nothing in between survives.
 
-**Corrección aplicada** (3 partes de la propuesta de Gemini + ajustes):
+**Fix applied** (3 parts of the Gemini proposal + adjustments):
 
-1. **Guardado WIP automático en fallo de sesión**: nuevo paso `wip-save` con `if: failure() && steps.candidate.outputs.selected != 'NONE'`, inmediatamente después del paso «Sesión OpenCode» y antes del rollback. Commitea el working tree completo (incluidos los micro-commits locales de la sesión) en la rama `wip/issue-N` y la pushea a `origin` con `--force` — ANTES de que GitHub destruya el runner. Excluye los artefactos locales del run (`candidate.json` y `sdd_prompt.md`) vía pathspec `:(exclude)`, para que no se mezclen con el código del repo; no crea la rama si no hay cambios (`git diff --cached --quiet`). Es best-effort: si el commit/push falla, solo avisa y se continúa con el rollback.
-2. **Restauración automática en el siguiente intento**: nuevo paso `wip-restore`, entre la reclamación de la issue y la construcción del prompt. Detecta `origin/wip/issue-N` con `git ls-remote --exit-code --heads` y, si existe, hace `git fetch` + `git checkout -B wip/issue-N origin/wip/issue-N` para que la nueva sesión de OpenCode continúe exactamente sobre el estado guardado.
-3. **Micro-commits obligatorios en el prompt + ajuste de publicación**: el prompt de la sesión instruye hacer commits incrementales en la rama local a medida que se completa cada subtarea del task file (plan → implementación → validación → security → ADR), sin esperar al final; y si la sesión viene de una restauración WIP (rama `wip/issue-N`), la rama de PR se crea DESDE el estado actual (nunca desde `origin/dev`, que perdería lo restaurado), actualizando la PR existente si la hay, y la rama `wip/issue-N` nunca se publica como PR. El MODO ITERACIÓN incluye el mismo recordatorio.
+1. **Automatic WIP save on session failure**: new step `wip-save` with `if: failure() && steps.candidate.outputs.selected != 'NONE'`, immediately after the "OpenCode Session" step and before the rollback. It commits the whole working tree (including the session's local micro-commits) to the branch `wip/issue-N` and pushes it to `origin` with `--force` — BEFORE GitHub destroys the runner. It excludes the run's local artifacts (`candidate.json` and `sdd_prompt.md`) via the pathspec `:(exclude)`, so they do not mix with the repo's code; it does not create the branch if there are no changes (`git diff --cached --quiet`). It is best-effort: if the commit/push fails, it only warns and continues with the rollback.
+2. **Automatic restore on the next attempt**: new step `wip-restore`, between claiming the issue and building the prompt. It detects `origin/wip/issue-N` with `git ls-remote --exit-code --heads` and, if it exists, does `git fetch` + `git checkout -B wip/issue-N origin/wip/issue-N` so the new OpenCode session continues exactly from the saved state.
+3. **Mandatory micro-commits in the prompt + publishing adjustment**: the session's prompt instructs making incremental commits on the local branch as each task file's subtask completes (plan → implementation → validation → security → ADR), without waiting for the end; and if the session comes from a WIP restore (branch `wip/issue-N`), the PR branch is created FROM the current state (never from `origin/dev`, which would lose what was restored), updating the existing PR if there is one, and the `wip/issue-N` branch is never published as a PR. The ITERATION MODE includes the same reminder.
 
-**Decisiones clave**:
+**Key decisions**:
 
-- El `wip-save` corre también en iteración (comentario/workflow_dispatch), donde el rollback no aplica (`if` del rollback excluye `issue_comment`): un fallo en iteración también debe conservar el progreso.
-- Pathspec exclude (`:(exclude)candidate.json` / `:(exclude)sdd_prompt.md`) para no filtrar artefactos del run al repo.
-- `checkout -B` en la restauración: forzada y clara, sin ramas locales huérfanas.
-- Ningún secreto (GH_TOKEN, OPENCODE_API_KEY) se imprime, commitea ni pushea en el proceso de guardado/restauración.
+- `wip-save` also runs in iteration (comment/workflow_dispatch), where the rollback does not apply (the rollback's `if` excludes `issue_comment`): a failure in iteration must also keep the progress.
+- Pathspec exclude (`:(exclude)candidate.json` / `:(exclude)sdd_prompt.md`) to not leak the run's artifacts into the repo.
+- `checkout -B` on the restore: forced and clear, with no orphan local branches.
+- No secret (GH_TOKEN, OPENCODE_API_KEY) is printed, committed nor pushed in the save/restore process.
 
-**Tabla de archivos modificados (iteración 3, issue #128)**:
+**Modified files table (iteration 3, issue #128)**:
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `.github/workflows/auto-resolve-issues.yml` | **Modificado**: pasos `wip-restore` (entre «Reclamar» y «Construir prompt») y `wip-save` (entre «Sesión OpenCode» y «Rollback»); instrucciones de micro-commits (4a) y de publicación desde estado WIP (5a) en el prompt normal; recordatorio WIP al final del MODO ITERACIÓN |
-| `docs/adr-047-auto-resolve-issues.md` | **Modificado**: subsección 7-d |
+| `.github/workflows/auto-resolve-issues.yml` | **Modified**: steps `wip-restore` (between "Claim" and "Build prompt") and `wip-save` (between "OpenCode Session" and "Rollback"); micro-commit instructions (4a) and publishing from WIP state (5a) in the normal prompt; WIP reminder at the end of the ITERATION MODE |
+| `docs/adr-047-auto-resolve-issues.md` | **Modified**: subsection 7-d |
 
-Lección: en runners efímeros, el working tree local NO es un estado durable — cualquier progreso intermedio debe persistirse en git (rama) antes de que el runner muera; el guardado WIP + micro-commits hacen que un fallo por tokens sea recuperable en el siguiente intento.
+Lesson: on ephemeral runners, the local working tree is NOT durable state — any intermediate progress must be persisted in git (a branch) before the runner dies; the WIP save + micro-commits make a token failure recoverable on the next attempt.
 
 Related issue: #128 — https://github.com/gonzalitojh/Registro-personal/issues/128
 
-### 8. Documentación asociada
+### 8. Associated documentation
 
-- `README.md` sección 6, punto 6: «(Opcional) Resolución automática de issues» — describe el workflow, la semántica servidor apagado/encendido, que requiere la promoción `dev` → `main`, y el uso de `workflow_dispatch` con `dry_run` para probar la selección sin lanzar sesión.
-- `.opencode/agents/sdd-master.md`: nota «Modo autónomo (CI)» — si el prompt indica que es una sesión automática («AUTOMÁTICA de SDD lanzada por GitHub Actions», issue #81), el agente NO pregunta al usuario: procede de forma autónoma con el flujo completo y reporta al final.
+- `README.md` section 6, point 6: «(Opcional) Resolución automática de issues» — describes the workflow, the server off/on semantics, that it requires the `dev` → `main` promotion, and the use of `workflow_dispatch` with `dry_run` to test the selection without launching a session.
+- `.opencode/agents/sdd-master.md`: note «Modo autónomo (CI)» — if the prompt indicates it is an automatic session («AUTOMÁTICA de SDD lanzada por GitHub Actions», issue #81), the agent does NOT ask the user: it proceeds autonomously with the full flow and reports at the end.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Dos workflows separados** (uno para PR/issue, otro para comentarios): descartado — compartirían la lógica de selección y tendrían grupos de concurrencia distintos, con riesgo de **dos sesiones simultáneas**.
-- **`pull_request_target`**: descartado — riesgo de seguridad grave: ejecuta código del fork con el token del repositorio.
-- **`--continue`/`--session` para iterar**: descartado — el runner efímero de GitHub Actions no persiste el almacén de sesiones de OpenCode entre runs; la iteración se resuelve con un run nuevo que reanuda el estado durable del repo (task file commiteado).
-- **Modelo con API key de pago**: descartado — innecesario; el modelo free de OpenCode Zen funciona sin API key (coste cero).
-- **Trigger en cada push a `dev`** (no solo PR cerrada): descartado — ruido (cada push lanzaría una selección/sesión) y doble trabajo con el trigger de PR cerrada.
+- **Two separate workflows** (one for PR/issue, another for comments): rejected — they would share the selection logic but have different concurrency groups, with the risk of **two simultaneous sessions**.
+- **`pull_request_target`**: rejected — a serious security risk: it runs fork code with the repository's token.
+- **`--continue`/`--session` to iterate**: rejected — GitHub Actions' ephemeral runner does not persist OpenCode's session store across runs; iteration is solved with a new run that resumes the repo's durable state (committed task file).
+- **A model with a paid API key**: rejected — unnecessary; OpenCode Zen's free model works without an API key (zero cost).
+- **Trigger on every push to `dev`** (not only closed PR): rejected — noise (every push would launch a selection/session) and duplicated work with the closed-PR trigger.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Ciclo continuo**: issue → sesión automática → PR contra `dev` → merge → siguiente issue, sin intervención manual en ningún paso.
-- **Cero intervención manual**: el backlog se drena solo mientras haya issues `ai` elegibles.
-- **Selección determinista y comprobable**: los criterios de la issue #81 están implementados en el selector, con `--dry-run` para auditar el ranking y los motivos de exclusión.
-- **Iteración por comentario**: las issues no completadas se revisan automáticamente cuando el usuario comenta, sin perder el contexto (task file + PRs previas).
-- **Coste cero**: modelo free de OpenCode Zen sin API key.
-- **Anti-bucle**: el selector solo elige issues en `status: todo` (las que quedan en `needs-review` no se re-eligen), la reclamación marca `in-progress` antes de lanzar la sesión y el concurrency garantiza una sola sesión activa.
+- **Continuous cycle**: issue → automatic session → PR against `dev` → merge → next issue, with no manual intervention in any step.
+- **Zero manual intervention**: the backlog drains by itself while there are eligible `ai` issues.
+- **Deterministic, checkable selection**: issue #81's criteria are implemented in the selector, with `--dry-run` to audit the ranking and the exclusion reasons.
+- **Iteration via comment**: unfinished issues are automatically revised when the user comments, without losing context (task file + previous PRs).
+- **Zero cost**: OpenCode Zen's free model without an API key.
+- **Anti-loop**: the selector only picks issues in `status: todo` (those left in `needs-review` are not re-picked), the claim marks `in-progress` before launching the session and the concurrency guarantees a single active session.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **El workflow no se activa hasta la promoción `dev` → `main`**: mientras tanto no hay resolución automática (comportamiento esperado, coherente con ADR-034, pero el usuario debe promover para encenderlo).
-- **Runners efímeros**: no hay sesiones persistentes de OpenCode; la iteración re-lee el contexto desde el repo (task file commiteado), lo que limita la continuidad «conversacional» entre iteraciones.
-- **Rate limits del modelo free**: un fallo de la sesión (timeout o rate limit) revierte la issue a `status: todo` y deja un comentario en la issue; el run queda en rojo y la issue se reintentará en el siguiente disparo.
-- **Riesgo residual de prompt-injection**: las issues/comentarios son contenido no verificado; mitigado con runner efímero, token repo-scoped sin exfiltración posible de secrets y la instrucción anti-exfiltración del prompt; el escaneo de seguridad del flujo lo clasifica como MEDIUM informativo.
+- **The workflow does not activate until the `dev` → `main` promotion**: meanwhile there is no automatic resolution (expected behavior, coherent with ADR-034, but the user must promote to turn it on).
+- **Ephemeral runners**: there are no persistent OpenCode sessions; iteration re-reads the context from the repo (committed task file), which limits the "conversational" continuity between iterations.
+- **Free model's rate limits**: a session failure (timeout or rate limit) reverts the issue to `status: todo` and leaves a comment on the issue; the run fails and the issue will retry on the next trigger.
+- **Residual prompt-injection risk**: issues/comments are unverified content; mitigated with an ephemeral runner, a repo-scoped token with no exfiltration path for secrets and the prompt's anti-exfiltration instruction; the flow's security scan classifies it as informative MEDIUM.
 
-### Neutras
+### Neutral
 
-- **`docs/manual-de-usuario.md` sin cambios**: infraestructura interna (el usuario final de la web no ve nada); no aplica la regla 3 de AGENTS.md.
-- **Opencode pineado a `1.18.7`**: comportamiento estable entre runs (el fallback `curl|bash` solo actúa si npm falla).
-- **El selector es reutilizable manualmente**: `scripts/gh-select-issue.sh` funciona fuera del workflow (con o sin `GH_REPO`), útil para debug y auditorías del backlog.
+- **`docs/manual-de-usuario.md` unchanged**: internal infrastructure (the web's end user sees nothing); AGENTS.md's rule 3 does not apply.
+- **OpenCode pinned to `1.18.7`**: stable behavior across runs (the `curl|bash` fallback only acts if npm fails).
+- **The selector is manually reusable**: `scripts/gh-select-issue.sh` works outside the workflow (with or without `GH_REPO`), useful for backlogs' debug and audits.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `.github/workflows/auto-resolve-issues.yml` | **Nuevo**: workflow `auto-resolve-issues` multi-trigger (`pull_request: closed` merged+base=dev, `issues: opened`, `issue_comment: created` sin `github-actions[bot]`, `workflow_dispatch` con `issue_number`/`dry_run`); concurrency `sdd-auto-resolver` con `cancel-in-progress: false`; permisos contents/pull-requests/issues write; `timeout-minutes: 120`; instalación de OpenCode pineada (npm `opencode-ai@1.18.7`, fallback `curl\|bash`); determinación de candidata (comentada/forzada/selector); reclamación a `in-progress`; prompt modo normal / MODO ITERACIÓN (comentario por API); dry-run; sesión `opencode run --agent sdd-master -m opencode/deepseek-v4-flash-free --variant max --auto --format json --title "auto: issue #N"` con timeout 3600; rollback best-effort en fallo (solo fuera de iteración); resumen; `candidate.json` para el JSON del candidato |
-| `scripts/gh-select-issue.sh` | **Nuevo**: selector bash+python3 con los criterios 1-6 de la issue #81 (label `ai`, `status: todo`, nunca `needs-info`/`blocked`, dependencias por regex con resolución = CLOSED o `status: done`, ranking prioridad→tipo→created_at→número); flags `--dry-run`/`--issue`/`--all-states`; salida JSON de una línea o `NONE`; exit 0/1/2; salvaguarda anti-PR; nunca imprime tokens |
-| `docs/adr-047-auto-resolve-issues.md` | **Nuevo**: este documento |
-| `README.md` | **Modificado**: sección 6, punto 6 — «(Opcional) Resolución automática de issues» (workflow, servidor apagado/encendido, activación tras promoción `dev` → `main`, prueba con `workflow_dispatch` + `dry_run`) |
-| `.opencode/agents/sdd-master.md` | **Modificado**: nota «Modo autónomo (CI)» — en sesiones automáticas (prompt «AUTOMÁTICA de SDD lanzada por GitHub Actions») no preguntar al usuario; proceder con el flujo completo y reportar al final |
-| `.github/workflows/auto-resolve-issues.yml` (iteración 2, issue #120) | **Modificado**: iteración por comentario acepta `status: blocked` (desbloqueo → in-progress); `workflow_dispatch` + `issue_number` construye el candidato directamente (reanudación manual de issues bloqueadas, salida `resume`/`prev_status`); prompt MODO ITERACIÓN aplica también a dispatch forzado e instruye a detectar y actualizar la PR existente de la rama (`gh pr list --head` + `gh pr edit`) en vez de duplicarla; rollback devuelve al estado previo; cabecera documenta la activación según evento (pull_request → merge ref; issues/issue_comment → rama por defecto) |
-| `docs/adr-047-auto-resolve-issues.md` | **Modificado**: secciones 7-b (Permission denied, iteración 1) y 7-c (reanudación de issues bloqueadas, iteración 2) |
-| `tasks/task-issue-81.json` | Task file de la tarea (title/description, criterios de aceptación, DoD y bloque `issue` con la issue #81) |
-| `docs/manual-de-usuario.md` | **Sin cambios** (infraestructura interna; no aplica la regla 3 de AGENTS.md) |
-| `.github/workflows/auto-resolve-issues.yml` (iteración 3, issue #128) | **Modificado**: pasos `wip-restore` (entre «Reclamar» y «Construir prompt»; `git ls-remote` + fetch + `checkout -B` de `origin/wip/issue-N`) y `wip-save` (entre «Sesión OpenCode» y «Rollback»; `if: failure()`, commit del working tree + micro-commits en `wip/issue-N` con pathspec exclude de `candidate.json`/`sdd_prompt.md` y push `--force`, best-effort); instrucciones de micro-commits (4a) y de publicación desde estado WIP (5a) en el prompt normal; recordatorio WIP al final del MODO ITERACIÓN |
-| `docs/adr-047-auto-resolve-issues.md` | **Modificado**: subsección 7-d (protección de progreso en fallos por tokens del modelo free) |
-| `README.md` | **Modificado**: sección 6, punto 6 — nota sobre la protección WIP (si la sesión falla por tokens, el progreso se guarda en `wip/issue-N` y se restaura en el siguiente intento) |
+| `.github/workflows/auto-resolve-issues.yml` | **New**: `auto-resolve-issues` multi-trigger workflow (`pull_request: closed` merged+base=dev, `issues: opened`, `issue_comment: created` without `github-actions[bot]`, `workflow_dispatch` with `issue_number`/`dry_run`); concurrency `sdd-auto-resolver` with `cancel-in-progress: false`; permissions contents/pull-requests/issues write; `timeout-minutes: 120`; pinned OpenCode installation (npm `opencode-ai@1.18.7`, fallback `curl\|bash`); candidate determination (commented/forced/selector); claim to `in-progress`; prompt normal mode / ITERATION MODE (comment via API); dry-run; session `opencode run --agent sdd-master -m opencode/deepseek-v4-flash-free --variant max --auto --format json --title "auto: issue #N"` with timeout 3600; best-effort rollback on failure (only outside iteration); summary; `candidate.json` for the candidate's JSON |
+| `scripts/gh-select-issue.sh` | **New**: bash+python3 selector with issue #81's criteria 1-6 (`ai` label, `status: todo`, never `needs-info`/`blocked`, dependencies by regex with resolution = CLOSED or `status: done`, ranking priority→type→created_at→number); flags `--dry-run`/`--issue`/`--all-states`; single-line JSON output or `NONE`; exit 0/1/2; anti-PR safeguard; never prints tokens |
+| `docs/adr-047-auto-resolve-issues.md` | **New**: this document |
+| `README.md` | **Modified**: section 6, point 6 — «(Optional) Automatic issue resolution» (workflow, server off/on, activation after the `dev` → `main` promotion, testing with `workflow_dispatch` + `dry_run`) |
+| `.opencode/agents/sdd-master.md` | **Modified**: note «Modo autónomo (CI)» — in automatic sessions (prompt «AUTOMÁTICA de SDD lanzada por GitHub Actions»), do not ask the user; proceed with the full flow and report at the end |
+| `.github/workflows/auto-resolve-issues.yml` (iteration 2, issue #120) | **Modified**: iteration via comment accepts `status: blocked` (unblock → in-progress); `workflow_dispatch` + `issue_number` builds the candidate directly (manual resumption of blocked issues, `resume`/`prev_status` outputs); the ITERATION MODE prompt also applies to the forced dispatch and instructs detecting and updating the branch's existing PR (`gh pr list --head` + `gh pr edit`) instead of duplicating it; rollback returns to the previous state; header documents activation per event (pull_request → merge ref; issues/issue_comment → default branch) |
+| `docs/adr-047-auto-resolve-issues.md` | **Modified**: sections 7-b (Permission denied, iteration 1) and 7-c (resuming blocked issues, iteration 2) |
+| `tasks/task-issue-81.json` | Task file of the task (title/description, acceptance criteria, DoD and the `issue` block with issue #81) |
+| `docs/manual-de-usuario.md` | **Unchanged** (internal infrastructure; AGENTS.md's rule 3 does not apply) |
+| `.github/workflows/auto-resolve-issues.yml` (iteration 3, issue #128) | **Modified**: steps `wip-restore` (between "Claim" and "Build prompt"; `git ls-remote` + fetch + `checkout -B` of `origin/wip/issue-N`) and `wip-save` (between "OpenCode Session" and "Rollback"; `if: failure()`, working tree commit + micro-commits on `wip/issue-N` with pathspec exclude of `candidate.json`/`sdd_prompt.md` and `--force` push, best effort); micro-commit instructions (4a) and publishing from WIP state (5a) in the normal prompt; WIP reminder at the end of the ITERATION MODE |
+| `docs/adr-047-auto-resolve-issues.md` | **Modified**: subsection 7-d (progress protection on failures from the free model's tokens) |
+| `README.md` | **Modified**: section 6, point 6 — note on the WIP protection (if the session fails due to tokens, the progress is saved to `wip/issue-N` and restored on the next attempt) |
 
 Related issue: #81 — https://github.com/gonzalitojh/Registro-personal/issues/81
 
-### 9. Nota posterior — cierre de issues al fusionar la PR (ADR-053, issue #143)
+### 9. Later note — issue closure on PR merge (ADR-053, issue #143)
 
-El prompt de la sesión ya **NO instruye escribir "Closes #N"** en el body de la PR (ni en modo normal ni en MODO ITERACIÓN): la keyword no funciona sobre `dev` (GitHub solo auto-cierra al fusionar en la rama por defecto; ADR-029/ADR-053) y el cierre + `status: done` de la issue lo aplica el workflow `.github/workflows/issues-done-on-dev.yml` al fusionar la PR en `dev`, identificando la issue por el task file de la PR, la rama `issue-<N>`/`task-<N>` o keyword del body. El resto de este documento queda como registro histórico de la implementación de la resolución automática.
+The session's prompt **NO LONGER instructs writing "Closes #N"** in the PR body (neither in normal mode nor in ITERATION MODE): the keyword does not work on `dev` (GitHub only auto-closes when merging into the default branch; ADR-029/ADR-053) and the issue's closure + `status: done` are applied by the workflow `.github/workflows/issues-done-on-dev.yml` when merging the PR into `dev`, identifying the issue via the PR's task file, the `issue-<N>`/`task-<N>` branch or a body keyword. The rest of this document remains as a historical record of the automatic resolution's implementation.

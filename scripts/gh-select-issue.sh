@@ -1,45 +1,46 @@
 #!/usr/bin/env bash
 # =============================================================================
-# gh-select-issue.sh — Selección automática de la issue a resolver (issue #81).
+# gh-select-issue.sh — Automatic selection of the issue to solve (issue #81).
 #
-# Usado por el workflow .github/workflows/auto-resolve-issues.yml: dado el
-# backlog de GitHub Issues, elige la issue que la sesión automática de
-# OpenCode debe resolver, aplicando los criterios de la issue #81:
+# Used by the workflow .github/workflows/auto-resolve-issues.yml: given the
+# GitHub Issues backlog, it picks the issue the automatic OpenCode session
+# must solve, applying the criteria of issue #81:
 #
-#   1. Solo issues con label "ai" (marcador de issues del agente).
-#   2. Por defecto solo issues en "status: todo" (--all-states para debug).
-#      NUNCA se eligen issues con "status: needs-info" o "status: blocked"
-#      aunque tengan la label "ai".
-#   3. Dependencias: si el body menciona "depende de #N" / "bloqueada por #N"
-#      (o equivalentes en inglés), la issue solo es elegible si TODAS las
-#      dependencias están resueltas (cerradas o con label "status: done").
-#   4. Ranking (menor = mejor):
-#      - Prioridad: very high > high > medium > low > very low (sin label → la
-#        última).
-#      - Empate de prioridad → tipo: bug > question > style > content >
-#        refactor > feature (sin label → la última).
-#      - Empate → la más antigua primero (created_at; desempate por número).
+#   1. Only issues with the "ai" label (agent issue marker).
+#   2. By default only issues in "status: todo" (--all-states for debug).
+#      Issues with "status: needs-info" or "status: blocked" are NEVER chosen
+#      even if they carry the "ai" label.
+#   3. Dependencies: if the body mentions "depende de #N" / "bloqueada por #N"
+#      ("depends on #N" / "blocked by #N" or equivalents), the issue is only
+#      eligible if ALL dependencies are resolved (closed or labeled
+#      "status: done").
+#   4. Ranking (lower = better):
+#      - Priority: very high > high > medium > low > very low (no label →
+#        last).
+#      - Priority tie → type: bug > question > style > content >
+#        refactor > feature (no label → last).
+#      - Tie → oldest first (created_at; tiebreak by number).
 #
-# Uso:
-#   scripts/gh-select-issue.sh                → JSON de la elegida o "NONE"
-#   scripts/gh-select-issue.sh --dry-run      → ranking completo con motivos
-#   scripts/gh-select-issue.sh --issue <N>    → fuerza la issue N (exit 2 si
-#                                               no es elegible)
-#   scripts/gh-select-issue.sh --all-states   → incluye in-progress/needs-review
+# Usage:
+#   scripts/gh-select-issue.sh                → JSON of the chosen one or "NONE"
+#   scripts/gh-select-issue.sh --dry-run      → full ranking with reasons
+#   scripts/gh-select-issue.sh --issue <N>    → forces issue N (exit 2 if it
+#                                               is not eligible)
+#   scripts/gh-select-issue.sh --all-states   → includes in-progress/needs-review
 #
-# Salida:
-#   - JSON de una línea: {"number":N,"title":...,"body":...,"labels":[...],
-#     "comments":[...]} (comments solo para la elegida) o la cadena "NONE".
-#   - Exit codes: 0 selección/NONE, 1 error de API, 2 uso inválido o issue
-#     forzada no elegible.
-#   - NUNCA imprime tokens: consume GH_TOKEN del entorno sin echo.
+# Output:
+#   - One-line JSON: {"number":N,"title":...,"body":...,"labels":[...],
+#     "comments":[...]} (comments only for the chosen one) or the string "NONE".
+#   - Exit codes: 0 selection/NONE, 1 API error, 2 invalid usage or forced
+#     issue not eligible.
+#   - NEVER prints tokens: consumes GH_TOKEN from the environment without echo.
 # =============================================================================
 set -euo pipefail
 
-REPO="${GH_REPO:-}" # Si está vacío, gh usa el repo del directorio actual.
+REPO="${GH_REPO:-}" # If empty, gh uses the repo of the current directory.
 
 # -----------------------------------------------------------------------------
-# Utilidades
+# Utilities
 # -----------------------------------------------------------------------------
 usage() {
   sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//'
@@ -74,7 +75,7 @@ if [[ -n "$FORCED_ISSUE" && ! "$FORCED_ISSUE" =~ ^[0-9]+$ ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Carga y filtrado en python3 (toda la lógica de negocio)
+# Loading and filtering in python3 (all the business logic)
 # -----------------------------------------------------------------------------
 python3 - "$REPO" "$DRY_RUN" "$FORCED_ISSUE" "$ALL_STATES" <<'PYEOF'
 import json, re, subprocess, sys
@@ -94,7 +95,7 @@ def gh(args, as_json=True):
         return json.loads(out.stdout)
     return out.stdout.strip()
 
-# 1. Listado de issues abiertas con labels.
+# 1. Listing of open issues with labels.
 issues = gh(["issue", "list", "--state", "open", "--limit", "100",
              "--json", "number,title,body,createdAt,labels,url"])
 
@@ -103,8 +104,8 @@ PRIORITY = {"priority: very high": 0, "priority: high": 1, "priority: medium": 2
 TYPE_ORDER = {"type: bug": 0, "type: question": 1, "type: style": 2,
               "type: content": 3, "type: refactor": 4, "type: feature": 5}
 
-# Regex de dependencias en el body (case-insensitive). Conservadora: si el
-# patrón aparece en prosa, se interpreta como dependencia (fail-safe: excluir).
+# Dependency regex over the body (case-insensitive). Conservative: if the
+# pattern appears in prose it is interpreted as a dependency (fail-safe: exclude).
 DEP_RE = re.compile(
     r"(?:depende de|bloqueada por|depends? on|blocked by)\s+#(\d+)",
     re.IGNORECASE,
@@ -132,11 +133,11 @@ def priority_of(labels):
     return None
 
 def dep_resolved(num):
-    """¿La dependencia #num está resuelta? (cerrada o status: done)."""
+    """Is dependence #num resolved? (closed or status: done)."""
     try:
         d = gh(["issue", "view", str(num), "--json", "state,labels"])
     except RuntimeError:
-        return False  # La issue no existe → no se puede verificar → no resuelta.
+        return False  # The issue doesn't exist → can't be verified → not resolved.
     labels = {l["name"] for l in (d.get("labels") or [])}
     return (d.get("state") or "").lower() == "closed" or "status: done" in labels
 
@@ -148,8 +149,8 @@ def excluded_reason(issue):
     st = status_of(labels)
     if st in ("needs-info", "blocked"):
         return f"estado prohibido 'status: {st}'"
-    # Con --issue se permite forzar cualquier estado (debug); el resto de
-    # criterios sí se validan. Sin --issue, solo "status: todo" por defecto.
+    # With --issue any state may be forced (debug); the rest of the criteria
+    # are still validated. Without --issue, only "status: todo" by default.
     if not forced and not all_states and st != "todo":
         return f"no está en 'status: todo' (está: {st})"
     body = issue.get("body") or ""
@@ -166,11 +167,11 @@ def rank_key(issue):
     t = TYPE_ORDER.get(type_of(labels), 6)
     return (p, t, issue.get("createdAt") or "", issue["number"])
 
-# 2. Filtrado.
+# 2. Filtering.
 candidates = []
 for issue in issues:
     if issue.get("pull_request"):
-        continue  # Salvaguarda anti-PR.
+        continue  # Anti-PR safeguard.
     reason = excluded_reason(issue)
     if dry_run:
         label_names = sorted(labels_of(issue))
@@ -182,7 +183,7 @@ for issue in issues:
     elif reason is None:
         candidates.append(issue)
 
-# 3. Issue forzada.
+# 3. Forced issue.
 if forced:
     try:
         forced_issue = gh(["issue", "view", forced, "--json",
@@ -199,7 +200,7 @@ if forced:
         sys.exit(2)
     candidates = [forced_issue]
 
-# 4. Ordenación.
+# 4. Sorting.
 candidates.sort(key=rank_key)
 
 if dry_run:
@@ -217,7 +218,7 @@ if not candidates:
     print("NONE")
     sys.exit(0)
 
-# 5. La elegida: adjuntar comentarios y emitir JSON de una línea.
+# 5. The chosen one: attach comments and emit one-line JSON.
 chosen = candidates[0]
 try:
     detail = gh(["issue", "view", str(chosen["number"]), "--json",

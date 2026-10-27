@@ -1,44 +1,44 @@
 #!/usr/bin/env bash
 # =============================================================================
-# gh-issue.sh — Integración de GitHub Issues con el flujo SDD.
+# gh-issue.sh — Integration of GitHub Issues with the SDD workflow.
 #
-# Los agentes de IA usan este helper para:
-#   - Consultar issues (pendientes, completadas, por tipo, en revisión...).
-#   - Obtener el detalle de una issue para construir el task local.
-#   - Sincronizar las labels de la issue con el estado de la tarea SDD
+# AI agents use this helper to:
+#   - Query issues (todo, completed, by type, in review...).
+#   - Get the detail of an issue to build the local task.
+#   - Sync the issue labels with the SDD task state
 #     (status: todo, status: in-progress, status: needs-review, status:
 #     blocked, status: done).
-#   - Corregir la label de tipo si está mal clasificada
+#   - Fix the type label if it is misclassified
 #     (type: feature|bug|style|refactor|content).
 #
-# Regla de negocio: el agente SÓLO debe abordar issues con label "ai"
-# (normalmente con estado "status: todo"). Las issues sin esa label son de
-# usuarios.
+# Business rule: the agent MUST only tackle issues with the "ai" label
+# (usually with state "status: todo"). Issues without that label are
+# user issues.
 #
-# Uso:
-#   scripts/gh-issue.sh list [--all|--todo|--review|--blocked|--done|--type <tipo>]
-#   scripts/gh-issue.sh show <NUMERO>
-#   scripts/gh-issue.sh set-state <NUMERO> "status: <todo|in-progress|needs-review|blocked|done>"
-#   scripts/gh-issue.sh set-type <NUMERO> <feature|bug|style|refactor|content>
+# Usage:
+#   scripts/gh-issue.sh list [--all|--todo|--review|--blocked|--done|--type <type>]
+#   scripts/gh-issue.sh show <NUMBER>
+#   scripts/gh-issue.sh set-state <NUMBER> "status: <todo|in-progress|needs-review|blocked|done>"
+#   scripts/gh-issue.sh set-type <NUMBER> <feature|bug|style|refactor|content>
 #   scripts/gh-issue.sh help
-#   - set-state limpia automáticamente los residuales "ai-*" del esquema antiguo
-#     (vía API). La label "ai" (marcador de issues del agente) nunca se añade ni
-#     se elimina desde este script.
-#   - La transición a "status: done" (y el cierre de la issue) la aplica el
-#     workflow .github/workflows/issues-done-on-dev.yml al fusionar la PR en
-#     dev; este script queda como vía manual de respaldo.
+#   - set-state automatically clears the residual "ai-*" labels of the old
+#     scheme (via API). The "ai" label (agent issue marker) is never added nor
+#     removed from this script.
+#   - The transition to "status: done" (and issue close) is applied by the
+#     workflow .github/workflows/issues-done-on-dev.yml when merging the PR into
+#     dev; this script remains a manual fallback path.
 # =============================================================================
 set -euo pipefail
 
-# Listas blancas (no se tocan otras labels). OJO: los valores llevan espacio →
-# citar siempre ("$label", "${STATUS_STATES[@]}").
+# Whitelists (other labels are untouched). NOTE: the values have a space →
+# always quote ("$label", "${STATUS_STATES[@]}").
 STATUS_STATES=("status: todo" "status: in-progress" "status: needs-review" "status: blocked" "status: done")
 TYPES=("feature" "bug" "style" "refactor" "content")
 
-REPO="${GH_REPO:-}" # Si está vacío, gh usa el repo del directorio actual.
+REPO="${GH_REPO:-}" # If empty, gh uses the repo of the current directory.
 
 # -----------------------------------------------------------------------------
-# Utilidades
+# Utilities
 # -----------------------------------------------------------------------------
 usage() {
   sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
@@ -54,10 +54,10 @@ in_list() {
   return 1
 }
 
-# Coma-lista con TODOS los elementos excepto el que se va a añadir.
-# IMPORTANTE: gh 2.45 procesa remove-label antes que add-label; si la label
-# objetivo está también en la lista de remoción, la quita y NO la vuelve a
-# añadir. Por eso la label objetivo se excluye de la lista de remoción.
+# Comma-list with ALL elements except the one about to be added.
+# IMPORTANT: gh 2.45 processes remove-label before add-label; if the target
+# label is also in the removal list, it removes it and does NOT re-add it.
+# That's why the target label is excluded from the removal list.
 excluding() {
   local target="$1"
   shift
@@ -71,7 +71,7 @@ excluding() {
   echo "${out[*]}"
 }
 
-# gh wrapper con --repo si está definido
+# gh wrapper with --repo if defined
 gh_() {
   if [[ -n "$REPO" ]]; then
     gh --repo "$REPO" "$@"
@@ -81,10 +81,10 @@ gh_() {
 }
 
 # -----------------------------------------------------------------------------
-# list — consulta de issues
+# list — issue query
 # -----------------------------------------------------------------------------
 cmd_list() {
-  local filter="${1:-ai}" # por defecto: issues abiertas con label ai
+  local filter="${1:-ai}" # default: open issues with the ai label
   local state="open"
   local label_filter=""
   local python_filter=""
@@ -183,7 +183,7 @@ PYEOF
 }
 
 # -----------------------------------------------------------------------------
-# show — detalle de una issue
+# show — detail of an issue
 # -----------------------------------------------------------------------------
 cmd_show() {
   local n="${1:-}"
@@ -221,7 +221,7 @@ PYEOF
 }
 
 # -----------------------------------------------------------------------------
-# set-state — fija exactamente una label de estado status: *
+# set-state — sets exactly one status: * label
 # -----------------------------------------------------------------------------
 cmd_set_state() {
   local n="${1:-}"
@@ -245,7 +245,7 @@ cmd_set_state() {
     echo "ERROR: no se pudo leer la issue #$n." >&2
     exit 1
   }
-  state="${state,,}"   # normalizar a minúsculas (issue #145)
+  state="${state,,}"   # normalize to lowercase (issue #145)
   if [[ "$state" == "closed" ]]; then
     if [[ "$label" == "status: done" ]]; then
       echo "OK: issue #$n CERRADA → aplicando estado terminal 'status: done'."
@@ -254,14 +254,14 @@ cmd_set_state() {
       exit 3
     fi
   fi
-  # Labels actuales de la issue (solo nombres; ojo: '.labels[].name').
+  # Issue's current labels (names only; note: '.labels[].name').
   local current
   current="$(gh_ issue view "$n" --json labels --jq '.labels[].name' 2>/dev/null)" || {
     echo "ERROR: no se pudo leer las labels de la issue #$n." >&2
     exit 1
   }
-  # La label objetivo nunca se remueve (gh 2.45 procesa remove-label antes que
-  # add-label; al excluirla por construcción, la transición es idempotente).
+  # The target label is never removed (gh 2.45 processes remove-label before
+  # add-label; by excluding it by construction, the transition is idempotent).
   local remove_status=() remove_residual=() l
   while IFS= read -r l; do
     [[ -z "$l" ]] && continue
@@ -269,30 +269,30 @@ cmd_set_state() {
     if [[ "$l" == "status: "* ]]; then
       remove_status+=("$l")
     elif [[ "$l" == "ai-"* ]]; then
-      # Residuales del esquema antiguo (labels con prefijo "ai-"). La label
-      # exacta "ai" NO empieza por "ai-" → nunca se toca (intencionado).
+      # Residuals of the old scheme (labels with the "ai-" prefix). The exact
+      # label "ai" does NOT start with "ai-" → never touched (intentional).
       remove_residual+=("$l")
     fi
   done <<< "$current"
-  # Remoción de otras status: * en un solo batch (labels existentes en el repo).
+  # Removal of other status: * in a single batch (labels existing in the repo).
   if [[ "${#remove_status[@]}" -gt 0 ]]; then
     local remove_list
     remove_list="$(IFS=,; echo "${remove_status[*]}")"
     gh_ issue edit "$n" --remove-label "$remove_list" >/dev/null
   fi
-  # Residuales ai-* vía API (gh 2.45 falla con --remove-label si la label ya no
-  # existe en el repo; la API DELETE tolera/no-op). Los nombres ai-* no llevan
-  # espacios → sin URL-encoding. El || true es necesario por el set -e.
+  # ai-* residuals via API (gh 2.45 fails with --remove-label if the label no
+  # longer exists in the repo; DELETE API tolerates/no-ops). The ai-* names have
+  # no spaces → no URL-encoding. The || true is needed because of set -e.
   for l in "${remove_residual[@]}"; do
     gh_ api -X DELETE "repos/{owner}/{repo}/issues/$n/labels/$l" >/dev/null 2>&1 || true
   done
-  # Add de la label objetivo (no-op si ya estaba: idempotente).
+  # Add of the target label (no-op if already present: idempotent).
   gh_ issue edit "$n" --add-label "$label" >/dev/null
   echo "OK: issue #$n → label '$label'"
 }
 
 # -----------------------------------------------------------------------------
-# set-type — fija exactamente una label de tipo
+# set-type — sets exactly one type label
 # -----------------------------------------------------------------------------
 cmd_set_type() {
   local n="${1:-}"
@@ -316,7 +316,7 @@ cmd_set_type() {
     echo "ERROR: no se pudo leer la issue #$n." >&2
     exit 1
   }
-  state="${state,,}"   # normalizar a minúsculas (issue #145)
+  state="${state,,}"   # normalize to lowercase (issue #145)
   if [[ "$state" == "closed" ]]; then
     echo "AVISO: la issue #$n está CERRADA; no se modifican sus labels." >&2
     exit 3

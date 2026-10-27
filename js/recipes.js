@@ -1,12 +1,12 @@
 // =============================================================
-// Sección de Recetas (issue #64) — pestaña «Recetas».
-// Gestiona el listado de recetas con búsqueda, el modal de
-// alta/edición/importación, el catálogo de ingredientes y las
-// etiquetas personalizadas del usuario (users/{uid}/tags).
+// Recetas section (issue #64) — «Recetas» tab.
+// Handles the recipe list with search, the add/edit/import modal,
+// the ingredient catalog and the user's custom tags
+// (users/{uid}/tags).
 //
-// Patrón: como profile.js, se conecta desde app.js vía
-// setupRecipes({ ctx }), que devuelve la API de apertura de la
-// vista ({ openRecipes({ tab }) }) para el router y la sidebar.
+// Pattern: like profile.js, it is wired from app.js via
+// setupRecipes({ ctx }), which returns the view-opening API
+// ({ openRecipes({ tab }) }) for the router and the sidebar.
 // =============================================================
 
 import { navigate } from "./router.js";
@@ -28,61 +28,61 @@ import {
   formatCantidad,
 } from "./recipes-data.js";
 
-// Etiquetas predefinidas por scope (el tipo de etiqueta personalizada
-// coincide con el scope del selector: "ingrediente" | "alergeno" | "tipo").
+// Predefined tags by scope (the custom tag type matches
+// the selector's scope: "ingrediente" | "alergeno" | "tipo").
 const PRESET_BY_SCOPE = {
   ingrediente: INGREDIENT_CATEGORIES,
   alergeno: ALERGEN_TAGS,
   tipo: MEAL_TYPES,
 };
 
-// ---------- Estado del módulo ----------
+// ---------- Module state ----------
 
 let currentUser = null;
 let ctx = null;
 let recipes = [];
 let ingredients = [];
 let customTags = [];
-// Pestaña de Recetas activa (issue #209): el catálogo de ingredientes
-// vive en su propia pestaña, así que se re-renderiza solo si está a la
-// vista cuando llegan datos nuevos.
+// Active Recetas tab (issue #209): the ingredient catalog
+// lives in its own tab, so it is only re-rendered if it is on
+// screen when new data arrives.
 let currentTab = "recetas";
-// Estado del catálogo de ingredientes (issue #218): categorías
-// seleccionadas en el filtro (todas por defecto). El flag de "tocado"
-// evita que las categorías propias recién cargadas rompan la selección
-// hecha por el usuario. (El selector de ordenación se eliminó en la
-// issue #224: el catálogo se muestra siempre en orden alfabético.)
+// Ingredient catalog state (issue #218): categories
+// selected in the filter (all by default). The "touched" flag
+// prevents freshly loaded own categories from breaking the selection
+// made by the user. (The sort selector was removed in
+// issue #224: the catalog always shows in alphabetical order.)
 let ingredientFilterTouched = false;
 let activeCategoryFilter = new Set(INGREDIENT_CATEGORIES.map((c) => c.id));
 let ingredientModalCleanup = null;
 let modalCleanup = null;
 let editingRecipeId = null;
 let modalReadOnly = false;
-// Modo de la ventana de ingrediente (issue #232): true cuando se está
-// editando. El cierre por backdrop/Escape solo aplica en modo lectura
-// (patrón de la ventana de receta, issue #234); en edición las vías de
-// salida son la ✕, «Cancelar» y «Guardar».
+// Ingredient window mode (issue #232): true while editing. The
+// backdrop/Escape close only applies in read mode (recipe window
+// pattern, issue #234); while editing the exits are the ✕,
+// «Cancelar» and «Guardar».
 let ingredientEditMode = false;
-// Modo «añadir a la lista de la compra» (issue #249): como la edición,
-// el cierre por backdrop/Escape queda bloqueado mientras el formulario
-// de cantidad y unidad está abierto.
+// «Add to shopping list» mode (issue #249): like editing, the
+// backdrop/Escape close is blocked while the amount and unit form is
+// open.
 let ingredientShoppingMode = false;
-// Adder de la lista de la compra (issue #249): lo registra
-// shopping-list.js con registerShoppingListAdder; el modal de
-// ingrediente lo usa para persistir el ítem (evita que recipes.js
-// importe shopping-list.js, que a su vez importa recipes.js).
+// Shopping list adder (issue #249): registered by
+// shopping-list.js with registerShoppingListAdder; the ingredient
+// modal uses it to persist the item (avoids recipes.js importing
+// shopping-list.js, which in turn imports recipes.js).
 let shoppingListAdder = null;
 let onRecipeDeleted = null;
-// Filtros de la pestaña Recetas (issue #234): alérgenos y tipo de
-// comida, multiselección con «todas» marcadas por defecto. El flag de
-// "tocado" evita que las etiquetas propias recién cargadas rompan la
-// selección hecha por el usuario (patrón de ingredientFilterTouched).
+// Recetas tab filters (issue #234): allergens and meal type,
+// multi-select with «all» checked by default. The "touched" flag
+// prevents freshly loaded own tags from breaking the selection made
+// by the user (pattern of ingredientFilterTouched).
 let recipeFilterTouched = false;
 let activeAlergenoFilter = new Set(ALERGEN_TAGS.map((t) => t.id));
 let activeTipoFilter = new Set(MEAL_TYPES.map((t) => t.id));
 
-// Renderers de las otras pestañas (registrados por menu.js y
-// shopping-list.js): openRecipes los llama al activar su tab.
+// Renderers of the other tabs (registered by menu.js and
+// shopping-list.js): openRecipes calls them when activating their tab.
 const tabRenderers = {};
 
 export function registerTabRenderer(tab, fn) {
@@ -93,31 +93,32 @@ export function getRecipes() {
   return recipes;
 }
 
-// Etiquetas personalizadas del usuario (users/{uid}/tags). La pestaña
-// Menú (menu.js) las necesita para el buscador de recetas (issue #242).
+// User's custom tags (users/{uid}/tags). The Menú tab
+// (menu.js) needs them for the recipe search box (issue #242).
 export function getCustomTags() {
   return customTags;
 }
 
-// Catálogo de ingredientes (users/{uid}/ingredients). La lista de la
-// compra (shopping-list.js) lo consulta para la cantidad por paquete
+// Ingredient catalog (users/{uid}/ingredients). The shopping list
+// (shopping-list.js) queries it for the package amount
 // (issue #225): paqueteCantidad + paqueteUnidad (issue #224).
 export function getIngredients() {
   return ingredients;
 }
 
-// Registra el «adder» de la lista de la compra (issue #249): la
-// función que persiste un ítem añadido desde el modal del ingrediente.
-// shopping-list.js la registra en setupShoppingList; recipes.js la
-// invoca al confirmar la ventana de cantidad y unidad. Así no se crea
-// una dependencia circular (shopping-list.js ya importa recipes.js) y
-// el modal de ingrediente no conoce la implementación.
+// Registers the shopping list «adder» (issue #249): the
+// function that persists an item added from the ingredient modal.
+// shopping-list.js registers it in setupShoppingList; recipes.js
+// invokes it when confirming the amount and unit window. This way
+// no circular dependency is created (shopping-list.js already
+// imports recipes.js) and the ingredient modal does not know the
+// implementation.
 export function registerShoppingListAdder(fn) {
   shoppingListAdder = fn;
 }
 
-// Vacía el estado local (lo llama app.js al cerrar sesión, para que
-// los datos del usuario anterior no se muestren al siguiente).
+// Clears the local state (called by app.js on logout, so the previous
+// user's data is not shown to the next one).
 export function resetRecipesData() {
   recipes = [];
   ingredients = [];
@@ -147,19 +148,19 @@ export function setupRecipes(opts) {
 
   document.getElementById("btn-new-recipe").addEventListener("click", () => openRecipeModal());
 
-  // Subtabs internas: la UI solo navega; el router (fromRouter) hace
-  // el render. Patrón idéntico al del perfil (profile.js).
+  // Inner subtabs: the UI only navigates; the router (fromRouter) does
+  // the render. Identical pattern to the profile (profile.js).
   document.querySelectorAll("[data-recipes-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       navigate({ section: "recetas", tab: btn.dataset.recipesTab });
     });
   });
 
-  // Modal de receta: cierre por ✕, backdrop y Escape.
+  // Recipe modal: close via ✕, backdrop and Escape.
   document.getElementById("recipe-modal-close").addEventListener("click", closeRecipeModal);
-  // Backdrop y Escape (issue #234): solo cierran en modo lectura. En
-  // edición se bloquean para no perder el progreso del formulario; la
-  // ✕ y «Cancelar» siguen siendo las vías explícitas de cierre.
+  // Backdrop and Escape (issue #234): they only close in read mode.
+  // While editing they are blocked to not lose the form progress; the
+  // ✕ and «Cancelar» remain the explicit close paths.
   document.getElementById("recipe-modal-backdrop").addEventListener("click", () => {
     if (modalReadOnly) closeRecipeModal();
   });
@@ -170,10 +171,10 @@ export function setupRecipes(opts) {
     }
   });
 
-  // Modal de ingrediente (issue #218): cierre por ✕, backdrop y Escape.
-  // Backdrop y Escape (issue #232): solo cierran en modo lectura; en
-  // edición se bloquean para no perder el progreso del formulario (la
-  // ✕, «Cancelar» y «Guardar» son las vías explícitas).
+  // Ingredient modal (issue #218): close via ✕, backdrop and Escape.
+  // Backdrop and Escape (issue #232): they only close in read mode;
+  // while editing they are blocked to not lose the form progress
+  // (the ✕, «Cancelar» and «Guardar» are the explicit paths).
   document.getElementById("ingredient-modal-close").addEventListener("click", closeIngredientModal);
   document.getElementById("ingredient-modal-backdrop").addEventListener("click", () => {
     if (!ingredientEditMode && !ingredientShoppingMode) closeIngredientModal();
@@ -185,21 +186,21 @@ export function setupRecipes(opts) {
     }
   });
 
-  // Barra de herramientas del catálogo de ingredientes (issue #218).
+  // Toolbar of the ingredient catalog (issue #218).
   document.getElementById("btn-new-ingredient").addEventListener("click", () => openIngredientModal(null));
   setupIngredientFilter();
 
-  // Delegación de acciones de las cards de ingredientes: la tarjeta es
-  // un <button> con el nombre; al pulsarla se abre el modal de detalle.
+  // Action delegation of the ingredient cards: the card is
+  // a <button> with the name; pressing it opens the detail modal.
   document.getElementById("ingredients-catalog").addEventListener("click", (e) => {
     const card = e.target.closest("[data-ingredient-id]");
     if (!card) return;
     openIngredientModal(card.dataset.ingredientId);
   });
 
-  // Delegación de acciones de las cards de recetas (issue #234): la
-  // tarjeta entera es el botón; al pulsarla se abre el detalle en modo
-  // solo lectura (ya no hay botones Ver/Editar/Eliminar en la tarjeta).
+  // Action delegation of the recipe cards (issue #234): the whole
+  // card is the button; pressing it opens the detail in read-only
+  // mode (there are no View/Edit/Delete buttons on the card anymore).
   document.getElementById("recipes-list").addEventListener("click", (e) => {
     const card = e.target.closest("[data-recipe-id]");
     if (!card) return;
@@ -207,8 +208,8 @@ export function setupRecipes(opts) {
     if (!recipe) return;
     openRecipeModal(recipe, { readOnly: true });
   });
-  // Soporte de teclado para la tarjeta (role="button" + tabindex): Enter
-  // o Espacio abren el detalle igual que el click.
+  // Keyboard support for the card (role="button" + tabindex): Enter
+  // or Space opens the detail like the click.
   document.getElementById("recipes-list").addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
     const card = e.target.closest("[data-recipe-id]");
@@ -224,9 +225,9 @@ export function setupRecipes(opts) {
   return { openRecipes };
 }
 
-// Arranca las suscripciones en tiempo real (lo llama app.js tras el
-// login, como las del resto de bibliotecas). Devuelve la función de
-// cancelación.
+// Starts the real-time subscriptions (called by app.js after login,
+// like the rest of the libraries). Returns the cancellation
+// function.
 export function subscribeRecipesData(uid, onChange, onError) {
   currentUser = uid;
   const subs = [];
@@ -234,8 +235,8 @@ export function subscribeRecipesData(uid, onChange, onError) {
   subs.push(ctx.subscribeToRecipes(uid, (items) => {
     recipes = items;
     renderRecipesList();
-    // El catálogo muestra en qué recetas se usa cada ingrediente:
-    // refrescarlo si la pestaña de Ingredientes está a la vista.
+    // The catalog shows which recipes use each ingredient:
+    // refresh it if the Ingredientes tab is on screen.
     if (currentTab === "ingredientes") renderIngredientsCatalog();
     notifyRecipesChanged();
     if (onChange) onChange();
@@ -248,10 +249,10 @@ export function subscribeRecipesData(uid, onChange, onError) {
 
   subs.push(ctx.subscribeToTags(uid, (items) => {
     customTags = items;
-    // El filtro por defecto incluye todas las etiquetas: si el usuario
-    // aún no lo ha tocado, las propias recién cargadas se suman a los
-    // Sets de los filtros de la pestaña Recetas (issue #234) y a los
-    // del catálogo de Ingredientes.
+    // The default filter includes all the tags: if the user has not
+    // touched it yet, the freshly loaded own ones are added to the
+    // Sets of the Recetas tab filters (issue #234) and to the ones
+    // of the Ingredientes catalog.
     if (!ingredientFilterTouched) {
       ingredientFilterCategoryIds().forEach((id) => activeCategoryFilter.add(id));
       if (currentTab === "ingredientes") {
@@ -273,7 +274,7 @@ export function subscribeRecipesData(uid, onChange, onError) {
   return () => subs.forEach((unsub) => unsub && unsub());
 }
 
-// ---------- Apertura / cierre de la vista ----------
+// ---------- Opening / closing of the view ----------
 
 export function openRecipes({ tab = "recetas", fromRouter = false } = {}) {
   if (!fromRouter) {
@@ -301,8 +302,8 @@ export function openRecipes({ tab = "recetas", fromRouter = false } = {}) {
     if (panel) panel.classList.toggle("hidden", key !== tab);
   });
 
-  // Si los paneles de filtro quedaron abiertos, cerrarlos al
-  // cambiar de pestaña (evita estado obsoleto al volver).
+  // If the filter panels were left open, close them when
+  // switching tabs (avoids stale state when coming back).
   if (tab !== "ingredientes") closeIngredientFilterPanel();
   if (tab !== "recetas") {
     closeRecipeAlergenoFilterPanel();
@@ -318,12 +319,12 @@ export function openRecipes({ tab = "recetas", fromRouter = false } = {}) {
   }
 }
 
-// ---------- Pestaña Recetas: listado ----------
+// ---------- Recetas tab: list ----------
 
-// Búsqueda de recetas para el buscador global de la cabecera
-// (issue #206): la búsqueda superior se acota a la sección activa,
-// así que desde Recetas filtra el listado local. Reutiliza el filtro
-// de la pestaña (nombre, ingrediente y etiqueta).
+// Recipe search for the header's global search box
+// (issue #206): the top search is scoped to the active section,
+// so from Recetas it filters the local list. Reuses the tab
+// filter (name, ingredient and tag).
 export function searchRecipes(query) {
   return filterRecipes(recipes, query.trim().toLowerCase());
 }
@@ -337,7 +338,7 @@ function renderRecipesList() {
     return;
   }
 
-  // Filtros de la pestaña (issue #234): alérgenos y tipo de comida.
+  // Tab filters (issue #234): allergens and meal type.
   const filtered = recipes.filter((r) => recipeMatchesAlergenoFilter(r) && recipeMatchesTipoFilter(r));
   if (!filtered.length) {
     container.innerHTML = `<p class="empty-state">Ninguna receta coincide con los filtros seleccionados.
@@ -350,11 +351,11 @@ function renderRecipesList() {
   </div>`;
 }
 
-// Coincidencia de una receta con el filtro de alérgenos (issue #234):
-// con «todas» seleccionadas (por defecto) pasa todo; si no, la receta
-// debe estar marcada con al menos uno de los alérgenos elegidos. Las
-// recetas sin alérgenos marcados pasan siempre (como los ingredientes
-// sin categoría en el catálogo). Mismo criterio para el tipo de comida.
+// Match of a recipe against the allergen filter (issue #234):
+// with «all» selected (default) everything passes; otherwise the
+// recipe must be tagged with at least one of the chosen allergens.
+// Recipes with no allergens tagged always pass (like uncategorized
+// ingredients in the catalog). Same criterion for the meal type.
 function recipeMatchesAlergenoFilter(r) {
   if (recipeFilterAllChecked(activeAlergenoFilter, "alergeno")) return true;
   return !(r.alergenos || []).length || (r.alergenos || []).some((id) => activeAlergenoFilter.has(id));
@@ -365,8 +366,8 @@ function recipeMatchesTipoFilter(r) {
   return !(r.tipos || []).length || (r.tipos || []).some((id) => activeTipoFilter.has(id));
 }
 
-// Búsqueda: por nombre, por ingrediente (recetas que lo usan) y por
-// etiquetas (alérgenos, tipos y categorías de ingrediente).
+// Search: by name, by ingredient (recipes using it) and by
+// tags (allergens, types and ingredient categories).
 function filterRecipes(items, filter) {
   if (!filter) return items;
   const q = filter.toLowerCase();
@@ -390,10 +391,10 @@ function recipeCardHtml(r) {
   const badge = r.needsReview
     ? `<span class="recipe-card__badge" title="Importada desde una URL, pendiente de revisar">Revisar</span>`
     : "";
-  // La tarjeta entera es el botón (issue #234): al pulsarla se abre el
-  // detalle en modo lectura. role="button" + tabindex para teclado.
-  // Las etiquetas llevan el mismo color por tipo que en la vista de
-  // lectura (issue #236, iteración): alérgenos en teal y tipo en ocre.
+  // The whole card is the button (issue #234): pressing it opens the
+  // detail in read mode. role="button" + tabindex for keyboard.
+  // The tags carry the same color by type as in the read view
+  // (issue #236, iteration): allergens in teal and type in ochre.
   const alergenoTags = alergenos.map((t) => `<span class="recipe-card__tag recipe-card__tag--alergeno">${escapeHtml(t.label)}</span>`).join("");
   const tipoTags = tipos.map((t) => `<span class="recipe-card__tag recipe-card__tag--tipo">${escapeHtml(t.label)}</span>`).join("");
   return `<article class="recipe-card${r.needsReview ? " recipe-card--review" : ""}"
@@ -416,7 +417,7 @@ async function deleteRecipeFlow(recipe) {
   if (!confirm(`¿Eliminar la receta «${recipe.nombre}»?`)) return false;
   try {
     await ctx.deleteRecipe(currentUser, recipe.id);
-    // Limpiar referencias en los menús (si app.js inyectó el callback).
+    // Clean up references in the menus (if app.js injected the callback).
     if (onRecipeDeleted) onRecipeDeleted(recipe.id);
     showToast("Receta eliminada.");
     return true;
@@ -436,10 +437,10 @@ function tagLabel(scope, id) {
   return id;
 }
 
-// ---------- Catálogo de ingredientes (pestaña «Ingredientes», issue #209 / #218) ----------
+// ---------- Ingredient catalog («Ingredientes» tab, issue #209 / #218) ----------
 
-// Índice de recetas por ingrediente (recetas que usan cada uno). Se usa
-// en el modal de detalle («Usada en»).
+// Recipe index by ingredient (recipes using each one). Used
+// in the detail modal («Usada en»).
 function getUsageIndex() {
   const byName = new Map();
   recipes.forEach((r) => {
@@ -464,9 +465,9 @@ function renderIngredientsCatalog() {
     return;
   }
 
-  // Filtro por categorías (issue #218): multiselección con todas
-  // seleccionadas por defecto. Los ingredientes sin categoría se
-  // muestran siempre (son el cubo de entrada al que se les asigna).
+  // Category filter (issue #218): multi-select with all
+  // selected by default. Ingredients without a category are
+  // always shown (they are the entry bucket awaiting assignment).
   const filtered = sorted.filter(
     (ing) => !ing.categoriaId || activeCategoryFilter.has(ing.categoriaId)
   );
@@ -476,11 +477,12 @@ function renderIngredientsCatalog() {
     return;
   }
 
-  // Agrupación por categoría (patrón de la lista de la compra): las
-  // predefinidas en su orden, las personalizadas presentes en los datos
-  // por orden alfabético de etiqueta y «Sin categoría» al final. Cada
-  // título lleva su icono (issue #224): el de la categoría predefinida,
-  // el genérico de etiqueta para las propias y el de «Sin categoría».
+  // Grouping by category (pattern of the shopping list): the
+  // predefined ones in their order, the custom ones present in the
+  // data by alphabetical label order and «Sin categoría» at the end.
+  // Each title carries its icon (issue #224): the predefined
+  // category's, the generic tag one for the own ones and the
+  // «Sin categoría» one.
   const groups = new Map();
   INGREDIENT_CATEGORIES.forEach((c) => groups.set(c.id, []));
   groups.set("", []);
@@ -519,29 +521,29 @@ function renderIngredientsCatalog() {
     </section>` : ""}`;
 }
 
-// Comparador del catálogo: orden alfabético A-Z (es) con tie-break
-// determinista por id. (El selector de ordenación se eliminó en la
-// issue #224 y solo existe este orden.)
+// Catalog comparator: alphabetical A-Z order (es) with a
+// deterministic id tie-break. (The sort selector was removed in
+// issue #224 and this is the only order.)
 function compareIngredients(a, b) {
   return a.nombre.localeCompare(b.nombre, "es") || a.id.localeCompare(b.id);
 }
 
-// Tarjeta del catálogo: muestra únicamente el nombre (issue #218); la
-// información ampliada vive en el modal que abre al pulsarla.
+// Catalog card: shows only the name (issue #218); the
+// extended information lives in the modal opened by pressing it.
 function ingredientCardHtml(ing) {
   return `<button type="button" class="ingredient-card" data-ingredient-id="${ing.id}">${escapeHtml(ing.nombre)}</button>`;
 }
 
-// ---------- Filtro por categorías (issue #218) ----------
+// ---------- Category filter (issue #218) ----------
 
-// Checkboxes del panel de filtro: «Todas» + las categorías (predefinidas
-// y propias del usuario). El panel se pinta solo al abrir; los cambios
-// posteriores solo alternan clases is-checked (sin re-render) para no
-// perder el foco y para que la marca visual sea inmediata (iteración
-// tras comentario de la issue #218: el filtro se aplica y se colorea a
-// medida que se selecciona, no al cerrar el panel).
+// Filter panel checkboxes: «Todas» + the categories (predefined
+// and the user's own). The panel is painted only on open; later
+// changes only toggle is-checked classes (no re-render) to not lose
+// focus and to make the visual check immediate (iteration after a
+// comment on issue #218: the filter applies and colors as you
+// select, not when the panel closes).
 
-// Ids de todas las categorías visibles en el panel (predefinidas + propias).
+// Ids of all the categories visible in the panel (predefined + own).
 function ingredientFilterCategoryIds() {
   return mergeTags(
     INGREDIENT_CATEGORIES,
@@ -549,8 +551,8 @@ function ingredientFilterCategoryIds() {
   ).map((t) => t.id);
 }
 
-// «Todas» está marcado si y solo si TODAS las categorías del panel
-// (predefinidas y propias) están en el filtro.
+// «All» is checked if and only if ALL the categories of the panel
+// (predefined and own) are in the filter.
 function ingredientFilterAllChecked() {
   const ids = ingredientFilterCategoryIds();
   return ids.length > 0 && ids.every((id) => activeCategoryFilter.has(id));
@@ -589,8 +591,8 @@ function updateIngredientFilterLabel() {
   label.textContent = `${n} ${n === 1 ? "categoría" : "categorías"}`;
 }
 
-// Toggle de la marca del checkbox «Todas» (marcado solo si lo están
-// todas las categorías del panel).
+// Check-state toggle of the «Todas» checkbox (checked only if all the
+// panel's categories are).
 function syncIngredientFilterAll() {
   const all = document.querySelector("#ingredient-filter-panel .ingredients-filter__all");
   if (!all) return;
@@ -600,13 +602,13 @@ function syncIngredientFilterAll() {
   input.checked = checked;
 }
 
-// Marca visual de cada casilla en tiempo real (issue #218, iteración
-// tras comentario): el input está oculto (opacity: 0) y la única señal
-// de seleccionado es la clase is-checked del label, así que se alterna
-// en el momento de marcar/desmarcar, no al volver a abrir el panel.
-// La fuente de verdad es activeCategoryFilter, no input.checked: al
-// pulsar «Todas» el navegador solo actualiza ese input, los demás
-// quedarían desincronizados.
+// Real-time visual check of each checkbox (issue #218, iteration
+// after a comment): the input is hidden (opacity: 0) and the only
+// selected signal is the label's is-checked class, so it toggles at
+// the moment of checking/unchecking, not when re-opening the panel.
+// The source of truth is activeCategoryFilter, not input.checked:
+// when pressing «Todas» the browser only updates that input, the
+// others would get out of sync.
 function syncIngredientFilterItems() {
   document.querySelectorAll("#ingredient-filter-panel .ingredients-filter__item").forEach((item) => {
     const input = item.querySelector("input");
@@ -623,14 +625,15 @@ function closeIngredientFilterPanel() {
   if (!panel || panel.classList.contains("hidden")) return;
   panel.classList.add("hidden");
   btn?.setAttribute("aria-expanded", "false");
-  // Desregistrar el Escape del panel (se registra al abrirlo) para que
-  // no robe foco tras cierres por fuera (openRecipes, resetRecipesData).
+  // Unregister the panel's Escape (registered when opening it) so it
+  // does not steal focus after external closes (openRecipes,
+  // resetRecipesData).
   document.removeEventListener("keydown", escHandlerRef);
 }
 
-// Referencia al manejador de Escape del panel (registrado al abrirlo);
-// se guarda en el módulo para poder desregistrarlo desde
-// closeIngredientFilterPanel sin acoplar el cierre al setup.
+// Reference to the panel's Escape handler (registered when opening
+// it); stored in the module so closeIngredientFilterPanel can
+// unregister it without coupling the close to the setup.
 let escHandlerRef = null;
 
 function setupIngredientFilter() {
@@ -660,7 +663,7 @@ function setupIngredientFilter() {
     }
   });
 
-  // Click fuera del wrapper: cerrar (patrón del dropdown de perfil).
+  // Click outside the wrapper: close (profile dropdown pattern).
   document.addEventListener("click", (e) => {
     if (!wrap.contains(e.target) && !panel.classList.contains("hidden")) {
       closeIngredientFilterPanel();
@@ -680,9 +683,9 @@ function setupIngredientFilter() {
     } else {
       activeCategoryFilter.delete(input.value);
     }
-    // Marca visual y filtro en vivo (issue #218, iteración): colorear
-    // lo seleccionado y aplicar el filtro a medida que se selecciona,
-    // no cuando se cierra el panel.
+    // Visual check and live filter (issue #218, iteration): color the
+    // selection and apply the filter as you select, not when the
+    // panel closes.
     syncIngredientFilterItems();
     syncIngredientFilterAll();
     updateIngredientFilterLabel();
@@ -690,16 +693,16 @@ function setupIngredientFilter() {
   });
 }
 
-// ---------- Filtros de la pestaña Recetas (issue #234) ----------
+// ---------- Recetas tab filters (issue #234) ----------
 
-// Checkboxes de los paneles de filtro: «Todas» + las etiquetas
-// (predefinidas y propias del usuario). Mismo patrón que el filtro por
-// categorías del catálogo de ingredientes (issue #218): el panel se
-// pinta solo al abrir; los cambios posteriores solo alternan clases
-// is-checked (sin re-render) y el filtrado se aplica en vivo.
+// Filter panel checkboxes: «Todas» + the tags
+// (predefined and the user's own). Same pattern as the category
+// filter of the ingredient catalog (issue #218): the panel is
+// painted only on open; later changes only toggle is-checked
+// classes (no re-render) and filtering applies live.
 
-// Ids de todas las etiquetas visibles en el panel de un scope
-// (predefinidas + propias).
+// Ids of all the tags visible in a scope's panel
+// (predefined + own).
 function recipeFilterTagIds(scope) {
   return mergeTags(
     PRESET_BY_SCOPE[scope],
@@ -707,14 +710,14 @@ function recipeFilterTagIds(scope) {
   ).map((t) => t.id);
 }
 
-// «Todas» está marcado si y solo si TODAS las etiquetas del panel
-// (predefinidas y propias) están en el filtro.
+// «All» is checked if and only if ALL the tags of the panel
+// (predefined and own) are in the filter.
 function recipeFilterAllChecked(activeSet, scope) {
   const ids = recipeFilterTagIds(scope);
   return ids.length > 0 && ids.every((id) => activeSet.has(id));
 }
 
-// Config de los dos filtros (ids de los elementos del DOM por scope).
+// Config of both filters (DOM element ids per scope).
 const RECIPE_FILTER_UI = {
   alergeno: {
     btnId: "btn-recipe-alergeno-filter",
@@ -728,8 +731,8 @@ const RECIPE_FILTER_UI = {
   },
 };
 
-// Referencia a los manejadores de Escape de cada panel (registrados al
-// abrirlo; se guardan para poder desregistrarlos desde el cierre).
+// Reference to each panel's Escape handlers (registered when opening
+// them; stored so the close can unregister them).
 const recipeFilterEscHandlers = {};
 
 function recipeFilterActiveSet(scope) {
@@ -787,8 +790,8 @@ function updateRecipeFilterLabel(scope) {
   label.textContent = `${n} ${n === 1 ? word : word + "s"}`;
 }
 
-// Toggle de la marca del checkbox «Todas» (marcado solo si lo están
-// todas las etiquetas del panel).
+// Check-state toggle of the «Todas» checkbox (checked only if all the
+// panel's tags are).
 function syncRecipeFilterAll(scope) {
   const { panelId } = RECIPE_FILTER_UI[scope];
   const all = document.querySelector(`#${panelId} .recipes-filter__all`);
@@ -799,9 +802,9 @@ function syncRecipeFilterAll(scope) {
   input.checked = checked;
 }
 
-// Marca visual de cada casilla en tiempo real (patrón de
-// syncIngredientFilterItems): la fuente de verdad es el Set activo, no
-// input.checked.
+// Real-time visual check of each checkbox (pattern of
+// syncIngredientFilterItems): the source of truth is the active Set,
+// not input.checked.
 function syncRecipeFilterItems(scope) {
   const { panelId } = RECIPE_FILTER_UI[scope];
   const activeSet = recipeFilterActiveSet(scope);
@@ -864,7 +867,7 @@ function setupRecipeFilters() {
       }
     });
 
-    // Click fuera del wrapper: cerrar (patrón del dropdown de perfil).
+    // Click outside the wrapper: close (profile dropdown pattern).
     document.addEventListener("click", (e) => {
       if (!wrap.contains(e.target) && !panel.classList.contains("hidden")) {
         closeRecipeFilterPanel(scope);
@@ -885,7 +888,7 @@ function setupRecipeFilters() {
       } else {
         recipeFilterActiveSet(scope).delete(input.value);
       }
-      // Marca visual y filtro en vivo (patrón del catálogo).
+      // Visual check and live filter (catalog pattern).
       syncRecipeFilterAll(scope);
       syncRecipeFilterItems(scope);
       updateRecipeFilterLabel(scope);
@@ -894,14 +897,14 @@ function setupRecipeFilters() {
   });
 }
 
-// ---------- Modal de ingrediente (issue #218) ----------
+// ---------- Ingredient modal (issue #218) ----------
 
-// Unidades disponibles para la cantidad del paquete (issue #224); la
-// primera opción vacía («—») significa sin especificar.
+// Available units for the package amount (issue #224); the first
+// empty option («—») means unspecified.
 const PACKAGE_UNITS = ["", "g", "Kg", "mL", "L", "unidades"];
 
-// Chips de supermercados (issue #224): las mismas etiquetas en el alta
-// y en el detalle. `selected` son los ids marcados (en el alta, nada).
+// Supermarket chips (issue #224): the same labels in the add form
+// and the detail. `selected` are the checked ids (in the add, none).
 function supermarketChipsHtml(selected = []) {
   return SUPERMARKETS.map((s) => {
     const checked = selected.includes(s.id);
@@ -912,8 +915,8 @@ function supermarketChipsHtml(selected = []) {
   }).join("");
 }
 
-// Fila «Cantidad del paquete» (número + unidad, issue #224): los ids
-// son los mismos en el alta y en el detalle para reutilizar lecturas.
+// «Package amount» row (number + unit, issue #224): the ids
+// are the same in the add form and the detail to reuse reads.
 function packageQtyRowHtml(ing = {}) {
   const cantidad = ing.paqueteCantidad ?? "";
   const unidad = ing.paqueteUnidad || "";
@@ -925,15 +928,14 @@ function packageQtyRowHtml(ing = {}) {
   </div>`;
 }
 
-// Abre el modal de ingrediente: con id = detalle ampliado (categoría,
-// recetas que lo usan, eliminar); sin id = alta manual. Por defecto
-// (issue #232) el detalle se muestra en modo lectura; con `edit: true`
-// se abre directamente la vista de edición. `onCreated` (issue #240)
-// se llama al guardar un alta manual con el ingrediente recién creado
-// ({ nombre, categoriaId }), para que el formulario de receta pueda
-// usarlo al momento. Con `shopping: true` (issue #249) se abre la
-// ventana de cantidad y unidad para añadir el ingrediente a la lista
-// de la compra.
+// Opens the ingredient modal: with id = extended detail (category,
+// recipes using it, delete); without id = manual add. By default
+// (issue #232) the detail is shown in read mode; with `edit: true`
+// it opens the edit view directly. `onCreated` (issue #240) is
+// called when saving a manual add, with the freshly created
+// ingredient ({ nombre, categoriaId }), so the recipe form can use
+// it right away. With `shopping: true` (issue #249) it opens the
+// amount and unit window to add the ingredient to the shopping list.
 function openIngredientModal(id, { edit = false, onCreated = null, shopping = false } = {}) {
   const modal = document.getElementById("ingredient-modal");
   const content = document.getElementById("ingredient-modal-content");
@@ -961,15 +963,15 @@ function openIngredientModal(id, { edit = false, onCreated = null, shopping = fa
     modal._previousActiveElement = document.activeElement;
     modal.classList.remove("hidden");
   }
-  // Re-render en caliente (lectura → edición o viceversa): liberar el
-  // trap de foco anterior antes de crear el nuevo.
+  // Hot re-render (read → edit or vice versa): release the previous
+  // focus trap before creating the new one.
   if (ingredientModalCleanup) ingredientModalCleanup();
   ingredientModalCleanup = trapFocus(modal.querySelector(".modal__card"));
-  // En el alta manual, al entrar en edición y en la ventana de añadir
-  // a la compra, foco directo al primer campo: se hace en un segundo
-  // rAF tras el de trapFocus (que enfoca la ✕, el primer enfocable):
-  // los callbacks del mismo frame corren en orden, así el foco final
-  // queda en el input y el trap no se rompe.
+  // In the manual add, when entering editing and in the add-to-shopping
+  // window, focus directly on the first field: it happens in a second
+  // rAF after the trapFocus one (which focuses the ✕, the first
+  // focusable): callbacks of the same frame run in order, so the final
+  // focus ends on the input and the trap is not broken.
   if (!ingredient || edit || shopping) {
     requestAnimationFrame(() => {
       content.querySelector("#ing-modal-nombre")?.focus({ preventScroll: false });
@@ -991,11 +993,11 @@ function closeIngredientModal() {
   if (modal._previousActiveElement) modal._previousActiveElement.focus();
 }
 
-// Vista de solo lectura de la ventana de ingrediente (issue #232): el
-// nombre como título, la foto solo si existe (sin placeholder ni "sin
-// imagen" cuando no hay), la categoría y la cantidad del paquete como
-// texto y los supermercados como etiquetas no interactivas. Sin botón
-// «Cerrar» (queda la ✕) y sin el texto «Categoría actual: …».
+// Read-only view of the ingredient window (issue #232): the name as
+// title, the photo only if it exists (no placeholder nor "no image"
+// when there is none), the category and the package amount as text
+// and the supermarkets as non-interactive tags. Without a «Close»
+// button (the ✕ remains) and without the text «Categoría actual: …».
 function ingredientDetailHtml(ing) {
   const byName = getUsageIndex();
   const usedRecipes = recipes.filter((r) =>
@@ -1038,10 +1040,10 @@ function ingredientDetailHtml(ing) {
   </div>`;
 }
 
-// Vista de edición de la ventana de ingrediente (issue #232): se editan
-// nombre, foto (URL), categoría, supermercados y cantidad del paquete,
-// y se guardan todos juntos con «Guardar» (a diferencia del guardado
-// inmediato anterior, aquí el formulario persiste en bloque).
+// Edit view of the ingredient window (issue #232): name, photo
+// (URL), category, supermarkets and package amount are edited, and
+// all saved together with «Guardar» (unlike the previous immediate
+// save, here the form persists as a block).
 function ingredientEditHtml(ing) {
   return `<form id="ingredient-edit-form" class="ingredient-modal__form">
     <h3 class="ingredient-modal__title">Editar ingrediente</h3>
@@ -1110,11 +1112,11 @@ function ingredientNewHtml() {
   </form>`;
 }
 
-// Vista de «añadir a la lista de la compra» (issue #249): solo pide
-// cantidad y unidad de medida. El nombre, la categoría y si es
-// comestible o no se toman del ingrediente del catálogo (que es quien
-// los conoce); la persistencia la hace el adder registrado por
-// shopping-list.js (registerShoppingListAdder).
+// «Add to shopping list» view (issue #249): it only asks for amount
+// and measurement unit. The name, the category and whether it is
+// edible or not are taken from the catalog ingredient (which is the
+// one who knows them); persistence is done by the adder registered
+// by shopping-list.js (registerShoppingListAdder).
 function ingredientShoppingHtml(ing) {
   return `<form id="ingredient-shopping-form" class="ingredient-modal__form">
     <h3 class="ingredient-modal__title">Añadir a la lista de la compra</h3>
@@ -1142,15 +1144,15 @@ function ingredientShoppingHtml(ing) {
 function bindIngredientModalHandlers(content, ingredient, onCreated = null) {
   content.querySelector("[data-ing-close]")?.addEventListener("click", closeIngredientModal);
 
-  // Edición (issue #232): Cancelar vuelve a la vista de lectura sin
-  // guardar; el formulario Guardar persiste en bloque todos los campos.
+  // Editing (issue #232): Cancel goes back to the read view without
+  // saving; the Save form persists as a block all the fields.
   content.querySelector("[data-ing-cancel]")?.addEventListener("click", () => {
     openIngredientModal(ingredient.id);
   });
 
-  // Chips de supermercados: la marca visual cambia al instante en el
-  // alta y en la edición; el guardado de la edición se hace en bloque
-  // con «Guardar» (issue #232), no al momento.
+  // Supermarket chips: the visual check changes instantly in the add
+  // form and the editing; the edit save is done as a block with
+  // «Guardar» (issue #232), not immediately.
   content.querySelectorAll(".ingredient-modal__chips").forEach((chips) => {
     chips.addEventListener("change", (e) => {
       const label = e.target.closest("[data-supermercado]");
@@ -1159,23 +1161,23 @@ function bindIngredientModalHandlers(content, ingredient, onCreated = null) {
     });
   });
 
-  // Vista de lectura (issue #232): el lápiz pasa a modo edición; el
-  // botón «Cerrar» inferior desapareció (queda la ✕ superior).
+  // Read view (issue #232): the pencil switches to edit mode; the
+  // lower «Close» button is gone (the top ✕ remains).
   content.querySelector("[data-ing-edit]")?.addEventListener("click", () => {
     openIngredientModal(ingredient.id, { edit: true });
   });
 
-  // Añadir a la lista de la compra (issue #249): el botón del detalle
-  // abre la ventana de cantidad y unidad; «Cancelar» vuelve al detalle.
+  // Add to the shopping list (issue #249): the detail's button opens
+  // the amount and unit window; «Cancel» goes back to the detail.
   content.querySelector("[data-ing-shopping]")?.addEventListener("click", () => {
     openIngredientModal(ingredient.id, { shopping: true });
   });
   content.querySelector("[data-ing-shopping-cancel]")?.addEventListener("click", () => {
     openIngredientModal(ingredient.id);
   });
-  // Confirmar: el nombre, la categoría y el comestible se toman del
-  // ingrediente del catálogo; solo se eligen cantidad y unidad. La
-  // cantidad vacía se guarda como null (línea sin cantidad calculada).
+  // Confirmar: name, category and edibility are taken from the
+  // catalog ingredient; only amount and unit are chosen. An empty
+  // amount is stored as null (line with no computed amount).
   content.querySelector("#ingredient-shopping-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const cantidadRaw = content.querySelector("#ing-shopping-cantidad").value;
@@ -1212,10 +1214,10 @@ function bindIngredientModalHandlers(content, ingredient, onCreated = null) {
     }
   });
 
-  // Guardado en bloque de la vista de edición (issue #232): nombre,
-  // foto (URL), categoría, supermercados y cantidad del paquete se
-  // persisten de una vez con updateIngredient; luego se vuelve a la
-  // vista de lectura mostrando los datos guardados.
+  // Block save of the edit view (issue #232): name, photo (URL),
+  // category, supermarkets and package amount are persisted at once
+  // with updateIngredient; then the read view shows again with the
+  // saved data.
   content.querySelector("#ingredient-edit-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const nombre = content.querySelector("#ing-modal-nombre").value.trim();
@@ -1231,8 +1233,8 @@ function bindIngredientModalHandlers(content, ingredient, onCreated = null) {
       await ctx.updateIngredient(currentUser, ingredient.id, {
         nombre, fotoUrl, categoriaId, supermercados, paqueteCantidad, paqueteUnidad,
       });
-      // Refresco local inmediato (el snapshot de Firestore llega
-      // después): la vista de lectura muestra ya los datos guardados.
+      // Immediate local refresh (the Firestore snapshot arrives
+      // later): the read view already shows the saved data.
       const idx = ingredients.findIndex((i) => i.id === ingredient.id);
       if (idx !== -1) {
         ingredients[idx] = { ...ingredients[idx], nombre, fotoUrl, categoriaId, supermercados, paqueteCantidad, paqueteUnidad };
@@ -1245,8 +1247,8 @@ function bindIngredientModalHandlers(content, ingredient, onCreated = null) {
     }
   });
 
-  // Links «Usada en»: abren la receta en modo lectura; el modal de
-  // ingrediente se cierra antes (ambos comparten z-index).
+  // «Usada en» links: they open the recipe in read mode; the
+  // ingredient modal closes first (both share the z-index).
   content.querySelectorAll("[data-recipe-id]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const recipe = recipes.find((r) => r.id === btn.dataset.recipeId);
@@ -1256,9 +1258,9 @@ function bindIngredientModalHandlers(content, ingredient, onCreated = null) {
     });
   });
 
-  // Alta manual: el nombre se guarda tal cual se escribió (tildes y
-  // mayúsculas, issue #224); la deduplicación sigue por nombre
-  // normalizado (sin tildes, minúsculas).
+  // Manual add: the name is saved exactly as typed (accents and
+  // capitals, issue #224); deduplication still follows the normalized
+  // name (no accents, lowercase).
   content.querySelector("#ingredient-new-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const raw = content.querySelector("#ing-modal-nombre").value.trim();
@@ -1270,8 +1272,8 @@ function bindIngredientModalHandlers(content, ingredient, onCreated = null) {
       return;
     }
     const categoriaId = content.querySelector("#ing-modal-categoria-nueva").value;
-    // Campos opcionales (issue #224): supermercados marcados (array de
-    // ids) y cantidad del paquete (número, vacío → null; unidad).
+    // Optional fields (issue #224): checked supermarkets (array of
+    // ids) and package amount (number, empty → null; unit).
     const supermercados = [...content.querySelectorAll(".ingredient-modal__chips input:checked")].map((i) => i.value);
     const qtyRaw = content.querySelector("#ing-modal-paquete").value;
     const qtyNum = qtyRaw === "" ? null : Number(qtyRaw);
@@ -1289,7 +1291,7 @@ function bindIngredientModalHandlers(content, ingredient, onCreated = null) {
   });
 }
 
-// ---------- Selectores de etiquetas (predefinidas + propias) ----------
+// ---------- Tag selectors (predefined + own) ----------
 
 function optionsFor(scope, selectedId) {
   const tags = mergeTags(
@@ -1300,14 +1302,15 @@ function optionsFor(scope, selectedId) {
     ${tags.map((t) => `<option value="${escapeHtml(t.id)}"${t.id === selectedId ? " selected" : ""}>${escapeHtml(t.label)}${t.custom ? " (propia)" : ""}</option>`).join("")}`;
 }
 
-// ---------- Modal de receta ----------
+// ---------- Recipe modal ----------
 
-// Callback opcional de cierre del modal (issue #242): lo usa menu.js
-// para restaurar el buscador de recetas al cerrar la ventana de
-// lectura abierta desde el menú. Se invoca siempre al cerrar y se
-// limpia después, para que no se acumulen callbacks de una apertura.
-// La transición lectura → edición (openRecipeModal sin onClose)
-// NO lo pisa: el callback sigue vivo hasta que el modal se cierre.
+// Optional modal close callback (issue #242): menu.js uses it to
+// restore the recipe search box when closing the read window opened
+// from the menu. It is invoked on every close and cleared afterwards,
+// so callbacks from one opening do not accumulate.
+// The read → edit transition (openRecipeModal without onClose)
+// does NOT overwrite it: the callback stays alive until the modal
+// closes.
 let recipeModalCloseCb = null;
 
 export function openRecipeModal(recipe = null, { readOnly = false, onClose = null } = {}) {
@@ -1325,11 +1328,11 @@ export function openRecipeModal(recipe = null, { readOnly = false, onClose = nul
     modal._previousActiveElement = document.activeElement;
     modal.classList.remove("hidden");
   }
-  // Re-render en caliente (p. ej. lectura → edición): liberar el trap
-  // de foco anterior antes de crear el nuevo.
+  // Hot re-render (e.g. read → edit): release the previous focus
+  // trap before creating the new one.
   if (modalCleanup) modalCleanup();
   modalCleanup = trapFocus(modal.querySelector(".modal__card"));
-  // Transición a modo edición: el foco va al primer campo del form.
+  // Transition to edit mode: focus goes to the first form field.
   if (!wasHidden && !modalReadOnly && recipe) {
     requestAnimationFrame(() => {
       content.querySelector("#recipe-nombre")?.focus({ preventScroll: false });
@@ -1348,16 +1351,16 @@ function closeRecipeModal() {
   if (modal._previousActiveElement) modal._previousActiveElement.focus();
   editingRecipeId = null;
   modalReadOnly = false;
-  // Callback de cierre (issue #242): restaurar el buscador del menú.
+  // Close callback (issue #242): restore the menu's search box.
   const cb = recipeModalCloseCb;
   recipeModalCloseCb = null;
   if (cb) cb();
 }
 
 function recipeModalHtml(recipe) {
-  // Modo lectura (issue #236): no es el formulario con campos
-  // deshabilitados, sino una vista de texto propia (foto, nombre como
-  // título, etiquetas, descripción, porciones, listas y enlaces).
+  // Read mode (issue #236): not the form with disabled fields, but a
+  // text view of its own (photo, name as title, tags, description,
+  // servings, lists and links).
   if (modalReadOnly && recipe) return recipeReadOnlyHtml(recipe);
   const r = recipe || {};
   const alergenos = r.alergenos || [];
@@ -1452,12 +1455,12 @@ function recipeModalHtml(recipe) {
   </form>`;
 }
 
-// Vista de receta en modo lectura (issue #236): un render propio,
-// como texto legible (no como el formulario con campos deshabilitados).
-// Orden: foto, nombre como título con las etiquetas (alérgenos y tipo
-// diferenciados por color), descripción, porciones, ingredientes en
-// lista (solo nombre y cantidad), instrucciones numeradas y enlaces de
-// referencia al final si los hay. No se muestran nombres de campo.
+// Read-only recipe view (issue #236): its own render, as readable
+// text (not as the form with disabled fields).
+// Order: photo, name as title with the tags (allergens and type
+// differentiated by color), description, servings, ingredients in
+// a list (only name and amount), numbered instructions and reference
+// links at the end if any. Field names are not shown.
 function recipeReadOnlyHtml(recipe) {
   const r = recipe || {};
   const alergenos = tagsByIds(ALERGEN_TAGS, customTags, r.alergenos || []);
@@ -1525,8 +1528,8 @@ function recipeReadOnlyHtml(recipe) {
   </div>`;
 }
 
-// Cantidad de un ingrediente en la vista de lectura: "200 g" o vacío.
-// Se muestra junto al nombre (la categoría no se muestra, issue #236).
+// Amount of an ingredient in the read view: "200 g" or empty.
+// Shown next to the name (the category is not shown, issue #236).
 function cantidadRecetaHtml(ing) {
   const cantidad = ing.cantidad ?? "";
   const unidad = (ing.unidad || "").trim();
@@ -1535,10 +1538,10 @@ function cantidadRecetaHtml(ing) {
   return `<span class="recipe-view__ing-cantidad">${partes.map(escapeHtml).join(" ")}</span>`;
 }
 
-// Enlace de referencia en la vista de lectura. Higiene defensiva: solo
-// los esquemas http/https son clickeables (un `javascript:` pegado a
-// mano en el formulario no debe ejecutarse al pulsar); el resto se
-// muestra como texto plano.
+// Reference link in the read view. Defensive hygiene: only the
+// http/https schemes are clickable (a `javascript:` pasted by hand
+// into the form must not execute on press); the rest shows as plain
+// text.
 function enlaceRecetaHtml(url) {
   const texto = escapeHtml(url);
   return /^https?:\/\//i.test(url)
@@ -1553,7 +1556,7 @@ function chipHtml(tag, checked) {
   </label>`;
 }
 
-// Campo para crear una etiqueta propia desde el propio modal.
+// Field to create a custom tag from the modal itself.
 function customTagInput(scope, id) {
   return `<div class="recipe-form__newtag">
     <input type="text" id="${id}" placeholder="Nueva etiqueta propia…" maxlength="60" autocomplete="off" aria-label="Nueva etiqueta" />
@@ -1561,28 +1564,28 @@ function customTagInput(scope, id) {
   </div>`;
 }
 
-// Categoría de un ingrediente de receta (issue #240): la fuente de
-// verdad es el catálogo (el formulario ya no la selecciona); si el
-// nombre no está en el catálogo (p. ej. se eliminó de él), se conserva
-// el valor guardado en la receta para no perder el dato.
+// Category of a recipe ingredient (issue #240): the source of truth
+// is the catalog (the form no longer selects it); if the name is not
+// in the catalog (e.g. it was removed from it), the value stored in
+// the recipe is kept so the data is not lost.
 function ingredientCategoriaDe(nombre, guardada) {
   if (!nombre) return guardada || "";
   const cat = ingredients.find((i) => normalizeIngredientName(i.nombre) === normalizeIngredientName(nombre));
   return cat ? (cat.categoriaId || "") : (guardada || "");
 }
 
-// Opciones del desplegable de unidad del formulario de receta (issue
-// #251): la primera opción vacía («—») significa sin especificar
-// (patrón de PACKAGE_UNITS, issue #224) y evita que el navegador
-// preseleccione «g» en filas nuevas; después las cinco unidades
-// estándar de SHOPPING_UNITS (g, Kg, mL, L, Unidades, mismas que el
-// ítem extra y el modal de añadir a la compra, ADR-091). Si la unidad
-// guardada en la receta no coincide con ninguna estándar (dato legado
-// de cuando el campo era texto libre), se añade como opción extra al
-// final, seleccionada, para no perder el dato al editar: es dato de
-// usuario y se escapa con escapeHtml. La comparación se hace siempre
-// normalizando ambos lados (normalizeUnit), así «kg» guardado coincide
-// con la opción «Kg». El selected cae exactamente en una opción.
+// Options of the recipe form's unit dropdown (issue #251): the first
+// empty option («—») means unspecified (pattern of PACKAGE_UNITS,
+// issue #224) and prevents the browser from preselecting «g» in new
+// rows; after it the five standard units of SHOPPING_UNITS (g, Kg,
+// mL, L, Unidades, same as the extra item and the add-to-shopping
+// modal, ADR-091). If the unit stored in the recipe does not match
+// any standard one (legacy data from when the field was free text),
+// it is added as an extra option at the end, selected, so the data is
+// not lost when editing: it is user data and escaped with escapeHtml.
+// The comparison is always done normalizing both sides
+// (normalizeUnit), so a stored «kg» matches the «Kg» option. The
+// selected falls on exactly one option.
 function unidadOptionsHtml(unidad) {
   const norm = normalizeUnit(unidad);
   const options = [{ value: "", label: "—", selected: !norm }];
@@ -1600,12 +1603,13 @@ function unidadOptionsHtml(unidad) {
     .join("");
 }
 
-// Fila de ingrediente del formulario de receta (issue #240): el nombre
-// ya no se escribe libremente ni se elige categoría. Es un combobox con
-// buscador sobre el catálogo de ingredientes (input + desplegable); la
-// selección queda en los hidden .ing-nombre-valor / .ing-categoria-valor,
-// que son los que lee readRecipeFromForm al guardar. El texto libre que
-// no corresponda a una opción no selecciona nada (la fila se ignora).
+// Recipe form's ingredient row (issue #240): the name is no longer
+// typed freely nor is the category chosen. It is a combo box with a
+// search over the ingredient catalog (input + dropdown); the
+// selection lands in the hidden .ing-nombre-valor /
+// .ing-categoria-valor, which readRecipeFromForm reads when saving.
+// Free text not matching an option selects nothing (the row is
+// ignored).
 function ingredienteRowHtml(ing, i) {
   const nombre = ing.nombre || "";
   return `<div class="recipe-form__ingrediente" data-row="${i}">
@@ -1624,12 +1628,12 @@ function ingredienteRowHtml(ing, i) {
   </div>`;
 }
 
-// Pinta las opciones del desplegable de un combobox de ingrediente:
-// las del catálogo que coinciden con el texto tecleado (orden
-// alfabético), más el valor ya seleccionado de la fila si no está en el
-// catálogo (dato legado que se conserva visible y elegible). `emptyText`
-// personaliza el mensaje de «sin coincidencias» (la lista de la compra
-// usa uno que remite a la pestaña Ingredientes, issue #249).
+// Paints the options of an ingredient combo box's dropdown:
+// the catalog ones matching the typed text (alphabetical order), plus
+// the row's already selected value if it is not in the catalog
+// (legacy data kept visible and selectable). `emptyText` customizes
+// the «no matches» message (the shopping list uses one that points to
+// the Ingredientes tab, issue #249).
 export function renderIngredienteComboList(combo, emptyText = "Sin coincidencias. Crea el ingrediente con «Nuevo ingrediente».") {
   const list = combo.querySelector(".ing-combo__list");
   const texto = combo.querySelector(".ing-nombre").value.trim();
@@ -1647,13 +1651,12 @@ export function renderIngredienteComboList(combo, emptyText = "Sin coincidencias
     : `<li role="option" class="ing-combo__empty" aria-disabled="true">${escapeHtml(emptyText)}</li>`;
 }
 
-// Comportamiento del combobox de ingrediente (issue #240): abrir al
-// enfocar o al escribir, filtrado en vivo, selección con click / Enter
-// (y flechas arriba/abajo), cierre con Escape o al salir del campo. El
-// texto libre por sí solo NO selecciona nada: solo las opciones del
-// catálogo escriben el valor oculto de la fila. Exportado (issue #249)
-// para que la lista de la compra reutilice el mismo desplegable en el
-// formulario de ítem extra.
+// Ingredient combo box behavior (issue #240): open on focus or while
+// typing, live filtering, selection with click / Enter (and up/down
+// arrows), close with Escape or on leaving the field. Free text on
+// its own does NOT select anything: only the catalog options write
+// the row's hidden value. Exported (issue #249) so the shopping list
+// reuses the same dropdown in the extra item form.
 export function bindIngredienteCombo(combo, { emptyText } = {}) {
   const input = combo.querySelector(".ing-nombre");
   const toggle = combo.querySelector(".ing-combo__toggle");
@@ -1710,8 +1713,8 @@ export function bindIngredienteCombo(combo, { emptyText } = {}) {
         e.preventDefault();
         const opts = [...list.querySelectorAll('[role="option"]')];
         const target = opts[activeIndex] || opts[0];
-        // Sin opciones elegibles (p. ej. solo el mensaje «Sin
-        // coincidencias»): Enter no selecciona y cierra el desplegable.
+        // No selectable options (e.g. only the «No matches»
+        // message): Enter does not select and closes the dropdown.
         if (!target || target.getAttribute("aria-disabled") === "true") close();
         else selectOption(target);
       }
@@ -1721,10 +1724,10 @@ export function bindIngredienteCombo(combo, { emptyText } = {}) {
       close();
     }
   });
-  // El blur cierra el desplegable con un pequeño retardo para no
-  // adelantarse al click de una opción (el mousedown con preventDefault
-  // de la lista mantiene el foco, así que aquí solo llegan los cierres
-  // de pulsar fuera o tabular).
+  // The blur closes the dropdown with a small delay so it does not
+  // beat the click of an option (the list's mousedown with
+  // preventDefault keeps the focus, so only closes from pressing
+  // outside or tabbing get here).
   input.addEventListener("blur", () => {
     closeTimer = setTimeout(close, 120);
   });
@@ -1755,15 +1758,15 @@ function instruccionRowHtml(paso, i) {
 }
 
 function bindRecipeModalHandlers(content) {
-  // Filas dinámicas de ingredientes e instrucciones.
+  // Dynamic ingredient and instruction rows.
   content.querySelector("#btn-add-ingrediente")?.addEventListener("click", () => {
     const wrap = content.querySelector("#recipe-ingredientes");
     wrap.insertAdjacentHTML("beforeend", ingredienteRowHtml({}, wrap.children.length));
     bindIngredienteCombo(wrap.lastElementChild.querySelector(".ing-combo"));
   });
-  // Nuevo ingrediente desde la receta (issue #240): abre la misma
-  // ventana de creación del catálogo; al guardarse, se añade una fila
-  // con ese ingrediente ya elegido.
+  // New ingredient from the recipe (issue #240): opens the same
+  // creation window of the catalog; when saved, a row is added with
+  // that ingredient already selected.
   content.querySelector("#btn-nuevo-ingrediente-receta")?.addEventListener("click", () => {
     openIngredientModal(null, { onCreated: (ing) => {
       const wrap = content.querySelector("#recipe-ingredientes");
@@ -1789,7 +1792,7 @@ function bindRecipeModalHandlers(content) {
     }
   });
 
-  // Chips: estado visual al marcar.
+  // Chips: visual state when checking.
   content.querySelectorAll(".recipe-form__chips").forEach((chips) => {
     chips.addEventListener("change", (e) => {
       const label = e.target.closest(".recipe-form__chip");
@@ -1799,13 +1802,13 @@ function bindRecipeModalHandlers(content) {
 
   content.querySelector("#btn-recipe-cancel")?.addEventListener("click", closeRecipeModal);
 
-  // Modo lectura (issue #234): la ventana de información tiene botones
-  // de editar y eliminar; el cierre queda para la ✕ (y el backdrop solo
-  // en lectura, ver setupRecipes).
+  // Read mode (issue #234): the info window has edit and delete
+  // buttons; closing is left to the ✕ (and the backdrop only in read
+  // mode, see setupRecipes).
   content.querySelector("[data-recipe-edit]")?.addEventListener("click", () => {
     const recipe = recipes.find((r) => r.id === editingRecipeId);
     if (!recipe) return;
-    openRecipeModal(recipe); // re-render en modo edición
+    openRecipeModal(recipe); // hot re-render in edit mode
   });
   content.querySelector("[data-recipe-delete]")?.addEventListener("click", async () => {
     const recipe = recipes.find((r) => r.id === editingRecipeId);
@@ -1813,12 +1816,12 @@ function bindRecipeModalHandlers(content) {
     if (await deleteRecipeFlow(recipe)) closeRecipeModal();
   });
 
-  // Importación desde URL.
+  // Import from URL.
   content.querySelector("#btn-import-recipe")?.addEventListener("click", () => {
     importRecipeFromUrl(content.querySelector("#recipe-import-url").value, content);
   });
 
-  // Etiquetas propias.
+  // Custom tags.
   content.querySelectorAll("[data-newtag-scope]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const input = content.querySelector(`#${btn.dataset.newtagInput}`);
@@ -1840,7 +1843,7 @@ function bindRecipeModalHandlers(content) {
     saveRecipeFromForm(content);
   });
 
-  // Comboboxes de ingrediente (issue #240): uno por fila.
+  // Ingredient combo boxes (issue #240): one per row.
   content.querySelectorAll("#recipe-ingredientes .ing-combo").forEach(bindIngredienteCombo);
 }
 
@@ -1862,12 +1865,12 @@ function readRecipeFromForm(content) {
     throw new Error("Las porciones son obligatorias.");
   }
 
-  // Ingredientes (issue #240): solo cuenta la selección del combobox
-  // (el valor oculto que escribe una opción del catálogo), y solo si
-  // el texto visible sigue siendo el de esa selección: si el usuario
-  // tecleó encima (texto libre), la fila se descarta con aviso. La
-  // categoría se toma del catálogo (o de la guardada en la receta si
-  // ya no está en él).
+  // Ingredients (issue #240): only the combo box selection counts
+  // (the hidden value written by a catalog option), and only if the
+  // visible text is still the one of that selection: if the user
+  // typed over it (free text), the row is discarded with a notice.
+  // The category is taken from the catalog (or from the one stored in
+  // the recipe if it is no longer there).
   const sinSeleccion = [];
   const ingredientes = [...content.querySelectorAll("#recipe-ingredientes .recipe-form__ingrediente")]
     .map((row) => {
@@ -1898,8 +1901,9 @@ function readRecipeFromForm(content) {
   const tipos = [...content.querySelectorAll("#recipe-tipos input:checked")].map((i) => i.value);
 
   const enlaces = content.querySelector("#recipe-enlaces").value.split("\n").map((s) => s.trim()).filter(Boolean);
-  // La URL pegada en «Importar desde una URL» se conserva como enlace
-  // de origen aunque la extracción no haya podido leerla (CORS, etc.).
+  // The URL pasted into «Importar desde una URL» is kept as the
+  // source link even when the extraction could not read it (CORS,
+  // etc.).
   const importUrl = content.querySelector("#recipe-import-url")?.value.trim();
   if (importUrl && !enlaces.includes(importUrl)) enlaces.unshift(importUrl);
 
@@ -1927,8 +1931,8 @@ async function saveRecipeFromForm(content) {
 
   try {
     if (editingRecipeId) {
-      // Guardar una edición implica revisarla: se quita el distintivo
-      // «Revisar» de las recetas importadas (ver manual 8.2).
+      // Saving an edit implies reviewing it: the «Revisar» badge is
+      // removed from imported recipes (see manual 8.2).
       await ctx.updateRecipe(currentUser, editingRecipeId, { ...data, needsReview: false });
       showToast("Receta actualizada.");
     } else {
@@ -1936,7 +1940,7 @@ async function saveRecipeFromForm(content) {
       await ctx.addRecipe(currentUser, { ...data, needsReview: imported });
       showToast(imported ? "Receta guardada (pendiente de revisar)." : "Receta guardada.");
     }
-    // El catálogo de ingredientes se rellena solo (upsert por nombre).
+    // The ingredient catalog fills itself (upsert by name).
     await syncIngredientsCatalog(data.ingredientes);
     closeRecipeModal();
   } catch (err) {
@@ -1945,11 +1949,11 @@ async function saveRecipeFromForm(content) {
   }
 }
 
-// Añade al catálogo los ingredientes nuevos (los existentes no se tocan).
-// El catálogo conserva la primera grafía escrita (issue #224): el
-// nombre se guarda con sus tildes y mayúsculas tal cual vino en la
-// receta, mientras que la deduplicación sigue usando el nombre
-// normalizado (sin tildes, minúsculas).
+// Adds the new ingredients to the catalog (existing ones are not
+// touched). The catalog keeps the first written spelling (issue
+// #224): the name is saved with its accents and capitals exactly as
+// it came in the recipe, while deduplication still uses the
+// normalized name (no accents, lowercase).
 async function syncIngredientsCatalog(ingredientes) {
   const known = new Set(ingredients.map((i) => normalizeIngredientName(i.nombre)));
   for (const ing of ingredientes || []) {
@@ -1964,7 +1968,7 @@ async function syncIngredientsCatalog(ingredientes) {
   }
 }
 
-// ---------- Importación desde URL ----------
+// ---------- Import from URL ----------
 
 async function importRecipeFromUrl(url, content) {
   const trimmed = (url || "").trim();
@@ -1972,8 +1976,8 @@ async function importRecipeFromUrl(url, content) {
     showToast("Pega una URL de la receta.");
     return;
   }
-  // Higiene defensiva: solo protocolos http/https (bloquea data:,
-  // file: y demás esquemas que el fetch del navegador no debe tocar).
+  // Defensive hygiene: only http/https protocols (blocks data:,
+  // file: and other schemes the browser's fetch must not touch).
   if (!/^https?:\/\//i.test(trimmed)) {
     showToast("La URL debe empezar por http:// o https://.");
     return;
@@ -1985,9 +1989,9 @@ async function importRecipeFromUrl(url, content) {
     const res = await fetch(trimmed, { mode: "cors" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const text = await res.text();
-    // Extracción mínima con regex sobre el HTML: título, descripción
-    // e imagen (og:image o el primer <img>). No es parseo semántico:
-    // la receta queda marcada para revisar.
+    // Minimal regex extraction over the HTML: title, description
+    // and image (og:image or the first <img>). It is not semantic
+    // parsing: the recipe is left marked for review.
     const doc = document.implementation.createHTMLDocument("");
     doc.documentElement.innerHTML = text;
     const nombre = doc.querySelector("h1")?.textContent.trim()
@@ -1999,8 +2003,8 @@ async function importRecipeFromUrl(url, content) {
     const fotoUrl = doc.querySelector('meta[property="og:image"]')?.content
       || doc.querySelector("img")?.src
       || "";
-    // Rellena el formulario con lo encontrado y marca la receta como
-    // pendiente de revisión (si guarda con el formulario en este estado).
+    // Fills the form with what was found and marks the recipe as
+    // pending review (if saved with the form in this state).
     if (nombre) {
       content.querySelector("#recipe-nombre").value = nombre;
       content.querySelector("#recipe-foto").value = fotoUrl || "";
@@ -2010,7 +2014,8 @@ async function importRecipeFromUrl(url, content) {
       showToast("No se pudo extraer la receta de esa web; se guardará la URL y la revisarás después.");
     }
   } catch (err) {
-    // CORS u otro fallo: la receta se guarda con la URL y needsReview.
+    // CORS or other failure: the recipe is saved with the URL and
+    // needsReview.
     showToast("No se pudo leer esa web (bloquea la lectura desde otra página). La receta se guardará con la URL.");
   } finally {
     btn.disabled = false;

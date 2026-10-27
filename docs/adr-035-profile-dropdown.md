@@ -1,205 +1,202 @@
-# ADR-035: Menú desplegable de perfil y cierre de sesión (issue #76)
+# ADR-035: Profile dropdown menu and logout (issue #76)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-05
 
-## Contexto
+## Context
 
-En la cabecera existían dos elementos de perfil:
+The header had two profile elements:
 
-- El **avatar** (`#btn-open-profile`) que, al pulsarlo, abría directamente la
-  vista de perfil en la sección **Estadísticas** (subtab `stats` activa).
-  Para llegar a las otras cuatro secciones (Amigos, Actividad, Datos,
-  Ajustes) había que navegar con las subtabs dentro de la vista.
-- Un botón **«Salir»** (`#btn-logout`) junto al nombre de usuario, siempre
-  visible en la cabecera.
+- The **avatar** (`#btn-open-profile`) which, when pressed, opened the
+  profile view directly on the **Estadísticas** section (active `stats`
+  subtab). To reach the other four sections (Amigos, Actividad, Datos,
+  Ajustes) one had to navigate with the subtabs inside the view.
+- A **«Salir» button** (`#btn-logout`) next to the username, always
+  visible in the header.
 
-La issue #76 pedía: al pulsar el avatar, debe desplegarse un menú
-(dropdown/popover) **anclado a esa posición** (no en mitad de la pantalla)
-con acceso a las cinco secciones del perfil (**Estadísticas, Amigos,
-Actividad, Datos y Ajustes**) y a **cerrar sesión**; además, el botón
-«Salir» debe eliminarse de la pantalla principal.
+Issue #76 asked: when pressing the avatar, a menu (dropdown/popover)
+**anchored to that position** must unfold (not mid-screen) with access to
+the five profile sections (**Estadísticas, Amigos, Actividad, Datos y
+Ajustes**) and to **logging out**; in addition, the «Salir» button must be
+removed from the main screen.
 
-Dos problemas de base motivaban el cambio:
+Two underlying problems motivated the change:
 
-1. **Lógica duplicada de apertura**: el handler del avatar (en `profile.js`)
-   y el del engranaje ⚙️ `#btn-settings` (en `app.js`) repetían el mismo
-   bloque (ocultar `#app`, mostrar `#profile-view`, activar la subtab,
-   mostrar/ocultar cada sección). Cualquier cambio de estructura del perfil
-   había que aplicarlo en dos sitios.
-2. **Descubribilidad**: con el avatar saltando directamente a Estadísticas,
-   el acceso a las demás secciones del perfil y al cierre de sesión era
-   menos evidente; el botón «Salir» ocupaba sitio permanente en la cabecera.
+1. **Duplicated opening logic**: the avatar's handler (in `profile.js`)
+   and the ⚙️ gear's `#btn-settings` (in `app.js`) repeated the same block
+   (hide `#app`, show `#profile-view`, activate the subtab,
+   show/hide each section). Any change to the profile's structure had to
+   be applied in two places.
+2. **Discoverability**: with the avatar jumping directly to Estadísticas,
+   access to the other profile sections and to logout was less evident;
+   the «Salir» button took up permanent space in the header.
 
-Como referencia existía el patrón ya probado del dropdown de
-notificaciones (`.notif-wrap` > `.notif-dropdown`): panel anclado a su
-botón, cierre con Escape, clic fuera y focus trap (`trapFocus` de
-`focus-utils.js`), implementado en `notifications-setup.js`.
+As a reference there was the already-proven pattern of the notifications
+dropdown (`.notif-wrap` > `.notif-dropdown`): panel anchored to its
+button, closing with Escape, click outside and focus trap (`trapFocus`
+from `focus-utils.js`), implemented in `notifications-setup.js`.
 
-**Nota histórica**: este ADR documenta la sustitución del comportamiento
-anterior, donde el avatar abría directamente Estadísticas y el cierre de
-sesión era un botón fijo en la cabecera.
+**Historical note**: this ADR documents the replacement of the previous
+behavior, where the avatar opened Estadísticas directly and logout was a
+fixed button in the header.
 
 Related issue: #76 — https://github.com/gonzalitojh/Registro-personal/issues/76
 
-## Decisión
+## Decision
 
-Sustituir la apertura directa del perfil por un **menú desplegable anclado
-al avatar** que agrupa las cinco secciones del perfil y el cierre de
-sesión, eliminando el botón «Salir» del header:
+Replace the profile's direct opening with a **dropdown menu anchored to
+the avatar** that groups the five profile sections and logout, removing
+the «Salir» button from the header:
 
-### 1. Dropdown anclado al botón avatar (patrón del dropdown de notificaciones)
+### 1. Dropdown anchored to the avatar button (notifications dropdown pattern)
 
-- En `index.html`, el botón avatar se envuelve en un contenedor
-  `.profile-menu-wrap` con `position: relative`.
-- El panel `#profile-dropdown` usa `position: absolute; right: 0;
-  top: calc(100% + 10px)`, de modo que se ancla al borde derecho del avatar
-  y aparece justo debajo de él — no centrado en pantalla, como pedía la
-  issue.
-- Contenido del menú: cinco botones con `data-section` (`stats`, `friends`,
-  `activity`, `data`, `settings`) etiquetados **Estadísticas, Amigos,
-  Actividad, Datos, Ajustes**, un separador y la opción **«Cerrar sesión»**
-  (`#btn-profile-logout`).
-- El panel es un elemento estático del DOM (no se inyecta por JS) y se
-  muestra/oculta con la clase `hidden`; `z-index: 40` y ancho
+- In `index.html`, the avatar button is wrapped in a `.profile-menu-wrap`
+  container with `position: relative`.
+- The `#profile-dropdown` panel uses `position: absolute; right: 0;
+  top: calc(100% + 10px)`, so it anchors to the avatar's right edge and
+  appears right below it — not centered on screen, as the issue asked.
+- Menu content: five buttons with `data-section` (`stats`, `friends`,
+  `activity`, `data`, `settings`) labeled **Estadísticas, Amigos,
+  Actividad, Datos, Ajustes**, a separator and the **«Cerrar sesión»**
+  option (`#btn-profile-logout`).
+- The panel is a static DOM element (not injected by JS) and is
+  shown/hidden with the `hidden` class; `z-index: 40` and width
   `min(240px, calc(100vw - 2rem))`.
 
-### 2. Móvil (≤600px): anclaje al viewport para evitar desbordes
+### 2. Mobile (≤600px): viewport anchoring to avoid overflow
 
-En `@media (max-width: 600px)` el panel pasa a `position: fixed;
-left: 1rem; right: 1rem; top: 4.5rem; width: auto`. Si la cabecera envuelve
-en dos filas (modo compacto), el ancla `absolute` quedaría desplazada a la
-izquierda de la pantalla y el panel desbordaría por la derecha. El anclaje
-fijo con márgenes laterales garantiza que el menú **nunca se salga del
-ancho visible** (requisito de responsividad de AGENTS.md: sin scroll
-horizontal), igual que el dropdown de notificaciones.
+In `@media (max-width: 600px)` the panel becomes `position: fixed;
+left: 1rem; right: 1rem; top: 4.5rem; width: auto`. If the header wraps
+into two rows (compact mode), the `absolute` anchor would be shifted to
+the left of the screen and the panel would overflow to the right. The
+fixed anchoring with lateral margins guarantees the menu **never leaves
+the visible width** (AGENTS.md's responsiveness requirement: no
+horizontal scroll), same as the notifications dropdown.
 
-### 3. Accesibilidad y gestión de foco
+### 3. Accessibility and focus management
 
-- El botón avatar lleva `aria-haspopup="menu"`, `aria-expanded` (se
-  actualiza a `true`/`false` al abrir/cerrar) y `aria-controls="profile-dropdown"`.
-- El panel lleva `role="menu"` con `aria-label`; cada opción es
-  `role="menuitem"` y el separador `role="separator"`.
-- **Focus trap**: al abrir se activa `trapFocus(profileDropdown)` de
-  `focus-utils.js` (el mismo helper que usan notificaciones, búsqueda
-  global, modales y valoraciones); al cerrar se ejecuta su cleanup.
-- **Cierre con Escape**: se registra `escHandler` (keydown) al abrir. El
-  cierre está centralizado en `closeProfileDropdown()`, que **des-registra
-  el handler en TODAS las vías de cierre** (`document.removeEventListener(
-  "keydown", escHandler)`): Escape, clic fuera, seleccionar una opción,
-  pulsar «Cerrar sesión» y volver a pulsar el avatar para cerrarlo.
-  (Commit `068873f`: el handler se sacó del listener del click y se movió a
-  `closeProfileDropdown()` precisamente para garantizar esa limpieza en
-  todos los caminos y no dejar listeners colgados.)
-- **Foco restaurado al avatar**: `closeProfileDropdown()` termina con
-  `btnOpenProfile.focus()`, devolviendo el foco al elemento que abrió el
-  menú.
-- Cierre con **clic fuera**: listener de click en `document` que cierra si
-  el clic cae fuera de `.profile-menu-wrap` y el panel está abierto.
+- The avatar button carries `aria-haspopup="menu"`, `aria-expanded`
+  (updated to `true`/`false` on open/close) and `aria-controls="profile-dropdown"`.
+- The panel carries `role="menu"` with an `aria-label`; each option is
+  `role="menuitem"` and the separator `role="separator"`.
+- **Focus trap**: on open, `trapFocus(profileDropdown)` from
+  `focus-utils.js` is activated (the same helper used by notifications,
+  global search, modals and ratings); on close its cleanup runs.
+- **Close with Escape**: an `escHandler` (keydown) is registered on open.
+  Closing is centralized in `closeProfileDropdown()`, which
+  **de-registers the handler on ALL closing paths**
+  (`document.removeEventListener("keydown", escHandler)`): Escape, click
+  outside, selecting an option, pressing «Cerrar sesión» and pressing the
+  avatar again to close it.
+  (Commit `068873f`: the handler was moved out of the click listener into
+  `closeProfileDropdown()` precisely to guarantee that cleanup on every
+  path and not leave hanging listeners.)
+- **Focus restored to the avatar**: `closeProfileDropdown()` ends with
+  `btnOpenProfile.focus()`, returning focus to the element that opened the
+  menu.
+- Close with **click outside**: a `document` click listener that closes if
+  the click lands outside `.profile-menu-wrap` and the panel is open.
 
-### 4. Función única `openProfileSection(section, ctx)` en `js/profile.js`
+### 4. Single function `openProfileSection(section, ctx)` in `js/profile.js`
 
-Se extrae la lógica de apertura a una única función que: oculta `#app`,
-muestra `#profile-view`, activa la subtab correspondiente
-(`aria-selected` + clase `is-active`), muestra/oculta las secciones
-(`stats`, `friends`, `activity`, `data`, `settings`) y dispara la carga
-específica de cada sección (`renderStats`, `loadFriendsList`,
-`loadActivityFeed`, `renderSettings`). La usan tres puntos de entrada:
+The opening logic is extracted into a single function that: hides `#app`,
+shows `#profile-view`, activates the corresponding subtab (`aria-selected`
++ `is-active` class), shows/hides the sections (`stats`, `friends`,
+`activity`, `data`, `settings`) and triggers each section's specific load
+(`renderStats`, `loadFriendsList`, `loadActivityFeed`, `renderSettings`).
+Three entry points use it:
 
-1. Las **subtabs** del perfil (`profile-subtab`).
-2. El botón **⚙️ engranaje** de la cabecera: `app.js` ya no repite el
-   bloque de apertura, solo llama a `profileApi.openProfileSection("settings", ctx)`.
-3. Las **opciones del nuevo menú** del avatar.
+1. The profile's **subtabs** (`profile-subtab`).
+2. The header's **⚙️ gear** button: `app.js` no longer repeats the
+   opening block, it just calls `profileApi.openProfileSection("settings", ctx)`.
+3. The **options of the avatar's new menu**.
 
-`setupProfile(ctx)` retorna `{ openProfileSection }`; `app.js` la recibe
-como `const profileApi = setupProfile(ctx)`.
+`setupProfile(ctx)` returns `{ openProfileSection }`; `app.js` receives it
+as `const profileApi = setupProfile(ctx)`.
 
-### 5. Eliminación total de `#btn-logout`
+### 5. Total removal of `#btn-logout`
 
-- `index.html`: el botón **«Salir»** desaparece del header.
-- `css/styles.css`: se eliminan los estilos específicos del botón en la
-  cabecera móvil (`.user-badge .btn--ghost`) y se actualiza el comentario
-  de la cabecera compacta (el cierre de sesión vive ahora en el menú del
-  avatar).
-- `js/app.js`: se elimina el listener `#btn-logout` → `logout()`.
+- `index.html`: the **«Salir»** button disappears from the header.
+- `css/styles.css`: the button's specific styles in the mobile header
+  (`.user-badge .btn--ghost`) are removed and the compact header's comment
+  is updated (logout now lives in the avatar's menu).
+- `js/app.js`: the `#btn-logout` → `logout()` listener is removed.
 
-### 6. Cierre de sesión desde el menú
+### 6. Logout from the menu
 
-La opción `#btn-profile-logout` cierra primero el menú
-(`closeProfileDropdown()`) y después llama a `logout()` de `firebase.js`
-(la misma función que usaba el botón anterior; `app.js` la conserva solo
-para el caso de correo no invitado).
+The `#btn-profile-logout` option first closes the menu
+(`closeProfileDropdown()`) and then calls `logout()` from `firebase.js`
+(the same function the previous button used; `app.js` keeps it only for
+the non-invited email case).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Mantener el botón «Salir» en la cabecera**: descartado — la issue
-  pedía explícitamente eliminarlo de la pantalla principal y centralizar
-  el cierre de sesión en el menú del avatar.
-- **Mantener el avatar abriendo directamente Estadísticas**: descartado —
-  no permitía acceso directo a las cinco secciones desde la cabecera y
-  dejaba el perfil como «página» de una sola entrada.
-- **Dropdown centrado en pantalla (estilo modal)**: descartado — la issue
-  pedía que el menú apareciera desplegado desde la posición del avatar,
-  no en mitad de la pantalla.
-- **Duplicar la lógica de apertura (patrón anterior, un bloque por
-  entrada)**: descartado — la duplicación en `app.js` y `profile.js` era
-  el problema de mantenibilidad que este ADR corrige; se unifica en
+- **Keeping the «Salir» button in the header**: rejected — the issue
+  explicitly asked to remove it from the main screen and centralize
+  logout in the avatar's menu.
+- **Keeping the avatar opening Estadísticas directly**: rejected — it did
+  not allow direct access to the five sections from the header and left
+  the profile as a «page» with a single entry.
+- **Screen-centered dropdown (modal style)**: rejected — the issue asked
+  for the menu to appear unfolded from the avatar's position, not in the
+  middle of the screen.
+- **Duplicating the opening logic (previous pattern, one block per entry
+  point)**: rejected — the duplication in `app.js` and `profile.js` was
+  the maintainability problem this ADR fixes; it is unified in
   `openProfileSection`.
-- **Inyectar el menú dinámicamente con JS**: descartado — un elemento
-  estático en el DOM es más sencillo de estilizar, auditar y accesibilizar
-  (mismo criterio que el dropdown de notificaciones).
+- **Injecting the menu dynamically with JS**: rejected — a static DOM
+  element is simpler to style, audit and make accessible (same criterion
+  as the notifications dropdown).
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **Acceso unificado a la cuenta desde un único punto**: el avatar agrupa
-  las cinco secciones del perfil y el cierre de sesión; el botón «Salir»
-  deja de ocupar sitio permanente en la cabecera.
-- **Lógica de apertura centralizada**: `openProfileSection` elimina la
-  duplicación; `app.js` reduce su tamaño y ya no repite el bloque de
-  apertura del perfil (un único call site para el ⚙️).
-- **Accesibilidad completa**: roles ARIA (`menu`/`menuitem`), estados
-  `aria-expanded`/`aria-controls`, focus trap, cierre con Escape y foco
-  restaurado al avatar en todas las vías de cierre.
-- **Sin riesgo de desborde en móvil**: el anclaje `fixed` ≤600px garantiza
-  que el menú quepa en cualquier ancho, cumpliendo las reglas de
-  responsividad del proyecto.
-- **Reutilización del patrón probado** del dropdown de notificaciones
-  (`trapFocus` de `focus-utils.js`), coherente con el resto de la app.
+### Positive
+- **Unified account access from a single point**: the avatar groups the
+  five profile sections and logout; the «Salir» button stops taking up
+  permanent space in the header.
+- **Centralized opening logic**: `openProfileSection` removes the
+  duplication; `app.js` shrinks and no longer repeats the profile opening
+  block (a single call site for the ⚙️).
+- **Full accessibility**: ARIA roles (`menu`/`menuitem`),
+  `aria-expanded`/`aria-controls` states, focus trap, Escape closing and
+  focus restored to the avatar on all closing paths.
+- **No overflow risk on mobile**: the `fixed` anchoring ≤600px guarantees
+  the menu fits any width, meeting the project's responsiveness rules.
+- **Reuse of the proven pattern** of the notifications dropdown
+  (`trapFocus` from `focus-utils.js`), coherent with the rest of the app.
 
-### Negativas
-- **El cierre de sesión requiere un paso más**: antes había un botón
-  siempre visible; ahora hay que abrir el menú del avatar y elegir
-  «Cerrar sesión». El riesgo se mitiga porque al recargar la página la
-  sesión se mantiene (persistencia de Firebase Auth), así que el cierre
-  no es una acción frecuente.
+### Negative
+- **Logout takes one more step**: there used to be an always-visible
+  button; now the avatar's menu must be opened and «Cerrar sesión»
+  chosen. The risk is mitigated because on page reload the session is
+  kept (Firebase Auth persistence), so logout is not a frequent action.
 
-### Neutras
-- **El menú solo existe en el DOM del header**: no afecta a otras vistas;
-  la clase `hidden` gestiona su visibilidad.
-- **PWA versionada a `20260807`**: `APP_VERSION` en `js/config.js`, el
-  service worker (`service-worker.js`) y los `?v=` de `index.html` se
-  actualizan para invalidar las cachés con el nuevo CSS/JS.
-- **El manual de usuario se actualizó en la misma tarea** (obligación de
-  AGENTS.md): secciones 2, 3, 13 y 14 (botón «Salir» sustituido por el
-  menú del avatar).
-- **`logout()` en `app.js` se conserva** para el caso de correo no
-  invitado (listado de invitados), independiente del menú.
+### Neutral
+- **The menu only exists in the header's DOM**: it does not affect other
+  views; the `hidden` class manages its visibility.
+- **PWA versioned to `20260807`**: `APP_VERSION` in `js/config.js`, the
+  service worker (`service-worker.js`) and the `?v=` refs of `index.html`
+  are updated to invalidate caches with the new CSS/JS.
+- **The user manual was updated in the same task** (obligation from
+  AGENTS.md): sections 2, 3, 13 and 14 (the «Salir» button replaced by the
+  avatar's menu).
+- **`logout()` in `app.js` is kept** for the non-invited email case
+  (guest list), independent of the menu.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `index.html` | `.profile-menu-wrap` envuelve al avatar; nuevo `#profile-dropdown` con 5 items (`data-section`), separador y `#btn-profile-logout`; atributos ARIA en botón y menú; **eliminado `#btn-logout`**; versionado `?v=20260807` |
-| `css/styles.css` | Nuevas clases `.profile-menu-wrap`, `.profile-dropdown` (+ `__item`, `__separator`, `__item--logout`) con anclaje `absolute right:0 top:calc(100%+10px)`; media query ≤600px con anclaje `fixed` al viewport; estilos `focus-visible`; **eliminados los estilos móviles del botón Salir** y actualizado su comentario |
-| `js/profile.js` | Nueva función única `openProfileSection(section, ctx)` (subtabs, ⚙️ y menú); lógica del dropdown (abrir/cerrar, Escape centralizado en `closeProfileDropdown`, clic fuera, focus trap, foco al avatar); `#btn-profile-logout` → `closeProfileDropdown()` + `logout()`; retorna `{ openProfileSection }` |
-| `js/app.js` | **Eliminado el listener de `#btn-logout`**; `const profileApi = setupProfile(ctx)`; `#btn-settings` ahora llama a `profileApi.openProfileSection("settings", ctx)` (ya no repite la apertura) |
-| `js/config.js` | `APP_VERSION` de `20260806` a `20260807` |
-| `service-worker.js` | `STATIC_ASSETS` con `?v=20260807` |
-| `docs/manual-de-usuario.md` | Botón «Salir» sustituido por el menú del avatar (secciones 2, 3, 13 y 14) |
-| `docs/adr-035-profile-dropdown.md` | **Nuevo**: este documento |
+| `index.html` | `.profile-menu-wrap` wraps the avatar; new `#profile-dropdown` with 5 items (`data-section`), separator and `#btn-profile-logout`; ARIA attributes on button and menu; **`#btn-logout` removed**; versioned `?v=20260807` |
+| `css/styles.css` | New classes `.profile-menu-wrap`, `.profile-dropdown` (+ `__item`, `__separator`, `__item--logout`) with anchoring `absolute right:0 top:calc(100%+10px)`; media query ≤600px with `fixed` anchoring to the viewport; `focus-visible` styles; **the Salir button's mobile styles removed** and its comment updated |
+| `js/profile.js` | New single function `openProfileSection(section, ctx)` (subtabs, ⚙️ and menu); dropdown logic (open/close, Escape centralized in `closeProfileDropdown`, click outside, focus trap, focus to avatar); `#btn-profile-logout` → `closeProfileDropdown()` + `logout()`; returns `{ openProfileSection }` |
+| `js/app.js` | **`#btn-logout` listener removed**; `const profileApi = setupProfile(ctx)`; `#btn-settings` now calls `profileApi.openProfileSection("settings", ctx)` (it no longer repeats the opening) |
+| `js/config.js` | `APP_VERSION` from `20260806` to `20260807` |
+| `service-worker.js` | `STATIC_ASSETS` with `?v=20260807` |
+| `docs/manual-de-usuario.md` | «Salir» button replaced by the avatar's menu (sections 2, 3, 13 and 14) |
+| `docs/adr-035-profile-dropdown.md` | **New**: this document |
 
 Related issue: #76 — https://github.com/gonzalitojh/Registro-personal/issues/76

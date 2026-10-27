@@ -1,80 +1,141 @@
-# ADR-026: Reglas generales del agente — AGENTS.md en la raíz y responsividad obligatoria
+# ADR-026: General agent rules — AGENTS.md at the root and mandatory responsiveness
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
-Agosto 2026
+## Date
+August 2026
 
-## Contexto
+## Context
 
-El agente libre de opencode (y cualquier agente que trabaje en el proyecto) no disponía de reglas fijas del proyecto: cada agente solo conocía las instrucciones de su propio archivo en `.opencode/agents/`, y el agente libre actuaba únicamente con la conversación del usuario. Esto generaba dos problemas:
+The free opencode agent (and any agent working on the project) had no fixed
+project rules: each agent only knew the instructions of its own file in
+`.opencode/agents/`, and the free agent acted only on the user's
+conversation. This caused two problems:
 
-1. **La responsividad no estaba garantizada**: la web debe verse correctamente en ordenador, tablet y móvil (cualquier ancho), sin desplazamiento horizontal a nivel de página ni texto fuera de pantalla, pero no existía ninguna regla que obligara a los agentes a verificarlo en cada tarea que toca HTML, CSS o UI.
-2. **No había lugar para reglas generales**: no existía un archivo de reglas de proyecto cargado automáticamente por opencode; cualquier norma transversal (como la responsividad) tendría que repetirse manualmente en cada agente o en cada conversación, con riesgo de olvidos e inconsistencias.
+1. **Responsiveness was not guaranteed**: the web must look right on
+   computer, tablet and mobile (any width), with no page-level horizontal
+   scroll and no text off-screen, but there was no rule obliging agents to
+   verify it in every task that touches HTML, CSS or UI.
+2. **There was no place for general rules**: there was no project rules file
+   loaded automatically by opencode; any cross-cutting rule (like
+   responsiveness) would have to be repeated manually in every agent or in
+   every conversation, with the risk of omissions and inconsistencies.
 
-El objetivo era crear un **lugar único y automático** para las reglas generales del proyecto, de forma que el agente libre y cualquier agente de opencode (subagentes, build/plan) las tuviera presentes SIEMPRE, en cualquier tarea, sin excepción.
+The goal was to create a **single, automatic place** for the project's
+general rules, so that the free agent and any opencode agent (subagents,
+build/plan) would always have them present, in any task, without exception.
 
 Related issue: #19 — https://github.com/gonzalitojh/Registro-personal/issues/19
 
-## Decisión
+## Decision
 
-Crear `AGENTS.md` en la **raíz del proyecto** como archivo de reglas generales, con la sección `## Reglas generales` → `### 1. Responsividad obligatoria` como primera regla. opencode carga `AGENTS.md` automáticamente en el contexto de **todos** los agentes (libre, subagentes y build/plan), por lo que la regla aplica a cualquier tarea sin necesidad de invocar un agente concreto.
+Create `AGENTS.md` at the **project root** as the general rules file, with
+the section `## Reglas generales` → `### 1. Responsividad obligatoria` as
+the first rule. opencode loads `AGENTS.md` automatically into the context of
+**all** agents (free, subagents and build/plan), so the rule applies to any
+task without needing to invoke a specific agent.
 
-### 1. Regla general en `AGENTS.md` de la raíz
+### 1. General rule in the root `AGENTS.md`
 
-El archivo establece que TODO agente de opencode debe cumplir las reglas SIEMPRE, en cualquier tarea, sin excepción, y que si una tarea entra en conflicto con ellas, el agente debe detenerse y pedir confirmación al usuario antes de continuar.
+The file states that EVERY opencode agent must comply with the rules ALWAYS,
+in any task, without exception, and that if a task conflicts with them, the
+agent must stop and ask the user for confirmation before continuing.
 
-La regla 1 («Responsividad obligatoria») define **4 criterios verificables**:
+Rule 1 («Responsividad obligatoria» [Mandatory responsiveness]) defines
+**4 verifiable criteria**:
 
-1. **Sin scroll horizontal a nivel de página** en ningún ancho; el scroll horizontal solo está permitido dentro de contenedores diseñados para ello (p. ej. tablas con `overflow-x: auto`).
-2. **Ningún texto fuera de pantalla**: títulos, fechas, nombres de autores y sinopsis largas deben ajustarse a su contenedor (`overflow-wrap: break-word`, `min-width: 0` en hijos de flex/grid, unidades relativas). No se trunca contenido esencial con ellipsis en móvil.
-3. **Unidades relativas** (%, rem, em, fr, vw/vh, `minmax()`) para anchos, columnas y tipografía de cuerpo; evitar `px` fijos en contenedores de ancho completo.
-4. **Prohibido `overflow-x: hidden` en `body`/`html` como parche**: enmascara el desbordamiento y puede cortar contenido; siempre se corrige la causa raíz.
+1. **No page-level horizontal scroll** at any width; horizontal scroll is
+   only allowed inside containers designed for it (e.g. tables with
+   `overflow-x: auto`).
+2. **No text off-screen**: titles, dates, author names and long synopses
+   must fit their container (`overflow-wrap: break-word`, `min-width: 0` on
+   flex/grid children, relative units). No truncating essential content with
+   ellipsis on mobile.
+3. **Relative units** (%, rem, em, fr, vw/vh, `minmax()`) for widths,
+   columns and body typography; avoid fixed `px` in full-width containers.
+4. **`overflow-x: hidden` on `body`/`html` is forbidden as a patch**: it
+   masks the overflow and can cut content; always fix the root cause.
 
-Además incluye la **verificación obligatoria** para tareas que toquen HTML, CSS o UI:
+It also includes the **mandatory verification** for tasks that touch HTML,
+CSS or UI:
 
-1. Probar en al menos tres anchos: **~360 px (móvil), ~768 px (tablet) y ~1280 px (ordenador)**, con el modo dispositivo de DevTools.
-2. Confirmar que no hay scroll horizontal: `document.documentElement.scrollWidth <= window.innerWidth` en consola (debe ser `true`).
-3. Probar con contenido largo realista: títulos largos, fechas, URLs o palabras sin espacios.
+1. Test at least three widths: **~360 px (mobile), ~768 px (tablet) and
+   ~1280 px (desktop)**, with DevTools device mode.
+2. Confirm there is no horizontal scroll:
+   `document.documentElement.scrollWidth <= window.innerWidth` in the
+   console (must be `true`).
+3. Test with realistic long content: long titles, dates, URLs or words
+   without spaces.
 
-### 2. Refuerzo en `qa-reviewer.md`
+### 2. Reinforcement in `qa-reviewer.md`
 
-Se añadió la sección `## Reglas generales del proyecto` en `.opencode/agents/qa-reviewer.md`: cuando la tarea toque HTML, CSS o UI, el revisor QA debe verificar además la regla de responsividad del `AGENTS.md` de la raíz (sin scroll horizontal ni texto fuera de pantalla en anchos de ~360 px, ~768 px y ~1280 px) y mencionar en su informe cualquier incumplimiento.
+The section `## Reglas generales del proyecto` [Project general rules] was
+added to `.opencode/agents/qa-reviewer.md`: when the task touches HTML, CSS
+or UI, the QA reviewer must also verify the responsiveness rule of the root
+`AGENTS.md` (no horizontal scroll nor text off-screen at widths of ~360 px,
+~768 px and ~1280 px) and mention any non-compliance in its report.
 
-### 3. Alcance y documentación
+### 3. Scope and documentation
 
-- **Alcance estricto**: la primera versión de `AGENTS.md` contiene **solo** la regla de responsividad; no se añadieron otras normas para mantener el archivo acotado a la issue.
-- **Sin referencia en README**: la existencia de las reglas no se documenta en el README; el ADR es la referencia suficiente.
+- **Strict scope**: the first version of `AGENTS.md` contains **only** the
+  responsiveness rule; no other rules were added to keep the file bounded to
+  the issue.
+- **No README reference**: the existence of the rules is not documented in
+  the README; the ADR is the sufficient reference.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Incluir la regla en un agente concreto** (p. ej. `tdd-ddd-architect.md` o `sdd-master.md`): descartado — las instrucciones de un agente solo se cargan cuando ese agente se invoca; la regla no aplicaría al agente libre ni a build/plan, que son precisamente quienes más tareas de UI realizan.
-- **Regla global en `~/.config/opencode`**: descartado — la configuración global es local a la máquina del usuario, no viaja con el repositorio ni la ven otros colaboradores, y no se versiona.
-- **`.opencode/AGENTS.md`**: descartado — la carga de este archivo depende de la versión de opencode y está menos documentado que el `AGENTS.md` de la raíz, que es el mecanismo estándar.
-- **`opencode.json` con `instructions`**: descartado — resuelve lo mismo con más complejidad de configuración (fichero JSON menos legible para reglas largas como la checklist de verificación).
+- **Include the rule in a specific agent** (e.g. `tdd-ddd-architect.md` or
+  `sdd-master.md`): rejected — an agent's instructions are only loaded when
+  that agent is invoked; the rule would not apply to the free agent or to
+  build/plan, which are precisely those doing the most UI tasks.
+- **Global rule in `~/.config/opencode`**: rejected — the global config is
+  local to the user's machine, does not travel with the repository, is not
+  seen by other collaborators and is not versioned.
+- **`.opencode/AGENTS.md`**: rejected — loading this file depends on the
+  opencode version and it is less documented than the root `AGENTS.md`,
+  which is the standard mechanism.
+- **`opencode.json` with `instructions`**: rejected — it solves the same
+  thing with more configuration complexity (a JSON file is less readable for
+  long rules like the verification checklist).
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **La regla llega a todos los agentes**: cualquier agente de opencode que trabaje en el proyecto (libre, subagentes, build/plan) tiene presente la responsividad en cualquier tarea, sin depender de qué agente se invoque.
-- **Lugar único y versionado para reglas generales**: las futuras reglas generales se añadirán como puntos numerados en la misma sección `## Reglas generales` del `AGENTS.md`.
-- **Verificación objetiva en tareas UI**: la checklist (3 anchos, `scrollWidth <= innerWidth`, contenido largo realista) convierte la responsividad en un criterio comprobable, y el refuerzo en `qa-reviewer.md` hace que se valide también en la revisión QA.
-- **Resuelto en la capa de configuración, no en código**: no hay cambios en HTML, CSS ni JS; la regla es preventiva (evita regresiones de responsividad en futuras tareas).
+### Positive
+- **The rule reaches all agents**: any opencode agent working on the project
+  (free, subagents, build/plan) keeps responsiveness in mind in any task,
+  regardless of which agent is invoked.
+- **Single, versioned place for general rules**: future general rules will
+  be added as numbered points in the same `## Reglas generales` section of
+  `AGENTS.md`.
+- **Objective verification in UI tasks**: the checklist (3 widths,
+  `scrollWidth <= innerWidth`, realistic long content) turns responsiveness
+  into a checkable criterion, and the reinforcement in `qa-reviewer.md`
+  makes it validated in the QA review too.
+- **Solved at the configuration layer, not in code**: no changes to HTML,
+  CSS or JS; the rule is preventive (avoids responsiveness regressions in
+  future tasks).
 
-### Negativas
-- **Nuevo archivo de configuración que mantener**: `AGENTS.md` debe mantenerse coherente con el proyecto real; si la regla quedara obsoleta, habría que actualizarla (mitigado por la naturaleza general de la regla y porque el propio ADR documenta su propósito).
+### Negative
+- **New configuration file to maintain**: `AGENTS.md` must be kept
+  consistent with the real project; if the rule became obsolete, it would
+  need updating (mitigated by the general nature of the rule and by the ADR
+  itself documenting its purpose).
 
-### Neutras
-- **`AGENTS.md` complementa, no sustituye**: los agentes de `.opencode/agents/` conservan sus instrucciones específicas; el archivo raíz aporta la capa transversal que faltaba.
-- **Alcance inicial limitado a responsividad**: el archivo está preparado para crecer con nuevos puntos numerados, pero la issue #19 solo añade la regla 1.
+### Neutral
+- **`AGENTS.md` complements, does not replace**: agents in
+  `.opencode/agents/` keep their specific instructions; the root file adds
+  the missing cross-cutting layer.
+- **Initial scope limited to responsiveness**: the file is ready to grow
+  with new numbered points, but issue #19 only adds rule 1.
 
-## Archivos creados/modificados
+## Files created/modified
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `AGENTS.md` | **Nuevo**: reglas generales del proyecto; sección `## Reglas generales` → `### 1. Responsividad obligatoria` con 4 criterios verificables y checklist de verificación para tareas UI (anchos ~360/~768/~1280 px, `scrollWidth <= innerWidth`, contenido largo realista) |
-| `.opencode/agents/qa-reviewer.md` | Sección `## Reglas generales del proyecto`: el revisor QA verifica la regla de responsividad en tareas que toquen HTML, CSS o UI y lo reporta en su informe |
-| `docs/adr-026-agent-rules.md` | **Nuevo**: este documento |
+| `AGENTS.md` | **New**: project general rules; section `## Reglas generales` → `### 1. Responsividad obligatoria` with 4 verifiable criteria and a verification checklist for UI tasks (widths ~360/~768/~1280 px, `scrollWidth <= innerWidth`, realistic long content) |
+| `.opencode/agents/qa-reviewer.md` | Section `## Reglas generales del proyecto`: the QA reviewer verifies the responsiveness rule in tasks touching HTML, CSS or UI and reports it |
+| `docs/adr-026-agent-rules.md` | **New**: this document |
 
 Related issue: #19 — https://github.com/gonzalitojh/Registro-personal/issues/19

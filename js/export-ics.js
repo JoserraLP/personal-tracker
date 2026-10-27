@@ -1,20 +1,20 @@
 // =============================================================
-// Exportación de calendario de estrenos a formato .ics (iCalendar).
-// Genera un archivo compatible con RFC 5545 que incluye los
-// próximos episodios de series en emisión, las fechas de estreno
-// de películas pendientes y los lanzamientos pendientes de
-// videojuegos, para importar en Google Calendar, Apple Calendar
-// y otros.
+// Export of the releases calendar to .ics format (iCalendar).
+// Generates an RFC 5545 compatible file that includes the
+// upcoming episodes of airing TV series, the release dates
+// of pending movies and the pending launches of
+// videogames, to import into Google Calendar, Apple Calendar
+// and others.
 // =============================================================
 
 import { todayISO } from "./dates.js";
 import * as ui from "./ui.js";
 
-// ---------- Ayudantes ICS ----------
+// ---------- ICS helpers ----------
 
 /**
-  * Escapa caracteres especiales para valores TEXT en iCalendar.
-  * Según RFC 5545, hay que escapar: \, ; , y saltos de línea.
+  * Escapes special characters for TEXT values in iCalendar.
+  * Per RFC 5545, the following must be escaped: \, ; , and line breaks.
   */
 function escapeIcsText(text) {
   if (typeof text !== "string") return "";
@@ -27,7 +27,7 @@ function escapeIcsText(text) {
 }
 
 /**
-  * Convierte una fecha ISO "YYYY-MM-DD" al formato DATE de iCalendar: YYYYMMDD.
+  * Converts an ISO "YYYY-MM-DD" date to the iCalendar DATE format: YYYYMMDD.
   */
 function formatIcsDate(isoString) {
   if (!isoString) return null;
@@ -37,9 +37,9 @@ function formatIcsDate(isoString) {
 }
 
 /**
-  * Aplica el plegado de línea RFC 5545: máximo 75 octetos por línea.
-  * Las líneas que exceden se continúan con un espacio al inicio de la
-  * siguiente línea (continuation line).
+  * Applies RFC 5545 line folding: maximum 75 octets per line.
+  * Lines that exceed are continued with a space at the beginning of the
+  * next line (continuation line).
   */
 function foldLine(line) {
   const maxLen = 75;
@@ -52,7 +52,7 @@ function foldLine(line) {
       parts.push(remaining.slice(0, maxLen));
       remaining = remaining.slice(maxLen);
     } else {
-      // Las líneas de continuación empiezan con un espacio (1 octeto)
+      // Continuation lines start with a space (1 octet)
       const avail = maxLen - 1;
       parts.push(" " + remaining.slice(0, avail));
       remaining = remaining.slice(avail);
@@ -62,20 +62,20 @@ function foldLine(line) {
 }
 
 /**
-  * Genera un UID único y estable para cada evento.
+  * Generates a unique and stable UID for each event.
   */
 function generateUid(type, itemId) {
   return `mi-registro-${type}-${itemId}@registro-personal`;
 }
 
-// ---------- Generación ICS ----------
+// ---------- ICS generation ----------
 
 /**
-  * Construye el contenido completo de un archivo .ics a partir de
-  * una lista de eventos.
+  * Builds the complete content of an .ics file from
+  * a list of events.
   *
   * @param {Array<{uid:string, dtstart:string, summary:string, description?:string}>} events
-  * @returns {string} Contenido del archivo ICS (con CRLF)
+  * @returns {string} ICS file content (with CRLF)
   */
 function generateIcsString(events) {
   const lines = [
@@ -100,26 +100,26 @@ function generateIcsString(events) {
 
   lines.push("END:VCALENDAR");
 
-  // Unir con CRLF (estándar iCalendar) y plegar líneas largas
+  // Join with CRLF (iCalendar standard) and fold long lines
   return lines.map(foldLine).join("\r\n") + "\r\n";
 }
 
-// ---------- Recopilación de datos ----------
+// ---------- Data collection ----------
 
 /**
-  * Recopila los próximos eventos (episodios de series, estrenos de
-  * películas y lanzamientos de videojuegos) a partir de los datos
-  * del usuario.
+  * Collects the upcoming events (TV series episodes, movie
+  * releases and videogame launches) from the user's
+  * data.
   *
-  * Los grupos se leen de Firestore bajo demanda (getItemsOnce) y no
-  * del estado en memoria (issue #178): con el lazy loading por
-  * pestaña, un grupo que el usuario no ha visitado aún no está
-  * suscrito y la exportación se quedaría sin esos eventos.
+  * Groups are read from Firestore on demand (getItemsOnce) and not
+  * from the in-memory state (issue #178): with per-tab lazy
+  * loading, a group the user hasn't visited yet is not
+  * subscribed and the export would be left without those events.
   *
-  * @param {Object} ctx - Contexto de la aplicación
-  * @param {boolean} includeMovies - Incluir estrenos de películas
-  * @param {boolean} includeTv - Incluir próximos episodios de series
-  * @param {boolean} includeGames - Incluir lanzamientos de videojuegos
+  * @param {Object} ctx - Application context
+  * @param {boolean} includeMovies - Include movie releases
+  * @param {boolean} includeTv - Include upcoming TV series episodes
+  * @param {boolean} includeGames - Include videogame launches
   * @returns {Promise<Array<{uid:string, dtstart:string, summary:string, description?:string}>>}
   */
 async function collectUpcomingEvents(ctx, includeMovies, includeTv, includeGames) {
@@ -152,7 +152,7 @@ async function collectUpcomingEvents(ctx, includeMovies, includeTv, includeGames
   if (includeMovies) {
     const movies = (user && (await ctx.getItemsOnce(user.uid, "movie"))) || [];
     for (const item of movies) {
-      // Incluir películas pendientes o con awaitingRelease, que tengan fecha futura
+      // Include pending movies or with awaitingRelease, as long as they have a future date
       const isPending = item.status === "pendiente" || item.awaitingRelease === true;
       if (!isPending) continue;
       if (!item.releaseDate) continue;
@@ -172,18 +172,18 @@ async function collectUpcomingEvents(ctx, includeMovies, includeTv, includeGames
   if (includeGames) {
     const games = (user && (await ctx.getItemsOnce(user.uid, "game"))) || [];
     for (const item of games) {
-      // Pendiente de lanzamiento: fecha futura y sin historial de juego.
-      // Criterio directo (issue #176): no se confía solo en awaitingRelease,
-      // quick-actions.js/modal-handlers.js no lo limpian al marcar un juego
-      // como jugado (ver daily-check.js), así que el playLog es la fuente
-      // de verdad para excluir juegos ya jugados. Los juegos manuales no
-      // tienen releaseDate y quedan fuera por la primera guarda.
+      // Pending launch: future date and no play history.
+      // Direct criterion (issue #176): awaitingRelease alone is not trusted,
+      // quick-actions.js/modal-handlers.js don't clear it when marking a game
+      // as played (see daily-check.js), so the playLog is the source
+      // of truth to exclude already-played games. Manual games do
+      // not have releaseDate and are excluded by the first guard.
       if (!item.releaseDate) continue;
       if (item.releaseDate < today) continue;
       if (item.playLog && item.playLog.length) continue;
 
       const dtstart = formatIcsDate(item.releaseDate);
-      if (!dtstart) continue; // defensa: fecha no parseable
+      if (!dtstart) continue; // defense: unparseable date
 
       events.push({
         uid: generateUid("game", item.id),
@@ -196,18 +196,18 @@ async function collectUpcomingEvents(ctx, includeMovies, includeTv, includeGames
     }
   }
 
-  // Ordenar por fecha
+  // Sort by date
   events.sort((a, b) => a.dtstart.localeCompare(b.dtstart));
 
   return events;
 }
 
-// ---------- Descarga ----------
+// ---------- Download ----------
 
 /**
-  * Genera y descarga el archivo .ics.
+  * Generates and downloads the .ics file.
   *
-  * @param {Object} ctx - Contexto de la aplicación
+  * @param {Object} ctx - Application context
   * @param {{includeMovies?:boolean, includeTv?:boolean, includeGames?:boolean}} options
   */
 export async function downloadIcs(ctx, options = {}) {
@@ -252,12 +252,12 @@ const events = await collectUpcomingEvents(ctx, includeMovies, includeTv, includ
   }
 }
 
-// ---------- Configuración de botones ----------
+// ---------- Button setup ----------
 
 /**
-  * Configura los botones de exportación de calendario en la vista de perfil.
+  * Configures the calendar export buttons in the profile view.
   *
-  * @param {Object} ctx - Contexto de la aplicación
+  * @param {Object} ctx - Application context
   */
 export function setupExportIcs(ctx) {
   const btn = document.getElementById("btn-export-ics");

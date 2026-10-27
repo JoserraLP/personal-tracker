@@ -1,47 +1,46 @@
 // =============================================================
-// Importación del historial completo desde un fichero JSON de
-// TV Time. El export de TV Time es un array de series con sus
-// temporadas/episodios y el estado de visionado de cada uno
-// (is_watched + watched_at). Este módulo es PURO (parseo y
-// transformación) para poder testearlo sin DOM/Firebase, y la
-// función setupTvTimeImport conecta el botón de Ajustes con el
-// flujo real (fichero → confirmación → alta en Firestore).
+// Import of the full history from a TV Time JSON file. The TV Time
+// export is an array of shows with their seasons/episodes and the
+// watch state of each one (is_watched + watched_at). This module is
+// PURE (parsing and transformation) so it can be tested without
+// DOM/Firebase, and the setupTvTimeImport function wires the
+// Settings button with the real flow (file → confirm → creation in
+// Firestore).
 //
-// Cada serie se importa como un ítem `type: "tv"` con `manual:
-// true`: TV Time identificaba las series por TVDB y aquí no
-// existe el id de TMDB, así que se excluye del flujo de
-// "sin estrenar" (que depende de fechas de TMDB) y la ficha se
-// edita como serie manual. Las temporadas "especiales"
-// (temporada 0) no se importan. El marcado favorito tampoco se
-// importa (la app no tiene favoritos).
+// Each show is imported as an item with `type: "tv"` and `manual:
+// true`: TV Time identified shows by TVDB and the TMDB id does not
+// exist here, so it is excluded from the "unreleased" flow (which
+// depends on TMDB dates) and the detail view is edited as a manual
+// show. "Special" seasons (season 0) are not imported. The favorite
+// mark is not imported either (the app has no favorites).
 // =============================================================
 
 import * as ui from "./ui.js";
 
-// El objeto ctx entrante manda (patrón del repo: los módulos no
-// hablan con Firebase directamente, app.js inyecta en el contexto
-// las funciones de acceso a datos que hacen falta).
+// The incoming ctx object rules (repo pattern: modules do not talk
+// to Firebase directly; app.js injects into the context the data
+// access functions that are needed).
 
 // -------------------------------------------------------------
-// Utilidades puras
+// Pure utilities
 // -------------------------------------------------------------
 
-// watched_at de TV Time ("2023-01-12 20:20:32") → ISO de día
-// ("2023-01-12"), el formato canónico de la web. Devuelve null si
-// el valor no es una fecha razonable.
+// TV Time watched_at ("2023-01-12 20:20:32") → day ISO
+// ("2023-01-12"), the site's canonical format. Returns null if the
+// value is not a reasonable date.
 export function tvTimeDateToIso(watchedAt) {
   if (!watchedAt || typeof watchedAt !== "string") return null;
   const day = watchedAt.trim().split(" ")[0];
   return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
 }
 
-// Estado original de TV Time (status) + datos de progreso → estado
-// del registro (pendiente/en_curso/completado/abandonado/standby):
-//   up_to_date    → completado si terminó todo lo registrado; si no, en_curso
+// Original TV Time state (status) + progress data → record state
+// (pendiente/en_curso/completado/abandonado/standby):
+//   up_to_date    → completado if everything registered is finished; otherwise en_curso
 //   not_started_yet → pendiente
-//   continuing    → en_curso (o pendiente si no ha visto nada)
-//   stopped       → abandonado (o pendiente si no ha visto nada)
-//   desconocido   → pendiente
+//   continuing    → en_curso (or pendiente if nothing has been watched)
+//   stopped       → abandonado (or pendiente if nothing has been watched)
+//   unknown       → pendiente
 export function statusFromTvTime(status, watchedCount, episodeCount) {
   switch (status) {
     case "up_to_date":
@@ -55,8 +54,8 @@ export function statusFromTvTime(status, watchedCount, episodeCount) {
   }
 }
 
-// Temporadas NO especiales (content), en orden, con su número de
-// episodios: la forma que la app usa como seasonsMeta en ficha.
+// NON-special seasons (content), in order, with their episode
+// count: the shape the app uses as seasonsMeta in the detail view.
 export function tvTimeSeasonsMeta(entry) {
   const seasons = Array.isArray(entry?.seasons) ? entry.seasons : [];
   return seasons
@@ -65,11 +64,11 @@ export function tvTimeSeasonsMeta(entry) {
     .map((s) => ({ seasonNumber: s.number, episodeCount: Number(s.episodes?.length) || 0 }));
 }
 
-// watched por temporada/episodio con las fechas del fichero: la
-// forma canónica #{ temporada: { episodio: { date, rating, times } } }
-// (js/tv-progress.js). Solo temporadas no especiales; un episodio
-// contado varias veces se guarda con times = rewatch_count +
-// watched_count si hay datos, o con lo mínimo (1).
+// watched by season/episode with the dates from the file: the
+// canonical shape #{ season: { episode: { date, rating, times } } }
+// (js/tv-progress.js). Non-special seasons only; an episode counted
+// several times is stored with times = rewatch_count + watched_count
+// when there is data, or with the minimum (1).
 export function tvTimeWatchedMap(entry) {
   const watched = {};
   let firstDate = null;
@@ -96,9 +95,9 @@ export function tvTimeWatchedMap(entry) {
   return { watched, firstWatchedAt: firstDate, lastWatchedAt: lastDate, episodesWatched };
 }
 
-// Siguiente episodio pendiente: el primer episodio NO visto (en orden
-// temporada → número) de las temporadas no especiales. null si la
-// serie está completa según el fichero.
+// Next pending episode: the first episode NOT watched (in order
+// season → number) of the non-special seasons. null if the show is
+// complete according to the file.
 export function tvTimeNextEpisode(entry) {
   const seasons = tvTimeSeasonsMeta(entry);
   const fileEpisodes = new Map();
@@ -117,9 +116,9 @@ export function tvTimeNextEpisode(entry) {
   return null;
 }
 
-// Convierte UNA entrada de TV Time a un borrador de ítem series
-// (`type: "tv"`). Devuelve null si la entrada no es válida
-// (sin título o sin estructura mínima: el flujo la informa y la salta).
+// Converts ONE TV Time entry to a show item draft (`type: "tv"`).
+// Returns null if the entry is not valid (no title or missing
+// minimum structure: the flow informs and skips it).
 export function buildTvTimeItem(entry) {
   if (!entry || !entry.title) return null;
 
@@ -151,9 +150,9 @@ export function buildTvTimeItem(entry) {
   };
 }
 
-// Parsea el export completo y devuelve los borradores + contadores de
-// errores. Lanza (Error con mensaje claro) si el fichero no tiene el
-// aspecto esperado: el flujo UI muestra el motivo.
+// Parses the full export and returns the drafts + error counters.
+// Throws (Error with a clear message) if the file does not look as
+// expected: the UI flow shows the reason.
 export function parseTvTimeExport(json) {
   if (!Array.isArray(json)) {
     throw new Error("El fichero no tiene el formato del export de TV Time (se esperaba una lista de series).");
@@ -185,7 +184,7 @@ export function parseTvTimeExport(json) {
 }
 
 // -------------------------------------------------------------
-// Flujo UI (varios ficheros fichero → confirma → crea)
+// UI flow (several files file → confirm → create)
 // -------------------------------------------------------------
 
 let _tvTimeFileInput = null;
@@ -201,12 +200,12 @@ function getTvTimeFileInput() {
 }
 
 /**
- * Importa un fichero del export de TV Time:
- *   pregunta fichero → parsea → muestra resumen y pide confirmación →
- *   da de alta todas las series en Firestore.
- * Si una serie ya existe en el registro se importa otra vez (puede
- * duplicarse): se avisa en la confirmación.
- * @param {Object} ctx - Contexto de la aplicación (ctx de app.js).
+ * Imports a file from the TV Time export:
+ *   asks for the file → parses → shows a summary and asks for
+ *   confirmation → creates all the shows in Firestore.
+ * If a show already exists in the record it is imported again (it
+ * may be duplicated): it is warned in the confirmation.
+ * @param {Object} ctx - Application context (ctx from app.js).
  */
 export function importTvTime(ctx) {
   const user = ctx.getCurrentUser();
@@ -271,8 +270,8 @@ export function importTvTime(ctx) {
 }
 
 /**
- * Conecta el botón de Ajustes con el flujo de importación.
- * @param {Object} ctx - Contexto de la aplicación (ctx de app.js).
+ * Connects the Settings button with the import flow.
+ * @param {Object} ctx - Application context (ctx from app.js).
  */
 export function setupTvTimeImport(ctx) {
   const btn = document.getElementById("btn-import-tvtime");

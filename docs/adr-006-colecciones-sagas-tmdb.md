@@ -1,25 +1,25 @@
-# ADR-006: Colecciones y sagas de películas desde TMDB
+# ADR-006: Movie collections and sagas from TMDB
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Contexto
-TMDB proporciona en sus respuestas de detalle de película el campo `belongs_to_collection`, que indica si una película pertenece a una colección o saga (Marvel, Harry Potter, El Señor de los Anillos, Indiana Jones, etc.). Este campo incluye el identificador de la colección, su nombre y una URL de póster.
+## Context
+TMDB provides in its movie detail responses the field `belongs_to_collection`, which indicates whether a movie belongs to a collection or saga (Marvel, Harry Potter, The Lord of the Rings, Indiana Jones, etc.). This field includes the collection's identifier, its name and a poster URL.
 
-Además, TMDB dispone de un endpoint específico `GET /3/collection/{collection_id}` que devuelve todas las películas que componen una colección, ordenadas cronológicamente.
+In addition, TMDB offers a dedicated endpoint `GET /3/collection/{collection_id}` that returns all the movies making up a collection, ordered chronologically.
 
-Hasta ahora, la aplicación obtenía detalles de TMDB al añadir una película (duración, sinopsis, género, reparto, director) pero ignoraba por completo el campo `belongs_to_collection`. Como resultado, el usuario no tenía forma de saber si una película pertenecía a una saga más grande ni podía añadir fácilmente el resto de películas de esa saga.
+Until now, the application fetched details from TMDB when adding a movie (runtime, synopsis, genre, cast, director) but completely ignored the `belongs_to_collection` field. As a result, the user had no way of knowing whether a movie belonged to a larger saga and could not easily add the remaining movies of that saga.
 
-## Decisión
-Implementar la funcionalidad completa de colecciones/sagas de TMDB, que incluye:
+## Decision
+Implement the full TMDB collections/sagas feature, which includes:
 
-1. Capturar los datos de colección al obtener detalles de una película.
-2. Mostrar un banner con el nombre de la saga en el modal de detalle.
-3. Ofrecer un botón "Añadir resto de la saga" que consulta el endpoint de colecciones.
-4. Presentar un selector con checkboxes para que el usuario elija qué películas añadir.
+1. Capturing collection data when fetching a movie's details.
+2. Showing a banner with the saga name in the detail modal.
+3. Offering an "Add rest of the saga" button that queries the collections endpoint.
+4. Presenting a checkbox picker so the user can choose which movies to add.
 
-### Obtención de datos
-El campo `belongs_to_collection` ya viene incluido en la respuesta de `GET /movie/{id}` de TMDB. Se extraen tres campos:
+### Data retrieval
+The `belongs_to_collection` field is already included in the response of TMDB's `GET /movie/{id}`. Three fields are extracted:
 
 ```javascript
 collectionId: data.belongs_to_collection ? String(data.belongs_to_collection.id) : null,
@@ -28,103 +28,103 @@ collectionPoster: data.belongs_to_collection?.poster_path
   ? "https://image.tmdb.org/t/p/w92..." : null,
 ```
 
-Para obtener las películas de una colección se usa el endpoint:
+To fetch the movies of a collection, the endpoint used is:
 
 ```javascript
 GET /3/collection/{collectionId}?language=es-ES
 ```
 
-Que devuelve un array `parts` con todas las películas de la saga.
+Which returns a `parts` array with all the movies of the saga.
 
-### Flujo de datos
+### Data flow
 ```
 TMDB /movie/{id} → getMovieDetails()
-  └─ Añade collectionId, collectionName, collectionPoster al draft
-  └─ Se guardan en Firestore (users/{uid}/movies/{id})
+  └─ Adds collectionId, collectionName, collectionPoster to the draft
+  └─ Saved to Firestore (users/{uid}/movies/{id})
 
-Modal de detalle → openMovieModal()
-  └─ Si collectionId existe → muestra saga-banner con botón
-  └─ Botón → openSagaSelector()
-       ├─ getCollectionDetails(collectionId) → array parts
-       ├─ Filtra contra existingIds (ctx.getItemsByGroup("movies"))
-       ├─ openSagaSelectionModal() con checkboxes
-       └─ Por cada seleccionada → addSagaMovie() → getMovieDetails() + addItem()
+Detail modal → openMovieModal()
+  └─ If collectionId exists → shows saga-banner with button
+  └─ Button → openSagaSelector()
+       ├─ getCollectionDetails(collectionId) → parts array
+       ├─ Filters against existingIds (ctx.getItemsByGroup("movies"))
+       ├─ openSagaSelectionModal() with checkboxes
+       └─ For each selected → addSagaMovie() → getMovieDetails() + addItem()
 ```
 
-### Visualización
+### Visualization
 
-#### Banner de saga en modal de película
-Se inserta un banner entre la información ampliada de TMDB (`extraInfoHtml`) y la sección de visionados. El banner muestra:
-- **Texto**: "Saga: [nombre de la colección]"
-- **Botón**: "Añadir resto de la saga" con estilo `btn--accent-media` (verde petróleo)
+#### Saga banner in the movie modal
+A banner is inserted between the extended TMDB info (`extraInfoHtml`) and the watch log section. The banner shows:
+- **Text**: "Saga: [collection name]"
+- **Button**: "Add rest of the saga" styled with `btn--accent-media` (teal)
 
-Si la película no pertenece a ninguna colección (`collectionId` es `null`), no se renderiza nada.
+If the movie does not belong to any collection (`collectionId` is `null`), nothing is rendered.
 
-#### Modal selector de saga
-Cuando el usuario pulsa "Añadir resto de la saga":
-1. Se cierra el modal de detalle.
-2. Se abre un nuevo modal con:
-   - Título con el nombre de la saga.
-   - Lista de películas no registradas, cada una con:
-     - Checkbox (marcado por defecto).
-     - Miniatura de portada (36x54px).
-     - Título y año.
-   - Contador dinámico de películas seleccionadas.
-   - Botones "Cancelar" y "Añadir seleccionadas".
+#### Saga picker modal
+When the user clicks "Add rest of the saga":
+1. The detail modal closes.
+2. A new modal opens with:
+   - Title with the saga name.
+   - List of unreleased-to-library movies, each with:
+     - Checkbox (checked by default).
+     - Cover thumbnail (36x54px).
+     - Title and year.
+   - Dynamic counter of selected movies.
+   - "Cancel" and "Add selected" buttons.
 
-### Lógica de filtrado
-Al abrir el selector, se comparan los `externalId` de las películas de la colección contra los `externalId` de todas las películas del usuario (`ctx.getItemsByGroup("movies")`). Solo se muestran las que el usuario no tiene registradas.
+### Filtering logic
+When opening the picker, the `externalId` of the collection's movies is compared against the `externalId` of all the user's movies (`ctx.getItemsByGroup("movies")`). Only movies the user does not have recorded are shown.
 
-Casos cubiertos:
-- **Todas añadidas**: toast "Ya tienes todas las películas de esta saga."
-- **Ninguna seleccionada**: toast "Selecciona al menos una película."
-- **Error de red**: toast con mensaje de error. El botón sigue disponible para reintentar.
+Cases covered:
+- **All added**: toast "You already have all the movies of this saga."
+- **None selected**: toast "Select at least one movie."
+- **Network error**: toast with an error message. The button remains available to retry.
 
-### Implementación técnica
+### Technical implementation
 
 - **`js/api-movies.js`**:
-  - `getMovieDetails()`: Se añadieron `collectionId`, `collectionName`, `collectionPoster` al objeto de retorno.
-  - Nueva función `getCollectionDetails(collectionId)`: llama a `/collection/{id}` y devuelve `{ id, name, posterPath, parts }` con las películas mapeadas.
+  - `getMovieDetails()`: `collectionId`, `collectionName`, `collectionPoster` added to the returned object.
+  - New function `getCollectionDetails(collectionId)`: calls `/collection/{id}` and returns `{ id, name, posterPath, parts }` with the mapped movies.
 
 - **`js/ui.js`**:
-  - `openMovieModal()`: Se añadió el parámetro `onAddSaga` a los callbacks. Se inserta un bloque condicional `saga-banner` cuando `item.collectionId` existe. Se añadió event listener para `#btn-add-saga`.
-  - Nueva función `openSagaSelectionModal(collectionName, movies, { onConfirm, onCancel })`: renderiza un modal con lista de checkboxes, contador de selección y botones de acción.
+  - `openMovieModal()`: the `onAddSaga` parameter was added to the callbacks. A conditional `saga-banner` block is inserted when `item.collectionId` exists. An event listener was added for `#btn-add-saga`.
+  - New function `openSagaSelectionModal(collectionName, movies, { onConfirm, onCancel })`: renders a modal with a checkbox list, selection counter and action buttons.
 
 - **`js/modal-handlers.js`**:
-  - Se importaron `getCollectionDetails`, `getMovieDetails` de `api-movies.js` y `addItem` de `db.js`.
-  - `openMovieItem()`: Se añadió `onAddSaga` a los callbacks pasados a `ui.openMovieModal()`, conectado a la nueva función `openSagaSelector`.
-  - Nueva función `addSagaMovie(movie, ctx)`: obtiene detalles TMDB de la película y la añade a Firestore.
-  - Nueva función `openSagaSelector(item, ctx)`: orquesta todo el flujo (consulta colección, filtra, abre selector, procesa confirmación).
+  - Imported `getCollectionDetails`, `getMovieDetails` from `api-movies.js` and `addItem` from `db.js`.
+  - `openMovieItem()`: `onAddSaga` was added to the callbacks passed to `ui.openMovieModal()`, connected to the new `openSagaSelector` function.
+  - New function `addSagaMovie(movie, ctx)`: fetches the movie's TMDB details and adds it to Firestore.
+  - New function `openSagaSelector(item, ctx)`: orchestrates the whole flow (query the collection, filter, open picker, process confirmation).
 
-- **`ocio/ocio.css`**: Se añadieron clases CSS:
-  - `.saga-banner`, `.saga-banner__label` — para el banner en el modal de detalle.
-  - `.saga-subtitle`, `.saga-list`, `.saga-row`, `.saga-row__cover`, `.saga-row__title`, `.saga-row__year`, `.saga-count` — para el modal selector.
+- **`ocio/ocio.css`**: CSS classes added:
+  - `.saga-banner`, `.saga-banner__label` — for the banner in the detail modal.
+  - `.saga-subtitle`, `.saga-list`, `.saga-row`, `.saga-row__cover`, `.saga-row__title`, `.saga-row__year`, `.saga-count` — for the picker modal.
 
-### Alternativas descartadas
-- **Selector sin checkboxes (añadir todo directamente)**: Se descartó porque el usuario puede no querer añadir ciertas películas (ej. spin-offs no canónicos). Los checkboxes dan control granular.
-- **Mostrar la saga en los resultados de búsqueda**: Se descartó porque los resultados de búsqueda no incluyen `belongs_to_collection` (usan el endpoint `/search/movie`, no `/movie/{id}`). Solo se muestra en el modal de detalle.
-- **Persistir la lista de películas de la colección**: Se descartó porque la información se consulta siempre en vivo desde TMDB, garantizando que refleje cambios (nuevas películas añadidas a la saga).
+### Rejected alternatives
+- **Picker without checkboxes (add everything directly)**: Rejected because the user may not want to add certain movies (e.g. non-canonical spin-offs). Checkboxes give granular control.
+- **Showing the saga in search results**: Rejected because search results do not include `belongs_to_collection` (they use the `/search/movie` endpoint, not `/movie/{id}`). It is only shown in the detail modal.
+- **Persisting the list of the collection's movies**: Rejected because the information is always queried live from TMDB, guaranteeing it reflects changes (new movies added to the saga).
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- El usuario descubre fácilmente a qué saga pertenece una película y puede añadir el resto con unos pocos clics.
-- La funcionalidad es no intrusiva: solo aparece cuando la película tiene `collectionId`.
-- El filtro contra la biblioteca existente evita duplicados.
-- Las películas añadidas desde la saga reciben todos los detalles de TMDB (duración, reparto, sinopsis, etc.) igual que si se hubieran añadido desde la búsqueda.
+### Positive
+- The user easily discovers which saga a movie belongs to and can add the rest with a few clicks.
+- The feature is unobtrusive: it only appears when the movie has a `collectionId`.
+- The filter against the existing library avoids duplicates.
+- Movies added from the saga get all TMDB details (runtime, cast, synopsis, etc.) just as if they had been added via search.
 
-### Negativas
-- Las películas añadidas manualmente (sin `externalId` de TMDB) nunca tendrán datos de colección.
-- Al añadir sagas grandes (ej. Marvel: ~30 películas), las peticiones a TMDB se hacen secuencialmente, lo que puede ser lento. Se manejan errores individuales para no bloquear todo el lote.
-- La información de colección es estática desde el momento en que se añade la película. Si TMDB cambia la colección (nombre, películas incluidas), no se reflejará hasta que se vuelva a obtener la película.
+### Negative
+- Manually added movies (without a TMDB `externalId`) will never have collection data.
+- When adding large sagas (e.g. Marvel: ~30 movies), requests to TMDB are made sequentially, which can be slow. Individual errors are handled so the whole batch is not blocked.
+- Collection information is static from the moment the movie is added. If TMDB changes the collection (name, included movies), it will not be reflected until the movie is fetched again.
 
-### Neutras
-- Los campos `collectionId`, `collectionName`, `collectionPoster` se almacenan en Firestore como parte del documento de la película.
-- No se requiere ninguna suscripción o callback adicional en tiempo real.
-- La funcionalidad solo aplica a películas; series y libros no se ven afectados.
+### Neutral
+- The fields `collectionId`, `collectionName`, `collectionPoster` are stored in Firestore as part of the movie's document.
+- No additional real-time subscription or callback is required.
+- The feature only applies to movies; series and books are not affected.
 
-## Archivos modificados
-- `js/api-movies.js` — Añadidos `collectionId`, `collectionName`, `collectionPoster` a `getMovieDetails()`; nueva función `getCollectionDetails(collectionId)`.
-- `js/ui.js` — Modificada `openMovieModal()` con saga-banner y callback `onAddSaga`; nueva función `openSagaSelectionModal()`.
-- `js/modal-handlers.js` — Modificada `openMovieItem()` con `onAddSaga`; nuevas funciones `addSagaMovie()` y `openSagaSelector()`.
-- `ocio/ocio.css` — Nuevas clases CSS para saga-banner, saga-list, saga-row y relacionados.
+## Files modified
+- `js/api-movies.js` — Added `collectionId`, `collectionName`, `collectionPoster` to `getMovieDetails()`; new function `getCollectionDetails(collectionId)`.
+- `js/ui.js` — Modified `openMovieModal()` with saga-banner and `onAddSaga` callback; new function `openSagaSelectionModal()`.
+- `js/modal-handlers.js` — Modified `openMovieItem()` with `onAddSaga`; new functions `addSagaMovie()` and `openSagaSelector()`.
+- `ocio/ocio.css` — New CSS classes for saga-banner, saga-list, saga-row and related.

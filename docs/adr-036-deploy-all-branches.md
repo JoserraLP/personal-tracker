@@ -1,316 +1,323 @@
-# ADR-036: Despliegue de todas las ramas mediante GitHub Actions (issue #83)
+# ADR-036: Deployment of all branches via GitHub Actions (issue #83)
 
-> **OBSOLETO (ADR-106, 2026-10-24)**: el despliegue multi-rama se eliminó.
-> Ahora solo `main` se publica en Pages con el workflow
-> `deploy-pages.yml`, tras cada merge a `main`. Este documento se
-> conserva como histórico.
+> **OBSOLETE (ADR-106, 2026-10-24)**: multi-branch deployment was removed.
+> Now only `main` is published to Pages with the `deploy-pages.yml`
+> workflow, after every merge to `main`. This document is kept as
+> historical.
 >
-> **Nota de deprecación parcial (ADR-044, issue #103)**: la **estructura de
-> rutas** documentada en este ADR — main en la raíz y **cada rama no-default
-> en `/<ruta-saneada>/`** — fue **sustituida** por el ADR-044 (hub de
-> previews, issue #103): main sigue en la raíz (sin cambios), pero las ramas
-> no-default pasan a servirse en `/dev/<ruta-saneada>/` (incluida `dev` en
-> `/dev/dev/`), con `/dev/` como **hub de previews** con un índice
-> auto-generado que enlaza todas las ramas y la raíz. El resto de este ADR
-> (workflow multi-rama, saneo de nombres, checks de colisión,
-> `strip_sensitive()`, rutas dinámicas de SW/manifest, entorno
-> `github-pages`) sigue vigente. Este documento se conserva intacto como
-> histórico.
+> **Partial deprecation note (ADR-044, issue #103)**: the **route
+> structure** documented in this ADR — main at the root and **each
+> non-default branch at `/<sanitized-route>/`** — was **replaced** by
+> ADR-044 (previews hub, issue #103): main stays at the root (unchanged),
+> but non-default branches are now served at `/dev/<sanitized-route>/`
+> (including `dev` at `/dev/dev/`), with `/dev/` as the **previews hub**
+> with an auto-generated index linking all branches and the root. The rest
+> of this ADR (multi-branch workflow, name sanitization, collision checks,
+> `strip_sensitive()`, dynamic SW/manifest routes, the `github-pages`
+> environment) remains in force. This document is kept intact as
+> historical.
 
-> **Nota de deprecación parcial (ADR-041, issue #98)**: la política de
-> triggers documentada en este ADR — `on: push` a **todas las ramas** y la
-> migración Pages legacy → Actions vía `gh api` — fue **sustituida** por el
-> ADR-041 (revisión de triggers, issue #98): `push` limitado a `main`/`dev`,
-> guard `ref_type == 'branch'` en el evento `delete` y
-> `actions/configure-pages@v5` con `enablement: true` en lugar del hack
-> `gh api`. El resto de este ADR (multi-rama, rutas dinámicas, saneo de
-> nombres, `strip_sensitive()`, entorno `github-pages`) sigue vigente. Este
-> documento se conserva intacto como histórico.
+> **Partial deprecation note (ADR-041, issue #98)**: the triggers policy
+> documented in this ADR — `on: push` to **all branches** and the Pages
+> legacy → Actions migration via `gh api` — was **replaced** by ADR-041
+> (triggers review, issue #98): `push` limited to `main`/`dev`, guard
+> `ref_type == 'branch'` on the `delete` event and
+> `actions/configure-pages@v5` with `enablement: true` instead of the
+> `gh api` hack. The rest of this ADR (multi-branch, dynamic routes, name
+> sanitization, `strip_sensitive()`, `github-pages` environment) remains
+> in force. This document is kept intact as historical.
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-06
 
-## Contexto
+## Context
 
-Hasta ahora, GitHub Pages se publicaba en modo **legacy** («Deploy from a
-branch»): solo la rama `main` se servía en
-`https://gonzalitojh.github.io/Registro-personal/`, y solo cuando se
-promovía `dev` → `main`. Las ramas de trabajo (feature, fix…) no tenían
-ningún preview público: para probar un cambio había que desplegarlo en
-local o esperar a que llegara a `main`.
+Until now, GitHub Pages was published in **legacy** mode («Deploy from a
+branch»): only the `main` branch was served at
+`https://gonzalitojh.github.io/Registro-personal/`, and only when `dev` →
+`main` was promoted. Work branches (feature, fix…) had no public preview:
+to test a change, one had to deploy it locally or wait for it to reach
+`main`.
 
-La issue #83 pedía:
+Issue #83 asked for:
 
-1. Una GitHub Action que despliegue **todas las ramas** del repositorio en
+1. A GitHub Action that deploys **all branches** of the repository to
    GitHub Pages.
-2. La rama `main` se mantiene en la raíz
-   (`https://gonzalitojh.github.io/Registro-personal/`, sin nombre de rama).
-3. Cada rama se sirve en su propio subdirectorio
-   (`https://gonzalitojh.github.io/Registro-personal/<rama>/`) con la web
-   **completa y funcional** (CSS/JS, parciales `ocio/*`, login, service
-   worker, manifest PWA).
-4. El workflow debe evitar **bucles infinitos** (que el push del deploy no
-   vuelva a disparar el workflow).
+2. The `main` branch stays at the root
+   (`https://gonzalitojh.github.io/Registro-personal/`, no branch name).
+3. Each branch is served in its own subdirectory
+   (`https://gonzalitojh.github.io/Registro-personal/<branch>/`) with the
+   web **complete and functional** (CSS/JS, `ocio/*` partials, login,
+   service worker, PWA manifest).
+4. The workflow must avoid **infinite loops** (the deploy's push must not
+   re-trigger the workflow).
 
-Estado detectado en el código que hacía falta cambiar:
+State detected in the code that needed changing:
 
-- El **service worker** usaba rutas absolutas hardcodeadas
-  `/Registro-personal/...` en `STATIC_ASSETS`, en los fallbacks offline y en
-  el check `url.pathname.startsWith('/Registro-personal/')`.
-- `js/sw-register.js` registraba el SW con `SW_PATH='/Registro-personal/service-worker.js'`
-  y `SW_SCOPE='/Registro-personal/'` (absolutos hardcodeados).
-- `manifest.json` tenía `start_url` y `scope` absolutos
+- The **service worker** used absolute hardcoded routes
+  `/Registro-personal/...` in `STATIC_ASSETS`, in the offline fallbacks
+  and in the check `url.pathname.startsWith('/Registro-personal/')`.
+- `js/sw-register.js` registered the SW with `SW_PATH='/Registro-personal/service-worker.js'`
+  and `SW_SCOPE='/Registro-personal/'` (absolute hardcoded).
+- `manifest.json` had absolute `start_url` and `scope`
   (`/Registro-personal/`).
-- `index.html` y los parciales `ocio/*.html` ya usaban rutas relativas
-  (`css/...`, `js/...`, `ocio/...`) y fetch relativo, así que eran
-  compatibles con subdirectorios sin tocar nada.
+- `index.html` and the `ocio/*.html` partials already used relative routes
+  (`css/...`, `js/...`, `ocio/...`) and relative fetch, so they were
+  compatible with subdirectories without touching anything.
 
 Related issue: #83 — https://github.com/gonzalitojh/Registro-personal/issues/83
 
-## Decisión
+## Decision
 
-Sustituir el modo legacy de Pages por un **workflow de GitHub Actions que
-publica todas las ramas**, y hacer que el service worker, el manifest y el
-registro del SW resuelvan sus rutas **de forma dinámica respecto a su
-propia base**, para que el mismo código funcione en la raíz (main) y en el
-subdirectorio de cada rama.
+Replace Pages' legacy mode with a **GitHub Actions workflow that publishes
+all branches**, and make the service worker, the manifest and the SW
+registration resolve their routes **dynamically relative to their own
+base**, so the same code works at the root (main) and in each branch's
+subdirectory.
 
 ### 1. Workflow `.github/workflows/deploy-all-branches.yml`
 
-- **Disparadores**: `on: push` (todas las ramas, sin filtro), `on:
-  workflow_dispatch` (re-despliegue manual desde la UI) y `on: delete` (al
-  borrar una rama o tag se reconstruye el sitio; el evento `delete` no
-  admite filtros de rama). Nota: la primera versión usó `push: []`, pero
-  GitHub rechaza el fichero con «A sequence was not expected» (el esquema
-  exige un mapa de filtros); la forma válida de «todas las ramas» es
-  `push:` sin valor.
-- **Sin bucle infinito**: el workflow **no hace push** — solo lee el
-  repositorio y sube un artefacto a Pages. Pese a dispararse en cada push
-  de cualquier rama, nada vuelve a escribir en el repo y por tanto no puede
-  retrigger-se.
-- **Permisos**: `contents: read`, `pages: write`, `id-token: write`
-  (declarados a nivel de workflow y repetidos en el job `deploy`).
-- **Concurrencia**: `concurrency: group: pages, cancel-in-progress: true`
-  — una sola ejecución de Pages a la vez; si llega otra (p. ej. dos pushes
-  seguidos), se cancela la anterior.
+- **Triggers**: `on: push` (all branches, no filter), `on:
+  workflow_dispatch` (manual re-deploy from the UI) and `on: delete` (when
+  a branch or tag is deleted the site is rebuilt; the `delete` event does
+  not accept branch filters). Note: the first version used `push: []`,
+  but GitHub rejects the file with "A sequence was not expected" (the
+  schema requires a filter map); the valid way of saying "all branches" is
+  `push:` with no value.
+- **No infinite loop**: the workflow **does not push** — it only reads the
+  repository and uploads an artifact to Pages. Even though it triggers on
+  every push of any branch, nothing writes back to the repo and therefore
+  it cannot re-trigger itself.
+- **Permissions**: `contents: read`, `pages: write`, `id-token: write`
+  (declared at workflow level and repeated in the `deploy` job).
+- **Concurrency**: `concurrency: group: pages, cancel-in-progress: true`
+  — a single Pages run at a time; if another arrives (e.g. two pushes in a
+  row), the previous one is cancelled.
 - **Job `build`** (ubuntu-latest):
-  1. `actions/checkout@v4` con `fetch-depth: 0` (todas las ramas, no solo
-     la actual).
-  2. **Migración automática de Pages legacy → Actions** vía API de GitHub:
-     `gh api` con `PUT /repos/<repo>/pages` y `build_type=workflow`; si
-     devuelve 404 (sitio aún no creado) se reintenta con `POST`. Si ambos
-fallan se emite `::warning::` indicando hacerlo manualmente en
-      Settings → Pages → Source: «GitHub Actions» (el job no falla).
-      **Advertencia**: el `GITHUB_TOKEN` no tiene permisos de
-      administración para esa API, así que el intento automático suele
-      fallar y la migración acaba haciéndose a mano la primera vez.
-  3. `bash scripts/build-pages-site.sh` → genera `_site/`.
-  4. `actions/upload-pages-artifact@v4` con `path: _site`.
-- **Job `deploy`**: `needs: build`, `environment: github-pages` (con `url`
-  del artefacto) y `actions/deploy-pages@v4`.
-- **Requisito del entorno `github-pages`**: el entorno debe permitir
-  desplegar a **todas las ramas**. En el primer despliegue desde una rama
-  `feature/...`, el job `deploy` fallaba con «Branch ... is not allowed to
-  deploy to github-pages due to environment protection rules» porque el
-  entorno (heredado del modo legacy) solo tenía `main` como rama permitida.
-  Se resolvió añadiendo el patrón **`**/*`** en Settings → Environments →
-  `github-pages` → Deployment branches. Con la sintaxis `File.fnmatch` que
-  usa GitHub (flag `FNM_PATHNAME`) los comodines `*` y `**` **no cruzan
-  `/`**, por lo que `*` no matchea `feature/x`; el patrón `**/*` cubre
-  cualquier jerarquía. (La API REST rechaza poner `protected_branches` y
-  `custom_branch_policies` ambos a `false`, por eso se usa patrón comodín.)
+  1. `actions/checkout@v4` with `fetch-depth: 0` (all branches, not only
+     the current one).
+  2. **Automatic Pages legacy → Actions migration** via the GitHub API:
+     `gh api` with `PUT /repos/<repo>/pages` and `build_type=workflow`; if
+     it returns 404 (site not yet created) it retries with `POST`. If both
+     fail it emits `::warning::` indicating to do it manually in
+       Settings → Pages → Source: «GitHub Actions» (the job does not
+       fail). **Warning**: the `GITHUB_TOKEN` lacks administration
+       permissions for that API, so the automatic attempt usually fails
+       and the migration ends up being done by hand the first time.
+  3. `bash scripts/build-pages-site.sh` → generates `_site/`.
+  4. `actions/upload-pages-artifact@v4` with `path: _site`.
+- **Job `deploy`**: `needs: build`, `environment: github-pages` (with the
+  artifact's `url`) and `actions/deploy-pages@v4`.
+- **Requirement of the `github-pages` environment**: the environment must
+  allow deploying to **all branches**. On the first deploy from a
+  `feature/...` branch, the `deploy` job failed with «Branch ... is not
+  allowed to deploy to github-pages due to environment protection rules»
+  because the environment (inherited from legacy mode) only had `main` as
+  an allowed branch. Solved by adding the pattern **`**/*`** in Settings →
+  Environments → `github-pages` → Deployment branches. With the
+  `File.fnmatch` syntax GitHub uses (flag `FNM_PATHNAME`) the wildcards
+  `*` and `**` **do not cross `/`**, so `*` does not match `feature/x`;
+  the pattern `**/*` covers any hierarchy. (The REST API refuses to set
+  `protected_branches` and `custom_branch_policies` both to `false`,
+  which is why the wildcard pattern is used.)
 
 ### 2. Script `scripts/build-pages-site.sh`
 
-Construye `_site/` (la raíz del repo) con **todas las ramas remotas**:
+Builds `_site/` (the repo's root) with **all remote branches**:
 
-- Lista ramas con `git for-each-ref refs/remotes/origin`, recortando el
-  prefijo `refs/remotes/origin/` y filtrando `origin/HEAD` (el refname
-  completo evita las variantes de `origin/HEAD` según la versión de git).
-- **Rama por defecto** (normalmente `main`): detectada con
-  `git symbolic-ref refs/remotes/origin/HEAD` (con fallback a `main` si no
-  existe). Se extrae con `git archive` en la **raíz de `_site/`**.
-- **Cada rama no-default** se extrae en `_site/<ruta-saneada>/`, y se
-  añade un `.nojekyll` en la raíz y en cada carpeta de rama (Pages sirve el
-  contenido tal cual, sin Jekyll).
-- **Saneo de nombres de rama** (`sanitize_segment`): cada segmento se
-  normaliza a `[A-Za-z0-9._-]` (todo lo demás → `-`), se colapsan los `-`
-  repetidos, se recortan los `-`/`.` de los extremos y un segmento vacío
-  pasa a llamarse `branch`. Se mantienen las **jerarquías con `/`**
-  (p. ej. `feature/mi-cambio` → `_site/feature/mi-cambio/`).
-- **Checks de colisión ANTES de extraer** (con `::error::` + `exit 1`):
-  duplicados entre rutas saneadas de ramas, y colisión del primer segmento
-  de cada ruta contra las entradas top-level de la rama raíz (via
-  `git ls-tree`). Evita sobrescribir la raíz o ramas entre sí.
-- **`strip_sensitive()` — defensa en profundidad**: elimina del árbol
-  extraído (raíz y ramas) los ficheros sensibles que nunca deben servirse
-  públicamente: `.env`, `.env.*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`,
+- Lists branches with `git for-each-ref refs/remotes/origin`, trimming the
+  `refs/remotes/origin/` prefix and filtering `origin/HEAD` (the full
+  refname avoids the variants of `origin/HEAD` depending on the git
+  version).
+- **Default branch** (usually `main`): detected with
+  `git symbolic-ref refs/remotes/origin/HEAD` (with a fallback to `main`
+  if it does not exist). Extracted with `git archive` at the **root of
+  `_site/`**.
+- **Each non-default branch** is extracted into `_site/<sanitized-route>/`,
+  and a `.nojekyll` is added at the root and in each branch folder (Pages
+  serves the content as-is, without Jekyll).
+- **Branch name sanitization** (`sanitize_segment`): each segment is
+  normalized to `[A-Za-z0-9._-]` (everything else → `-`), repeated `-` are
+  collapsed, the `-`/`.` at the ends are trimmed and an empty segment
+  becomes `branch`. **Hierarchies with `/` are kept**
+  (e.g. `feature/mi-cambio` → `_site/feature/mi-cambio/`).
+- **Collision checks BEFORE extracting** (with `::error::` + `exit 1`):
+  duplicates between branches' sanitized routes, and collision of each
+  route's first segment against the root branch's top-level entries (via
+  `git ls-tree`). Avoids overwriting the root or the branches over each
+  other.
+- **`strip_sensitive()` — defense in depth**: removes from the extracted
+  tree (root and branches) the sensitive files that must never be served
+  publicly: `.env`, `.env.*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`,
   `*service-account*.json`, `credentials*.json`.
-- Refresca `refs/remotes/origin/*` con `git fetch --prune` si existe un
-  remoto `origin` (redundante en CI — el checkout ya trae todo — pero
-  permite probar el script en local).
-- Resumen final con `du`/`find` para los logs del job.
+- Refreshes `refs/remotes/origin/*` with `git fetch --prune` if an
+  `origin` remote exists (redundant in CI — the checkout brings
+  everything — but allows testing the script locally).
+- Final summary with `du`/`find` for the job's logs.
 
-### 3. Rutas dinámicas en el service worker (`service-worker.js`)
+### 3. Dynamic routes in the service worker (`service-worker.js`)
 
-Se eliminan todas las rutas absolutas `/Registro-personal/...`:
+All absolute routes `/Registro-personal/...` are removed:
 
-- Al arrancar: `const scopeURL = new URL(self.registration.scope)`,
-  `scopePath = scopeURL.pathname` y un helper
+- On startup: `const scopeURL = new URL(self.registration.scope)`,
+  `scopePath = scopeURL.pathname` and a helper
   `resolved(p) = new URL(p, scopeURL).toString()`.
-- `STATIC_ASSETS` pasa a ser una lista de **rutas relativas `./...`** que
-  se resuelven con `resolved()` durante el `install`; el mismo fichero
-  sirve para la raíz (main) y para cada preview de rama.
-- Los **fallbacks offline** (catch de `cacheFirst` y `networkFirst`) y el
-  `cache.put` del app shell tras navegación de red usan
+- `STATIC_ASSETS` becomes a list of **relative routes `./...`** resolved
+  with `resolved()` during `install`; the same file works for the root
+  (main) and for each branch preview.
+- The **offline fallbacks** (catch of `cacheFirst` and `networkFirst`) and
+  the `cache.put` of the app shell after a network navigation use
   `resolved('./index.html')`.
-- El check de **assets propios** pasa de
-  `url.pathname.startsWith('/Registro-personal/')` a
+- The check for **own assets** changes from
+  `url.pathname.startsWith('/Registro-personal/')` to
   `url.pathname.startsWith(scopePath)`.
-- **Cachés renombradas** de `mi-registro-v2-*` a `mi-registro-v3-*`: el
-  `activate` elimina cualquier caché fuera de la allowlist, de modo que las
-  entradas antiguas guardadas con rutas absolutas se invalidan de golpe.
+- **Caches renamed** from `mi-registro-v2-*` to `mi-registro-v3-*`: the
+  `activate` deletes any cache outside the allowlist, so old entries saved
+  with absolute routes are invalidated wholesale.
 
-### 4. Base dinámica en `js/sw-register.js`
+### 4. Dynamic base in `js/sw-register.js`
 
-- `SITE_BASE = new URL('../', import.meta.url).href` (el módulo vive en
-  `js/` y sube un nivel hasta la raíz de la app).
-- `SW_PATH = new URL('service-worker.js', SITE_BASE).href` y
-  `SW_SCOPE = SITE_BASE`; el registro pasa `{ scope: SW_SCOPE }` explícito,
-  de modo que funciona igual en la raíz y en los subdirectorios de rama.
+- `SITE_BASE = new URL('../', import.meta.url).href` (the module lives in
+  `js/` and goes up one level to the app's root).
+- `SW_PATH = new URL('service-worker.js', SITE_BASE).href` and
+  `SW_SCOPE = SITE_BASE`; the registration passes an explicit
+  `{ scope: SW_SCOPE }`, so it works the same at the root and in the
+  branch subdirectories.
 
-### 5. `manifest.json` relativo
+### 5. Relative `manifest.json`
 
-`start_url` y `scope` pasan a `'./'`: se resuelven relativos al URL del
-manifest, es decir, a la base de cada rama.
+`start_url` and `scope` become `'./'`: they resolve relative to the
+manifest's URL, i.e. to each branch's base.
 
-### 6. Versionado PWA
+### 6. PWA versioning
 
-`APP_VERSION` en `js/config.js` sube a `20260808` y
-`scripts/bump-version.sh` sincroniza los `?v=20260808` de `index.html` y
-`service-worker.js`, invalidando las cachés PWA de la versión anterior.
+`APP_VERSION` in `js/config.js` moves to `20260808` and
+`scripts/bump-version.sh` synchronizes the `?v=20260808` refs in
+`index.html` and `service-worker.js`, invalidating the previous version's
+PWA caches.
 
-### 7. README actualizado
+### 7. README updated
 
-La sección 6 («Subir a GitHub y activar Pages») se reescribe: Source
-**«GitHub Actions»** (con nota sobre la migración automática del modo
-antiguo), despliegue de todas las ramas (main en la raíz, resto en
-`/<rama>/` como preview completo), re-despliegue manual con
-`workflow_dispatch` y comportamiento al borrar una rama.
+Section 6 («Subir a GitHub y activar Pages») is rewritten: Source
+**«GitHub Actions»** (with a note about the automatic migration from the
+old mode), deployment of all branches (main at the root, the rest at
+`/<branch>/` as a full preview), manual re-deploy with `workflow_dispatch`
+and behavior when deleting a branch.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Deploy por rama en modo legacy** («Deploy from a branch»): descartado —
-  GitHub Pages legacy solo permite elegir **una** rama y **un** path por
-  sitio; no existe forma de publicar varias ramas simultáneamente ni
-  subdirectorios automáticos por rama.
-- **Rama `gh-pages`** (compilar y pushear el sitio a una rama dedicada):
-  descartado — requiere que el workflow haga **push**, lo que reintroduciría
-  el riesgo de bucle infinito (además de exigir un PAT y acciones de
-  terceros), y complica el modelo «cada rama en su subdirectorio» al
-  consolidar ramas sin nombres de origen.
-- **`amalgamate-pages` u otras acciones de terceros**: descartado — añade
-  dependencias externas no mantenidas por GitHub y típicamente hacen push a
-  `main`/`gh-pages`; la consolidación de ramas se resuelve con un script
-  propio de 170 líneas, sin dependencias.
-- **Un artefacto de Pages por rama sin consolidar**: descartado — GitHub
-  Pages publica **un único artefacto** por despliegue; no es posible
-  publicar N artefactos (uno por rama) en el mismo sitio, y el
-  `environment: github-pages` es único por repositorio.
-- **Mantener rutas absolutas y publicar solo main**: descartado — no cumple
-  el requisito de la issue (#83) de servir cada rama en su subdirectorio.
+- **Per-branch deploy in legacy mode** («Deploy from a branch»): rejected
+  — GitHub Pages legacy only allows choosing **one** branch and **one**
+  path per site; there is no way to publish several branches
+  simultaneously nor automatic per-branch subdirectories.
+- **`gh-pages` branch** (compiling and pushing the site to a dedicated
+  branch): rejected — it requires the workflow to **push**, which would
+  reintroduce the infinite-loop risk (besides requiring a PAT and
+  third-party actions), and complicates the "each branch in its
+  subdirectory" model by consolidating branches without their origin
+  names.
+- **`amalgamate-pages` or other third-party actions**: rejected — it adds
+  external dependencies not maintained by GitHub and typically pushes to
+  `main`/`gh-pages`; branch consolidation is solved with our own 170-line
+  script, with no dependencies.
+- **One Pages artifact per branch without consolidating**: rejected —
+  GitHub Pages publishes **a single artifact** per deploy; it is not
+  possible to publish N artifacts (one per branch) into the same site, and
+  the `environment: github-pages` is unique per repository.
+- **Keeping absolute routes and publishing only main**: rejected — it does
+  not meet the issue's (#83) requirement of serving each branch in its
+  subdirectory.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Previews públicos de cada rama**: cualquier push a una rama (feature,
-  fix…) despliega la web completa en `/<rama>/` en minutos; probar cambios
-  ya no requiere esperar a `main` ni desplegar en local.
-- **`main` intacta en la raíz**: las URLs de producción no cambian.
-- **Sin bucles infinitos**: el workflow no hace push, solo lee y sube
-  artefacto a Pages.
-- **Reducción de ejecuciones**: `concurrency` con `cancel-in-progress`
-  cancela despliegues obsoletos ante pushes consecutivos.
-- **PWA por rama**: service worker, manifest y assets se resuelven desde la
-  base de cada rama; el mismo código vale para todos los subdirectorios.
-- **Migración de Pages automática**: el primer despliegue intenta convertir
-  el modo legacy a GitHub Actions vía API; si falla, aviso `::warning::`
-  claro para hacerlo manualmente.
-- **Defensa en profundidad**: `strip_sensitive()` garantiza que un fichero
-  sensible commiteado por error en cualquier rama **no** se sirva en el
-  despliegue.
-- **Errores de colisión explícitos en CI**: si dos ramas sanean a la misma
-  ruta o una colisiona con la raíz, el build falla con un mensaje claro
-  (renombrar la rama).
+- **Public previews of each branch**: any push to a branch (feature,
+  fix…) deploys the whole web at `/<branch>/` within minutes; testing
+  changes no longer requires waiting for `main` nor deploying locally.
+- **`main` intact at the root**: the production URLs do not change.
+- **No infinite loops**: the workflow does not push, it only reads and
+  uploads an artifact to Pages.
+- **Reduced runs**: `concurrency` with `cancel-in-progress` cancels stale
+  deploys on consecutive pushes.
+- **PWA per branch**: service worker, manifest and assets resolve from
+  each branch's base; the same code works for all subdirectories.
+- **Automatic Pages migration**: the first deploy attempts to convert the
+  legacy mode to GitHub Actions via API; if it fails, a clear
+  `::warning::` says to do it manually.
+- **Defense in depth**: `strip_sensitive()` guarantees that a sensitive
+  file accidentally committed in any branch is **not** served in the
+  deploy.
+- **Explicit collision errors in CI**: if two branches sanitize to the
+  same route or one collides with the root, the build fails with a clear
+  message (rename the branch).
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Consumo de minutos de Actions**: cada push de cualquier rama ejecuta
-  build + deploy. Se mitiga con la cancelación de ejecuciones obsoletas,
-  pero el tráfico de ramas es directamente proporcional al consumo.
-- **Migración automática no garantizada**: la conversión legacy → Actions
-  depende de la API de GitHub (`gh api`); si la cuenta o el token lo
-  impiden, requiere una intervención manual puntual (Settings → Pages).
-  Además, la **política de ramas del entorno `github-pages`** no se migra
-  automáticamente: si el entorno conserva la lista de ramas del modo legacy
-  (p. ej. solo `main`), los deploys desde otras ramas fallan hasta que se
-  añada el patrón `**/*` en Settings → Environments.
-- **Colisiones de ramas tras el saneo**: dos ramas cuyos nombres solo
-  difieran en caracteres fuera de `[A-Za-z0-9._-]` (p. ej. `feat/a` y
-  `feat/a#x`) colisionan y rompen el build hasta que se renombra la rama.
-- **Previews conectados a la base de producción**: cada rama despliega la
-  app completa con la misma configuración de Firebase, por lo que los
-  previews leen/escriben en la misma Firestore. No es un cambio nuevo (ya
-  ocurría con cualquier deploy), pero ahora hay N apps funcionales
-  apuntando a la misma base; se mitiga con la restricción de dominios
-  autorizados en Firebase (README sección 7) y la lista de correos
-  invitados.
+- **Actions minutes consumption**: every push of any branch runs build +
+  deploy. Mitigated by cancelling stale runs, but branch traffic is
+  directly proportional to consumption.
+- **Automatic migration not guaranteed**: the legacy → Actions conversion
+  depends on the GitHub API (`gh api`); if the account or token prevents
+  it, it requires a one-time manual intervention (Settings → Pages). Also,
+  the **`github-pages` environment's branch policy** is not migrated
+  automatically: if the environment keeps the legacy mode's branch list
+  (e.g. only `main`), deploys from other branches fail until the `**/*`
+  pattern is added in Settings → Environments.
+- **Branch collisions after sanitization**: two branches whose names
+  differ only in characters outside `[A-Za-z0-9._-]` (e.g. `feat/a` and
+  `feat/a#x`) collide and break the build until the branch is renamed.
+- **Previews connected to the production database**: each branch deploys
+  the full app with the same Firebase configuration, so previews
+  read/write the same Firestore. Not a new change (any deploy did that),
+  but now there are N functional apps pointing to the same database;
+  mitigated by the Firebase authorized-domains restriction (README
+  section 7) and the invited emails list.
 
-### Neutras
+### Neutral
 
-- **`docs/manual-de-usuario.md` no se tocó**: el cambio es interno
-  (infraestructura de despliegue); el usuario final no ve ninguna
-  diferencia de comportamiento, por lo que no aplica la obligación de
-  AGENTS.md de actualizar el manual.
-- **PWA versionada a `20260808`**: `APP_VERSION`, `?v=` en `index.html` y
-  `service-worker.js` invalidan las cachés previas (incluidas las antiguas
-  con rutas absolutas, al renombrarse las cachés a `v3`).
+- **`docs/manual-de-usuario.md` not touched**: the change is internal
+  (deployment infrastructure); the end user sees no behavioral
+  difference, so AGENTS.md's obligation to update the manual does not
+  apply.
+- **PWA versioned to `20260808`**: `APP_VERSION`, `?v=` in `index.html`
+  and `service-worker.js` invalidate previous caches (including the old
+  ones with absolute routes, as the caches are renamed to `v3`).
 
-## Nota de implementación
+## Implementation note
 
-- El workflow usa `on: push` — sin valor, lo que GitHub interpreta como
-  «todas las ramas» (sin filtro de rama ni de paths). La forma `push: []`
-  es inválida y GitHub la rechaza al validar el fichero.
-- El job `build` depende de `fetch-depth: 0` para que el checkout traiga
-  **todas** las ramas a `refs/remotes/origin/*`; el script las lista con
-  `git for-each-ref` y extrae cada una con `git archive` (sin tocar el
-  working tree).
-- El evento `delete` no admite filtros de rama y reconstruye **todo** el
-  sitio (no solo elimina la rama borrada): simple y robusto, a costa de una
-  ejecución completa tras cada borrado.
-- La rama por defecto se detecta vía `origin/HEAD` (`git symbolic-ref`),
-  con fallback a `main`, para no hardcodear el nombre en el script.
-- En local, `bash scripts/build-pages-site.sh` sirve para previsualizar el
-  sitio (refresca `origin/*` con `fetch --prune` si hay remoto).
+- The workflow uses `on: push` — with no value, which GitHub interprets as
+  "all branches" (no branch nor paths filter). The `push: []` form is
+  invalid and GitHub rejects it when validating the file.
+- The `build` job depends on `fetch-depth: 0` so the checkout brings
+  **all** branches into `refs/remotes/origin/*`; the script lists them
+  with `git for-each-ref` and extracts each with `git archive` (without
+  touching the working tree).
+- The `delete` event does not accept branch filters and rebuilds the
+  **whole** site (it does not just remove the deleted branch): simple and
+  robust, at the cost of one full run after every deletion.
+- The default branch is detected via `origin/HEAD` (`git symbolic-ref`),
+  with a fallback to `main`, to avoid hardcoding the name in the script.
+- Locally, `bash scripts/build-pages-site.sh` serves to preview the site
+  (refreshes `origin/*` with `fetch --prune` if there is a remote).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `.github/workflows/deploy-all-branches.yml` | **Nuevo**: workflow de Pages con todas las ramas (`on: push` + `workflow_dispatch` + `delete`), migración legacy→Actions vía `gh api`, jobs `build`/`deploy`, `concurrency` con cancelación |
-| `scripts/build-pages-site.sh` | **Nuevo**: construye `_site/` con todas las ramas (default en raíz, resto en subdirectorios saneados), `.nojekyll` por carpeta, checks de colisión, `strip_sensitive()` |
-| `service-worker.js` | Rutas absolutas `/Registro-personal/...` → base dinámica (`scopeURL`/`scopePath`/`resolved()`); `STATIC_ASSETS` relativos; fallbacks con `resolved('./index.html')`; check `startsWith(scopePath)`; cachés renombradas `v3`; `?v=20260808` |
-| `js/sw-register.js` | `SITE_BASE`/`SW_PATH`/`SW_SCOPE` derivados de `import.meta.url`; registro con scope explícito |
-| `manifest.json` | `start_url` y `scope` → `'./'` (relativos al manifest) |
-| `js/config.js` | `APP_VERSION` de `20260807` a `20260808` |
-| `index.html` | Versionado `?v=20260808` (sincronizado por `scripts/bump-version.sh`) |
-| `README.md` | Sección 6 reescrita: Source «GitHub Actions», despliegue de todas las ramas, previews, re-despliegue manual, borrado de rama. Añadido requisito del entorno `github-pages` (patrón `**/*`) |
-| `docs/adr-036-deploy-all-branches.md` | **Nuevo**: este documento |
-| `docs/manual-de-usuario.md` | **Sin cambios** (cambio interno de infraestructura, no visible para el usuario) |
-| Entorno `github-pages` (Settings) | Configuración manual de una sola vez: Deployment branches → patrón `**/*` (tras primera migración a GitHub Actions) |
+| `.github/workflows/deploy-all-branches.yml` | **New**: Pages workflow with all branches (`on: push` + `workflow_dispatch` + `delete`), legacy→Actions migration via `gh api`, jobs `build`/`deploy`, `concurrency` with cancellation |
+| `scripts/build-pages-site.sh` | **New**: builds `_site/` with all branches (default at root, rest in sanitized subdirectories), `.nojekyll` per folder, collision checks, `strip_sensitive()` |
+| `service-worker.js` | Absolute routes `/Registro-personal/...` → dynamic base (`scopeURL`/`scopePath`/`resolved()`); relative `STATIC_ASSETS`; fallbacks with `resolved('./index.html')`; check `startsWith(scopePath)`; caches renamed to `v3`; `?v=20260808` |
+| `js/sw-register.js` | `SITE_BASE`/`SW_PATH`/`SW_SCOPE` derived from `import.meta.url`; registration with explicit scope |
+| `manifest.json` | `start_url` and `scope` → `'./'` (relative to the manifest) |
+| `js/config.js` | `APP_VERSION` from `20260807` to `20260808` |
+| `index.html` | Versioning `?v=20260808` (synchronized by `scripts/bump-version.sh`) |
+| `README.md` | Section 6 rewritten: Source «GitHub Actions», all-branch deployment, previews, manual re-deploy, branch deletion. Added requirement of the `github-pages` environment (pattern `**/*`) |
+| `docs/adr-036-deploy-all-branches.md` | **New**: this document |
+| `docs/manual-de-usuario.md` | **Unchanged** (internal infrastructure change, not visible to the user) |
+| `github-pages` environment (Settings) | One-time manual configuration: Deployment branches → pattern `**/*` (after first migration to GitHub Actions) |
 
 Related issue: #83 — https://github.com/gonzalitojh/Registro-personal/issues/83

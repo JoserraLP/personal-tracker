@@ -1,22 +1,21 @@
 // =============================================================
-// Sección de Recetas (issue #64) — pestaña «Menú».
-// Menú semanal: rejilla día × comida con varias opciones por
-// comida (cada comensal puede comer distinto), número de
-// comensales y «recetas a la semana» (que NO escalan por
-// comensales). Desde la issue #242 el menú cubre almuerzo y cena
-// (el desayuno se eliminó) y cada receta añadida a una comida
-// puede llevar SUS propios comensales (comensales propios o null
-// para heredar el global de la semana).
+// Recetas section (issue #64) — «Menú» tab.
+// Weekly menu: day × meal grid with several options per meal (each
+// diner can eat differently), number of diners and «weekly
+// recipes» (which do NOT scale by diners). Since issue #242 the
+// menu covers lunch and dinner (breakfast was removed) and each
+// recipe added to a meal can carry ITS OWN diners (own diners or
+// null to inherit the week's global one).
 //
-// Un único botón «+ Añadir receta» en la barra (issue #242,
-// iteración) abre el buscador con un selector de destino: día de la
-// semana o «Toda la semana» y comida (almuerzo/cena). Lo que se
-// añade a cada celda se muestra como tarjetas en miniatura (foto,
-// nombre y etiquetas) clicables para ver la receta en modo lectura.
+// A single «+ Añadir receta» button in the bar (issue #242,
+// iteration) opens the search box with a destination selector: day
+// of the week or «Toda la semana» and meal. What is added to each
+// cell shows as miniature cards (photo, name and tags), clickable
+// to see the recipe in read mode.
 //
-// Un documento por semana en users/{uid}/menus (semanaInicio =
-// lunes ISO). La lista de la compra (shopping-list.js) consume
-// este mismo documento.
+// One document per week in users/{uid}/menus (semanaInicio = ISO
+// Monday). The shopping list (shopping-list.js) consumes this same
+// document.
 // =============================================================
 
 import { showToast } from "./ui.js";
@@ -37,12 +36,12 @@ import {
   formatDateEs,
 } from "./recipes-data.js";
 
-// ---------- Estado ----------
+// ---------- State ----------
 
 let currentUser = null;
 let ctx = null;
 let menus = [];
-let weekOffset = 0; // 0 = esta semana, -1 = anterior, 1 = siguiente
+let weekOffset = 0; // 0 = this week, -1 = previous, 1 = next
 
 export function setupMenu(opts) {
   ctx = opts?.ctx || null;
@@ -61,12 +60,12 @@ export function setupMenu(opts) {
     e.target.value = value;
     updateActiveMenu({ comensales: value });
   });
-  // Único botón de añadir receta (issue #242, iteración): el destino
-  // (día o toda la semana + comida) se elige dentro del buscador.
+  // Single add-recipe button (issue #242, iteration): the destination
+  // (day or whole week + meal) is chosen inside the search box.
   document.getElementById("btn-add-menu-recipe").addEventListener("click", () => openRecipePicker());
-  // Lista de «recetas a la semana» (issue #242, iteración): las
-  // mismas tarjetas .menu-meal__card que las celdas — la ✕ quita la
-  // receta y la tarjeta (fuera de la ✕) abre la receta en lectura.
+  // List of «weekly recipes» (issue #242, iteration): the same
+  // .menu-meal__card cards as the cells — the ✕ removes the recipe
+  // and the card (outside the ✕) opens the recipe in read mode.
   document.getElementById("menu-weekly-list").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-weekly-remove]");
     if (btn) {
@@ -79,8 +78,8 @@ export function setupMenu(opts) {
     if (!recipe) return;
     openRecipeModal(recipe, { readOnly: true });
   });
-  // Teclado de las tarjetas de la semana: Enter/Espacio abren la
-  // lectura (los botones internos gestionan su propio Enter).
+  // Keyboard of the week cards: Enter/Space open the read view
+  // (the inner buttons handle their own Enter).
   document.getElementById("menu-weekly-list").addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
     if (e.target.closest("button")) return;
@@ -95,8 +94,8 @@ export function setupMenu(opts) {
   registerTabRenderer("menu", renderMenu);
 }
 
-// Vacía el estado local (lo llama app.js al cerrar sesión, para que
-// los datos del usuario anterior no se muestren al siguiente).
+// Clears the local state (called by app.js on logout, so the previous
+// user's data is not shown to the next one).
 export function resetMenuData() {
   menus = [];
   weekOffset = 0;
@@ -106,22 +105,23 @@ export function subscribeMenuData(uid, onChange, onError) {
   currentUser = uid;
   return ctx.subscribeToMenus(uid, (items) => {
     menus = items;
-    // Re-render de la pestaña activa y de las demás que consumen el
-    // menú (la lista de la compra, si está abierta).
+    // Re-render of the active tab and of the others that consume the
+    // menu (the shopping list, if open).
     notifyRecipesChanged();
     if (onChange) onChange();
   }, onError);
 }
 
-// ---------- Acceso al menú activo ----------
+// ---------- Access to the active menu ----------
 
 function activeMenu() {
   return menuForWeek(mondayISO(weekOffset));
 }
 
-// Menú de una semana concreta (semanaInicio = lunes ISO). Si no hay
-// documento guardado se devuelve uno en memoria sin id (la lista de
-// la compra multi-semana lo usa para semanas sin datos: aportan 0).
+// Menu of a specific week (semanaInicio = ISO Monday). If there is
+// no stored document, one in memory without id is returned (the
+// multi-week shopping list uses it for weeks without data: they
+// contribute 0).
 function menuForWeek(weekStart) {
   let menu = menus.find((m) => m.semanaInicio === weekStart);
   if (!menu) {
@@ -149,7 +149,7 @@ function emptyDias() {
   return dias;
 }
 
-// Borra el menú de la semana activa (documento y estado local).
+// Deletes the active week's menu (document and local state).
 async function deleteActiveMenu() {
   const menu = activeMenu();
   if (!menu.id) {
@@ -168,20 +168,20 @@ async function deleteActiveMenu() {
   }
 }
 
-// Persistencia fuego-y-olvido: se crea el documento si no existe y
-// se actualizan los campos del que hay. Tras cada guardado se
-// actualiza el estado local de forma optimista: evita lecturas
-// obsoletas entre guardados rápidos y que una segunda edición cree
-// un documento duplicado de la misma semana antes de que llegue el
-// snapshot de Firestore.
+// Fire-and-forget persistence: the document is created if it does
+// not exist and its fields are updated in the one that exists. After
+// each save the local state is updated optimistically: it avoids
+// stale reads between quick saves and a second edition creating a
+// duplicate document of the same week before the Firestore snapshot
+// arrives.
 async function updateActiveMenu(changes) {
   await updateMenuWeek(activeMenu().semanaInicio, changes, { create: true });
 }
 
-// Igual que updateActiveMenu pero para una semana concreta (lista de
-// la compra multi-semana, issue #225). Con `create: false` solo se
-// actualiza si la semana ya tiene documento: eliminar ítems de una
-// semana vacía no debe crear un documento.
+// Same as updateActiveMenu but for a specific week (multi-week
+// shopping list, issue #225). With `create: false` it only updates
+// if the week already has a document: deleting items from an empty
+// week must not create a document.
 export async function updateMenuWeek(weekStart, changes, { create = true } = {}) {
   const menu = { ...menuForWeek(weekStart), ...changes };
   try {
@@ -210,12 +210,12 @@ function menuDataOf(menu) {
     dias: menu.dias,
     recetasPorSemana: menu.recetasPorSemana,
     recetasExcluidasCompra: menu.recetasExcluidasCompra,
-    // Ítems extra de la lista de la compra: viven en el documento del
-    // menú de la semana (shopping-list.js los consume y actualiza).
+    // Extra items of the shopping list: they live in the week's menu
+    // document (shopping-list.js consumes and updates them).
     itemsExtra: menu.itemsExtra || [],
-    // Ítems eliminados por el usuario desde la lista de la compra
-    // (issue #225): claves normalizadas «nombre|unidad» que ya no se
-    // calculan en esa semana.
+    // Items deleted by the user from the shopping list (issue #225):
+    // normalized keys «name|unit» that are no longer computed in that
+    // week.
     itemsEliminados: menu.itemsEliminados || [],
   };
 }
@@ -274,9 +274,9 @@ function renderMenuGrid(menu) {
       </div>`;
     }).join("")}`;
 
-  // Tarjetas de las celdas: click (o Enter/Espacio) abre la receta en
-  // modo lectura, la misma ventana de la pestaña Recetas (issue #242,
-  // iteración). El botón ✕ quita la receta de la comida.
+  // Cards of the cells: click (or Enter/Space) opens the recipe in
+  // read mode, the same window as the Recetas tab (issue #242,
+  // iteration). The ✕ button removes the recipe from the meal.
   grid.querySelectorAll("[data-menu-card]").forEach((card) => {
     const openCard = () => {
       const recipe = byId.get(card.dataset.menuCard);
@@ -295,54 +295,54 @@ function renderMenuGrid(menu) {
     });
   });
 
-  // Quitar receta de una comida (y de la exclusión si estaba).
+  // Remove recipe from a meal (and from the exclusion if it was there).
   grid.querySelectorAll("[data-remove-recipe]").forEach((btn) => {
     btn.addEventListener("click", () => removeRecipeFromMeal(btn.dataset.day, btn.dataset.meal, btn.dataset.removeRecipe));
   });
 }
 
-// Normaliza una entrada de comida del menú: las entradas nuevas
-// (issue #242) son objetos { recipeId, comensales } con el número de
-// comensales propios de esa receta (null = heredar el global de la
-// semana); las antiguas guardadas en Firestore son strings con solo el
-// id. Devuelve { recipe, comensales } con la receta resuelta o null.
+// Normalizes a menu meal entry: new entries (issue #242) are objects
+// { recipeId, comensales } with the number of diners of that recipe
+// (null = inherit the week's global one); old ones stored in
+// Firestore are strings with just the id. Returns { recipe,
+// comensales } with the resolved recipe or null.
 function mealEntryOf(entry) {
   if (typeof entry === "string") return { recipe: entry, comensales: null };
   return { recipe: entry?.recipeId || null, comensales: entry?.comensales ?? null };
 }
 
-// ---------- Buscador de recetas (issue #242) ----------
+// ---------- Recipe search box (issue #242) ----------
 //
-// Ventana modal que sustituye al desplegable de añadir receta: lista
-// de tarjetas (foto a la izquierda, nombre arriba, etiquetas abajo),
-// con buscador de texto y filtros por alérgenos y tipo de plato. Al
-// pulsar una tarjeta se abre la receta en modo lectura (la misma
-// ventana de la pestaña Recetas); «Añadir» permite elegir los
-// comensales de esa receta (vacío = heredar el global del menú).
+// Modal window that replaces the add-recipe dropdown: list of cards
+// (photo on the left, name on top, tags below), with a text search
+// and filters by allergens and dish type. When pressing a card the
+// recipe opens in read mode (the same window as the Recetas tab);
+// «Añadir» lets you choose the diners of that recipe (empty =
+// inherit the menu's global one).
 
 let pickerDay = null;
 let pickerMeal = null;
 let pickerQuery = "";
-// Filtros del buscador (issue #242): multiselección con «todas»
-// marcadas por defecto (patrón de la pestaña Recetas, issue #234).
+// Search box filters (issue #242): multi-select with «all» checked
+// by default (pattern of the Recetas tab, issue #234).
 let pickerAlergenoFilter = new Set();
 let pickerTipoFilter = new Set();
-// Limpieza del trap de foco del modal del buscador.
+// Cleanup of the focus trap of the search box modal.
 let pickerCleanup = null;
-// Los listeners de documento (Escape y cierre de paneles al hacer
-// click fuera) se enlazan una sola vez: el modal se re-renderiza en
-// cada apertura y de otro modo se acumularían.
+// Document listeners (Escape and closing panels by clicking
+// outside) are wired once: the modal is re-rendered on each open and
+// otherwise they would accumulate.
 let pickerDocEventsBound = false;
 
-// Ids de todas las etiquetas visibles en el panel del buscador
-// (predefinidas + propias del usuario).
+// Ids of all the tags visible in the search box panel
+// (predefined + the user's own).
 function pickerTagIds(scope) {
   const preset = scope === "alergeno" ? ALERGEN_TAGS : MEAL_TYPES;
   return mergeTags(preset, getCustomTags().filter((t) => t.tipo === scope)).map((t) => t.id);
 }
 
-// «Todas» está marcado si y solo si TODAS las etiquetas del panel
-// están en el filtro (patrón de recipeFilterAllChecked).
+// «All» is checked if and only if ALL the tags of the panel are in
+// the filter (pattern of recipeFilterAllChecked).
 function pickerFilterAllChecked(scope) {
   const ids = pickerTagIds(scope);
   return ids.length > 0 && ids.every((id) =>
@@ -357,10 +357,11 @@ function pickerFilterLabel(scope) {
   return `${n} ${n === 1 ? word : word + "s"}`;
 }
 
-// Apertura del buscador para una comida (día × comida de la rejilla).
-// El botón único «+ Añadir receta» (issue #242, iteración) lo abre sin
-// destino: el usuario elige dentro el día (o «Toda la semana») y la
-// comida. pickerDay "*" = semana completa (pickerMeal = null).
+// Opening of the search box for a meal (day × meal of the grid).
+// The single «+ Añadir receta» button (issue #242, iteration) opens
+// it with no destination: the user chooses inside the day (or
+// «Toda la semana») and the meal. pickerDay "*" = whole week
+// (pickerMeal = null).
 function openRecipePicker(day = DAY_KEYS[0], meal = MEAL_KEYS[0]) {
   pickerDay = day;
   pickerMeal = meal;
@@ -375,7 +376,7 @@ function openRecipePicker(day = DAY_KEYS[0], meal = MEAL_KEYS[0]) {
   modal.classList.remove("hidden");
   if (pickerCleanup) pickerCleanup();
   pickerCleanup = trapFocus(modal.querySelector(".modal__card"));
-  // Foco al buscador (tras el rAF de trapFocus, que enfoca la ✕).
+  // Focus the search box (after the trapFocus rAF, which focuses the ✕).
   requestAnimationFrame(() => {
     document.getElementById("recipe-pick-search")?.focus({ preventScroll: false });
   });
@@ -392,11 +393,10 @@ function closeRecipePicker() {
   if (modal._previousActiveElement) modal._previousActiveElement.focus();
 }
 
-// Restaura el buscador tras cerrar la ventana de lectura de una
-// receta (callback onClose de openRecipeModal). El estado (día,
-// comida, búsqueda y filtros) vive en las variables de módulo y no se
-// resetea al re-renderizar, así que el buscador reaparece tal como se
-// dejó.
+// Restores the search box after closing a recipe's read window
+// (onClose callback of openRecipeModal). The state (day, meal,
+// query and filters) lives in module variables and is not reset on
+// re-render, so the search box reappears as it was left.
 function restoreRecipePicker() {
   const modal = document.getElementById("recipe-picker-modal");
   if (!modal) return;
@@ -459,8 +459,9 @@ function renderRecipePicker() {
       <div id="recipe-pick-list" class="recipe-pick__list"></div>
     </div>`;
 
-  // Estado inicial de los selectores de destino (día / comida). Con
-  // «Toda la semana» la comida no aplica: el selector queda desactivado.
+  // Initial state of the destination selectors (day / meal). With
+  // «Toda la semana» the meal does not apply: the select becomes
+  // disabled.
   const daySel = content.querySelector("#recipe-pick-day");
   const mealSel = content.querySelector("#recipe-pick-meal");
   daySel.value = pickerDay === "*" ? "*" : pickerDay;
@@ -472,7 +473,7 @@ function renderRecipePicker() {
   renderRecipePickerList();
 }
 
-// Título del buscador y aviso de «Toda la semana» según el destino.
+// Title of the search box and the «Toda la semana» notice based on the destination.
 function updatePickerTargetUi(content) {
   const title = content.querySelector(".recipe-pick__title");
   const targetLabel = pickerDay === "*"
@@ -488,14 +489,14 @@ function bindRecipePickerEvents(content) {
   document.getElementById("recipe-picker-backdrop").addEventListener("click", closeRecipePicker);
   ensureRecipePickerDocEvents();
 
-  // Búsqueda en vivo.
+  // Live search.
   content.querySelector("#recipe-pick-search").addEventListener("input", (e) => {
     pickerQuery = e.target.value.trim().toLowerCase();
     renderRecipePickerList();
   });
 
-  // Selector de destino: día (o toda la semana) y comida. Cambiar el
-  // día a «Toda la semana» desactiva la comida y muestra el aviso.
+  // Destination selector: day (or whole week) and meal. Changing the
+  // day to «Toda la semana» disables the meal and shows the notice.
   const daySel = content.querySelector("#recipe-pick-day");
   const mealSel = content.querySelector("#recipe-pick-meal");
   daySel.addEventListener("change", () => {
@@ -517,8 +518,8 @@ function bindRecipePickerEvents(content) {
     renderRecipePickerList();
   });
 
-  // Filtros por etiquetas (patrón de los paneles de la pestaña
-  // Recetas): se pintan al abrir y se alterna solo la marca.
+  // Filters by tags (pattern of the Recetas tab panels): they are
+  // painted on open and only the check is toggled.
   ["alergeno", "tipo"].forEach((scope) => {
     const btn = content.querySelector(`#btn-recipe-pick-${scope}`);
     const panel = content.querySelector(`#recipe-pick-${scope}-panel`);
@@ -553,7 +554,7 @@ function bindRecipePickerEvents(content) {
     });
   });
 
-  // Lista de tarjetas: delegación (ver receta en lectura / añadir).
+  // Card list: delegation (see recipe in read mode / add).
   const list = content.querySelector("#recipe-pick-list");
   list.addEventListener("click", (e) => {
     const addBtn = e.target.closest("[data-pick-add]");
@@ -563,8 +564,8 @@ function bindRecipePickerEvents(content) {
     }
     const confirmBtn = e.target.closest("[data-pick-confirm]");
     if (confirmBtn) {
-      // Guard contra doble clic: el botón se desactiva y, si el alta
-      // no se produjo (receta ya añadida), se rehabilita.
+      // Double-click guard: the button is disabled and, if the add
+      // did not happen (recipe already added), it is re-enabled.
       confirmBtn.disabled = true;
       const card = confirmBtn.closest("[data-pick-card]");
       if (!card) return;
@@ -583,9 +584,9 @@ function bindRecipePickerEvents(content) {
       collapseComensalesRow(card);
       return;
     }
-    // Click en la tarjeta (fuera de sus botones y de la fila de
-    // comensales): abre la receta en modo lectura, la misma ventana
-    // de la pestaña Recetas.
+    // Click on the card (outside its buttons and the diners row):
+    // opens the recipe in read mode, the same window as the Recetas
+    // tab.
     const cardEl = e.target.closest("[data-pick-card]");
     if (cardEl && !e.target.closest("button, input, label")) {
       const recipe = getRecipes().find((r) => r.id === cardEl.dataset.pickCard);
@@ -594,16 +595,16 @@ function bindRecipePickerEvents(content) {
       openRecipeModal(recipe, { readOnly: true, onClose: restoreRecipePicker });
     }
   });
-  // Soporte de teclado: Enter/Espacio en la tarjeta (fuera de botones
-  // e inputs) abre la lectura; Enter en el número de comensales
-  // confirma el alta de la receta.
+  // Keyboard support: Enter/Space on the card (outside buttons and
+  // inputs) opens the read view; Enter in the diners number confirms
+  // the recipe add.
   list.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
     if (e.target.matches(".recipe-pick__comensales input")) {
       if (e.key !== "Enter") return;
       e.preventDefault();
       const inputEl = e.target;
-      if (inputEl.disabled) return; // guard de doble Enter
+      if (inputEl.disabled) return; // double Enter guard
       inputEl.disabled = true;
       const card = inputEl.closest("[data-pick-card]");
       if (!card) return;
@@ -615,8 +616,8 @@ function bindRecipePickerEvents(content) {
       });
       return;
     }
-    // Los botones internos de la tarjeta gestionan su propio Enter
-    // (click nativo): no abrir la lectura.
+    // The card's inner buttons handle their own Enter (native
+    // click): do not open the read view.
     if (e.target.closest("button")) return;
     const card = e.target.closest("[data-pick-card]");
     if (!card) return;
@@ -628,9 +629,9 @@ function bindRecipePickerEvents(content) {
   });
 }
 
-// Listeners globales del buscador (Escape y cierre de paneles con
-// click fuera): se enlazan una vez al abrir por primera vez y se
-// resuelven los elementos del render actual en el momento del evento.
+// Global listeners of the search box (Escape and closing panels with
+// an outside click): they are wired once on first open and the
+// elements of the current render are resolved at event time.
 function ensureRecipePickerDocEvents() {
   if (pickerDocEventsBound) return;
   pickerDocEventsBound = true;
@@ -655,8 +656,8 @@ function ensureRecipePickerDocEvents() {
   });
 }
 
-// Panel de filtro del buscador: «Todas» + etiquetas (predefinidas y
-// propias). Se pinta solo al abrir.
+// Filter panel of the search box: «All» + tags (predefined and
+// own). Painted only on open.
 function renderRecipePickerFilterPanel(scope, panel) {
   const preset = scope === "alergeno" ? ALERGEN_TAGS : MEAL_TYPES;
   const tags = mergeTags(preset, getCustomTags().filter((t) => t.tipo === scope));
@@ -676,8 +677,8 @@ function renderRecipePickerFilterPanel(scope, panel) {
     }).join("")}`;
 }
 
-// Marca visual de las casillas del panel (la fuente de verdad es el
-// Set activo, no input.checked; patrón del filtro de Recetas).
+// Visual check state of the panel checkboxes (the source of truth is
+// the active Set, not input.checked; pattern of the Recetas filter).
 function syncPickerFilterPanel(scope, panel) {
   const active = scope === "alergeno" ? pickerAlergenoFilter : pickerTipoFilter;
   const allChecked = pickerFilterAllChecked(scope);
@@ -694,9 +695,9 @@ function syncPickerFilterPanel(scope, panel) {
   });
 }
 
-// Etiquetas de una receta (alérgenos + tipo de plato) como HTML de
-// píldoras .recipe-card__tag: misma fuente de verdad para las
-// tarjetas del buscador y las tarjetas en miniatura de la rejilla.
+// Tags of a recipe (allergens + dish type) as .recipe-card__tag pill
+// HTML: the same source of truth for the search box cards and the
+// miniature cards of the grid.
 function recipeTagsHtml(r) {
   const alergenos = mergeTags(ALERGEN_TAGS, getCustomTags().filter((t) => t.tipo === "alergeno"))
     .filter((t) => (r.alergenos || []).includes(t.id));
@@ -708,16 +709,17 @@ function recipeTagsHtml(r) {
   ].join("");
 }
 
-// Lista de tarjetas del buscador: foto a la izquierda (si la tiene),
-// nombre como título arriba a la derecha y etiquetas de alérgenos y
-// tipo de plato abajo. La tarjeta entera abre la lectura; el botón
-// «Añadir» despliega la selección de comensales.
+// Search box card list: photo on the left (if it has one), name as
+// title at the top right and allergen and dish type tags below. The
+// whole card opens the read view; the «Añadir» button expands the
+// diners selection.
 function renderRecipePickerList() {
   const list = document.getElementById("recipe-pick-list");
   if (!list) return;
   const menu = activeMenu();
-  // Ya añadidas al destino elegido: la comida del día (días concretos)
-  // o las recetas de la semana (destino «Toda la semana»).
+  // Already added to the chosen destination: the meal of the day
+  // (specific days) or the week's recipes (destination «Toda la
+  // semana»).
   const existing = new Set(
     pickerDay === "*"
       ? (menu.recetasPorSemana || []).map((e) => e.recipeId)
@@ -761,8 +763,8 @@ function renderRecipePickerList() {
   }).join("");
 }
 
-// Coincidencia con el texto del buscador: por nombre, ingrediente y
-// etiquetas (mismo criterio que la búsqueda de la pestaña Recetas).
+// Match against the search text: by name, ingredient and tags (same
+// criteria as the Recetas tab search).
 function recipeMatchesQuery(r, q) {
   if ((r.nombre || "").toLowerCase().includes(q)) return true;
   if ((r.ingredientes || []).some((i) => normalizeIngredientName(i.nombre).toLowerCase().includes(q))) return true;
@@ -783,9 +785,9 @@ function tagLabelInMenu(scope, id) {
   return custom ? custom.nombre || custom.id : id;
 }
 
-// Fila de comensales de la tarjeta: un número opcional más los
-// botones «Añadir» (confirma el alta) y «Cancelar». Vacío (o 0) → la
-// receta hereda los comensales globales del menú.
+// Diners row of the card: an optional number plus the «Add» (confirms
+// the add) and «Cancel» buttons. Empty (or 0) → the recipe inherits
+// the menu's global diners.
 function expandComensalesRow(addBtn) {
   const card = addBtn.closest("[data-pick-card]");
   if (!card) return;
@@ -808,11 +810,11 @@ function collapseComensalesRow(card) {
   if (addBtn) addBtn.hidden = false;
 }
 
-// Añade la receta al destino con sus comensales propios (o null si
-// no se indicó → hereda el global del menú). Con day "*" la receta va
-// a «recetas a la semana» (NO se multiplica por los comensales).
-// Devuelve true si se añadió y false si ya estaba (el buscador sigue
-// abierto).
+// Adds the recipe to the destination with its own diners (or null
+// when not given → inherits the menu's global one). With day "*" the
+// recipe goes to «weekly recipes» (it is NOT multiplied by the
+// diners). Returns true if added and false if it was already there
+// (the search box stays open).
 async function addRecipeToMeal(day, meal, recipeId, comensales = null) {
   const current = activeMenu();
   if (day === "*") {
@@ -853,14 +855,14 @@ async function removeRecipeFromMeal(day, meal, recipeId) {
   renderMenu();
 }
 
-// ---------- Recetas a la semana (no escalan) ----------
+// ---------- Weekly recipes (they do not scale) ----------
 
-// «Recetas a la semana» (issue #242, iteración): las mismas tarjetas
-// .menu-meal__card que las celdas de la rejilla (foto, nombre y
-// etiquetas; la ✕ quita y la tarjeta abre la receta en lectura), en
-// lugar del simple nombre con botón «Quitar» de antes. Reutilizan las
-// mismas clases y el mismo recipeTagsHtml, así que su aspecto y su
-// comportamiento coinciden con el menú por días.
+// «Weekly recipes» (issue #242, iteration): the same .menu-meal__card
+// cards as the grid cells (photo, name and tags; the ✕ removes and
+// the card opens the recipe in read mode), instead of the simple
+// name with a «Quitar» button from before. They reuse the same
+// classes and the same recipeTagsHtml, so their look and behavior
+// match the per-day menu.
 function renderWeeklyRecipes(menu) {
   const list = document.getElementById("menu-weekly-list");
   const recipes = getRecipes();
@@ -895,9 +897,9 @@ async function removeWeeklyRecipe(recipeId) {
   renderMenu();
 }
 
-// ---------- Compartido con la lista de la compra ----------
+// ---------- Shared with the shopping list ----------
 
-// Excluir / incluir una receta del cálculo de la lista de la compra.
+// Exclude / include a recipe from the shopping list computation.
 export async function setRecipeExcluded(recipeId, excluded) {
   const menu = activeMenu();
   const list = (menu.recetasExcluidasCompra || []).filter((id) => id !== recipeId);
@@ -911,21 +913,21 @@ export function isRecipeExcluded(recipeId) {
   return (activeMenu().recetasExcluidasCompra || []).includes(recipeId);
 }
 
-// Semana activa del menú (offset). La lista de la compra la usa para
-// arrancar su selección en la misma semana que el menú (issue #225).
+// Active week of the menu (offset). The shopping list uses it to
+// start its selection in the same week as the menu (issue #225).
 export function getActiveWeekOffset() {
   return weekOffset;
 }
 
-// Datos del menú activo para la lista de la compra: devuelve
+// Data of the active menu for the shopping list: returns
 // { semanaInicio, comensales, dias, recetasPorSemana, recetasExcluidasCompra }.
 export function getActiveMenuData() {
   return getMenuDataByWeek(activeMenu().semanaInicio);
 }
 
-// Datos de una semana concreta para la lista de la compra
-// multi-semana (issue #225): mismo shape que getActiveMenuData pero
-// para cualquier semana (con o sin documento guardado).
+// Data of a specific week for the multi-week shopping list
+// (issue #225): same shape as getActiveMenuData but for any week
+// (with or without a stored document).
 export function getMenuDataByWeek(weekStart) {
   const menu = menuForWeek(weekStart);
   return {
@@ -936,21 +938,21 @@ export function getMenuDataByWeek(weekStart) {
     recetasExcluidasCompra: menu.recetasExcluidasCompra || [],
     itemsExtra: menu.itemsExtra || [],
     itemsEliminados: menu.itemsEliminados || [],
-    // Semanas sin documento guardado: id null (para no crear docs al
-    // eliminar ítems de semanas vacías, issue #225).
+    // Weeks with no stored document: id null (so no docs are created
+    // when deleting items from empty weeks, issue #225).
     hasDoc: Boolean(menu.id),
   };
 }
 
-// Actualiza los ítems extra de la lista de la compra (persisten en
-// el documento del menú activo).
+// Updates the shopping list's extra items (persisted in the active
+// menu's document).
 export async function updateMenuExtras(itemsExtra) {
   await updateActiveMenu({ itemsExtra });
 }
 
-// Limpia referencias a una receta borrada en los menús existentes
-// (entradas string antiguas y objetos { recipeId, comensales } de la
-// issue #242, a través de mealEntryOf).
+// Cleans up references to a deleted recipe in the existing menus
+// (old string entries and the { recipeId, comensales } objects of
+// issue #242, via mealEntryOf).
 export async function cleanupDeletedRecipe(recipeId) {
   for (const menu of menus) {
     const data = menuDataOf(menu);

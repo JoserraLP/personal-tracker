@@ -1,15 +1,15 @@
 // =============================================================
-// Exportación e importación de copias de seguridad (JSON).
-// Permite descargar todos los datos del usuario como un archivo
-// JSON estructurado, y restaurarlos posteriormente desde un
-// archivo previamente exportado.
+// Export and import of backups (JSON).
+// It allows downloading all the user's data as a structured
+// JSON file, and later restoring them from a previously
+// exported file.
 // =============================================================
 
 import * as ui from "./ui.js";
 
 const BACKUP_MAJOR_VERSION = 1;
 
-// Input de archivo singleton para importación (evita fugas de DOM)
+// Singleton file input for import (avoids DOM leaks)
 let _fileInput = null;
 function getFileInput() {
   if (!_fileInput) {
@@ -23,8 +23,8 @@ function getFileInput() {
 }
 
 /**
- * Prepara y descarga un archivo JSON con todos los datos del usuario.
- * @param {Object} ctx - Contexto de la aplicación (createCtx)
+ * Prepares and downloads a JSON file with all the user's data.
+ * @param {Object} ctx - Application context (createCtx)
  */
 export async function exportBackup(ctx) {
   const user = ctx.getCurrentUser();
@@ -37,10 +37,10 @@ export async function exportBackup(ctx) {
   ui.showToast("Preparando copia de seguridad…");
 
   try {
-    // Obtener perfil del usuario
+    // Get the user's profile
     const profile = await ctx.getUserProfile(uid);
 
-    // Obtener todos los items mediante getItemsOnce (lectura única)
+    // Get all the items with getItemsOnce (single read)
     const [movies, series, books, games] = await Promise.all([
       ctx.getItemsOnce(uid, "movie"),
       ctx.getItemsOnce(uid, "tv"),
@@ -48,11 +48,11 @@ export async function exportBackup(ctx) {
       ctx.getItemsOnce(uid, "game"),
     ]);
 
-    // Obtener notificaciones
-    // (no hay getNotificationsOnce en ctx, así que las incluimos si están disponibles)
+    // Get notifications
+    // (there is no getNotificationsOnce in ctx, so we include them if available)
     const notifications = ctx.getNotifications ? ctx.getNotifications() : [];
 
-    // Construir el objeto de exportación
+    // Build the export object
     const backup = {
       exportDate: new Date().toISOString(),
       version: BACKUP_VERSION,
@@ -72,7 +72,7 @@ export async function exportBackup(ctx) {
       },
     };
 
-    // Generar y descargar el archivo
+    // Generate and download the file
     const jsonStr = JSON.stringify(backup, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -93,9 +93,9 @@ export async function exportBackup(ctx) {
 }
 
 /**
- * Permite al usuario seleccionar un archivo JSON de backup y restaura
- * los datos en Firestore.
- * @param {Object} ctx - Contexto de la aplicación (createCtx)
+ * Lets the user select a JSON backup file and restores
+ * the data in Firestore.
+ * @param {Object} ctx - Application context (createCtx)
  */
 export function importBackup(ctx) {
   const user = ctx.getCurrentUser();
@@ -104,14 +104,14 @@ export function importBackup(ctx) {
     return;
   }
 
-  // Confirmación antes de importar
+  // Confirmation before importing
   if (!confirm("¿Estás seguro de que quieres importar estos datos?\n\nSe añadirán elementos nuevos a los que ya tienes. No se reemplazarán ni eliminarán datos existentes.")) {
     return;
   }
 
   const input = getFileInput();
 
-  // Desvincular evento anterior para evitar acumulación de listeners
+  // Detach previous event to avoid listener accumulation
   const newInput = input.cloneNode(false);
   input.parentNode.replaceChild(newInput, input);
   _fileInput = newInput;
@@ -124,7 +124,7 @@ export function importBackup(ctx) {
       const text = await file.text();
       const backup = JSON.parse(text);
 
-      // Validar estructura básica (comparación por versión major)
+      // Validate basic structure (comparison by major version)
       const backupMajor = parseInt(backup && backup.version, 10);
       if (!backup || !backup.data || Number.isNaN(backupMajor) || backupMajor < BACKUP_MAJOR_VERSION) {
         ui.showToast(
@@ -140,7 +140,7 @@ export function importBackup(ctx) {
 
       ui.showToast("Restaurando datos…");
 
-      // Restaurar perfil
+      // Restore profile
       if (profile && Object.keys(profile).length > 0) {
         try {
           const { id, ...profileData } = profile;
@@ -154,7 +154,7 @@ export function importBackup(ctx) {
         }
       }
 
-      // Restaurar películas
+      // Restore movies
       if (Array.isArray(movies)) {
         for (const item of movies) {
           try {
@@ -168,7 +168,7 @@ export function importBackup(ctx) {
         }
       }
 
-      // Restaurar series
+      // Restore TV series
       if (Array.isArray(series)) {
         for (const item of series) {
           try {
@@ -182,7 +182,7 @@ export function importBackup(ctx) {
         }
       }
 
-      // Restaurar libros
+      // Restore books
       if (Array.isArray(books)) {
         for (const item of books) {
           try {
@@ -196,7 +196,7 @@ export function importBackup(ctx) {
         }
       }
 
-      // Restaurar videojuegos
+      // Restore videogames
       if (Array.isArray(games)) {
         for (const item of games) {
           try {
@@ -210,7 +210,7 @@ export function importBackup(ctx) {
         }
       }
 
-      // Restaurar notificaciones
+      // Restore notifications
       if (Array.isArray(notifications) && ctx.addNotification) {
         for (const notif of notifications) {
           try {
@@ -240,8 +240,8 @@ export function importBackup(ctx) {
 }
 
 /**
- * Configura los botones de exportación e importación en la vista de perfil.
- * @param {Object} ctx - Contexto de la aplicación (createCtx)
+ * Configures the export and import buttons in the profile view.
+ * @param {Object} ctx - Application context (createCtx)
  */
 export function setupExportBackup(ctx) {
   const btnExport = document.getElementById("btn-export-backup");

@@ -1,131 +1,134 @@
-# ADR-068: Pestaña de Videojuegos en el detalle de amigo (issue #172)
+# ADR-068: Video games tab in the friend detail (issue #172)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-10
 
-## Contexto
+## Context
 
-El detalle de amigo de la sección **Amigos** del perfil muestra el registro
-de otro usuario en modo solo lectura, organizado **por pestañas** desde la
-issue #49: Películas, Series y Libros (ADR-048), con chips de filtro por
-estado y patrón data-driven (los datos se cargan una vez por amigo abierto
-con `Promise.all` de `getItemsOnce(uid, type)` y al cambiar de pestaña o
-filtro solo se re-renderiza el grid activo).
+The **Friends** section's friend detail shows another user's log in
+read-only mode, organized **by tabs** since
+issue #49: Movies, Series and Books (ADR-048), with per-status
+filter chips and a data-driven pattern (the data loads once per opened friend
+with `Promise.all` of `getItemsOnce(uid, type)` and on changing tab or
+filter only the active grid re-renders).
 
-Los **videojuegos** existen como categoría propia del producto desde la
-issue #47 (colección `games` en Firestore, pestaña en Ocio con
-`ocio/videojuegos.html`, estados Todos / Pendiente / Jugando / Jugado /
-Standby / Abandonado), pero el detalle de amigo aún no los mostraba: el
-manual (sección 14.2) documentaba explícitamente que «la pestaña de
-Videojuegos aún no está disponible aquí».
+**Video games** have existed as a product category of their own
+since issue #47 (the `games` collection in Firestore, a tab in Ocio
+with `ocio/videojuegos.html`, statuses Todos / Pendiente / Jugando /
+Jugado / Standby / Abandonado), but the friend detail did not show them
+yet: the manual (section 14.2) explicitly documented that «the Video
+games tab is not yet available here».
 
-La issue #172 pide incluir la pestaña de videojuegos en la vista de amigos,
-con sus chips de filtro por estado coherentes con `ocio/videojuegos.html`.
+Issue #172 asks to include the video games tab in the friends
+view, with its per-status filter chips coherent with
+`ocio/videojuegos.html`.
 
 Related issue: #172 — https://github.com/gonzalitojh/Registro-personal/issues/172
 
-## Decisión
+## Decision
 
-Añadir una cuarta subpestaña **«Videojuegos»** al detalle de amigo,
-replicando el patrón data-driven del ADR-048 sin introducir lógica nueva:
+Add a fourth **«Videojuegos»** sub-tab to the friend detail,
+replicating ADR-048's data-driven pattern without introducing new logic:
 
-### 1. Pestaña y panel
+### 1. Tab and panel
 
-- Nuevo botón pill `.friend-subtab` con `data-friend-tab="games"`,
-  `role="tab"`, `aria-selected` y `aria-controls="friend-panel-games"`,
-  junto a Películas/Series/Libros.
-- Nuevo panel `.friend-tabpanel` con `role="tabpanel"` y
-  `aria-labelledby="friend-tab-games"`, con su grupo de chips
-  (`role="group"`, `aria-label`) y el grid `#friend-games`.
+- A new pill button `.friend-subtab` with `data-friend-tab="games"`,
+  `role="tab"`, `aria-selected` and `aria-controls="friend-panel-games"`,
+  next to Movies/Series/Books.
+- A new `.friend-tabpanel` panel with `role="tabpanel"` and
+  `aria-labelledby="friend-tab-games"`, with its chip group
+  (`role="group"`, `aria-label`) and the `#friend-games` grid.
 
-### 2. Chips de filtro por estado
+### 2. Per-status filter chips
 
-Los estados de videojuego en el producto (issue #47) son
-`todos`/`pendiente`/`en_curso`/`completado`/`standby`/`abandonado` con
-etiquetas **Todos / Pendiente / Jugando / Jugado / Standby / Abandonado**,
-idénticos a `ocio/videojuegos.html`. El grupo de chips del panel de games
-replica exactamente esos valores y etiquetas.
+The product's video game statuses (issue #47) are
+`todos`/`pendiente`/`en_curso`/`completado`/`standby`/`abandonado` with the
+labels **Todos / Pendiente / Jugando / Jugado / Standby / Abandonado**,
+identical to `ocio/videojuegos.html`. The games panel's chip group
+replicates exactly those values and labels.
 
-### 3. Estado en memoria y carga de datos
+### 3. In-memory state and data loading
 
-- `friendData` y `friendFilters` del closure de `setupProfile` (profile.js)
-  incorporan la clave `games` (mismo tratamiento que movies/tv/books).
-- `openFriend` carga los 4 tipos con `Promise.all`, incluido
-  `ctx.getItemsOnce(profile.uid, "game")` (patrón solo-lectura existente,
-  `getDocs` puntual sin suscripción; la lectura de `games` de otros
-  usuarios ya está permitida por `firestore.rules`).
-- Al cambiar de pestaña o filtro no se re-consulta Firestore: solo se
-  re-renderiza el grid activo desde memoria (`setFriendTab` /
-  `setFriendFilter` / `renderFriendTab` genéricos).
-- Al abrir cualquier amigo se resetean pestaña a `movies` y todos los
-  filtros (incluido `games`) a `todos`, y los chips del DOM vuelven al
-  estado inicial (aria-pressed incluido).
+- `setupProfile`'s (profile.js) closure's `friendData` and `friendFilters`
+  gain the `games` key (the same treatment as movies/tv/books).
+- `openFriend` loads the 4 types with `Promise.all`, including
+  `ctx.getItemsOnce(profile.uid, "game")` (the existing read-only
+  pattern, a one-off `getDocs` without a subscription; reading other
+  users' `games` is already allowed by `firestore.rules`).
+- Changing tab or filter does not re-query Firestore: only the
+  active grid re-renders from memory (the generic `setFriendTab` /
+  `setFriendFilter` / `renderFriendTab`).
+- Opening any friend resets the tab to `movies` and all the
+  filters (including `games`) to `todos`, and the DOM's chips go back
+  to the initial state (aria-pressed included).
 
-### 4. Sin cambios estructurales
+### 4. No structural changes
 
-El render es data-driven: `renderFriendTab` (ui.js) es genérico por
-`tabKey`, `renderGrid` y `openReadOnlyModal` ya soportan items de tipo
-`game` (scope `game` en `STATUS_LABELS`, `scopeFor(type)`, `metaLineFor`,
-`progressLine`, `communityRatingHtml` con etiqueta IGDB). El CSS de
-`.friend-subtabs` (flex-wrap) y `.friend-chip` es compartido y ya cubre la
-cuarta pestaña en móvil.
+The render is data-driven: `renderFriendTab` (ui.js) is generic per
+`tabKey`, `renderGrid` and `openReadOnlyModal` already support items of
+type `game` (the `game` scope in `STATUS_LABELS`, `scopeFor(type)`,
+`metaLineFor`, `progressLine`, `communityRatingHtml` with the IGDB label).
+`.friend-subtabs`' (flex-wrap) and `.friend-chip`'s CSS is shared and
+already covers the fourth tab on mobile.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **No hacer nada (esperar a otra issue)**: el manual ya prometía la
-  categoría de videojuegos en la vista de amigos; dejarla fuera era una
-  deuda funcional frente a la categoría propia del producto.
-- **Vista específica con lógica propia**: innecesaria — el patrón
-  data-driven del ADR-048 absorbe un cuarto tipo sin ramas nuevas.
-- **Reutilizar `.filter-chips`/`.chip`**: descartado ya en el ADR-048 por
-  colisión con la lógica global de filtros de las bibliotecas
-  (app.js); se mantienen `.friend-filters`/`.friend-chip`.
+- **Doing nothing (waiting for another issue)**: the manual already
+  promised the video games category in the friends view; leaving it out
+  was a functional debt versus the product's own category.
+- **A specific view with its own logic**: unnecessary — ADR-048's
+  data-driven pattern absorbs a fourth type with no new branches.
+- **Reusing `.filter-chips`/`.chip`**: already rejected in ADR-048 due
+  to collision with the libraries' global filter logic
+  (app.js); `.friend-filters`/`.friend-chip` are kept.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- El detalle de amigo queda completo: Películas, Series, Libros y
-  Videojuegos, con filtros coherentes con la vista personal de Ocio.
-- Cero consultas extra a Firestore al cambiar a Videojuegos o filtrar.
-- Sin cambios en `ui.js`, `css/styles.css` ni `db.js`: solo HTML, el
-  estado en `profile.js` y el manual.
+- The friend detail is complete: Movies, Series, Books and
+  Video games, with filters coherent with the Ocio personal view.
+- Zero extra Firestore queries when switching to Video games or
+  filtering.
+- No changes in `ui.js`, `css/styles.css` nor `db.js`: only HTML, the
+  state in `profile.js` and the manual.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- La carga inicial del detalle de amigo ahora hace 4 lecturas en paralelo
-  en lugar de 3 (mismo coste por lectura puntual que las existentes).
-- Los chips de games deben mantenerse alineados con `ocio/videojuegos.html`
-  si en el futuro cambian los estados de la categoría.
+- The friend detail's initial load now makes 4 parallel reads
+  instead of 3 (the same one-off read cost as the existing
+  ones).
+- The games' chips must stay aligned with `ocio/videojuegos.html`
+  if the category's statuses change in the future.
 
-### Neutras
+### Neutral
 
-- `docs/manual-de-usuario.md` actualizado (sección 14.2 Amigos): ya no dice
-  que la pestaña de Videojuegos no está disponible y describe sus filtros
-  (regla 3 de AGENTS.md).
+- `docs/manual-de-usuario.md` updated (section 14.2 Amigos): it no longer
+  says the Video games tab is unavailable and describes its
+  filters (AGENTS.md's rule 3).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `index.html` | **Modificado**: botón `#friend-tab-games` (`.friend-subtab`) y panel `#friend-panel-games` con chips (Todos/Pendiente/Jugando/Jugado/Standby/Abandonado) y grid `#friend-games` |
-| `js/profile.js` | **Modificado**: `friendData.games`/`friendFilters.games`, `getItemsOnce(profile.uid, "game")` en el `Promise.all` de `openFriend`, reset de games al abrir amigo, loop de paneles con `games` en `setFriendTab` |
-| `docs/manual-de-usuario.md` | **Modificado**: sección 14.2 — pestaña Videojuegos disponible con sus filtros |
-| `docs/adr-068-pestana-videojuegos-amigos.md` | **Nuevo**: este documento |
+| `index.html` | **Modified**: `#friend-tab-games` button (`.friend-subtab`) and `#friend-panel-games` panel with chips (Todos/Pendiente/Jugando/Jugado/Standby/Abandonado) and the `#friend-games` grid |
+| `js/profile.js` | **Modified**: `friendData.games`/`friendFilters.games`, `getItemsOnce(profile.uid, "game")` in `openFriend`'s `Promise.all`, games reset when opening a friend, the panels' loop with `games` in `setFriendTab` |
+| `docs/manual-de-usuario.md` | **Modified**: section 14.2 — the Video games tab available with its filters |
+| `docs/adr-068-pestana-videojuegos-amigos.md` | **New**: this document |
 
-## Verificación
+## Verification
 
-- Revisión QA (criterios de aceptación 1-8 y DoD): PASS — los 8 criterios
-  de la issue #172 verificados uno a uno (pestaña, chips, carga, patrón
-  data-driven, reset, ARIA, responsividad 360/768/1280 con flex-wrap,
-  manual actualizado).
-- Escaneo de seguridad: PASS sin hallazgos (patrón solo-lectura
-  preexistente, sin secretos ni PII).
-- Análisis estático de responsividad: `.friend-subtabs` con `flex-wrap:
-  wrap` y compactación ≤480px ya existentes; la cuarta pestaña envuelve en
-  móvil sin desbordar.
+- QA review (acceptance criteria 1-8 and DoD): PASS — issue #172's 8
+  criteria verified one by one (tab, chips, load, the data-driven
+  pattern, reset, ARIA, responsiveness 360/768/1280 with flex-wrap,
+  updated manual).
+- Security scan: PASS with no findings (a pre-existing read-only
+  pattern, no secrets nor PII).
+- Static responsiveness analysis: `.friend-subtabs` with `flex-wrap:
+  wrap` and ≤480px compaction already existed; the fourth tab wraps on
+  mobile without overflowing.
 
 Related issue: #172 — https://github.com/gonzalitojh/Registro-personal/issues/172

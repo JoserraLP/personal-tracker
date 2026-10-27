@@ -1,101 +1,128 @@
-# ADR-078: Barra de pestañas uniforme para todas las secciones (issue #208)
+# ADR-078: A uniform tab bar for all sections (issue #208)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-11
 
-## Contexto
+## Context
 
-La issue #208 pide que **las pestañas de la sección de Recetas
-(Recetas, Menú y Lista de la compra) se vean igual que las pestañas
-de la sección de Ocio** y que, de hecho, **la estructura de
-navegación (barra lateral, barra de búsqueda y perfil) y las pestañas
-sean iguales en todas las secciones**, las actuales y las que se
-añadan en el futuro, incluidas sus características de ser fijas. La
-issue también reporta una **regresión: las pestañas vuelven a verse
-en la pantalla de inicio de sesión**.
+Issue #208 asks that **the Recipes section's tabs
+(Recetas, Menú and Lista de la compra) look the same as the Ocio
+section's tabs** and that, in fact, **the navigation structure
+(sidebar, search bar and profile) and the tabs be the same in all the
+sections**, today's and any added in the
+future, including their fixed-position features. The issue also
+reports a **regression: the tabs were visible again on the login
+screen**.
 
-Estado previo (construido en ADR-076 y ADR-077):
+Previous state (built in ADR-076 and ADR-077):
 
-- **Ocio** usa desde la issue #79 una barra de pestañas fija
-  (`nav.tabs--bar` con botones `.tab` de icono + texto y color de
-  acento): anclada al borde inferior en móvil (con margen seguro) y
-  bajo la cabecera global en ≥768px; ocultable por usuario desde
-  Ajustes (issue #97) y con auto-ocultado por scroll en sus listas
+- **Ocio** has used the fixed tab bar since issue
+  #79 (`nav.tabs--bar` with
+  `.tab` buttons of icon + text and an accent color): anchored to the
+  bottom edge
+  on mobile (with the safe margin) and under the global header at
+  ≥768px; hideable per user from
+  Settings (issue #97) and with scroll auto-hiding on its lists
   (issue #137).
-- **Recetas** (ADR-076, issue #64) usaba en cambio las **subtabs del
-  perfil** (`.profile-subtabs` / `.profile-subtab`, píldoras) dentro
-  de un `.recipes-view__header` sticky bajo la cabecera global
-  (ADR-077), con `data-recipes-tab` y `aria-controls` como contrato
-  con `js/recipes.js`. Las pestañas de Recetas eran ocultables en
-  Ajustes (registradas en `SECTION_REGISTRY`) pero **no salían de la
-  barra** al ocultarlas (solo el router normalizaba la ruta).
-- **Regresión del login**: `js/app.js` (ruta de Ocio del `onRoute`)
-  destapaba `#app` con un `classList.remove("hidden")`
-  **incondicional** que la fusión de la rama
-  `content/issue-64-seccion-recetas` re-introdujo; la issue #178 lo
-  había hecho **condicional a `currentUser`**. Con esa línea, al
-  cargar o recargar sin sesión con la ruta de Ocio (por defecto al
-  abrir), `#app` quedaba visible y la barra de pestañas (que vive
-  dentro de `#app`) aparecía sobre la pantalla de acceso hasta que
-  Firebase resolvía la sesión y `ui.showAuthScreen()` volvía a
-  ocultarla.
+- **Recetas** (ADR-076, issue
+  #64) instead used the **profile's
+  subtabs** (`.profile-subtabs` / `.profile-subtab`, pills) inside a
+  `.recipes-view__header` sticky under the
+  global header (ADR-077), with
+  `data-recipes-tab` and `aria-controls` as the
+  contract with `js/recipes.js`. The Recipes tabs were hideable in
+  Settings (registered in `SECTION_REGISTRY`) but **did not leave the
+  bar when hidden** (only the router normalized the route).
+- **The login regression**: `js/app.js`
+  (the Ocio route of `onRoute`)
+  uncovered `#app` with an
+  **unconditional** `classList.remove("hidden")` that
+  the `content/issue-64-seccion-recetas`
+  branch's merge re-introduced; issue #178 had made it
+  **conditional on `currentUser`**.
+  With that line, when loading or reloading without a session on the
+  Ocio route (the default on open), `#app` stayed visible and the tab
+  bar (which lives inside
+  `#app`) showed over the access screen until Firebase resolved the
+  session and `ui.showAuthScreen()` hid it again.
 
-## Decisión
+## Decision
 
-1. **Componente único de pestañas**: todas las secciones con pestañas
-   usan la misma `nav.tabs--bar` (`.tabs` → `.tab` con icono + texto y
-   `--tab-accent`). **Ocio** la conserva; **Recetas** sustituye
-   `.recipes-view__header` + `.profile-subtabs` por esa misma barra,
-   como primer hijo de `#recipes-view` (se oculta con la vista, igual
-   que Ocio con `#app`). Se mantienen intactos `data-recipes-tab`
-   (`recetas|menu|compra`) y `aria-controls`
-   (`panel-recipes-tab|panel-menu-tab|panel-shopping-tab`): son el
-   contrato con `js/recipes.js` (wiring en `setupRecipes` y toggle en
-   `openRecipes`), que **no cambia**.
-2. **Acentos**: `.tab--recipes` (ocre), `.tab--menu` (verde) y
-   `.tab--shopping` (rojo) reutilizan la paleta existente
-   (`--ochre-spine`, `--teal-reel`, `--stamp`) con sus overrides de
-   negro puro (`[data-theme="black"] .tab--X.is-active` usa la
-   variante `-dark`), mismo patrón que los acentos de Ocio
-   (ADR-009/ADR-064/ADR-066).
-3. **Huecos de barra**: `.recipes-view` reserva el espacio de la barra
-   fija como `.app`: en móvil `padding-bottom` con
-   `--tabs-bar-h` + margen seguro; en ≥768px `padding-top` acumula
-   cabecera + barra. El ancho de la vista se alinea con `#app`
-   (980px) para que contenido, cabecera y barra compartan columna.
-4. **Visibilidad (Ajustes)**: `applyTabVisibility()` de `js/app.js`
-   (issue #97) se extiende a `SECTION_REGISTRY.recetas.tabs`: los
-   botones `.tab[data-recipes-tab="..."]` salen de la barra al
-   ocultarse, igual que los de Ocio. No hace falta guard de pestaña
-   activa: los cambios de visibilidad solo se disparan desde Ajustes
-   y al (re)entrar en Recetas `openRecipes` re-renderiza con
-   `normalizeTabKey` (primera visible si la pedida está oculta).
-5. **Fix regresión login**: se elimina el `classList.remove("hidden")`
-   incondicional de la ruta de Ocio en `js/app.js`; la única vía de
-   destapar `#app` pasa a ser `ui.showApp()` tras el login (el remove
-   condicional a `currentUser` de la issue #178 queda como único).
-6. **Perfil: excepción confirmada**. El perfil conserva su cabecera
-   propia con flecha de volver y pestañas en fila (decisión del
-   usuario en la iteración de la issue #206, ADR-077): la barra
-   `tabs--bar` no aplica allí. Sus `.profile-subtabs` se mantienen.
+1. **A single tabs component**: every section with tabs
+   uses the same `nav.tabs--bar` (`.tabs` → `.tab` with
+   icon + text and `--tab-accent`). **Ocio** keeps it; **Recetas**
+   replaces `.recipes-view__header` +
+   `.profile-subtabs` with that same bar,
+   as the first child of `#recipes-view` (it hides with the view, like
+   Ocio's does with `#app`). `data-recipes-tab` (`recetas|menu|compra`)
+   and `aria-controls`
+   (`panel-recipes-tab|panel-menu-tab|panel-shopping-tab`) are kept
+   intact: they are the contract
+   with `js/recipes.js` (the wiring in
+   `setupRecipes` and the toggle in
+   `openRecipes`), which **does not change**.
+2. **Accents**: `.tab--recipes` (ochre), `.tab--menu` (green) and
+   `.tab--shopping` (red) reuse the existing palette
+   (`--ochre-spine`, `--teal-reel`, `--stamp`) with their pure black
+   overrides (`[data-theme="black"] .tab--X.is-active` uses the
+   `-dark` variant), the same pattern as Ocio's
+   accents (ADR-009/ADR-064/ADR-066).
+3. **Bar gaps**: `.recipes-view` reserves the fixed bar's space like
+   `.app` itself: on mobile a
+   `padding-bottom` with
+   `--tabs-bar-h` + the safe margin; at
+   ≥768px the `padding-top` accumulates
+   header + bar. The view's width aligns with
+   `#app` (980px) so content, header and bar share a
+   column.
+4. **Visibility (Settings)**: `js/app.js`'s
+   `applyTabVisibility()`
+   (issue #97) extends to
+   `SECTION_REGISTRY.recetas.tabs`: the buttons
+   `.tab[data-recipes-tab="..."]` leave the
+   bar when hidden, like Ocio's. No
+   active-tab guard is needed: visibility
+   changes only fire from Settings and on
+   (re)entering Recipes
+   `openRecipes` re-renders with
+   `normalizeTabKey` (the first visible one if
+   the requested one is hidden).
+5. **The login-regression fix**: the unconditional
+   `classList.remove("hidden")` of the
+   Ocio route in `js/app.js` is removed; the only
+   way of uncovering `#app` is
+   `ui.showApp()` after login (issue #178's remove
+  conditional on `currentUser` remains the
+   only one).
+6. **The profile: a confirmed exception**. The profile keeps its own
+   header with the back arrow and tabs in a
+   row (the user's decision in issue #206's iteration,
+   ADR-077): the `tabs--bar` bar
+   does not apply there. Its `.profile-subtabs` are
+   kept.
 
-## Consecuencias
+## Consequences
 
-- **Positivas**: consistencia visual y de comportamiento entre Ocio y
-  Recetas (barra fija, iconos, acentos, ocultación en Ajustes); una
-  sola fuente de verdad para el componente (cualquier sección futura
-  con pestañas reutiliza `tabs--bar`); la pantalla de acceso vuelve a
-  estar limpia.
-- **Neutras**: en Recetas la barra de pestañas no se auto-oculta por
-  scroll (el auto-ocultado de la issue #137 queda acotado a las
-  listas de Ocio, donde `activePanel()` es no nulo); la etiqueta
-  «Lista de la compra» puede envolver a dos líneas en móvil (nunca se
-  trunca, AGENTS.md).
-- **Negativas**: ninguna conocida. El cambio es de estructura del
-  mismo componente ya validado en los cuatro temas (mismo mecanismo
-  de variables y overrides), sin colores ni superficies nuevas.
+- **Positive**: visual and behavioural consistency between Ocio and
+  Recipes (fixed bar, icons, accents, hiding in Settings); a
+   single source of truth for the component (any future
+   section with tabs reuses
+   `tabs--bar`); the access screen is clean
+  again.
+- **Neutral**: in Recipes
+  the tab bar does not auto-hide on
+  scroll
+  (issue #137's auto-hiding is scoped to
+  Ocio's lists, where the
+  `activePanel()` is non-null); the
+  "Lista de la compra" label may wrap to
+  two lines on mobile (never truncated, AGENTS.md).
+- **Negative**: none known. The change is structural in the
+   same component already validated in the
+   four themes (the same variable and override
+   mechanics), with no new colors nor surfaces.
 
 Related issue: #208

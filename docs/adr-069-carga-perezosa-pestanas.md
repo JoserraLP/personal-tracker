@@ -1,117 +1,117 @@
-# ADR-069: Carga perezosa por pestaña e indicador de carga (issue #178)
+# ADR-069: Per-tab lazy loading and loading indicator (issue #178)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-11
 
-## Contexto
+## Context
 
-La issue #178 denuncia varios problemas de **carga de la página** en la
-web (SPA estática con 4 pestañas de Ocio: Series, Películas, Libros y
-Videojuegos):
+Issue #178 complains about several **page loading** problems on the
+web (a static SPA with 4 Ocio tabs: Series, Movies, Books and
+Video games):
 
-1. En la **pantalla de inicio de sesión** se ven la barra de búsqueda,
-   las pestañas y los filtros (flash que luego se oculta): el router
-   destapaba `#app` sin comprobar la sesión.
-2. Tras iniciar sesión, mientras cargan los datos, se ven **los filtros
-   de las 4 pestañas juntos** (y al recargar, las pestañas superpuestas):
-   `applyTabVisibility` hacía `classList.toggle("hidden", false)` sobre
-   todos los paneles con pestaña visible, deshaciendo el trabajo de
-   `activatePanel` (que solo muestra uno).
-3. **No había indicador de carga**: entre «partial inyectado» y «primer
-   snapshot de Firestore» el usuario veía filtros con la cuadrícula
-   vacía.
-4. Todo se cargaba a la vez: los 4 partials HTML (fetch en `init()`) y
-   las 4 suscripciones Firestore se lanzaban simultáneamente al entrar,
-   aunque el usuario solo va a mirar una pestaña.
+1. On the **login screen** the search bar, tabs and filters are visible (a
+   flash that then hides): the router uncovered `#app` without checking the
+   session.
+2. After logging in, while the data loads, the **4 tabs' filters are seen
+   together** (and on reload, overlapped tabs):
+   `applyTabVisibility` did `classList.toggle("hidden", false)` on
+   all the panels with a visible tab, undoing `activatePanel`'s
+   work (which only shows one).
+3. **There was no loading indicator**: between "partial injected" and the
+   "first Firestore snapshot" the user saw filters with an empty
+   grid.
+4. Everything loaded at once: the 4 HTML partials (a fetch in `init()`) and
+   the 4 Firestore subscriptions launched simultaneously on entry,
+   even though the user will only look at one tab.
 
-Además, `SECTION_REGISTRY.ocio.tabs` (el registro central de pestañas,
-issue #97) no incluía `videojuegos`, con lo que la pestaña de
-Videojuegos no participaba en la lógica de visibilidad ni aparecía en
-Ajustes.
+Besides, `SECTION_REGISTRY.ocio.tabs` (the central registry of tabs,
+issue #97) did not include `videojuegos`, so the Video games tab did not
+participate in the visibility logic nor appear in Settings.
 
-## Decisión
+## Decision
 
-Rediseñar la carga para que **cada pestaña sea independiente** y solo
-cargue lo suyo al activarse por primera vez, con un indicador de carga
-mientras llegan los datos:
+Redesign the loading so that **each tab is independent** and only
+loads its own content when activated for the first time, with a loading
+indicator while the data arrives:
 
-1. **`#app` solo se muestra con sesión**: el `onRoute` del router
-   activa la pestaña (estado interno) pero ya no destapa `#app` sin
-   usuario; `ui.showApp()` la muestra al entrar (y `showAuthScreen()` la
-   oculta al salir). Con esto desaparece el flash de la pantalla de
-   login.
-2. **`applyTabVisibility` solo oculta, nunca destapa**: para los
-   paneles solo añade `hidden` cuando su pestaña está oculta (nunca lo
-   quita); el panel visible lo controla en exclusiva `activatePanel`. Si
-   la pestaña activa se oculta desde Ajustes, se cae a la primera
-   visible (mismo guard de `activatePanel`). Se añade `videojuegos` a
-   `SECTION_REGISTRY` y a `DEFAULT_SETTINGS.visibleTabs` para que las 4
-   pestañas participen por igual (los ajustes antiguos se sanean solos
-   vía `sanitizeVisibility`: las claves ausentes quedan visibles).
-3. **Lazy loading de los partials** (`loadOcioPartial`): el HTML de una
-   pestaña (`ocio/*.html`) se descarga solo la primera vez que se
-   activa (caché en `loadedPartials`); los controles del partial
-   (filtros, orden, vista) se wirean al inyectarlo (`wirePanelControls`),
-   sustituyendo al `querySelectorAll` global que solo cubría partials ya
-   inyectados. `renderLibraryFor` hace *early return* si la cuadrícula
-   aún no existe y repinta al terminar la carga si el snapshot ya llegó.
-4. **Lazy loading de las suscripciones Firestore**: las 4
-   suscripciones se refactorizan en `subscribeGroup` (config en
-   `GROUP_CONFIG`) y se arrancan con `ensureGroupSubscribed` solo para
-   el grupo de la pestaña activa (en `activatePanel` cuando hay sesión y
-   tras el login en `watchAuthState`). Se mantiene `subscribeWithRetry`
+1. **`#app` only shows with a session**: the router's `onRoute`
+   activates the tab (internal state) but no longer uncovers `#app`
+   without a user; `ui.showApp()` shows it on entry (and `showAuthScreen()`
+   hides it on logout). This removes the login screen's flash.
+2. **`applyTabVisibility` only hides, never uncovers**: for panels it only adds
+   `hidden` when their tab is hidden (it never removes it); the
+   visible panel is controlled exclusively by `activatePanel`. If the
+   active tab is hidden from Settings, it falls to the first
+   visible one (the same `activatePanel` guard). `videojuegos` is added
+   to `SECTION_REGISTRY` and to `DEFAULT_SETTINGS.visibleTabs` so all 4
+   tabs participate equally (old settings sanitize
+   themselves via `sanitizeVisibility`: missing keys stay visible).
+3. **Lazy loading of the partials** (`loadOcioPartial`): a tab's
+   HTML (`ocio/*.html`) downloads only the first time it is
+   activated (the `loadedPartials` cache); the partial's controls
+   (filters, sort, view) wire on injection (`wirePanelControls`),
+   replacing the global `querySelectorAll` that only covered
+   already-injected partials. `renderLibraryFor` does an *early
+   return* if the grid does not exist yet and repaints at the end of the load
+   if the snapshot already arrived.
+4. **Lazy loading of the Firestore subscriptions**: the 4 subscriptions
+   refactor into `subscribeGroup` (config in `GROUP_CONFIG`) and start with
+   `ensureGroupSubscribed` only for the active tab's group (in
+   `activatePanel` when a session exists and after login in
+   `watchAuthState`). `subscribeWithRetry` is kept
    (issue #147).
-5. **Indicador de carga**: nuevo componente `.panel-loading` + `.spinner`
-   (CSS con variables de tema `--ink-soft`/`--ink-alpha-15`, contrastes
-   AA en los 4 modos y cubierto por el `prefers-reduced-motion` global),
-   `role="status"` para accesibilidad. Cada panel arranca con él en
-   `index.html`; `loadOcioPartial` lo antepone al inyectar el partial y
-   `renderLibraryFor` lo retira al pintar datos (o el estado vacío). Al
-   cerrar sesión se restaura en los paneles ya cargados para que
-   reaparezca al volver a entrar.
-6. **La comprobación diaria deja de depender del estado en memoria**:
-   `checkForUpdates` lee los datos con `getItemsOnce` (lectura puntual
-   de Firestore) en lugar de `getItemsByGroup`, de modo que ya no exige
-   que las 4 pestañas estén cargadas; `maybeTriggerDailyCheck` se llama
-   una vez por sesión tras el login. Lo mismo aplica a la exportación
-   ICS (`export-ics.js`).
-7. **Defensa en profundidad contra duplicados**: los checks de «ya
-   añadido» (alta desde la búsqueda global, recomendaciones/sagas en el
-   modal) usan el nuevo `ctx.getGroupItemsResolved(group)`, que devuelve
-   el estado en memoria si el grupo ya tiene snapshot y cae a
-   `getItemsOnce` si no — así una pestaña no visitada no se trata como
-   vacía al añadir.
+5. **Loading indicator**: a new `.panel-loading` + `.spinner`
+   component (CSS with the theme variables `--ink-soft`/`--ink-alpha-15`,
+   AA contrast in all 4 modes and covered by the
+   global `prefers-reduced-motion`), `role="status"` for accessibility.
+   Each panel starts with it in `index.html`; `loadOcioPartial` prepends it
+   when injecting the partial and `renderLibraryFor` removes it
+   when painting data (or the empty state). On logout it is restored in the
+   already-loaded panels so it reappears on re-entry.
+6. **The daily check stops depending on in-memory state**:
+   `checkForUpdates` reads the data with `getItemsOnce` (a one-off
+   Firestore read) instead of `getItemsByGroup`, so it no longer
+   requires the 4 tabs to be loaded; `maybeTriggerDailyCheck` is
+   called once per session after login. The same applies to ICS
+   export (`export-ics.js`).
+7. **Defense in depth against duplicates**: the "already added"
+   checks (creation from the global search, recommendations/sagas in the
+   modal) use the new `ctx.getGroupItemsResolved(group)`, which returns
+   the in-memory state if the group already has a snapshot and falls to
+   `getItemsOnce` if not — thus an unvisited tab is not treated as empty
+   when adding.
 
-El perfil (estadísticas, amigos, actividad, ajustes) ya era perezoso
-(issue anterior) y no se modifica.
+The profile (statistics, friends, activity, settings) was already
+lazy (a previous issue) and is not modified.
 
-## Consecuencias
+## Consequences
 
-**Positivas**:
+**Positive**:
 
-- La pantalla de login queda limpia (sin búsqueda, pestañas ni filtros).
-- Solo la pestaña activa muestra contenido y su indicador «Cargando…»
-  mientras llegan los datos; al recargar no hay superposición.
-- Menos carga inicial: 1 partial + 1 suscripción al entrar en lugar de
-  4 + 4. El resto se solicita al activar cada pestaña.
-- La pestaña de Videojuegos entra en la lógica de visibilidad de Ajustes
-  (issue #97) de forma coherente con las otras tres.
+- The login screen is clean (no search, tabs or filters).
+- Only the active tab shows content and its «Cargando…» indicator
+  while the data arrives; on reload there is no overlap.
+- Less initial load: 1 partial + 1 subscription on entering instead of
+  4 + 4. The rest is requested when activating each tab.
+- The Video games tab joins the Settings visibility logic
+  (issue #97) coherently with the other three.
 
-**Negativas / a vigilar**:
+**Negative / to watch**:
 
-- La comprobación diaria y la exportación ICS hacen una lectura extra de
-  Firestore por grupo (coste de lecturas algo mayor, despreciable frente
-  a las peticiones de API que ya hace la pasada diaria).
-- Los checks de duplicados del dropdown de búsqueda global siguen
-  leyendo memoria para el render del botón (pueden mostrar «Añadir» en
-  un ítem ya añadido hasta visitar la pestaña); el alta real está
-  protegido por `getGroupItemsResolved` en `handleAdd`/`handleAddSeen`.
+- The daily check and ICS export make an extra Firestore read per
+  group (a slightly higher read cost, negligible against
+  the API requests the daily run already makes).
+- The global search dropdown's duplicate checks keep
+  reading memory for the button's render (they may show «Añadir» on
+  an already-added item until the tab is visited); the actual
+  creation is protected by `getGroupItemsResolved` in
+  `handleAdd`/`handleAddSeen`.
 
-## Issues relacionadas
+## Related issues
 
-- Related issue: #178 (carga de página)
-- Se apoya en: #59 (router), #97 (visibilidad de secciones/pestañas),
-  #147 (retry de suscripciones), #145 (flujo SDD)
+- Related issue: #178 (page loading)
+- It builds on: #59 (router), #97 (sections/tabs
+  visibility), #147 (subscription retry), #145 (the SDD flow)

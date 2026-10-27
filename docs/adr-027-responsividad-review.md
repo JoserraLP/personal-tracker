@@ -1,115 +1,115 @@
-# ADR-027: Revisión general de responsividad — fixes de causa raíz en CSS (issue #41)
+# ADR-027: General responsiveness review — root-cause fixes in CSS (issue #41)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
-Agosto 2026
+## Date
+August 2026
 
-## Contexto
+## Context
 
-La issue #41 pide una **revisión general de responsividad de toda la web**: la aplicación (SPA vanilla JS + Firebase) debe verse correctamente en ordenador, tablet y móvil, en cualquier ancho de pantalla, sin desplazamiento horizontal a nivel de página ni texto fuera de pantalla. El alcance cubre `index.html`, las páginas `ocio/*.html`, `css/styles.css`, `css/ocio.css` y el markup dinámico generado en `js/ui.js`.
+Issue #41 asks for a **general responsiveness review of the whole web**: the application (vanilla JS SPA + Firebase) must look correct on computer, tablet and mobile, at any screen width, without page-level horizontal scroll or text off screen. The scope covers `index.html`, the pages `ocio/*.html`, `css/styles.css`, `css/ocio.css` and the dynamic markup generated in `js/ui.js`.
 
-El proyecto ya contaba con la regla «Responsividad obligatoria» definida en `AGENTS.md` (ADR-026), con 4 criterios verificables:
+The project already had the «Responsividad obligatoria» rule defined in `AGENTS.md` (ADR-026), with 4 verifiable criteria:
 
-1. **Sin scroll horizontal a nivel de página** en ningún ancho; el scroll horizontal solo está permitido dentro de contenedores diseñados para ello (p. ej. tablas con `overflow-x: auto`).
-2. **Ningún texto fuera de pantalla**: títulos, fechas, nombres de autores y sinopsis largas deben ajustarse a su contenedor (`overflow-wrap: break-word`, `min-width: 0` en hijos de flex/grid, unidades relativas). No se trunca contenido esencial con ellipsis en móvil.
-3. **Unidades relativas** (%, rem, em, fr, vw/vh, `minmax()`) para anchos, columnas y tipografía de cuerpo; evitar `px` fijos en contenedores de ancho completo.
-4. **Prohibido `overflow-x: hidden` en `body`/`html` como parche**: enmascara el desbordamiento y puede cortar contenido; siempre se corrige la causa raíz.
+1. **No page-level horizontal scroll** at any width; horizontal scroll is only allowed inside containers designed for it (e.g. tables with `overflow-x: auto`).
+2. **No text off screen**: titles, dates, author names and long synopses must fit their container (`overflow-wrap: break-word`, `min-width: 0` on flex/grid children, relative units). Essential content is not truncated with ellipsis on mobile.
+3. **Relative units** (%, rem, em, fr, vw/vh, `minmax()`) for widths, columns and body typography; avoid fixed `px` in full-width containers.
+4. **`overflow-x: hidden` on `body`/`html` forbidden as a patch**: it masks the overflow and can cut content; the root cause is always fixed.
 
-La auditoría del arquitecto detectó desbordes reales en varios componentes en viewports móviles (~360 px) y ultrapequeños (< 340 px): el toast (mensajes largos y los de tipo undo), los nombres de episodios, las cuadrículas (biblioteca, estadísticas, amigos), el buscador de la biblioteca, el header del modal de detalle, las filas de notificaciones y ajustes, las 5 subpestañas del perfil y el header de la aplicación. Además, varios textos de tarjetas y resultados usaban `nowrap` + ellipsis, truncando contenido esencial en móvil.
+The architect's audit detected real overflows in several components at mobile viewports (~360 px) and ultra-small widths (< 340 px): the toast (long messages and undo-type ones), episode names, the grids (library, statistics, friends), the library search, the detail modal header, the notification and settings rows, the profile's 5 sub-tabs and the app header. In addition, several card and result texts used `nowrap` + ellipsis, truncating essential content on mobile.
 
 Related issue: #41 — https://github.com/gonzalitojh/Registro-personal/issues/41
 
-## Decisión
+## Decision
 
-Corregir los desbordes en su **causa raíz** (CSS), sustituir el truncado por ellipsis con **line-clamp** en contenido esencial en móvil, compactar los componentes que desbordaban (subpestañas del perfil y header) y **bump de versión PWA** para propagar los cambios a los clientes con caché cache-first. No se usa `overflow-x: hidden` como parche en ningún caso.
+Fix the overflows at their **root cause** (CSS), replace ellipsis truncation with **line-clamp** for essential content on mobile, compact the overflowing components (profile sub-tabs and header) and do a **PWA version bump** to propagate the changes to clients with cache-first caching. `overflow-x: hidden` is never used as a patch.
 
-### 1. Fixes de causa raíz en CSS (`css/styles.css` y `ocio/ocio.css`)
+### 1. Root-cause fixes in CSS (`css/styles.css` and `ocio/ocio.css`)
 
-Se corrigieron los desbordes detectados con `overflow-wrap` y `min-width: 0` (hijos de flex/grid), sin enmascarar el problema:
+The detected overflows were fixed with `overflow-wrap` and `min-width: 0` (flex/grid children), without masking the problem:
 
-- **`.toast`**: `max-width: min(480px, calc(100vw - 2rem))` + `overflow-wrap: anywhere`; el texto de los toasts (incluido `.toast--undo span`, que recibe `flex: 1` + `min-width: 0`) envuelve líneas en cualquier palabra, y **solo el botón de deshacer mantiene `nowrap`**.
-- **`.episode-row__name`**: `min-width: 0` + `overflow-wrap: anywhere` (nombres de episodios largos sin espacios ya no desbordan la fila).
-- **Cuadrículas con `minmax(min(Npx, 100%), 1fr)`** para soportar viewports < 340 px: `.library-grid` (`min(150px, 100%)`), `.stats-grid` (`min(280px, 100%)`), `.friends-list` (`min(120px, 100%)`) y `.cover-picker` (`min(150px, 100%)`).
-- **`.search-slip input`**: `min-width: 0` (el input del buscador de la biblioteca ya no empuja al contenedor).
-- **Modal de detalle**: `.modal-detail__header > div` con `min-width: 0` y `.modal-detail__title` con `overflow-wrap: anywhere` (títulos largos sin espacios envuelven en lugar de desbordar el modal).
-- **`.notif-row__text`** y **`.settings-row label:first-child`**: `min-width: 0` + `overflow-wrap: anywhere` (texto de notificaciones y etiquetas de ajustes largas envuelven; el select/switch permanece intacto).
-- **Dropdown de notificaciones (`.notif-dropdown`)**: en móvil el header envuelve en dos filas y el ancla absoluta (`right: 0` respecto a `.user-badge`) quedaba a la izquierda de la pantalla, abriendo el panel fuera del viewport. Fix doble: `.user-badge` con `margin-left: auto` (ancla a la derecha cuando envuelve) y `@media (max-width: 600px)` con `position: fixed; left: 1rem; right: 1rem; top: 4.5rem; width: auto` (el panel se ancla al viewport: por construcción nunca puede desbordar horizontalmente).
+- **`.toast`**: `max-width: min(480px, calc(100vw - 2rem))` + `overflow-wrap: anywhere`; toast text (including `.toast--undo span`, which gets `flex: 1` + `min-width: 0`) wraps at any word, and **only the undo button keeps `nowrap`**.
+- **`.episode-row__name`**: `min-width: 0` + `overflow-wrap: anywhere` (long episode names without spaces no longer overflow the row).
+- **Grids with `minmax(min(Npx, 100%), 1fr)`** to support viewports < 340 px: `.library-grid` (`min(150px, 100%)`), `.stats-grid` (`min(280px, 100%)`), `.friends-list` (`min(120px, 100%)`) and `.cover-picker` (`min(150px, 100%)`).
+- **`.search-slip input`**: `min-width: 0` (the library search's input no longer pushes the container).
+- **Detail modal**: `.modal-detail__header > div` with `min-width: 0` and `.modal-detail__title` with `overflow-wrap: anywhere` (long titles without spaces wrap instead of overflowing the modal).
+- **`.notif-row__text`** and **`.settings-row label:first-child`**: `min-width: 0` + `overflow-wrap: anywhere` (notification texts and long settings labels wrap; the select/switch stays intact).
+- **Notifications dropdown (`.notif-dropdown`)**: on mobile the header wraps into two rows and the absolute anchor (`right: 0` relative to `.user-badge`) was left off-screen to the left, opening the panel outside the viewport. Double fix: `.user-badge` with `margin-left: auto` (anchored to the right when wrapping) and `@media (max-width: 600px)` with `position: fixed; left: 1rem; right: 1rem; top: 4.5rem; width: auto` (the panel anchors to the viewport: by construction it can never overflow horizontally).
 
-### 2. Truncado con line-clamp en vez de nowrap + ellipsis (contenido esencial en móvil)
+### 2. Truncation with line-clamp instead of nowrap + ellipsis (essential content on mobile)
 
-El contenido esencial (títulos, textos de actividad) pasa de `nowrap` + ellipsis a **line-clamp de 2-3 líneas** en los anchos donde antes se truncaba:
+Essential content (titles, activity texts) goes from `nowrap` + ellipsis to a **2-3-line line-clamp** at the widths where it was previously truncated:
 
-- **`.activity-event__text`**: clamp de 3 líneas en todos los anchos (texto del feed de actividad).
-- **`.list-row__title`**: clamp de 2 líneas en todos los anchos.
-- **`.friend-card__name`**: clamp de 2 líneas (nombres de amigos largos).
-- **`.result-card__title`**: clamp de 2 líneas.
-- **`.global-search__item-title` / `.global-search__item-meta`**: clamp de 2 líneas **solo ≤ 600 px**; en desktop conservan `nowrap` + ellipsis + atributo `title`.
-- **`.item-card__meta`**: clamp de 2 líneas **solo ≤ 480 px**; en desktop conserva `nowrap` + ellipsis + `title` (decisión del ADR-003).
+- **`.activity-event__text`**: 3-line clamp at all widths (activity feed text).
+- **`.list-row__title`**: 2-line clamp at all widths.
+- **`.friend-card__name`**: 2-line clamp (long friend names).
+- **`.result-card__title`**: 2-line clamp.
+- **`.global-search__item-title` / `.global-search__item-meta`**: 2-line clamp **only ≤ 600 px**; on desktop they keep `nowrap` + ellipsis + the `title` attribute.
+- **`.item-card__meta`**: 2-line clamp **only ≤ 480 px**; on desktop it keeps `nowrap` + ellipsis + `title` (ADR-003 decision).
 
-El atributo `title` se mantiene en el markup dinámico (`js/ui.js`) para recuperar el contenido truncado en desktop (tooltip nativo).
+The `title` attribute is kept in the dynamic markup (`js/ui.js`) to recover the truncated content on desktop (native tooltip).
 
-### 3. Subpestañas del perfil (`.profile-subtabs`) — wrap en vez de ocultar
+### 3. Profile sub-tabs (`.profile-subtabs`) — wrap instead of hiding
 
-Las 5 pestañas del perfil (Estadísticas, Amigos, …) desbordaban el viewport en móvil. Se corrigió con `flex-wrap: wrap` + media query ≤ 480 px con paddings y `font-size` reducidos (`padding: 0.3rem 0.6rem`, `font-size: 0.78rem`, `justify-content: center`). **Ninguna pestaña se oculta** y el botón de logout nunca se oculta.
+The profile's 5 tabs (Estadísticas, Amigos, …) overflowed the viewport on mobile. Fixed with `flex-wrap: wrap` + a media query ≤ 480 px with reduced paddings and `font-size` (`padding: 0.3rem 0.6rem`, `font-size: 0.78rem`, `justify-content: center`). **No tab is hidden** and the logout button is never hidden.
 
-### 4. Header compacto en ≤ 480 px
+### 4. Compact header at ≤ 480 px
 
-Media query que reduce gaps y paddings de `.app-header__top` (`gap: 0.5rem`, `margin-bottom: 1rem`), `.app-title` (`font-size: 1.45rem`) y `.user-badge` (`gap: 0.4rem`, `.btn--ghost` con `padding: 0.3rem 0.6rem` y `font-size: 0.78rem`). La fila superior ya envuelve en dos líneas (`flex-wrap: wrap`) sin desbordar y **sin ocultar el botón "Salir"**.
+Media query that reduces the gaps and paddings of `.app-header__top` (`gap: 0.5rem`, `margin-bottom: 1rem`), `.app-title` (`font-size: 1.45rem`) and `.user-badge` (`gap: 0.4rem`, `.btn--ghost` with `padding: 0.3rem 0.6rem` and `font-size: 0.78rem`). The top row already wraps into two lines (`flex-wrap: wrap`) without overflowing and **without hiding the "Salir" button**.
 
-### 5. Bump de versión PWA a `20260805`
+### 5. PWA version bump to `20260805`
 
-Se ejecutó `scripts/bump-version.sh` para invalidar la caché del service worker (estrategia cache-first, ADR-019) y propagar los cambios CSS/HTML:
+`scripts/bump-version.sh` was run to invalidate the service worker cache (cache-first strategy, ADR-019) and propagate the CSS/HTML changes:
 
 - `js/config.js`: `APP_VERSION` → `'20260805'`.
-- `index.html`: refs versionadas `?v=20260805` (`css/styles.css`, `ocio/ocio.css`, `js/app.js`).
-- `service-worker.js`: `STATIC_ASSETS` actualizados a `?v=20260805` (incluidos los fragmentos `ocio/*.html`).
+- `index.html`: versioned refs `?v=20260805` (`css/styles.css`, `ocio/ocio.css`, `js/app.js`).
+- `service-worker.js`: `STATIC_ASSETS` updated to `?v=20260805` (including the `ocio/*.html` fragments).
 
-### 6. Respeto de decisiones previas
+### 6. Respect for previous decisions
 
-La revisión **no** altera decisiones documentadas anteriormente:
+The review does **not** alter previously documented decisions:
 
-- **ADR-003**: `.item-card__meta` conserva ellipsis + `title` en desktop (el clamp solo aplica ≤ 480 px).
-- **ADR-016**: no se tocan los patrones de accesibilidad (focus, ARIA, contraste).
-- **ADR-017**: `.trailer-btn__label` conserva `white-space: nowrap` intacto.
-- Los **scrolls horizontales diseñados** (`.results-strip`, `.cover-picker`, `.recommendations__scroll`) se mantienen: son contenedores pensados para scroll horizontal, permitidos por la regla 1 de `AGENTS.md`.
+- **ADR-003**: `.item-card__meta` keeps ellipsis + `title` on desktop (the clamp only applies ≤ 480 px).
+- **ADR-016**: the accessibility patterns (focus, ARIA, contrast) are not touched.
+- **ADR-017**: `.trailer-btn__label` keeps its `white-space: nowrap` intact.
+- The **designed horizontal scrolls** (`.results-strip`, `.cover-picker`, `.recommendations__scroll`) are kept: they are containers meant for horizontal scroll, allowed by rule 1 of `AGENTS.md`.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **`overflow-x: hidden` en `body`/`html` como parche**: descartado por prohibición explícita de `AGENTS.md` (ADR-026): enmascara el desbordamiento y puede cortar contenido. Todos los desbordes se corrigieron en su causa raíz.
-- **Ocultar subpestañas del perfil en móvil**: se valoró mostrar solo un subconjunto de las 5 pestañas, pero ocultaría funcionalidad; `flex-wrap: wrap` + compactación conserva el 100 % de las pestañas visibles.
-- **Ellipsis (`text-overflow: ellipsis` con `nowrap`) generalizado para títulos**: descartado porque la regla 2 de `AGENTS.md` prohíbe truncar contenido esencial en móvil; el line-clamp envuelve hasta 2-3 líneas conservando la legibilidad.
-- **Mantener `px` fijos en contenedores de ancho completo**: descartado por la regla 3; las cuadrículas usan `minmax(min(Npx, 100%), 1fr)` y el toast `calc(100vw - 2rem)` para degradar en viewports pequeños.
+- **`overflow-x: hidden` on `body`/`html` as a patch**: rejected by the explicit prohibition of `AGENTS.md` (ADR-026): it masks the overflow and can cut content. All overflows were fixed at their root cause.
+- **Hiding profile sub-tabs on mobile**: showing only a subset of the 5 tabs was considered, but it would hide functionality; `flex-wrap: wrap` + compaction keeps 100 % of the tabs visible.
+- **Generalized ellipsis (`text-overflow: ellipsis` with `nowrap`) for titles**: rejected because rule 2 of `AGENTS.md` forbids truncating essential content on mobile; the line-clamp wraps up to 2-3 lines preserving readability.
+- **Keeping fixed `px` in full-width containers**: rejected by rule 3; the grids use `minmax(min(Npx, 100%), 1fr)` and the toast `calc(100vw - 2rem)` to degrade at small viewports.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **Sin desbordes en ningún ancho**: verificados los 6 criterios de aceptación de la issue — visualización correcta en 360/768/1280 px, `document.documentElement.scrollWidth <= window.innerWidth` en los 3 anchos, `overflow-wrap`/`min-width: 0` aplicados, sin `px` fijos en contenedores de ancho completo, sin `overflow-x: hidden` en `body`/`html`, y scroll horizontal solo en contenedores diseñados (`.results-strip`, `.cover-picker`, `.recommendations__scroll`).
-- **Contenido esencial legible en móvil**: line-clamp de 2-3 líneas en vez de ellipsis; el contenido truncado sigue recuperable en desktop vía atributo `title`.
-- **Sin pérdida de funcionalidad**: ninguna pestaña del perfil ni el botón de logout se ocultan en móvil.
-- **QA y seguridad**: QA validó los 6 criterios de aceptación y el security scan no reportó hallazgos HIGH.
-- **Propagación garantizada**: el bump a `20260805` invalida la caché cache-first del service worker, de modo que los clientes reciben los nuevos estilos.
+### Positive
+- **No overflows at any width**: verified the 6 acceptance criteria of the issue — correct display at 360/768/1280 px, `document.documentElement.scrollWidth <= window.innerWidth` at all 3 widths, `overflow-wrap`/`min-width: 0` applied, no fixed `px` in full-width containers, no `overflow-x: hidden` on `body`/`html`, and horizontal scroll only in designed containers (`.results-strip`, `.cover-picker`, `.recommendations__scroll`).
+- **Essential content readable on mobile**: line-clamp of 2-3 lines instead of ellipsis; truncated content remains recoverable on desktop via the `title` attribute.
+- **No functionality lost**: no profile tab nor the logout button are hidden on mobile.
+- **QA and security**: QA validated the 6 acceptance criteria and the security scan reported no HIGH findings.
+- **Guaranteed propagation**: the bump to `20260805` invalidates the service worker's cache-first cache, so clients receive the new styles.
 
-### Negativas
-- **Cambios amplios en CSS**: la revisión toca un número alto de selectores en `css/styles.css` y `ocio/ocio.css`, lo que incrementa el riesgo de conflicto con futuras ramas; mitigado por el bump de versión y por la cobertura de QA en los 3 anchos.
-- **Line-clamp requiere `display: -webkit-box`**: el soporte del prefijo `-webkit-` es universal en navegadores modernos, pero el clamp no degrada elegantemente si un navegador no lo soporta (el contenido se mostraría completo, sin truncar — degradación aceptable).
+### Negative
+- **Broad CSS changes**: the review touches a high number of selectors in `css/styles.css` and `ocio/ocio.css`, increasing the risk of conflicts with future branches; mitigated by the version bump and by the QA coverage at the 3 widths.
+- **Line-clamp requires `display: -webkit-box`**: the `-webkit-` prefix support is universal in modern browsers, but the clamp does not degrade gracefully if a browser does not support it (the content would be shown complete, untruncated — acceptable degradation).
 
-### Neutras
-- **No se modifica `js/ui.js`**: el atributo `title` ya existía en el markup dinámico; el cambio es puramente CSS + bump de versión.
-- **`.item-card__title` ya usaba clamp de 2 líneas**; la revisión lo confirma y extiende el patrón al resto de títulos, unificando el criterio.
-- El toast con botón de deshacer (`.toast--undo`) ahora puede ocupar más alto en móvil al envolver el texto, pero el botón permanece en la misma línea (nowrap).
+### Neutral
+- **`js/ui.js` is not modified**: the `title` attribute already existed in the dynamic markup; the change is purely CSS + version bump.
+- **`.item-card__title` already used a 2-line clamp**; the review confirms it and extends the pattern to the rest of the titles, unifying the criterion.
+- The toast with undo button (`.toast--undo`) may now take more height on mobile as the text wraps, but the button stays on the same line (nowrap).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `css/styles.css` | `.toast` con `max-width: min(480px, calc(100vw - 2rem))` + `overflow-wrap: anywhere` (y `.toast--undo span` con `flex: 1` + `min-width: 0`), `.notif-row__text` y `.settings-row label:first-child` con `min-width: 0` + `overflow-wrap: anywhere`, `.stats-grid`/`.friends-list` con `minmax(min(Npx, 100%), 1fr)`, `.friend-card__name` clamp 2, `.global-search__item-title/meta` clamp 2 ≤ 600 px, `.profile-subtabs` con `flex-wrap: wrap` + compactación ≤ 480 px, header compacto ≤ 480 px (`.app-header__top`, `.app-title`, `.user-badge`), `.user-badge` con `margin-left: auto`, `.notif-dropdown` con `position: fixed` ≤ 600 px |
-| `ocio/ocio.css` | `.episode-row__name` con `min-width: 0` + `overflow-wrap: anywhere`, `.library-grid`/`.cover-picker` con `minmax(min(Npx, 100%), 1fr)`, `.search-slip input` con `min-width: 0`, `.modal-detail__header > div` con `min-width: 0` y `.modal-detail__title` con `overflow-wrap: anywhere`, `.activity-event__text` clamp 3, `.list-row__title` clamp 2, `.result-card__title` clamp 2, `.item-card__meta` clamp 2 ≤ 480 px (desktop conserva ellipsis + title del ADR-003); `.trailer-btn__label` nowrap intacto (ADR-017) |
+| `css/styles.css` | `.toast` with `max-width: min(480px, calc(100vw - 2rem))` + `overflow-wrap: anywhere` (and `.toast--undo span` with `flex: 1` + `min-width: 0`), `.notif-row__text` and `.settings-row label:first-child` with `min-width: 0` + `overflow-wrap: anywhere`, `.stats-grid`/`.friends-list` with `minmax(min(Npx, 100%), 1fr)`, `.friend-card__name` clamp 2, `.global-search__item-title/meta` clamp 2 ≤ 600 px, `.profile-subtabs` with `flex-wrap: wrap` + compaction ≤ 480 px, compact header ≤ 480 px (`.app-header__top`, `.app-title`, `.user-badge`), `.user-badge` with `margin-left: auto`, `.notif-dropdown` with `position: fixed` ≤ 600 px |
+| `ocio/ocio.css` | `.episode-row__name` with `min-width: 0` + `overflow-wrap: anywhere`, `.library-grid`/`.cover-picker` with `minmax(min(Npx, 100%), 1fr)`, `.search-slip input` with `min-width: 0`, `.modal-detail__header > div` with `min-width: 0` and `.modal-detail__title` with `overflow-wrap: anywhere`, `.activity-event__text` clamp 3, `.list-row__title` clamp 2, `.result-card__title` clamp 2, `.item-card__meta` clamp 2 ≤ 480 px (desktop keeps ADR-003's ellipsis + title); `.trailer-btn__label` nowrap intact (ADR-017) |
 | `js/config.js` | `APP_VERSION` → `'20260805'` |
-| `index.html` | Refs versionadas `?v=20260805` (`css/styles.css`, `ocio/ocio.css`, `js/app.js`) |
-| `service-worker.js` | `STATIC_ASSETS` actualizados a `?v=20260805` (incluidos fragmentos `ocio/*.html`) |
-| `scripts/bump-version.sh` | **Usado** (sin cambios) para ejecutar el bump de versión |
-| `docs/adr-027-responsividad-review.md` | **Nuevo**: este documento |
+| `index.html` | Versioned refs `?v=20260805` (`css/styles.css`, `ocio/ocio.css`, `js/app.js`) |
+| `service-worker.js` | `STATIC_ASSETS` updated to `?v=20260805` (including `ocio/*.html` fragments) |
+| `scripts/bump-version.sh` | **Used** (unchanged) to run the version bump |
+| `docs/adr-027-responsividad-review.md` | **New**: this document |
 
 Related issue: #41 — https://github.com/gonzalitojh/Registro-personal/issues/41

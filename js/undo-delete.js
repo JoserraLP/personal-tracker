@@ -1,43 +1,42 @@
 // =============================================================
-// Gestión de eliminaciones con opción de deshacer.
-// En lugar de borrar inmediatamente de Firestore, programa la
-// eliminación con un temporizador de 6 segundos. Si el usuario
-// hace clic en "Deshacer", se cancela. Si el temporizador expira,
-// se ejecuta deleteDoc.
-// Solo un toast de deshacer visible a la vez. Si se programa otra
-// eliminación mientras hay una pendiente, la anterior se ejecuta
-// inmediatamente.
+// Deletion management with option to undo.
+// Instead of deleting immediately from Firestore, the deletion is
+// scheduled with a 6-second timer. If the user clicks "Deshacer"
+// (Undo), it is cancelled. If the timer expires, deleteDoc runs.
+// Only one undo toast is visible at a time. If another deletion is
+// scheduled while one is pending, the previous one runs
+// immediately.
 // =============================================================
 
 import * as ui from "./ui.js";
 
 const DELAY_MS = 6000;
 
-// Almacena la única eliminación pendiente (como mucho una a la vez).
-// Cada entrada: { timerId, uid, kind, itemId, hideToast }
+// Stores the single pending deletion (at most one at a time).
+// Each entry: { timerId, uid, kind, itemId, hideToast }
 const pending = new Map();
 
 /**
- * Programa la eliminación de un ítem con posibilidad de deshacer.
- * @param {Object} item  - El ítem a eliminar (debe tener .id y .title)
- * @param {string} uid   - UID del usuario autenticado
+ * Schedules the deletion of an item with the option to undo.
+ * @param {Object} item  - The item to delete (must have .id and .title)
+ * @param {string} uid   - UID of the authenticated user
  * @param {string} kind  - "movie" | "tv" | "book"
- * @param {Object} ctx   - Contexto con deleteItem(uid, kind, id)
+ * @param {Object} ctx   - Context with deleteItem(uid, kind, id)
  */
 export function scheduleDeletion(item, uid, kind, ctx) {
   const itemId = item.id;
 
-  // Si ya hay una eliminación pendiente
+  // If there is already a pending deletion
   if (pending.size > 0) {
     for (const [key, data] of pending) {
       if (key === itemId) {
-        // Mismo ítem — solo reiniciar el temporizador, no eliminar aún
+        // Same item — only restart the timer, do not delete yet
         clearTimeout(data.timerId);
         data.hideToast();
         pending.delete(key);
         break;
       } else {
-        // Ítem diferente — ejecutar la pendiente inmediatamente
+        // Different item — run the pending one immediately
         clearTimeout(data.timerId);
         pending.delete(key);
         _executeDeletion(data, ctx);
@@ -46,7 +45,7 @@ export function scheduleDeletion(item, uid, kind, ctx) {
     }
   }
 
-  // Callback cuando el usuario hace clic en "Deshacer"
+  // Callback when the user clicks "Deshacer"
   const onUndo = () => {
     const data = pending.get(itemId);
     if (!data) return;
@@ -56,15 +55,15 @@ export function scheduleDeletion(item, uid, kind, ctx) {
     ui.showToast("Cancelado.");
   };
 
-  // Mostrar el toast con botón de deshacer
+  // Show the toast with the undo button
   const { hide } = ui.showUndoToast(item.title, onUndo);
 
-  // Temporizador que ejecuta la eliminación definitiva
+  // Timer that performs the definitive deletion
   const timerId = setTimeout(() => {
     const data = pending.get(itemId);
     if (!data) return;
-    // Eliminar del mapa ANTES de la operación asíncrona para
-    // que el botón "Deshacer" ya no tenga efecto
+    // Remove from the map BEFORE the async operation so that
+    // the "Deshacer" button no longer has any effect
     pending.delete(itemId);
     _executeDeletion(data, ctx);
   }, DELAY_MS);
@@ -73,7 +72,7 @@ export function scheduleDeletion(item, uid, kind, ctx) {
 }
 
 /**
- * Ejecuta la eliminación definitiva en Firestore.
+ * Performs the definitive deletion in Firestore.
  */
 async function _executeDeletion(data, ctx) {
   const { uid, kind, itemId, hideToast } = data;
@@ -88,8 +87,8 @@ async function _executeDeletion(data, ctx) {
 }
 
 /**
- * Cancela todas las eliminaciones pendientes (útil en beforeunload).
- * Los ítems permanecen en Firestore — no hay pérdida de datos.
+ * Cancels all pending deletions (useful in beforeunload).
+ * Items remain in Firestore — no data is lost.
  */
 export function cancelAllDeletions() {
   for (const [, data] of pending) {
@@ -99,5 +98,5 @@ export function cancelAllDeletions() {
   pending.clear();
 }
 
-// Al recargar la página se cancelan las eliminaciones pendientes
+// On page reload, pending deletions are cancelled
 window.addEventListener("beforeunload", cancelAllDeletions);

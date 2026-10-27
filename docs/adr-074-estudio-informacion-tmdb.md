@@ -1,164 +1,189 @@
-# ADR-074: Estudio de la información de la API de TMDB — factible montar un "IMDB/TMDB" desde el cliente, con alcance por fases para futuras implementaciones (issue #184)
+# ADR-074: TMDB API information study — building an "IMDB/TMDB" from the client is feasible, with a phased scope for future implementations (issue #184)
 
-## Estado
-Aceptado (decisión de estudio: define el alcance de futuras issues de
-implementación; esta issue no implementa nada).
+## Status
+Accepted (a study decision: it defines the scope of future implementation
+issues; this issue implements nothing).
 
-## Fecha
+## Date
 2026-08-10
 
-## Contexto
+## Context
 
-La issue #184 pide **realizar un estudio, sin implementar nada**, de toda la
-información que se puede extraer de la API de TMDB, organizada por secciones,
-para saber hasta dónde puede llegar la idea de montar una especie de _IMDB_ o
-_TMDB_ dentro de la web: consultar mucha más información sobre películas,
-series, actores, directores, etc. La issue no plantea una implementación
-concreta, sino un **catálogo de posibilidades** que permita decidir alcance.
+Issue #184 asks to **carry out a study, without implementing anything**, of all the
+information that can be pulled from the TMDB API, organized by sections,
+to learn how far the idea of building a kind of _IMDB_ or
+_TMDB_ inside the web can go: querying much more information about movies,
+series, actors, directors, etc. The issue does not pose a concrete
+implementation but a **catalog of possibilities** allowing scope
+decisions.
 
-El punto de partida, verificado en el código real y en la documentación
-oficial de TMDB (secciones 3 y 4 del estudio):
+The starting point, verified against the real code and TMDB's
+official documentation (the study's sections 3 and 4):
 
-- **Arquitectura 100 % cliente**: Firebase Hosting, vanilla JS, PWA con
-  service worker, sin backend propio salvo el proxy de IGDB (ADR-067). Todo
-  acceso a TMDB vive en `js/api-movies.js` con la clave en query string
-  (`js/config.js`).
-- **Uso actual de TMDB**: 9 llamadas distintas ya en producción (búsqueda de
-  películas/series, detalles con `append_to_response=credits,videos`,
-  temporadas/episodios, colecciones/sagas ADR-006, watch providers ES,
-  similares), con caché 24 h en memoria, `networkFirst` para la API y
-  `cacheFirst` para el CDN de imágenes en el service worker
-  (`service-worker.js:288` y `:307`) y snapshots Firestore con refresh
-  diario (ADR-021). Baseline de consumo: **~410 llamadas a TMDB/día/usuario**
-  (estudio de almacenamiento, ADR-073).
-- **Atribución ya cumplida**: aviso en el footer de `index.html:222`.
-- **Verificación empírica de cortesía (2026-08-10)**: `curl` a
-  `api.themoviedb.org` confirma `access-control-allow-origin: *` → la API es
-  consultable desde el navegador, como ya hace la app.
+- A **100 % client architecture**: Firebase Hosting, vanilla JS, a PWA with
+  a service worker, no backend of its own except IGDB's proxy (ADR-067).
+  All TMDB access lives in `js/api-movies.js` with a
+  key in the query string (`js/config.js`).
+- **TMDB's current use**: 9 distinct calls already in production
+  (movie/series search, details with `append_to_response=credits,videos`,
+  seasons/episodes, collections/sagas
+  ADR-006, watch providers ES, similar), with a
+  24 h in-memory cache, `networkFirst` for the API and
+  `cacheFirst` for the image CDN in the service
+  worker (`service-worker.js:288` and `:307`) and Firestore snapshots with a
+  daily refresh (ADR-021). Consumption baseline: **~410 TMDB
+  calls/day/user**
+  (the storage study, ADR-073).
+- **Attribution already fulfilled**: a notice in the footer of
+  `index.html:222`.
+- **Empirical courtesy verification (2026-08-10)**: a `curl` to
+  `api.themoviedb.org` confirms `access-control-allow-origin: *` → the
+  API is queryable from the browser, as the
+  app already does.
 
-**Por qué era necesario el estudio**: la ficha actual muestra solo un
-subconjunto de la información de TMDB (datos básicos, reparto de 5,
-director, tráiler, plataformas, similares). La issue pregunta **hasta dónde
-se puede llegar** sin saber qué ofrece realmente la API; este estudio
-cataloga las 21 secciones de la API v3 (endpoints, datos y utilidad), evalúa
-la viabilidad en la arquitectura actual y propone un alcance ordenado.
+**Why the study was needed**: today's profile shows only a
+subset of TMDB's information (basic data, a cast of 5,
+director, trailer, platforms, similar). The issue asks **how far
+one can go** without knowing what the API really offers; this study
+catalogs the API v3's 21 sections
 
-El estudio ya está **realizado y validado (QA PASS)**:
-`docs/estudio-informacion-tmdb.md` (775 líneas, fuentes primarias de TMDB
-consultadas el 2026-08-10: documentación oficial, OpenAPI v3, términos de
-uso v. 20/10/2023 y FAQ; evidencia contrastada con el código real de la
-app). Su veredicto: **es factible montar una "especie de IMDB/TMDB" en el
-cliente** para la práctica totalidad de la información de TMDB, sin
-infraestructura nueva. Este ADR documenta la decisión/conclusión a
-posteriori, como hicieron los ADR-065, ADR-067 y ADR-073 para sus estudios,
-y cumple la definición de done de `tasks/task-issue-184.json` («ADR
-documentando el estudio y su conclusión, con 'Related issue: #184'»).
+ (endpoints, data and utility), evaluates
+the viability in the current architecture and proposes an ordered
+scope.
+
+The study is already **done and validated (QA PASS)**:
+`docs/estudio-informacion-tmdb.md` (775 lines, TMDB's primary
+sources consulted on 2026-08-10: the official docs, OpenAPI v3,
+the terms of use of 2023-10-20 and FAQ; evidence contrasted against
+the app's real code). Its verdict: **building an "IMDB/TMDB-like"
+on the client is feasible** for practically all of TMDB's information, with no
+new infrastructure. This ADR documents the decision/conclusion
+retrospectively, as ADR-065, ADR-067 and ADR-073 did for their
+studies, and fulfills `tasks/task-issue-184.json`'s definition of done
+(«ADR documenting the study and its conclusion, with 'Related
+issue: #184'»).
 
 Related issue: #184 — https://github.com/gonzalitojh/Registro-personal/issues/184
 
-## Decisión
+## Decision
 
-**Se declara factible la idea de la issue y se fija un alcance por fases
-para futuras issues de implementación — fuera del alcance de esta issue, que
-no implementa nada.** La base de la decisión:
+**The issue's idea is declared feasible and a phased scope is fixed
+for future implementation issues — out of this issue's scope, which
+implements nothing.** The decision's basis:
 
-1. **Casi toda la API es de categoría A (usable hoy en cliente)**: las 21
-   secciones del catálogo (sección 4 del estudio) salvo cuentas/autenticación
-   se consultan con GET público + `api_key` + CORS habilitado. No hay ningún
-   cambio arquitectónico necesario: se amplía `js/api-movies.js` siguiendo
-   los patrones existentes (caché 24 h + `networkFirst` + bajo demanda).
-2. **`append_to_response` hace el enriquecimiento barato**: una ficha
-   completa tipo IMDB cuesta 1 llamada por apertura (sección 4.21), no N.
-   Las listas editoriales/discover cuestan 1 llamada por sección; el CDN de
-   imágenes no tiene rate limit.
-3. **Límites asumibles** (sección 6): rate limit blando ~40 req/s **por
-   clave** (compartida por todos los usuarios) → se mantiene el modelo de
-   bajo volumen + caché + bajo demanda (consumo actual ~0,005 req/s de
-   media); caché de datos de la API ≤ 6 meses (los snapshots Firestore son
-   coherentes); gratis no comercial con atribución (ya cumplida); prohibido
-   el uso ML/AI de los datos; sin SLA.
-4. **Infraestructura nueva solo si escala el número de usuarios**: si se
-   golpease el rate limit conjunto, se aplicaría el patrón de proxy
-   Cloudflare Worker ya probado con IGDB (ADR-067). No es necesario hoy.
+1. **Almost all the API is of category A (usable today on the
+   client)**: the catalog's 21 sections (study section 4) except
+   accounts/authentication are queried with a public GET +
+   `api_key` + CORS enabled. No architectural change is needed: `js/api-movies.js` is
+   extended following the existing patterns (the 24 h cache +
+   `networkFirst` + on demand).
+2. **`append_to_response` makes enrichment cheap**: an IMDB-like full
+   profile costs 1 call per opening (section 4.21), not N. The editors'/discover lists cost 1
+   call per section; the image CDN has no rate limit.
+3. **Affordable limits** (section 6): a soft ~40 req/s **per
+   key** rate limit (shared by all users) → the low-volume +
+   cache + on-demand model is kept (the current consumption is
+   ~0.005 req/s on average); the API data may be
+   cached ≤ 6 months (the Firestore snapshots are
+   coherent); free non-commercial with attribution (already
+   fulfilled); the ML/AI use of the data is
+   forbidden; no SLA.
+4. **New infrastructure only if the user count scales**: if the
+   joint rate limit were hit, the Cloudflare
+   Worker proxy pattern already proven with IGDB (ADR-067)
+   would apply. Not needed today.
 
-### Alcance recomendado (para issues futuras, sección 8 del estudio)
+### Recommended scope (for future issues, study section 8)
 
-- **Fase 1 — Personas y filmografía** (`person/{id}`, `combined_credits`,
-  créditos ya usados): fichas de actor/director con biografía, foto,
-  filmografía navegable y «ver más de este actor/director». Máximo
-  valor/esfuerzo; el `person_id` ya llega en los créditos de la ficha.
-- **Fase 2 — Descubrimiento** (`discover/movie|tv`, `trending/*`,
-  `movie/popular|now_playing|upcoming|top_rated`, `tv/*`): secciones de
-  tendencias/estrenos/populares y exploración avanzada (género, año,
-  plataforma, nota) sin lógica propia.
-- **Fase 3 — Riqueza de ficha** (imágenes, vídeos, certificaciones por
-  país, release dates por país, ficha de episodio): galerías, tráilers
-  adicionales y datos técnicos completos.
-- **Fase 4 — Integración externa** (`external_ids`, `find`, `configuration`):
-  «ver en IMDb/Wikipedia», importar por ID externo y configuración dinámica
-  (tamaños de imagen, traducciones de jobs).
-- **Fuera de alcance**: reviews y listas de usuarios de TMDB (la app tiene
-  UGC propio), autenticación/cuentas v3 y v4 (duplica el sistema propio y
-  exige OAuth), y changes/changelog (solo nota futura para el refresh del
-  ADR-021).
+- **Phase 1 — People and filmography** (`person/{id}`,
+  `combined_credits`, the already-used credits): actor/director
+  profiles with a biography, photo, a navigable filmography and «see more from this
+  actor/director». The maximum value/effort; the `person_id` already
+  arrives in the profile's credits.
+- **Phase 2 — Discovery** (`discover/movie|tv`, `trending/*`,
+  `movie/popular|now_playing|upcoming|top_rated`, `tv/*`): trend/release/popular
+  sections and advanced exploration (genre, year,
+  platform, score) with no own logic.
+- **Phase 3 — Profile richness** (images, videos, per-country
+  certifications, per-country release dates, the episode's profile):
+  galleries, additional
+  trailers and full technical data.
+- **Phase 4 — External integration** (`external_ids`, `find`,
+  `configuration`): «see on IMDb/Wikipedia», import by external ID and
+  dynamic configuration (image sizes, translations of jobs).
+- **Out of scope**: reviews and TMDB users' lists (the app has its
+  own UGC), v3 and v4 authentication/accounts (it duplicates our own
+  system and requires OAuth), and the changes/changelog (only a
+  future note for ADR-021's refresh).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Mantener el statu quo** (9 endpoints): no satisface la idea de la issue;
-  el estudio muestra que la ampliación es barata y sin riesgo.
-- **Proxy/backend obligatorio desde el inicio**: sobredimensionado; toda la
-  categoría A funciona en cliente (CORS verificado). Solo fase de escalado.
-- **Migrar a API v4 con Access Token**: no aporta datos nuevos; en un
-  cliente público la clave ya es visible, así que v4 no añade seguridad y
-  añade gestión de token (sección 4.20).
-- **Integrar cuentas/listas/reviews de TMDB**: duplica valoración/listas
-  propias y exige OAuth; coste/beneficio negativo (secciones 4.16 y 4.19).
+- **Keeping the status quo** (9 endpoints): it does not
+  satisfy the issue's idea; the study shows the expansion is cheap
+  and risk-free.
+- **A mandatory proxy/backend from the start**: oversized; all of the
+  A category works on the client (CORS verified). A scaling-only
+  phase.
+- **Migrating to API v4 with an Access Token**: it adds no new data;
+  on a public client the key is already visible, so
+  v4 adds no security and adds token management
+  (section 4.20).
+- **Integrating TMDB's accounts/lists/reviews**: it duplicates our own
+  ratings/lists and requires OAuth; a negative cost/benefit (sections
+  4.16 and 4.19).
 
-## Consecuencias
+## Consequences
 
-**Positivas**:
+**Positive**:
 
-- La web puede acercarse a una experiencia tipo IMDB/TMDB **sin backend ni
-  coste de infraestructura**, reutilizando los patrones ya probados.
-- El `append_to_response` y las listas editoriales minimizan las llamadas
-  nuevas (+10-30/día estimados, sección 6.4 del estudio).
-- Cada fase es una issue independiente, desplegable de forma aislada.
+- The web can approach an IMDB/TMDB-like experience **with no backend nor
+  infrastructure cost**, reusing the already-proven patterns.
+- `append_to_response` and the editorial lists minimize the new
+  calls (+10-30/day estimated, the study's
+  section 6.4).
+- Each phase is an independent issue, deployable in isolation.
 
-**Negativas**:
+**Negative**:
 
-- El rate limit por clave es compartido: obliga a mantener disciplina de
-  caché y bajo volumen; un pico de usuarios requeriría el proxy (ADR-067).
-- La atribución debe mantenerse y, si se amplía el uso, convendría añadir el
-  **logo aprobado** en la sección de ajustes/acerca (hoy solo hay el aviso
-  textual en el footer).
-- TMDB puede cambiar términos/límites sin aviso; los snapshots locales
-  mitigan la dependencia.
+- The per-key rate limit is shared: it requires keeping
+  cache discipline and low volume; a user spike would require the
+  proxy (ADR-067).
+- Attribution must be kept and, if the use expands, adding
+  the **approved logo** in the settings/about section would be
+  advisable (today there is only the textual notice in the footer).
+- TMDB may change terms/limits without
+  notice; the local snapshots mitigate the dependence.
 
-**Neutras**:
+**Neutral**:
 
-- No cambia el modelo de datos Firestore (los datos siguen siendo
-  snapshots + bajo demanda); las fases añaden consumo de red solo al abrir
-  cada función.
-- El manual de usuario (regla 3 de AGENTS.md) se actualizará en cada fase
-  que toque UI; esta issue no cambia nada visible → no procede.
+- The Firestore data model does not change (the data remain
+  snapshots + on demand); the phases only add network consumption
+  when opening each function.
+- The user manual (AGENTS.md's rule 3) will be updated in each phase
+  touching UI; this issue changes nothing visible → not
+  applicable.
 
-## Archivos creados/modificados
+## Created/modified files
 
-- `docs/estudio-informacion-tmdb.md` | **Nuevo**: estudio completo (775
-  líneas, QA PASS) cuya conclusión documenta este ADR.
-- `docs/adr-074-estudio-informacion-tmdb.md` | **Nuevo**: este documento.
-- `tasks/task-issue-184.json` | **Actualizado**: status y bloque `pr` al
-  publicar la PR.
+- `docs/estudio-informacion-tmdb.md` | **New**: the full study (775
+  lines, QA PASS) whose conclusion this ADR documents.
+- `docs/adr-074-estudio-informacion-tmdb.md` | **New**: this document.
+- `tasks/task-issue-184.json` | **Updated**: status and the `pr` block when
+  publishing the PR.
 
-## Verificación
+## Verification
 
-- **QA PASS** contra la aceptación del task file: catálogo por secciones
-  (21 secciones + `append_to_response`), endpoints/datos/utilidad por
-  sección, viabilidad categorías A/B, límites (rate limits, autenticación,
-  CORS, costes, términos), conclusión con recomendación de alcance, ADR con
-  `Related issue: #184`, **cero código de app** (`git diff` solo toca
-  `docs/*.md` y `tasks/task-issue-184.json`).
-- **Escaneo de seguridad**: sin hallazgos HIGH/MEDIUM; no se transcribe
-  ninguna clave ni credencial en los documentos.
-- **Reglas del proyecto**: regla 2 (responsividad), regla 3 (manual) y
-  regla 4 (temas): **N/A** — no hay cambios de UI ni de comportamiento.
+- **QA PASS** against the task file's acceptance: a per-section catalog
+  (21 sections + `append_to_response`),
+  endpoints/data/utility per
+  section, viability A/B categories, limits (rate limits,
+  authentication, CORS, costs, terms), a conclusion with a scope
+  recommendation, an ADR with
+  `Related issue: #184`, **zero app code**
+  (`git diff` only touches
+  `docs/*.md` and `tasks/task-issue-184.json`).
+- **Security scan**: no HIGH/MEDIUM findings; no key or
+  credential is transcribed in the documents.
+- **The project's rules**: rule 2 (responsiveness), rule 3 (the manual) and
+  rule 4 (themes): **N/A** — there are no UI nor behavior
+  changes.

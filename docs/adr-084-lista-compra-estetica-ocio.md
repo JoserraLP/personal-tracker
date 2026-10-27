@@ -1,202 +1,659 @@
-# ADR-084: Estética tipo Ocio de la pestaña de Compra (antes «Lista de la compra») — botones píldora, controles y checkboxes coherentes (issue #221)
+# ADR-084: Ocio-like aesthetics on the Compra tab (formerly «Lista de la compra») — pill buttons, controls and checkboxes coherent (issue #221)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-11
 
-## Contexto
+## Context
 
-La issue #221 (type: style) pide adecuar la estética de la pestaña
-**«Lista de la compra»** de la sección de Recetas (issue #64), y
-especialmente sus botones, al resto de la web: el mismo lenguaje visual
-tipo **Ocio** ya aplicado a las pestañas de Recetas, Ingredientes
-(ADR-082, issue #218) y Menú (ADR-083, issue #220): botones
-**píldora**, `btn--primary` para la acción principal, controles de
-formulario uniformados, `:focus-visible` destacado y los cuatro modos
-de tema.
+Issue
+#221 (type: style) asks to
+fit the Recipes section's **«Lista de la compra»**
+tab's aesthetics
+(issue #64) and
+especially its
+buttons into
+the web's rest: the same
+visual
+language of
+type
+**Ocio** already applied
+  to the
+  Recipes,
+  Ingredients (ADR-082, issue #218) and
+  Menú (ADR-083, issue #220)
+  tabs: **pill**
+  buttons, `btn--primary` for the main
+  action, uniformized
+  form controls, a
+  highlighted
+  `:focus-visible` and the four
+  theme
+  modes.
 
-Estado previo (construido en ADR-076, issue #64): la barra de
-herramientas de la pestaña usaba `btn--small` para «+ Ítem extra»
-(`#btn-add-extra-item`), sin jerarquía visual entre acciones; el
-formulario de ítem extra (`.shopping-extra-form__row`) tenía inputs y
-select **nativos sin estilizar** (`background: var(--ink)`, borde
-`--paper-alpha-20` y `border-radius: var(--radius)` con esquinas
-rectas) y sin `:focus-visible`; y el botón ✕ de quitar un ítem extra
-(`.shopping-line__remove`) era un glifo suelto (`background: none;
-border: none`) **sin presencia de píldora** ni hover legible.
+Previous state (built in
+ ADR-076, issue #64): the
+   tab's toolbar used
+   `btn--small` for
+   «+ Ítem extra» (`#btn-add-extra-item`), with no
+   visual
+   hierarchy
+  between
+   actions; the
+   extra
+   item's form
+   (`.shopping-extra-form__row`) had
+   inputs and a
+   **native
+  unstyled
+   select**
+  (`background: var(--ink)`, border
+  `--paper-alpha-20` and
+   `border-radius: var(--radius)`
+  with
+   straight corners) and no
+   `:focus-visible`; and the
+   ✕
+  button of removing
+   an
+   extra
+   item (`.shopping-line__remove`)
+   was a loose
+   glyph (`background: none; border: none`)
+   **without
+   pill presence** nor
+  a
+  legible
+   hover.
 
-Nota del flujo: la base de trabajo es la rama
-`content/issue-64-seccion-recetas`; la rama de trabajo se crea desde ahí
-y la PR va **también a esa rama, no a `dev`** — excepción puntual a la
-regla de PRs contra `dev` de AGENTS.md §1, pedida explícitamente por el
-usuario en la issue (patrón de las PR #222/#219/#214). Además, la PR
-#222 de la issue #220 está **abierta contra la misma base** y define la
-clase `.btn--pill` (y reestiliza `.menu-*`/`.menu-week-label`): este
-ADR evita reutilizarla para no crear conflicto de fusión, y salta el
-número 083 en el nombre del ADR (ya ocupado por el ADR de esa PR) para
-no colisionar cuando ambas se fusionen.
+Flow note: the work's
+ base is the
+ `content/issue-64-seccion-recetas`
+  branch; the work
+  branch is
+  created from there and the
+  PR goes
+  **also to that branch, not to
+  `dev`** — a
+  one-off exception to AGENTS.md §1's PRs-against-`dev`
+  rule, explicitly requested
+  by the user in the
+  issue (the
+  PR #222/#219/#214
+  pattern). Moreover, issue #220's
+  PR #222 is
+  **open against the same base** and
+  defines
+  the
+  `.btn--pill`
+  class (and
+  re-styles
+  `.menu-*`/`.menu-week-label`): this
+  ADR avoids reusing it to
+  not
+  create a merge
+  conflict, and
+  skips the
+  number 083 in its
+  name (already
+  claimed
+  by the
+  ADR of that
+  PR) to
+  not
+  collide when
+  both merge.
 
-Decisiones clave del rediseño:
+The redesign's key decisions:
 
-1. **Acción principal**: `#btn-add-extra-item` pasa de `btn btn--small`
-   a `btn btn--primary btn--small`, replicando el patrón del «+ Añadir
-   receta a la semana» de la issue #220.
-2. **Botón secundario del form**: «Cancelar» pasa a
-   `btn btn--small shopping-btn--ghost`; «Añadir» (primario) intacto.
-   Sin cambios funcionales.
-3. **Controles del formulario uniformados**: inputs/select del form de
-   ítem extra a píldora (fondo `--ink-raised`, borde 1px
-   `--paper-alpha-30`, radio 999px, padding 0.3rem 0.75rem, font-size
-   0.85rem) + `:focus-visible` con outline 2px `--teal-reel`.
-4. **✕ de quitar ítem extra**: presencia de píldora (borde
-   `--paper-alpha-30`, radio 999px, padding 0.15rem 0.45rem, hover
-   `--paper-alpha-10`); el color `--stamp` queda intacto.
-5. **Cuatro temas**: overrides **agrupados** de la familia clara
-   (light+white) para ghost y ✕ hover, override de negro puro solo para
-   inputs/select del form (patrón `ingredient-modal__field`) y
-   comentarios en el CSS que documentan por qué el negro puro **no**
-   necesita override para ghost/✕ (patrón del comentario de la #220).
+1. **The main action**: `#btn-add-extra-item` goes
+   from
+   `btn btn--small` to
+   `btn btn--primary btn--small`, replicating issue
+   #220's «+ Añadir
+   receta
+   a la
+   semana» pattern.
+2. **The form's secondary button**:
+   "Cancelar"
+   becomes
+   `btn btn--small shopping-btn--ghost`; "Añadir"
+   (primary) intact.
+   No functional changes.
+3. **The form's controls uniformized**: the
+   extra
+   item's form's inputs/select become
+   pill
+   (a
+   `--ink-raised` background, a
+   1px
+   `--paper-alpha-30` border,
+   radius
+   999px, padding
+   0.3rem 0.75rem, font-size
+   0.85rem)
+   + a
+   `:focus-visible` with
+   a
+   2px `--teal-reel` outline.
+4. **The ✕ of
+   removing an
+   extra
+   item**: pill
+   presence
+   (a
+   `--paper-alpha-30` border,
+   radius
+   999px, padding
+   0.15rem 0.45rem, hover
+   `--paper-alpha-10`); the
+   `--stamp`
+   color stays
+   intact.
+5. **Four themes**: the
+   light
+   family's
+   **grouped**
+   (light+white)
+   overrides for
+   ghost and
+   the ✕
+   hover, a
+   pure
+   black override
+   only for
+   the
+   form's
+   inputs/select (the
+   `ingredient-modal__field`
+   pattern) and
+   CSS
+   comments
+   documenting why
+   pure black does
+   **not** need an
+   override for
+   ghost/✕
+   (issue #220's
+   comment
+   pattern).
 
-## Decisión
+## Decision
 
-1. **CSS** (`css/styles.css`, todo en el bloque de la lista de la
-   compra y en overrides propios, sin tocar `.btn--pill`/`.menu-*`/
-   `.menu-week-label` que define o usa la PR #222): inputs/select de
-   `.shopping-extra-form__row` a píldora + `:focus-visible` (outline
-   2px `--teal-reel`); clase nueva `.shopping-btn--ghost` con las
-   métricas píldora del ADR-083 (fondo `--ink-raised`, texto `--paper`,
-   borde 1px `--paper-alpha-30`, radio 999px, padding 0.3rem 0.75rem,
-   font-size 0.85rem; hover `--paper-alpha-10`) — **no reutiliza**
-   `.btn--pill` porque la PR #222 aún abierta lo define, decisión
-   documentada en comentario CSS; `.shopping-line__remove` (✕) con
-   borde `--paper-alpha-30`, radio 999px, padding 0.15rem 0.45rem y
-   hover `--paper-alpha-10`; overrides agrupados
-   `[data-theme="light"]`+`[data-theme="white"]` en bloque propio (ghost
-   → color `--ink` y hover `--ink-alpha-10`; ✕ hover →
-   `--ink-alpha-10`), sin tocar el bloque agrupado de la #222; override
-   `[data-theme="black"]` para inputs/select del form
-   (`background: var(--ink)`, con comentario: la píldora base
-   `--ink-raised` quedaría sin límite sobre el `--ink-raised` del
-   formulario; patrón `ingredient-modal__field`) y comentarios que
-   documentan por qué el negro puro no necesita override para
-   ghost/✕ (la base ya es correcta sobre negro).
-2. **HTML** (`index.html`): `#btn-add-extra-item` pasa de `btn
-   btn--small` a `btn btn--primary btn--small`.
-3. **JS** (`js/shopping-list.js`): el botón «Cancelar» del form de ítem
-   extra (`renderExtraForm`) pasa a `btn btn--small
-   shopping-btn--ghost`; «Añadir» (`btn--primary`) intacto. Sin cambios
-   funcionales (cálculo, marcar comprado, añadir/quitar ítem extra y
-   excluir recetas se mantienen).
-4. **PWA**: bump de versión `20260911 → 20260913` en `index.html`
-   (`?v=`), `js/config.js` (`APP_VERSION`) y `service-worker.js`
-   (`STATIC_ASSETS`). Se evita `20260912`, ya usado por la PR #222.
-5. **Manual de usuario**: sin cambios en la primera iteración —
-   precedente de la issue #220 (ADR-083): la sección 8.4 describe solo
-   funcionalidad (cálculo, marcar comprado, ítems extra, excluir
-   recetas), no estética; el cambio es puramente visual de botones y
-   controles y no altera nada a nivel de comportamiento. En la
-   iteración posterior sí se actualiza (renombrado de la pestaña, ver
-   abajo).
-6. **PR contra `content/issue-64-seccion-recetas`**: excepción puntual
-   y explícita a la regla de AGENTS.md §1 (PRs siempre contra `dev`),
-   solicitada por el usuario en la issue #221; la rama de trabajo
-   `style/issue-221-pestana-lista-compra` se creó a partir de esa base.
+1. **CSS** (`css/styles.css`, all in the
+   shopping
+   list's block and in
+   own
+   overrides, without touching
+   `.btn--pill`/`.menu-*`/
+   `.menu-week-label` which PR
+   #222 defines or
+   uses): the inputs/select of
+   `.shopping-extra-form__row` become
+   pill
+   + `:focus-visible` (a
+   2px `--teal-reel` outline); a
+   new
+   `.shopping-btn--ghost` class with
+   ADR-083's pill metrics (a
+   `--ink-raised` background, the
+   `--paper` text, a
+   1px
+   `--paper-alpha-30` border,
+   radius
+   999px, padding
+   0.3rem 0.75rem, font-size
+   0.85rem; hover
+   `--paper-alpha-10`) —
+   **it does not reuse**
+   `.btn--pill` because
+   PR #222, still
+   open, defines it, a
+  decision
+   documented in a CSS
+   comment; `.shopping-line__remove` (the
+  ✕) with
+   a
+   `--paper-alpha-30`
+   border,
+   radius
+   999px, padding
+   0.15rem 0.45rem and
+   hover
+   `--paper-alpha-10`; grouped
+  overrides
+   `[data-theme="light"]`+`[data-theme="white"]`
+  in an
+   own block
+   (ghost
+   → color
+   `--ink` and
+   hover
+   `--ink-alpha-10`; the
+   ✕
+   hover →
+   `--ink-alpha-10`), without
+  touching
+  #222's
+  grouped
+  block; a
+   `[data-theme="black"]` override
+   for
+   the
+   form's inputs/select
+  (a
+  `background: var(--ink)`, with
+  a
+  comment: the
+  base
+  pill's
+  `--ink-raised` would blend into the form's
+  `--ink-raised`; the
+  `ingredient-modal__field`
+  pattern) and
+  comments
+  documenting why
+  pure
+  black needs no
+  override for
+  ghost/✕ (the
+  base is already correct over
+  black).
+2. **HTML** (`index.html`): `#btn-add-extra-item` goes
+   from
+   `btn btn--small` to
+   `btn btn--primary btn--small`.
+3. **JS** (`js/shopping-list.js`): the extra
+   item's form's "Cancelar"
+   button (`renderExtraForm`)
+   becomes
+   `btn btn--small
+   shopping-btn--ghost`; "Añadir"
+   (`btn--primary`)
+   intact. No functional changes (the
+   computation,
+   marking
+   bought,
+   adding/removing
+   an extra
+   item and
+   excluding
+  recipes stay).
+4. **PWA**: the version bumps
+   `20260911 → 20260913` in `index.html`
+   (the `?v=`), `js/config.js` (`APP_VERSION`) and
+   `service-worker.js` (`STATIC_ASSETS`). `20260912` is
+   avoided, already
+   used by PR
+   #222.
+5. **User manual**: without
+   changes in the
+   first
+  iteration — issue
+   #220's precedent
+   (ADR-083): section
+   8.4 describes
+   only
+   functionality (the
+   computation,
+   marking
+   bought, extra
+   items,
+   excluding
+   recipes), not
+   aesthetics; the
+   change is a purely visual
+  buttons and
+  controls change and alters
+   nothing at the behavior
+   level. In the
+   later
+   iteration it does update (the
+   tab's rename, see
+   below).
+6. **The PR against
+   `content/issue-64-seccion-recetas`**: a
+   one-off and
+   explicit exception
+   to AGENTS.md §1's rule (PRs always against
+  `dev`), requested
+   by the
+   user in issue #221; the work
+   branch
+   `style/issue-221-pestana-lista-compra` was
+   created from
+   that base.
 
-## Consecuencias
+## Consequences
 
-- **Positivas**: la pestaña «Lista de la compra» queda a la altura
-  visual de Ocio y de las pestañas Recetas/Ingredientes/Menú; la
-  jerarquía de acciones es legible (primary para «+ Ítem extra», ghost
-  para «Cancelar», ✕ con presencia de píldora y hover); la clase
-  `.shopping-btn--ghost` queda reutilizable para futuros controles de
-  la sección; sin cambios de comportamiento (cálculo, marcar comprado,
-  añadir/quitar ítem extra y excluir recetas se mantienen).
-- **Neutras**: bump de versión PWA (invalida la caché de `20260911`
-  para propagar el nuevo CSS); el label `#shopping-week-label`
-  comparte la clase `.menu-week-label` con el menú, así que al
-  fusionarse la PR #222 (que la reestiliza) mejora automáticamente sin
-  tocar esta PR; la PR va contra `content/issue-64-seccion-recetas`
-  como excepción explícita (no a `dev`); el ADR salta al número 084
-  porque el 083 lo ocupa el ADR de la PR #222, aún abierta contra la
-  misma base.
-- **Negativas**: ninguna conocida. La funcionalidad queda intacta. QA
-  PASS: lenguaje visual coherente, cuatro modos de tema con contraste
-  WCAG AA y responsividad en 360 / 768 / 1280 px sin scroll horizontal
-  a nivel de página; observaciones no bloqueantes documentadas: los
-  bordes de 1px de las píldoras quedan por debajo del 3:1 exigido para
-  componentes gráficos (mandatado por la spec de la píldora del
-  ADR-083, y mejora frente al estado base) y el glifo ✕ usa `--stamp`
-  preexistente en la familia oscura (no introducido en este cambio).
-  Seguridad PASS: cambios 100 % presentacionales, `escapeHtml` intacto
-  y service worker solo con bump de versión.
+- **Positive**: the «Lista de la compra» tab reaches
+   Ocio's and the Recipes/Ingredients/Menú tabs' visual
+   level; the
+   actions' hierarchy is
+   readable (the
+   primary
+   for «+ Ítem extra», the
+   ghost
+   for
+   "Cancelar", the
+   ✕
+   with
+   pill
+   presence
+   and
+   hover); the
+   `.shopping-btn--ghost`
+   class stays
+   reusable for the section's future controls; no behavior changes (the
+   computation,
+   marking
+   bought,
+   adding/removing
+   an
+   extra
+   item and
+   excluding
+   recipes stay).
+- **Neutral**: the PWA's version bump
+   (it invalidates the cache of
+   `20260911`
+   to propagate the new
+   CSS); the
+   `#shopping-week-label` label shares
+   `.menu-week-label`'s
+  class with
+   the menu, so
+  when
+   PR
+   #222 merges (which re-styles it)
+   it improves automatically without
+  touching
+   this
+   PR; the
+   PR goes
+   against
+   `content/issue-64-seccion-recetas` as
+   an explicit
+  exception (not to
+  `dev`); the
+  ADR jumps to the
+   number 084 because
+   083 is
+   taken
+   by PR
+   #222's
+   ADR, still open against
+   the same
+   base.
+- **Negative**: none known. The
+   functionality stays intact. QA
+  PASS: a coherent visual language, four theme modes
+  with WCAG AA contrast and
+  responsiveness at
+  360 / 768 / 1280 px with no
+   page-level
+   horizontal scroll; documented
+   non-blocking observations: the
+   pills' 1px borders fall below the
+   3:1 required for graphical components (mandated
+   by
+  ADR-083's pill spec, and an
+   improvement over the base
+  state) and
+  the
+  ✕
+  glyph uses the
+  dark
+  family's
+  pre-existing `--stamp`
+  (not introduced in this change).
+   Security PASS: 100 %
+  presentational changes,
+   `escapeHtml`
+   intact and
+   the service worker only with
+  a version bump.
 
-## Iteración (2026-08-11): checkboxes y renombrado de la pestaña
+## The iteration (2026-08-11): checkboxes and the tab's rename
 
-Comentario nuevo del usuario en la issue #221: (1) las checkboxes
-también deben tener colores y estilos como la web; (2) el nombre de la
-pestaña, «Lista de la compra», es demasiado largo y se ve feo en la
-barra de pestañas — pedía algo más simple que ocupe una sola fila
-(«Compra», «Carrito», «Cesta»…).
+A new user comment on issue #221:
+(1) the checkboxes must also
+have the web's colors and
+styles; (2)
+the tab's name,
+ «Lista de la compra», is
+ too long and
+ looks
+ ugly in the
+ tab bar — it asked for
+ something simpler taking
+ up a single
+ row
+ («Compra»,
+ «Carrito»,
+ «Cesta»…).
 
-### Decisiones de la iteración
+### The iteration's decisions
 
-1. **Renombrado a «Compra»**: se elige el término más corto y neutro
-   (6 letras frente a «Ingredientes», 12, que ya cabe en una fila en
-   móvil). «Carrito» suena a comercio electrónico y «Cesta» es más
-   regional; «Compra» preserva la continuidad semántica con el
-   concepto existente «la lista de la compra» (sección 8.4 del manual
-   y `#shopping-week-label` siguen usando ese término). Se actualiza
-   el label de la pestaña en `index.html` (botón y `h2`
-   `visually-hidden`, manteniendo el `id` y el `aria-labelledby`) y el
-   label de Ajustes → Secciones y pestañas en `js/settings.js`
-   (`SECTION_REGISTRY.recetas.compra.label`); el token interno
-   `data-recipes-tab="compra"` y el `panelId` no cambian.
-2. **Checkboxes con `accent-color` nativo**: mismo patrón que
-   `.saga-row input[type="checkbox"]` de Ocio (ocio.css): `accent-color`
-   + 18×18 px + `flex-shrink: 0`, con el acento de la pestaña
-   `--stamp` (rojo). Se descarta el checkbox visual custom de
-   episodios (`.episode-checkbox-wrap`/`-visual`, círculo + check)
-   porque exigiría tocar el render de `js/shopping-list.js` para meter
-   el span visual y rehacer la accesibilidad; el `accent-color` nativo
-   mantiene el `aria-label` existente y el foco del navegador. Aplica
-   a los dos checkboxes de la pestaña: el de «marcar comprado» de cada
-   línea (`.shopping-line__main input[type="checkbox"]`) y el de «No es
-   comestible» del form de ítem extra (`.shopping-extra-form__check
+1. **Renamed to «Compra»**: the
+   shortest and most neutral term is
+   chosen (6
+   letters vs
+   «Ingredientes»' 12, which already fits
+   in one
+   row on
+   mobile). "Carrito"
+   sounds
+   like e-commerce and
+   "Cesta" is more
+   regional; "Compra"
+   preserves semantic continuity
+   with the
+   existing concept
+   "the
+  shopping
+  list" (the manual's
+  section 8.4 and
+  the
+  `#shopping-week-label` keep
+   using
+   that
+  term). The
+   tab's label updates in
+   `index.html` (the
+   button and
+   the
+   visually-hidden
+   `h2`, keeping
+   the
+  `id` and
+   the
+   `aria-labelledby`) and
+   the
+   Settings
+   →
+   Sections
+   and
+   tabs label in
+   `js/settings.js` (`SECTION_REGISTRY.recetas.compra.label`); the
+   internal token
+   `data-recipes-tab="compra"` and
+   the
+   `panelId` do not change.
+2. **Checkboxes with native
+   `accent-color`**: the same pattern as
+   Ocio's
+   `.saga-row input[type="checkbox"]`
+   (ocio.css): `accent-color`
+   + 18×18 px + `flex-shrink: 0`, with
+   the
+   tab's accent
+   `--stamp`
+   (red). The
+   episodes' custom
+   visual
+   checkbox (`.episode-checkbox-wrap`/`-visual`,
+   circle
+   +
+   check) is
+   rejected because
+   it would require touching
+   `js/shopping-list.js`'s
+  render to
+   insert
+  the
+  visual
+  span and
+  redo
+   the
+   accessibility; the
+   native
+   `accent-color`
+   keeps
+   the
+   existing
+   `aria-label`
+   and
+   the
+   browser's
+   focus. It applies to
+   the
+   tab's two checkboxes:
+   each
+   line's «mark
+   bought»
+   (`.shopping-line__main input[type="checkbox"]`)
+   and
+   the
+   extra
+   item's form's «No es
+   comestible»
+   (`.shopping-extra-form__check
    input[type="checkbox"]`).
-3. **Cuatro temas**: el base con `--stamp` (#a63b2e) da check blanco
-   ≈6.4:1 en Oscuro y en la familia clara (sin override necesario);
-   en negro puro `--stamp` sobre negro queda clavado en ≈3.1:1 (límite
-   gráfico), así que el override agrupado `[data-theme="black"]` pasa
-   el acento a `--stamp-dark` (#cf6655, ≈5.4:1 sobre negro), siguiendo
-   el patrón del override de negro puro del `episode-checkbox` de Ocio.
-4. **Manual de usuario**: se actualizan las 5 menciones de la pestaña
-   como nombre («Compra» en las secciones 3, 8, 8.4 y 16); el concepto
-   «la lista de la compra» en minúscula, el título de la sección 8.4 y
-   el `#shopping-week-label` se mantienen con el término completo.
-5. **PWA**: bump `20260913 → 20260914` (nuevo valor, distinto del
-   `20260912` de la PR #222 y del `20260913` anterior).
+3. **Four themes**: the
+   base with
+   `--stamp` (#a63b2e) gives
+   a
+   white
+   check ≈6.4:1 in Dark
+   and
+   in the
+   light
+   family (no
+   override
+   needed); in
+   pure
+  black `--stamp`
+   over
+   black sits right at
+   ≈3.1:1 (the graphical
+   limit), so the
+   grouped
+  `[data-theme="black"]`
+  override moves
+   the
+   accent
+   to
+   `--stamp-dark`
+   (#cf6655, ≈5.4:1 over
+   black), following
+  Ocio's
+   episode-checkbox's
+   pure-black-override pattern.
+4. **User manual**: the tab's 5 mentions as a
+   name update («Compra» in
+   sections 3,
+   8,
+   8.4 and
+   16); the lowercase concept
+   "the shopping
+    list", section
+   8.4's
+   title and
+  the
+   `#shopping-week-label` keep
+   the full
+   term.
+5. **PWA**: a bump
+   `20260913 → 20260914` (a
+   new value, different from
+   PR #222's
+   `20260912`
+   and the
+   previous
+   `20260913`).
 
-### Consecuencias de la iteración
+### The iteration's consequences
 
-- **Positivas**: la pestaña «Compra» ocupa una sola fila en móvil
-  (~360 px) sin wrap; los checkboxes quedan a la altura del resto de la
-  web (mismo patrón que Ocio) con el acento rojo de la pestaña y
-  contraste AA/gráfico en los cuatro temas; el manual queda coherente
-  con la interfaz (regla AGENTS.md §3).
-- **Neutras**: sin cambios funcionales — `js/shopping-list.js` no se
-  toca (la delegación de `input[type=checkbox][data-bought]` y el
-  toggle de `is-bought` siguen intactos); el comentario CSS de
-  «etiquetas largas de pestaña» se actualiza porque su ejemplo
-  («Lista de la compra») ya no existe como etiqueta.
-- **Negativas**: ninguna conocida. QA PASS (los 7 criterios de la
-  iteración: checkboxes con acento, «Compra» en una fila sin
-  referencias visibles al nombre viejo, cuatro temas con contraste,
-  sin cambios funcionales, responsividad 360/768/1280 px, manual
-  coherente y bump distinto de 20260912/20260913); hallazgos solo
-  informativos (redondeo del contraste en un comentario CSS, ya
-  corregido). Seguridad PASS: 0 HIGH; la iteración es 100 %
-  presentacional/textual (CSS, labels y bump de versión).
+- **Positive**: the «Compra» tab takes a
+   single
+   row on mobile
+   (~360 px)
+   with
+   no wrap; the checkboxes match
+  the
+  web's rest
+   (the same pattern as
+  Ocio) with
+   the
+   tab's
+   red
+   accent
+   and
+   AA/graphical contrast in the
+   four themes; the
+  manual stays
+   coherent with the
+  interface (AGENTS.md
+  §3's rule).
+- **Neutral**: no functional changes —
+   `js/shopping-list.js`
+   is not
+   touched (the
+   delegation of
+   `input[type=checkbox][data-bought]`
+   and
+   the
+   `is-bought`
+   toggle stay
+   intact); the
+   CSS
+   comment
+   "long
+   tab
+   labels" updates because
+   its example
+   («Lista de la compra») no longer exists as
+   a
+   label.
+- **Negative**: none known. QA
+  PASS (the iteration's 7 criteria:
+   checkboxes with
+   an
+   accent,
+   "Compra" in one
+   row
+   with no
+   visible references to
+   the old
+   name, four
+   themes with
+   contrast,
+   no functional changes,
+   responsiveness 360/768/1280 px, a
+   coherent
+   manual and
+   a bump different from
+   20260912/20260913); findings
+   only
+   informative (a contrast rounding in a CSS
+   comment, already
+   fixed). Security
+   PASS: 0
+   HIGH; the iteration is 100 %
+  presentational/textual (CSS, labels and a version
+   bump).
 
 Related issue: #221

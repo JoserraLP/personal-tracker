@@ -1,137 +1,165 @@
-# ADR-078: Comentarios de fallo de auto-resolve-issues publicados por github-actions[bot] (issue #245)
+# ADR-078: auto-resolve-issues' failure comments published by github-actions[bot] (issue #245)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-El workflow `.github/workflows/auto-resolve-issues.yml` (ADR-047 y
-ampliaciones ADR-050, ADR-054, ADR-055, ADR-077) resuelve automáticamente el
-backlog de issues con label `ai`. Entre sus triggers está
-`issue_comment: types: [created]` (iteración: un comentario en una issue en
-curso relanza la sesión sobre esa issue), y el job `resolve` (línea 95 del
-YAML) filtra en su `if` que el autor del comentario no sea el bot:
+The workflow `.github/workflows/auto-resolve-issues.yml` (ADR-047 and
+the expansions ADR-050, ADR-054, ADR-055, ADR-077) automatically resolves
+the backlog of issues with the `ai` label. Among its triggers is
+`issue_comment: types: [created]` (iteration: a comment on an ongoing
+issue relaunches the session over that issue), and the `resolve` job (line 95 of
+the YAML) filters in its `if` that the comment's author is not
+the bot:
 
 ```yaml
 || (github.event_name == 'issue_comment' && !github.event.issue.pull_request
                                          && github.actor != 'github-actions[bot]')
 ```
 
-La issue #245 reporta un bug (priority medium) del paso «Relanzar o devolver
-a la cola en fallo de sesión» (ADR-077): los comentarios que ese paso
-publica en la issue cuando la sesión SDD falla (devolución a la cola con
-`return_to_queue`, o aviso del relanzamiento automático) se publicaban con
-`gh issue comment` usando el `GH_TOKEN` del job
-(`${{ secrets.WORKFLOW_GIT_TOKEN }}`, un PAT del propietario).
+Issue #245 reports a bug (priority medium) of the "Relaunch or
+return to the queue on session failure" step (ADR-077): the comments that
+step publishes on the issue when the SDD session fails (the return
+to the queue with `return_to_queue`, or the automatic
+relaunch's notice) were published with
+`gh issue comment` using the job's `GH_TOKEN`
+(`${{ secrets.WORKFLOW_GIT_TOKEN }}`, the owner's PAT).
 
-**Root cause verificada**: al publicar el comentario con el PAT del
-propietario, el comentario aparecía firmado por `gonzalitojh`, por lo que el
-filtro `github.actor != 'github-actions[bot]'` del trigger `issue_comment`
-**no lo excluía**: el propio comentario de fallo volvía a disparar el
-workflow sobre la misma issue. En el caso del relanzamiento, la issue se
-mantiene en `status: in-progress` durante los reintentos (ADR-077), así que
-el comentario de fallo lanzaba una **sesión de iteración nueva** que
-duplicaba el relanzamiento ya encolado (o ejecutaba iteraciones no deseadas
-sobre la misma issue).
+**The verified root cause**: publishing the comment with the
+owner's PAT made the comment appear signed by
+`gonzalitojh`, so the `issue_comment` trigger's
+`github.actor != 'github-actions[bot]'`
+filter **did not exclude it**: the failure comment itself re-fired the
+workflow over the same issue. In the relaunch case, the issue
+stays in `status: in-progress`
+during the retries (ADR-077), so
+the failure comment launched a **new
+iteration session** duplicating the already-queued relaunch (or running unwanted
+iterations over the same issue).
 
-## Decisión
+## Decision
 
-**Publicar los comentarios de fallo con el `GITHUB_TOKEN` integrado del
-runner** (autor: `github-actions[bot]`), que el filtro del trigger ya
-excluye. Cambio mínimo y quirúrgico en el paso «Relanzar o devolver a la
-cola en fallo de sesión» del workflow:
+**Publish the failure comments with the runner's built-in
+`GITHUB_TOKEN`** (the author:
+`github-actions[bot]`), which the trigger's filter already
+excludes. A minimal and surgical change in the workflow's "Relaunch or
+return to the queue on session failure" step:
 
-- **`return_to_queue`** (reintentos agotados o fallo del dispatch de
-  relanzamiento): el `gh issue comment` de «Se devuelve la issue a la cola
-  (status: ...)» usa `GH_TOKEN="$GITHUB_TOKEN"`.
-- **Comentario de relanzamiento** («Se relanza automáticamente (intento N de
-  3)»): el `gh issue comment` usa `GH_TOKEN="$GITHUB_TOKEN"`.
-- **El resto de operaciones del paso siguen usando el `GH_TOKEN` del job
-  (PAT)**: los `set-state` de labels (`bash scripts/gh-issue.sh`) y el
-  `gh workflow run` del relanzamiento requieren permisos sobre
-  actions/workflow que el `GITHUB_TOKEN` no concede (`actions: write` del
-  workflow lo firma con `workflow_dispatch`, no con el token del runner).
-- **Comentarios explicativos** en la cabecera del workflow y en el propio
-  paso documentando el porqué (token automático vs PAT, issue #245).
-- **README.md sección 6, punto 6**: nota sobre el autor de los comentarios
-  de fallo (`github-actions[bot]`, de modo que no vuelven a disparar el
+- **`return_to_queue`** (exhausted retries or the relaunch's
+  dispatch failed): the «Se devuelve la issue a la cola
+  (status: ...)» `gh issue comment`
+  uses `GH_TOKEN="$GITHUB_TOKEN"`.
+- **The relaunch comment** («Se relanza automáticamente (intento N
+  de 3)»): the `gh issue comment`
+  uses `GH_TOKEN="$GITHUB_TOKEN"`.
+- **The step's other operations keep using the job's `GH_TOKEN`
+  (PAT)**: the labels' `set-state`s (`bash scripts/gh-issue.sh`) and the
+  relaunch's `gh workflow run` require actions/workflow permissions that
+  the `GITHUB_TOKEN` does not grant (the
+  workflow's `actions: write` signs the
+  `workflow_dispatch` with its own token, not with
+  the runner's).
+- **Explanatory comments** in the workflow's header and on the step
+  itself documenting the why (the automatic token vs
+  PAT, issue #245).
+- **README.md section 6, point 6**: a note
+  about the failure comments' author
+  (`github-actions[bot]`, so they do not re-fire the
   workflow).
 
-El `if: failure()`, la semántica de reintentos, la cola (`queue: max`,
-ADR-077), el WIP de la issue #128 y el resto del flujo quedan intactos.
+The `if: failure()`, the
+retries' semantics, the queue (`queue: max`,
+ADR-077), issue #128's WIP and the rest
+of the flow stay intact.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Ampliar el filtro del `if` del job para excluir también al propietario**
-  (`github.actor != 'gonzalitojh'`): descartado — censura los comentarios
-  legítimos del propietario en una issue en curso (la iteración por
-  comentario es un flujo de usuario real, ADR-047 sección 7-c), y deja el
-  problema de fondo (comentarios del bot firmados por el propietario, autor
-  engañoso en el hilo de la issue).
-- **Usar el `GITHUB_TOKEN` para todo el paso** (labels y dispatch del
-  relanzamiento incluidos): descartado — el token automático no tiene
-  permiso para `gh workflow run` (requiere `actions: write`, que el
-  `GITHUB_TOKEN` del runner no expone a `workflow_dispatch`), así que el
-  relanzamiento del ADR-077 fallaría; además el agente necesita el PAT para
-  commits/push con identidad del propietario en el resto del job.
-- **No comentar en fallo** (eliminar los comentarios del paso): descartado —
-  perdería la trazabilidad de los fallos en la issue (motivo e intento,
-  ADR-077: «Trazabilidad») que es parte del valor del flujo; el bug no es
-  comentar, sino el autor con el que se comenta.
+- **Expanding the job's `if` filter to exclude the owner
+  too** (`github.actor != 'gonzalitojh'`):
+  rejected — it would censor the owner's legitimate comments on an
+  ongoing issue (iteration via comment is a real
+  user flow, ADR-047 section 7-c), and it would leave the underlying
+  problem (the bot's comments signed by the
+  owner, a misleading author in the issue's thread).
+- **Using the `GITHUB_TOKEN` for the whole step** (including the labels
+  and the relaunch's dispatch): rejected — the automatic token has no
+  permission for `gh workflow run` (it requires
+  `actions: write`, which the
+  runner's `GITHUB_TOKEN` does not expose for
+  `workflow_dispatch`), so
+  ADR-077's relaunch would fail; besides the agent needs the PAT for
+  commits/pushes with the owner's identity in the
+  rest of the job.
+- **Not commenting on failure** (removing the step's comments):
+  rejected — it would lose the failures' traceability on the issue
+  (reason and attempt, ADR-077: «Traceability») that is part of the
+  flow's value; the bug is not
+  commenting, but the author it comments as.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Los comentarios de fallo ya no re-disparan el workflow**: al publicarse
-  como `github-actions[bot]`, el filtro `github.actor != 'github-actions[bot]'`
-  del trigger `issue_comment` los excluye; no se duplican relanzamientos ya
-  encolados ni se lanzan iteraciones no deseadas sobre la misma issue.
-- **Least privilege**: los comentarios de fallo (única operación del paso
-  que no requiere permisos de actions/workflow) usan el token automático
-  repo-scoped y mínimo; el PAT con más privilegios queda solo donde es
-  necesario.
-- **Autor coherente**: los avisos automáticos se firman con el mismo actor
-  que ya usa el resto de la automatización (commits del checkout con
-  `github-actions[bot]`), evitando que el hilo de la issue parezca llevar
-  comentarios del propietario.
+- **Failure comments no longer re-fire the workflow**: being published
+  as `github-actions[bot]`, the
+  `issue_comment` trigger's
+  `github.actor != 'github-actions[bot]'` filter excludes them; already-queued
+  relaunches are not duplicated and unwanted iterations are not launched
+  over the same issue.
+- **Least privilege**: the failure comments (the only operation of the
+  step not requiring actions/workflow permissions) use the minimal
+  repo-scoped automatic token; the more privileged PAT remains only where
+  needed.
+- **A coherent author**: the automatic notices are
+  signed with the same actor the rest of the
+  automation already uses (the
+  checkout's commits with
+  `github-actions[bot]`), so the issue's thread does not look like it
+  carries the owner's comments.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **`GITHUB_TOKEN` solo es válido dentro del run que lo emite**: los
-  comentarios se publican en el momento del fallo, dentro del mismo job, así
-  que no hay riesgo práctico; pero el token no puede reutilizarse fuera del
-  run (p. ej. en un dispatch posterior) — algo que el paso no necesita.
-- **El `GITHUB_TOKEN` no tiene `actions: write`**: por eso el cambio es
-  parcial (solo los dos `gh issue comment`); si en el futuro se quisiera
-  usar el token automático para `gh workflow run`, requeriría permisos
-  adicionales no disponibles (mitigado: el PAT sigue cubriendo esa
-  operación).
-- **El paso sigue dependiendo del PAT para el resto de operaciones**: el
-  fallo de un comentario ya era best-effort (`|| true`), y el relanzamiento
-  sigue funcionando igual que en el ADR-077.
+- **`GITHUB_TOKEN` is only valid inside the run that emits it**: the
+  comments publish at the failure moment, inside the same
+  job, so there is no practical risk; but the
+  token cannot be reused
+  outside
+  the run (e.g. in a later dispatch) — something the step does not
+  need.
+- **The `GITHUB_TOKEN` has no `actions: write`**: that is why the change
+  is partial (only the two `gh issue comment`s); if a future change wanted
+  to use the automatic token for `gh workflow run`, it would require
+  additional unavailable permissions (mitigated: the PAT keeps covering
+  that operation).
+- **The step still depends on the PAT for the other operations**: a
+  comment's failure was already
+  best-effort (`|| true`), and the relaunch
+  keeps working as in ADR-077.
 
-### Neutras
+### Neutral
 
-- **`docs/manual-de-usuario.md` sin cambios**: cambio interno de
-  infraestructura de CI (autor de un comentario automático de fallo), no
-  visible para el usuario final de la web (regla 3 de AGENTS.md; misma
-  decisión que ADR-047, ADR-077).
-- **README actualizado** (sección 6, punto 6): nota sobre el autor de los
-  comentarios de fallo.
-- **El resto del workflow no cambia**: selección, reclamación, WIP,
-  reintentos, cola, dispatch de deploy y resumen quedan intactos.
+- **`docs/manual-de-usuario.md` unchanged**: an internal CI
+  infrastructure change (the author of an
+  automatic failure comment), not visible to the web's end user
+  (AGENTS.md's rule 3; the same decision as ADR-047,
+  ADR-077).
+- **README updated** (section 6, point 6): a note
+  about the failure comments' author.
+- **The rest of the workflow does not change**: selection,
+  claim, WIP, retries, the queue, the deploy dispatch and the summary
+  stay intact.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `.github/workflows/auto-resolve-issues.yml` | **Modificado**: en el paso «Relanzar o devolver a la cola en fallo de sesión», los dos `gh issue comment` (función `return_to_queue` y aviso del relanzamiento) usan `GH_TOKEN="$GITHUB_TOKEN"` (autor: `github-actions[bot]`); comentarios explicativos del porqué (issue #245) en la cabecera del workflow y en el paso; el resto de operaciones (set-state de labels, `gh workflow run`) sigue con el `GH_TOKEN` del job (PAT) |
-| `README.md` | **Modificado**: sección 6, punto 6 — nota sobre el autor de los comentarios de fallo (`github-actions[bot]`, no vuelven a disparar el workflow) |
-| `docs/adr-078-comentarios-fallo-github-actions.md` | **Nuevo**: este documento |
-| `tasks/task-issue-245.json` | Task file de la tarea (title/description con la root cause, criterios de aceptación AC1–AC5, DoD y bloque `issue` con la issue #245 — https://github.com/gonzalitojh/Registro-personal/issues/245) |
+| `.github/workflows/auto-resolve-issues.yml` | **Modified**: in the "Relaunch or return to the queue on session failure" step, the two `gh issue comment`s (the `return_to_queue` function and the relaunch's notice) use `GH_TOKEN="$GITHUB_TOKEN"` (the author: `github-actions[bot]`); explanatory comments of the why (issue #245) in the workflow's header and on the step; the other operations (the labels' set-state, `gh workflow run`) keep using the job's `GH_TOKEN` (the PAT) |
+| `README.md` | **Modified**: section 6, point 6 — a note about the failure comments' author (`github-actions[bot]`, they do not re-fire the workflow) |
+| `docs/adr-078-comentarios-fallo-github-actions.md` | **New**: this document |
+| `tasks/task-issue-245.json` | Task file of the task (title/description with the root cause, acceptance criteria AC1–AC5, DoD and the `issue` block with issue #245 — https://github.com/gonzalitojh/Registro-personal/issues/245) |
 
 Related issue: #245

@@ -20,7 +20,7 @@ describe("i18n.js — núcleo puro (ADR-110)", () => {
   });
 
   it("translateText: los IDs del diccionario no se traducen dos veces", () => {
-    // El texto EN no debe volver a está en el dict (sin bucles)
+    // The EN text must not match again in the dict (no loops)
     expect(translateText("Loading…", "en")).toBeNull();
     expect(translateText("TV Shows", "en")).toBeNull();
   });

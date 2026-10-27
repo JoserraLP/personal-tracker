@@ -1,75 +1,75 @@
-# ADR-105: Lista de deseos («Compras») en Ocio
+# ADR-105: Wishlist («Compras» [Purchases]) in Leisure
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-10-24
 
-## Contexto
+## Context
 
-Además del registro de ocio y de la **lista de la compra recetaria**
-(js/shopping-list.js, que se genera desde el menú semanal), hacía falta
-una lista de cosas que comprar de uso libre: productos (física u
-online) con su precio, descripción, enlace y foto, y el estado
-comprado/no comprado. No es un medio de los cuatro (movie/tv/book/game):
-es una lista personal propia.
+Besides the leisure tracker and the **recipe shopping list**
+(js/shopping-list.js, generated from the weekly menu), a free-use
+shopping list was needed: products (physical or online) with their
+price, description, link and photo, and the purchased/not purchased
+state. It is not one of the four media types (movie/tv/book/game): it is
+its own personal list.
 
-Consideraciones:
+Considerations:
 
-- **Firestore**: el modelo de seguridad da lectura de ocio a todos los
-  usuarios autorizados. La lista de compras es personal; se decide
-  colección privada.
-- **Identidad**: sin catálogo externo ni ids; el usuario mete lo que
-  quiera, con URL/foto opcionales por URL (no se suben ficheros: la
-  app no tiene almacenamiento de ficheros).
-- **PWA/cache**: las partials de Ocio viven en ocio/*.html y el
-  service worker las precachea con `?v=APP_VERSION`.
+- **Firestore**: the security model gives leisure read access to all
+  authorized users. The shopping list is personal; a private collection
+  is decided.
+- **Identity**: no external catalog or ids; the user enters whatever
+  they want, with optional URL/photo by URL (no file uploads: the app
+  has no file storage).
+- **PWA/cache**: the Leisure partials live in ocio/*.html and the
+  service worker precaches them with `?v=APP_VERSION`.
 
-## Decisión
+## Decision
 
-Nueva **pestaña «Compras» en la sección Ocio** (ADR-104→continuidad):
-`#/ocio/compras`, con panel `panel-wishlist` y partial `ocio/compras.html`.
+New **«Compras» tab in the Leisure section** (ADR-104 → continuity):
+`#/ocio/compras`, with panel `panel-wishlist` and partial
+`ocio/compras.html`.
 
-1. **Datos** — colección `users/{uid}/wishlist` con:
-   `title` (obligatorio), `price` (number|null, €), `description`
-   (texto opcional), `url` (URL del producto o null), `photoUrl`
-   (URL de imagen o null), `purchased` (bool), `purchasedAt`
-   (ISO la primera vez que se marca; null al desmarcar), `addedAt` y
+1. **Data** — collection `users/{uid}/wishlist` with:
+   `title` (required), `price` (number|null, €), `description`
+   (optional text), `url` (product URL or null), `photoUrl`
+   (image URL or null), `purchased` (bool), `purchasedAt`
+   (ISO the first time it is marked; null when unmarked), `addedAt` and
    `updatedAt` (serverTimestamp).
-2. **Reglas** — `match /wishlist/{itemId}: allow read, write: if
-   isAllowedUser() && isOwner(userId)`: lista privada del dueño; NO se
-   comparte como el ocio.
-3. **db.js** — funciones al patrón del repo: `subscribeToWishlist`
-   (snapshot con orderBy addedAt desc), `addWishlistItem`,
-   `updateWishlistItem`, `deleteWishlistItem`.
-4. **js/wishlist.js** — render de tarjetas en el partial (foto,
-   título, precio formateado "12,50 €", descripción con recorte a 3
-   líneas, URL), chips de filtro (Todas / Por comprar / Compradas),
-   formulario de alta/edición en la ventana genérica `#item-modal`
-   con **validación en cliente** (título obligatorio; precio numérico
-   ≥ 0 con coma decimal aceptada; URLs validadas y normalizadas
-   anteponiendo `https://` a dominios sin esquema) y confirmación
-   antes de borrar.
-5. **app.js** — la pestaña entra en el flujo lazy de paneles
-   (PANEL_TO_GROUP/GROUP_CONFIG con `custom: true`): su suscripción
-   usa `subscribeToWishlist` envuelta con `subscribeWithRetry`
-   (ADR-057): el pintado va por la API propia `setWishlistItems`, no
-   por `renderLibraryFor`; el wiring del botón «Añadir» y chips se
-   hace al inyectar el partial.
-6. **Visibilidad** — registro de secciones/pestañas (issue #97): la
-   pestaña se puede ocultar/mostrar en Ajustes, visible por defecto.
-7. **Temas y responsividad** — mismas convenciones que las tarjetas
-   de Ocio (`--paper` superficie, `--ink` texto, variantes `-dark`
-   para negro puro); rejilla auto-fill con `min()` y `overflow-wrap`
-   para que nunca haya scroll horizontal ni texto cortado.
+2. **Rules** — `match /wishlist/{itemId}: allow read, write: if
+   isAllowedUser() && isOwner(userId)`: private list of the owner; NOT
+   shared like leisure.
+3. **db.js** — functions following the repo pattern:
+   `subscribeToWishlist` (snapshot with orderBy addedAt desc),
+   `addWishlistItem`, `updateWishlistItem`, `deleteWishlistItem`.
+4. **js/wishlist.js** — card rendering in the partial (photo, title,
+   formatted price "12,50 €", description clamped to 3 lines, URL),
+   filter chips (Todas [All] / Por comprar [To buy] / Compradas
+   [Purchased]), add/edit form in the generic `#item-modal` window with
+   **client-side validation** (title required; numeric price ≥ 0 with
+   decimal comma accepted; URLs validated and normalized by prepending
+   `https://` to schema-less domains) and confirmation before deleting.
+5. **app.js** — the tab enters the lazy panel flow
+   (PANEL_TO_GROUP/GROUP_CONFIG with `custom: true`): its subscription
+   uses `subscribeToWishlist` wrapped with `subscribeWithRetry`
+   (ADR-057): painting goes through its own `setWishlistItems` API, not
+   through `renderLibraryFor`; the «Añadir» [Add] button and chips
+   wiring is done when injecting the partial.
+6. **Visibility** — section/tab registry (issue #97): the tab can be
+   hidden/shown in Settings, visible by default.
+7. **Themes and responsiveness** — same conventions as the Leisure
+   cards (`--paper` surface, `--ink` text, `-dark` variants for pure
+   black); auto-fill grid with `min()` and `overflow-wrap` so there is
+   never horizontal scroll or cut text.
 
-## Consecuencias
+## Consequences
 
-- La lista vive en el sidebar bajo Ocio y respeta la visibilidad
-  configurada; los datos exportables (copia de seguridad) NO la
-  incluyen aún (el backup cubre movies/series/books/games): la
-  inclusión en backup/ICS queda para una iteración posterior.
-- Título/foto/URL son texto libre cuidado con XSS: todo se escapa con
-  `escapeHtml` en el render.
-- Los precios no llevan símbolo almacenado: la UI es la que añade €.
+- The list lives in the sidebar under Leisure and respects the
+  configured visibility; exportable data (backup) does NOT include it
+  yet (the backup covers movies/series/books/games): its inclusion in
+  backup/ICS is left for a later iteration.
+- Title/photo/URL are free text, careful with XSS: everything is
+  escaped with `escapeHtml` in the render.
+- Prices carry no stored symbol: the UI is what adds €.

@@ -1,73 +1,74 @@
-# ADR-043: Foto y nombre del usuario como una única zona clicable en el botón de perfil (issue #94)
+# ADR-043: User's photo and name as a single clickable area on the profile button (issue #94)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-07
 
-## Contexto
+## Context
 
-En la cabecera de la web, el botón de perfil
-`#btn-open-profile` (`.user-badge__avatar-btn`) contenía **solo la foto**
-del usuario (`<img id="user-avatar" class="user-badge__avatar">`). El
-nombre del usuario (`<span id="user-name" class="user-badge__name">`)
-vivía **fuera del botón**: era un hermano de `.profile-menu-wrap`, dentro
-de `.user-badge`, de modo que en anchos ≥520 px (tablet y PC), donde el
-CSS muestra el nombre junto a la foto (`@media (min-width: 520px)`), el
-nombre era **texto inerte**: pulsarlo no abría el menú de perfil.
+In the web's header, the profile button
+`#btn-open-profile` (`.user-badge__avatar-btn`) contained **only the
+photo** of the user (`<img id="user-avatar" class="user-badge__avatar">`).
+The username (`<span id="user-name" class="user-badge__name">`) lived
+**outside the button**: it was a sibling of `.profile-menu-wrap`, inside
+`.user-badge`, so at widths ≥520 px (tablet and PC), where the CSS shows
+the name next to the photo (`@media (min-width: 520px)`), the name was
+**inert text**: pressing it did not open the profile menu.
 
-La issue #94 pedía que el nombre forme parte del botón: la zona clicable
-debe abarcar la foto **y** el nombre completos en los dispositivos donde
-el nombre se muestra, manteniendo el comportamiento actual en móvil
-(<520 px, solo foto).
+Issue #94 asked that the name be part of the button: the clickable area
+must cover the photo **and** the full name on the devices where the name
+is shown, keeping the current behavior on mobile
+(<520 px, photo only).
 
-El comportamiento del menú (abrir/cerrar al pulsar, click-fuera para
-cerrar) se gestiona desde `js/profile.js`:
+The menu's behavior (open/close on press, click-outside to close) is
+managed from `js/profile.js`:
 
-- `document.getElementById("btn-open-profile")` para el botón y
-  `document.querySelector(".profile-menu-wrap")` para el contenedor — los
-  selectores por id/clase son **independientes de la posición del
-  `<span>`** en el DOM.
-- El click-fuera usa
-  `!profileMenuWrap.contains(e.target)`: al mover el nombre **dentro**
-  del botón (hijo de `.profile-menu-wrap`), pulsar el nombre pasa a
-  considerarse «dentro» del menú, que es exactamente el objetivo (pulsar
-  el nombre alterna el menú).
+- `document.getElementById("btn-open-profile")` for the button and
+  `document.querySelector(".profile-menu-wrap")` for the container — the
+  id/class selectors are **independent of the `<span>`'s position** in
+  the DOM.
+- The click-outside uses
+  `!profileMenuWrap.contains(e.target)`: moving the name **inside**
+  the button (child of `.profile-menu-wrap`), pressing the name becomes
+  considered "inside" the menu, which is exactly the goal (pressing the
+  name toggles the menu).
 
 Related issue: #94 — https://github.com/gonzalitojh/Registro-personal/issues/94
 
-## Decisión
+## Decision
 
-Mover `#user-name` **dentro** de `#btn-open-profile`, inmediatamente
-después del `<img>`, para que foto y nombre constituyan una **única zona
-clicable** del botón de perfil. Ajustar el CSS del botón y del nombre
-para que el flex del botón no rompa el layout ni el truncado con
-ellipsis del nombre.
+Move `#user-name` **inside** `#btn-open-profile`, immediately
+after the `<img>`, so photo and name constitute the profile button's
+**single clickable area**. Adjust the button's and the name's CSS so the
+button's flex does not break the layout or the name's ellipsis
+truncation.
 
-### 1. HTML: el nombre pasa a ser hijo del botón
+### 1. HTML: the name becomes a child of the button
 
 `index.html`:
 
-- Se **elimina** el `<span id="user-name" class="user-badge__name">` que
-  estaba como hermano de `.profile-menu-wrap` (al final de `.user-badge`).
-- Se **añade** el mismo `<span id="user-name" class="user-badge__name">`
-  **dentro** de `#btn-open-profile`, justo tras el
+- The `<span id="user-name" class="user-badge__name">` that was a
+  sibling of `.profile-menu-wrap` (at the end of `.user-badge`) is
+  **removed**.
+- The same `<span id="user-name" class="user-badge__name">` is
+  **added** **inside** `#btn-open-profile`, right after the
   `<img id="user-avatar" class="user-badge__avatar">`.
 
-Los atributos del botón no cambian: `aria-label="Abrir menú de perfil"`,
-`aria-haspopup="menu"`, `aria-expanded` y `aria-controls` se conservan
-(el botón sigue teniendo su etiqueta accesible propia; el nombre es texto
-visible del botón, no su label).
+The button's attributes do not change: `aria-label="Abrir menú de
+perfil"`, `aria-haspopup="menu"`, `aria-expanded` and `aria-controls` are
+kept (the button keeps its own accessible label; the name is the button's
+visible text, not its label).
 
-### 2. CSS: `.user-badge__avatar-btn` pasa a flex inline
+### 2. CSS: `.user-badge__avatar-btn` becomes inline flex
 
-`css/styles.css`, en `.user-badge__avatar-btn`:
+`css/styles.css`, in `.user-badge__avatar-btn`:
 
-- **Se elimina** `line-height: 0` (estilo heredado de cuando el botón
-  solo contenía la imagen; con texto dentro colapsaría la línea del
-  nombre y lo cortaría).
-- **Se añade**:
+- `line-height: 0` is **removed** (style inherited from when the button
+  only contained the image; with text inside it would collapse the
+  name's line and cut it).
+- **Added**:
 
   ```css
   display: inline-flex;
@@ -78,140 +79,142 @@ visible del botón, no su label).
   max-width: 100%;
   ```
 
-  `inline-flex` + `align-items: center` alinea foto y nombre en una
-  fila centrada verticalmente; `gap: 0.6rem` separa la foto del nombre;
-  `cursor: pointer` mantiene el indicador clicable explícito del botón;
-  `min-width: 0` y `max-width: 100%` son las reglas de responsividad de
-  AGENTS.md: el botón puede encoger dentro del flex del header y el
-  nombre truncar con ellipsis en vez de desbordar.
+  `inline-flex` + `align-items: center` align photo and name in a
+  vertically centered row; `gap: 0.6rem` separates the photo from the
+  name; `cursor: pointer` keeps the button's explicit clickable
+  indicator; `min-width: 0` and `max-width: 100%` are AGENTS.md's
+  responsiveness rules: the button can shrink inside the header's flex and
+  the name can truncate with ellipsis instead of overflowing.
 
-### 3. CSS: `.user-badge__name` con `line-height: normal` y `min-width: 0`
+### 3. CSS: `.user-badge__name` with `line-height: normal` and `min-width: 0`
 
-`css/styles.css`, en `.user-badge__name`:
+`css/styles.css`, in `.user-badge__name`:
 
-- **`line-height: normal`**: evita que el texto quede cortado verticalmente
-  dentro del flex del botón (el valor heredado `0` de la `line-height` que
-  tenía el botón truncaría la caja de línea).
-- **`min-width: 0`**: requisito del ellipsis dentro de un flex item: sin
-  él, el texto no puede encoger por debajo de su contenido y el truncado
-  (`white-space: nowrap; overflow: hidden; text-overflow: ellipsis` +
-  `max-width: min(12rem, 30vw)` del `@media (min-width: 520px)`) no
-  funcionaría.
+- **`line-height: normal`**: prevents the text from being cut vertically
+  inside the button's flex (the inherited `0` value of the button's
+  former `line-height` would truncate the line box).
+- **`min-width: 0`**: requirement of the ellipsis inside a flex item:
+  without it, the text cannot shrink below its content and the
+  truncation (`white-space: nowrap; overflow: hidden; text-overflow:
+  ellipsis` + `max-width: min(12rem, 30vw)` from the `@media
+  (min-width: 520px)`) would not work.
 
-El `display: none` base (móvil <520 px) se mantiene: en esos anchos el
-nombre no se renderiza, **no genera flex item**, y por tanto no hay
-espacio fantasma ni `gap` entre la foto y un elemento invisible.
+The base `display: none` (mobile <520 px) is kept: at those widths the
+name is not rendered, **does not generate a flex item**, and therefore
+there is neither ghost space nor `gap` between the photo and an invisible
+element.
 
-### 4. Sin cambios en JS
+### 4. No JS changes
 
-`js/ui.js` y `js/profile.js` **no se tocan**: usan `getElementById` /
-`querySelector` (posición independiente del `<span>`), y el click-fuera
-de `js/profile.js`
-(`profileMenuWrap.contains(e.target)`) gana la semántica deseada: al
-estar el nombre dentro del botón (hijo de `.profile-menu-wrap`), pulsar
-el nombre no dispara el click-fuera y el menú alterna como al pulsar la
-foto.
+`js/ui.js` and `js/profile.js` are **not touched**: they use
+`getElementById` / `querySelector` (position independent of the
+`<span>`), and the click-outside of `js/profile.js`
+(`profileMenuWrap.contains(e.target)`) gains the desired semantics: with
+the name inside the button (child of `.profile-menu-wrap`), pressing the
+name does not fire the click-outside and the menu toggles like pressing
+the photo.
 
-### 5. Manual de usuario actualizado
+### 5. User manual updated
 
-`docs/manual-de-usuario.md` (obligación de AGENTS.md: cambio visible
-para el usuario):
+`docs/manual-de-usuario.md` (AGENTS.md obligation: change visible
+to the user):
 
-- Sección 2 (acceso): «Para salir, pulsa **tu foto o tu nombre** (arriba
+- Section 2 (access): «Para salir, pulsa **tu foto o tu nombre** (arriba
   a la derecha)…».
-- Sección 3 (pantalla principal): «**Tu foto (y tu nombre, si se
+- Section 3 (main screen): «**Tu foto (y tu nombre, si se
   muestra)**: pulsándolos se abre un menú…».
-- Sección 13 (tu perfil): «Pulsa **tu foto o tu nombre** (arriba a la
-  derecha)…» + nota aclaratoria: «En móvil solo se ve la foto; en tablet
+- Section 13 (your profile): «Pulsa **tu foto o tu nombre** (arriba a la
+  derecha)…» + clarifying note: «En móvil solo se ve la foto; en tablet
   y ordenador también aparece tu nombre, y ambas cosas forman parte del
   mismo botón».
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **No tocar el HTML y añadir el clic al nombre por JS** (listener
-  propio sobre `#user-name`): descartado — duplicaría la gestión del
-  menú (dos listeners, dos estados `aria-expanded` que sincronizar),
-  rompería la accesibilidad (un clic «falso» fuera del botón no es
-  activable por teclado ni anuncia el control) y no resolvería el
-  click-fuera; el marcado correcto de un control único es un único
+- **Not touching the HTML and adding the click to the name via JS** (its
+  own listener on `#user-name`): rejected — it would duplicate the
+  menu management (two listeners, two `aria-expanded` states to sync),
+  break accessibility (a "fake" click outside the button is not
+  keyboard-activable nor announces the control) and would not solve the
+  click-outside; the correct markup of a single control is a single
   `<button>`.
-- **Envolver foto y nombre en un contenedor clicable aparte** (p. ej.
-  un `div` con listener o un segundo botón): descartado — crearía una
-  zona clicable duplicada, con el mismo problema de sincronización de
-  estados y de accesibilidad que la opción anterior; además añadía un
-  elemento sin rol semántico propio.
-- **Mantener la estructura y agrandar solo la foto** (foto más grande
-  como zona clicable implícita): descartado — no cumple el criterio de
-  aceptación de la issue #94 (la zona debe abarcar foto **y** nombre
-  completos) y desvirtuaría el diseño de la cabecera (ADR-040).
-- **Dejar `line-height: 0` en el botón y compensar con `line-height`
-  explícita en el `<span>`**: descartado — el valor `0` del botón se
-  propaga a la caja de línea del span y lo corta (la caja de línea del
-  hijo se resuelve contra la `line-height` del contenedor); eliminar la
-  propiedad obsoleta del botón es más limpio y menos frágil que
-  compensarla.
+- **Wrapping photo and name in a separate clickable container** (e.g.
+  a `div` with a listener or a second button): rejected — it would create
+  a duplicated clickable area, with the same state-syncing and
+  accessibility problems as the previous option; it also added an
+  element with no semantic role of its own.
+- **Keeping the structure and enlarging only the photo** (bigger photo
+  as an implicit clickable area): rejected — it does not meet issue
+  #94's acceptance criterion (the area must cover the photo **and** the
+  full name) and would distort the header's design (ADR-040).
+- **Keeping `line-height: 0` on the button and compensating with an
+  explicit `line-height` on the `<span>`**: rejected — the button's `0`
+  value propagates to the span's line box and cuts it (the child's line
+  box resolves against the container's `line-height`); removing the
+  obsolete property from the button is cleaner and less fragile than
+  compensating for it.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Zona clicable unificada**: en tablet/PC la foto **y** el nombre son
-  una única zona clicable del botón de perfil; pulsar cualquiera de los
-  dos abre/alterna el menú (criterio de aceptación 1 de la issue #94).
-- **Móvil intacto**: en <520 px el nombre sigue oculto (`display:
-  none`) y la foto es clicable exactamente igual que antes (criterio de
-  aceptación 2); `display: none` no genera flex item, así que no hay
-  gap fantasma entre la foto y un elemento invisible.
-- **Accesibilidad conservada**: sigue habiendo un único `<button>` con
-  `aria-label`, `aria-haspopup`, `aria-expanded` y `aria-controls`
-  (criterio de aceptación 3); `cursor: pointer` explícito y estados de
-  hover/focus coherentes con el resto de la UI.
-- **Ellipsis preservado**: `min-width: 0` en el botón y en el nombre +
-  `line-height: normal` mantienen el truncado de nombres largos
-  (`nowrap` + `overflow: hidden` + `max-width: min(12rem, 30vw)` del
-  media query ≥520 px) funcionando dentro del flex del botón, sin
-  desbordar la cabecera de altura fija (ADR-040).
-- **Sin cambios en JS**: `js/ui.js` y `js/profile.js` intactos; el
-  click-fuera (`profileMenuWrap.contains`) pasa a cubrir el nombre por
-  construcción del DOM, sin lógica nueva.
-- **Responsividad verificada** según AGENTS.md: 360/768/1280 px sin
-  scroll horizontal; unidades relativas, `min-width: 0` y `max-width:
-  100%`, sin `overflow-x: hidden` como parche.
+- **Unified clickable area**: on tablet/PC the photo **and** the name are
+  the profile button's single clickable area; pressing either opens/toggles
+  the menu (issue #94's acceptance criterion 1).
+- **Mobile intact**: at <520 px the name stays hidden (`display:
+  none`) and the photo is clickable exactly as before
+  (acceptance criterion 2); `display: none` does not generate a flex
+  item, so there is no ghost gap between the photo and an invisible
+  element.
+- **Accessibility kept**: there is still a single `<button>` with
+  `aria-label`, `aria-haspopup`, `aria-expanded` and `aria-controls`
+  (acceptance criterion 3); explicit `cursor: pointer` and hover/focus
+  states coherent with the rest of the UI.
+- **Ellipsis preserved**: `min-width: 0` on the button and the name +
+  `line-height: normal` keep the truncation of long names
+  (`nowrap` + `overflow: hidden` + `max-width: min(12rem, 30vw)` of the
+  ≥520 px media query) working inside the button's flex, without
+  overflowing the fixed-height header (ADR-040).
+- **No JS changes**: `js/ui.js` and `js/profile.js` intact; the
+  click-outside (`profileMenuWrap.contains`) now covers the name by DOM
+  construction, with no new logic.
+- **Responsiveness verified** per AGENTS.md: 360/768/1280 px with no
+  horizontal scroll; relative units, `min-width: 0` and `max-width:
+  100%`, with no `overflow-x: hidden` as a patch.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Ninguna funcional negativa identificada**: el cambio es aditivo
-  sobre el área clicable existente; el único matiz es que pulsar el
-  nombre ahora **alterna** el menú (antes no hacía nada), que es
-  precisamente el comportamiento deseado.
-- **La zona clicable del botón es más ancha en ≥520 px** (foto + nombre
-  + gap): acota el espacio libre de la cabecera, que tiene altura y
-  anchos fijos; mitigado con `max-width: 100%` y el ellipsis del nombre,
-  que impide que el botón crezca indefinidamente con nombres largos.
+- **No functional negative identified**: the change is additive over the
+  existing clickable area; the only nuance is that pressing the name now
+  **toggles** the menu (before it did nothing), which is precisely the
+  desired behavior.
+- **The button's clickable area is wider at ≥520 px** (photo + name
+  + gap): it narrows the header's free space, which has fixed height and
+  widths; mitigated with `max-width: 100%` and the name's ellipsis,
+  which prevents the button from growing indefinitely with long names.
 
-### Neutras
+### Neutral
 
-- **Sin bump de versión PWA**: el cambio está en el working tree de la
-  rama `fix/issue-94-boton-perfil` y se versionará junto al PR
-  correspondiente (política de versionado de los ADRs previos: el bump
-  acompaña al release/merge, no a este documento).
-- **`docs/manual-de-usuario.md` actualizado** (obligación de AGENTS.md:
-  cambio visible al usuario): secciones 2, 3 y 13 reflejan que se pulsa
-  «tu foto o tu nombre».
-- **ADR-040 sigue vigente**: la cabecera fija, la altura `--header-h` y
-  el ellipsis del nombre que definió no cambian; este ADR solo modifica
-  la **ubicación** del `<span>` del nombre (del contenedor `.user-badge`
-  al interior del botón) y los estilos de flex asociados.
+- **No PWA version bump**: the change is in the working tree of the branch
+  `fix/issue-94-boton-perfil` and will be versioned with the
+  corresponding PR (previous ADRs' versioning policy: the bump
+  accompanies the release/merge, not this document).
+- **`docs/manual-de-usuario.md` updated** (AGENTS.md obligation: change
+  visible to the user): sections 2, 3 and 13 reflect that «your photo or
+  your name» is pressed.
+- **ADR-040 remains in force**: the fixed header, the `--header-h` height
+  and the name's ellipsis it defined do not change; this ADR only changes
+  the name `<span>`'s **location** (from the `.user-badge` container
+  into the button) and the associated flex styles.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `index.html` | **Modificado**: `<span id="user-name" class="user-badge__name">` movido de hermano de `.profile-menu-wrap` a **hijo de `#btn-open-profile`** (tras el `<img id="user-avatar">`); atributos del botón sin cambios |
-| `css/styles.css` | **Modificado**: `.user-badge__avatar-btn` — se elimina `line-height: 0` y se añade `display: inline-flex; align-items: center; gap: 0.6rem; cursor: pointer; min-width: 0; max-width: 100%`; `.user-badge__name` — se añaden `line-height: normal` y `min-width: 0` (el ellipsis del `@media (min-width: 520px)` se mantiene intacto) |
-| `docs/manual-de-usuario.md` | **Modificado**: secciones 2, 3 y 13 — «tu foto o tu nombre» (con nota en la sección 13 de que en móvil solo se ve la foto y ambas cosas forman parte del mismo botón) |
-| `js/ui.js` | **Sin cambios** (usa `getElementById`, posición independiente) |
-| `js/profile.js` | **Sin cambios** (click-fuera con `profileMenuWrap.contains`; el nombre dentro del botón queda cubierto por construcción) |
-| `docs/adr-043-boton-perfil.md` | **Nuevo**: este documento |
+| `index.html` | **Modified**: `<span id="user-name" class="user-badge__name">` moved from sibling of `.profile-menu-wrap` to **child of `#btn-open-profile`** (after `<img id="user-avatar">`); button attributes unchanged |
+| `css/styles.css` | **Modified**: `.user-badge__avatar-btn` — `line-height: 0` removed and `display: inline-flex; align-items: center; gap: 0.6rem; cursor: pointer; min-width: 0; max-width: 100%` added; `.user-badge__name` — `line-height: normal` and `min-width: 0` added (the `@media (min-width: 520px)` ellipsis stays intact) |
+| `docs/manual-de-usuario.md` | **Modified**: sections 2, 3 and 13 — «your photo or your name» (with a note in section 13 that on mobile only the photo is seen and both are part of the same button) |
+| `js/ui.js` | **Unchanged** (uses `getElementById`, position-independent) |
+| `js/profile.js` | **Unchanged** (click-outside with `profileMenuWrap.contains`; the name inside the button is covered by construction) |
+| `docs/adr-043-boton-perfil.md` | **New**: this document |
 
 Related issue: #94 — https://github.com/gonzalitojh/Registro-personal/issues/94

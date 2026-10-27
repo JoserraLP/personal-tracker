@@ -1,79 +1,76 @@
-# ADR-109: Re-estilización visual — aire IMDb con acabado Apple "Liquid Glass"
+# ADR-109: Visual re-styling — IMDb look with an Apple "Liquid Glass" finish
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-10-26
 
-## Contexto
+## Context
 
-El propietario pide que la interfaz se parezca a IMDb pero con la
-temática de Apple "Liquid Glass" siempre que sea posible. La app
-tenía una identidad de "cuaderno de biblioteca / entrada de cine"
-(superficies de paper sólidas, ticket perforado, radios de 3px) que
-convivía con una navegación que "se integra" con la página (ADR de
-iteración de feedback: cabecera y pestañas sin separación).
+The owner asks for the interface to look like IMDb but with the Apple
+"Liquid Glass" theme wherever possible. The app had a "library notebook
+/ cinema ticket" identity (solid paper surfaces, perforated ticket, 3px
+radii) coexisting with a navigation that "blends into" the page
+(feedback iteration ADR: header and tabs with no separation).
 
-## Decisión
+## Decision
 
-Se aplica una **capa de re-estilización** (overrides al final de
-`css/styles.css` y `ocio/ocio.css`) sin tocar las reglas existentes,
-en dos ejes:
+A **re-styling layer** is applied (overrides at the end of
+`css/styles.css` and `ocio/ocio.css`) without touching existing rules,
+on two axes:
 
-### 1. Liquid Glass (tokens, no componentes sueltos)
+### 1. Liquid Glass (tokens, not loose components)
 
-Nuevos tokens en `:root` + tres bloques de familia:
+New tokens in `:root` + three family blocks:
 
-- `--glass-bg` / `--glass-bg-strong`: superficie translúcida por
-  familia (oscura con tinte de tinta en dark/black, blanca en
-  light/white).
-- `--glass-border[-strong]`: hairline (papel translúcido en oscura,
-  tinta translúcida en clara).
-- `--glass-blur` / `--glass-saturate`: backdrop-filter compartido.
-- `--glass-radius`: 14px (la obsesión de radios redondos de iOS).
-- `--glass-spec`: brillo especular superior (gradiente).
-- `--page-glow`: foco de cine sutil en el borde superior del body.
-- `@supports not (backdrop-filter…)`: fallback con superficies casi
-  opacas para navegadores sin vidrio.
+- `--glass-bg` / `--glass-bg-strong`: translucent surface per family
+  (dark with an ink tint in dark/black, white in light/white).
+- `--glass-border[-strong]`: hairline (translucent paper in dark,
+  translucent ink in light).
+- `--glass-blur` / `--glass-saturate`: shared backdrop-filter.
+- `--glass-radius`: 14px (iOS's obsession with rounded radii).
+- `--glass-spec`: top specular sheen (gradient).
+- `--page-glow`: subtle cinema focus light on the top edge of the body.
+- `@supports not (backdrop-filter…)`: fallback with nearly opaque
+  surfaces for browsers without glass.
 
-Solo se blinda la **cromática** (app-header, tabs--bar, app-sidebar,
-dropdowns, toast, tarjeta de acceso, back-to-top, pills). Los
-formularios, modales y fichas conservan la superficie de papel/white
-porque su texto asume esos fondos (evita reintroducir los overrides
-masivos de la issue #165 en el contenido).
+Only the **chrome** is given the glass treatment (app-header,
+tabs--bar, app-sidebar, dropdowns, toast, access card, back-to-top,
+pills). Forms, modals and item cards keep the paper/white surface
+because their text assumes those backgrounds (avoids re-introducing
+the massive overrides of issue #165 into the content).
 
-### 2. Aire IMDb
+### 2. IMDb look
 
-- Cabecera fija translúcida tipo navbar de cine (el contenido pasa
-  por detrás y se desenfoca).
-- Titulares de sección `h2` en versalitas con tracking, sans (IBM
-  Plex Sans), menos peso que el display serif.
-- Tarjetas **poster-forward**: sin perforación de ticket (oculta),
-  cover más alta (210px), radio de vidrio, cuerpo translúcido con el
-  texto de la familia correspondiente.
-- Chip de valoración estilo "escudo IMDb": dorado auto-colored
-  (`--imdb-gold` #f5c518, SIEMPRE con su tinta oscura encima,
-  `--imdb-gold-ink`), legible en los 4 modos por contraste propio.
-- Chips/pills (estado, contador ×N, filtros, sort, vista) unificados
-  en lenguaje de vidrio pill con hairline.
+- Fixed translucent header in cinema-navbar style (content passes
+  behind it and gets blurred).
+- Section headings `h2` in small caps with tracking, sans (IBM Plex
+  Sans), lighter weight than the serif display.
+- **Poster-forward** cards: no ticket perforation (hidden), taller
+  cover (210px), glass radius, translucent body with the corresponding
+  family's text color.
+- Rating chip in "IMDb shield" style: gold auto-colored
+  (`--imdb-gold` #f5c518, ALWAYS with its dark ink on top,
+  `--imdb-gold-ink`), legible in the 4 modes by its own contrast.
+- Chips/pills (status, ×N counter, filters, sort, view) unified in a
+  pill glass language with hairline.
 
-## Contraste verificado (los 4 modos)
+## Verified contrast (all 4 modes)
 
-- dark/black: texto `--paper` #f1ead9 sobre vidrio oscuro ≥ 13:1;
-  meta `--ink-soft` ~6:1 (AA); chip dorado ~10:1.
-- light/white: texto `--ink` #171512 sobre vidrio blanco ≥ 13:1;
-  chip dorado con tinta oscura ~10:1.
-- Los estados de tarjeta (--en_curso/completado/standby/abandonado)
-  se re-afirman DESPUÉS del vidrio base para conservar sus tintes
-  semánticos ya adaptados por familia (con texto --ink en clara y
-  --paper en negro puro).
+- dark/black: `--paper` #f1ead9 text on dark glass ≥ 13:1;
+  meta `--ink-soft` ~6:1 (AA); gold chip ~10:1.
+- light/white: `--ink` #171512 text on white glass ≥ 13:1;
+  gold chip with dark ink ~10:1.
+- The card states (--en_curso/completado/standby/abandonado) are
+  re-asserted AFTER the base glass to preserve their semantic tints
+  already adapted per family (with --ink text in light and --paper in
+  pure black).
 
-## Consecuencias
+## Consequences
 
-- La identidad "cuaderno" pervive en formularios/modales (solo la
-  cromática es de vidrio): un compromiso que conserva la legibilidad
-  sin duplicar los overrides de ejemplo de la familia oscura.
-- No hay cambios de comportamiento ni de contenido: el manual de
-  usuario no requiere actualización.
-- El fallback sin backdrop-filter mantiene la legibilidad AA/AAA.
+- The "notebook" identity survives in forms/modals (only the chrome is
+  glass): a compromise that preserves legibility without duplicating
+  the example overrides of the dark family.
+- No behavior or content changes: the user manual requires no update.
+- The fallback without backdrop-filter maintains AA/AAA legibility.

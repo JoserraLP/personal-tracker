@@ -1,191 +1,188 @@
-# ADR-058: Unificar la pestaña de datos del perfil en Ajustes (issue #135)
+# ADR-058: Unify the profile's data tab into Settings (issue #135)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-09
 
-## Contexto
+## Context
 
-La issue #135 («Unificar pestaña de datos del perfil en ajustes») pide
-eliminar la pestaña «Datos» del perfil e incluir su contenido en la
-pestaña «Ajustes» como un apartado de datos.
+Issue #135 («Unificar pestaña de datos del perfil en ajustes») asks
+to remove the profile's «Datos» tab and include its content in the
+«Ajustes» tab as a data section.
 
-Estado anterior:
+Previous state:
 
-- El perfil tenía **5 subtabs** (`index.html`, `.profile-subtabs`):
-  Estadísticas, Amigos, Actividad, Datos y Ajustes; además, el
-  **dropdown del perfil** (`#profile-dropdown`) tenía su propia entrada
-  «Datos» (`data-section="data"`).
-- La sección `#profile-section-data` contenía **3 tarjetas `.data-card`**:
-  Exportar copia de seguridad (`#btn-export-backup`), Importar copia de
-  seguridad (`#btn-import-backup`) y Exportar calendario `.ics`
+- The profile had **5 subtabs** (`index.html`, `.profile-subtabs`):
+  Estadísticas, Amigos, Actividad, Datos and Ajustes; besides, the
+  **profile dropdown** (`#profile-dropdown`) had its own
+  «Datos» entry (`data-section="data"`).
+- The `#profile-section-data` section contained **3 `.data-card`
+  cards**: Export backup (`#btn-export-backup`), Import backup
+  (`#btn-import-backup`) and Export `.ics` calendar
   (`#btn-export-ics`).
-- El router por hash (ADR-051) mapeaba el token «datos» → sección
-  `"data"` (deep links `#/perfil/datos`).
-- La pestaña Ajustes (`#profile-section-settings`) ya tenía sus propias
-  cards (Apariencia, Notificaciones, Sincronización de datos) con el
-  patrón `.settings-card` + `.settings-desc`.
+- The hash router (ADR-051) mapped the «datos» token → the
+  `"data"` section (deep links `#/perfil/datos`).
+- The «Ajustes» tab (`#profile-section-settings`) already had its own
+  cards (Apariencia, Notificaciones, Sincronización de datos) with the
+  `.settings-card` + `.settings-desc` pattern.
 
-La implementación está validada (QA PASS) y escaneada (seguridad PASS);
-el manual de usuario ya se actualizó en la misma tarea (regla 3 de
-AGENTS.md). Este ADR documenta la decisión a posteriori.
+The implementation is validated (QA PASS) and scanned (security PASS);
+the user manual was already updated in the same task (rule 3 of
+AGENTS.md). This ADR documents the decision retrospectively.
 
 Related issue: #135 — https://github.com/gonzalitojh/Registro-personal/issues/135
 
-## Decisión
+## Decision
 
-Unificar la pestaña de datos dentro de Ajustes como apartado «Datos»,
-conservando el alias de URL `#/perfil/datos` → Ajustes.
+Unify the data tab inside Settings as the «Datos» section,
+keeping the `#/perfil/datos` URL alias → Settings.
 
-### 1. UI: se elimina la pestaña «Datos» y su contenido pasa a Ajustes
+### 1. UI: the «Datos» tab is removed and its content moves to Settings
 
-- Se eliminan la **subtab «Datos»** (quedan 4 subtabs: Estadísticas,
-  Amigos, Actividad y Ajustes) y la **entrada «Datos» del dropdown**
-  del perfil (quedan 4 entradas).
-- Se elimina del DOM la sección `#profile-section-data` (con sus 3
-  tarjetas `.data-card`).
-- Su contenido pasa a `#profile-section-settings` como **una card única
-  «Datos»** (`div.settings-card.settings-card--data`) con la misma
-  estructura del resto de Ajustes: título `h3`, párrafos `.settings-desc`
-  y los 3 botones apilados en vertical
+- The **«Datos» subtab** is removed (4 subtabs remain: Estadísticas,
+  Amigos, Actividad and Ajustes) and the **«Datos» entry of the profile's
+  dropdown** (4 entries remain).
+- The `#profile-section-data` section is removed from the DOM (with its 3
+  `.data-card` cards).
+- Its content moves into `#profile-section-settings` as **a single
+  «Datos» card** (`div.settings-card.settings-card--data`) with the same
+  structure as the rest of Settings: `h3` title, `.settings-desc`
+  paragraphs and the 3 buttons stacked vertically
   (`.settings-card--data .btn { display:block; width:fit-content;
-  max-width:100%; margin:0 0 1.2rem }` y `:last-child` sin margen),
-  siguiendo el patrón de las antiguas tarjetas.
-- **Se conservan los ids de los botones** (`#btn-export-backup`,
-  `#btn-import-backup`, `#btn-export-ics`): el wiring
-  `setupExportBackup(ctx)` / `setupExportIcs(ctx)` de `js/profile.js`
-  no se toca, y tampoco los módulos `js/export-backup.js` /
-  `js/export-ics.js` que los referencian.
+  max-width:100%; margin:0 0 1.2rem }` and `:last-child` without margin),
+  following the old cards' pattern.
+- **The buttons' ids are kept** (`#btn-export-backup`,
+  `#btn-import-backup`, `#btn-export-ics`): the `setupExportBackup(ctx)`
+  / `setupExportIcs(ctx)` wiring of `js/profile.js`
+  is untouched, and neither are the `js/export-backup.js` /
+  `js/export-ics.js` modules referencing them.
 
-### 2. Router: el token «datos» pasa a ser alias de `settings`
+### 2. Router: the «datos» token becomes an alias of `settings`
 
-En `js/router.js`, el mapa `PROFILE_KEY_TO_SECTION` deja de tener
-`datos: "data"` (sección inexistente) y pasa a:
+In `js/router.js`, the `PROFILE_KEY_TO_SECTION` map stops having
+`datos: "data"` (a nonexistent section) and becomes:
 
 ```js
 datos: "settings",
 ajustes: "settings",
 ```
 
-Consecuencias del enrutado:
+Routing consequences:
 
-- El deep link **legado `#/perfil/datos` sigue funcionando** y abre
-  Ajustes; la URL **no se normaliza** (permanece `#/perfil/datos` en la
-  barra de direcciones).
-- **Detalle crítico documentado en el código**: `PROFILE_SECTION_TO_KEY`
-  se auto-genera con `Object.fromEntries` y la **última clave gana**, por
-  eso «ajustes» debe quedar **después** de «datos» en
-  `PROFILE_KEY_TO_SECTION`: así el inverso devuelve `settings` →
-  «ajustes» y el hash canónico sigue siendo `#/perfil/ajustes`. Un
-  comentario en el mapa fija este orden para futuras ediciones.
-- Se actualiza el comentario de cabecera del módulo: «El antiguo token
-  “datos” sobrevive como alias de Ajustes (issue #135)».
+- The legacy deep link **`#/perfil/datos` keeps working** and opens
+  Settings; the URL is **not normalized** (it stays `#/perfil/datos` in the
+  address bar).
+- **Critical detail documented in the code**: `PROFILE_SECTION_TO_KEY`
+  is auto-generated with `Object.fromEntries` and the **last key wins**,
+  which is why «ajustes» must come **after** «datos» in
+  `PROFILE_KEY_TO_SECTION`: this way the inverse returns `settings` →
+  «ajustes» and the canonical hash stays `#/perfil/ajustes`. A comment
+  on the map fixes this order for future edits.
+- The module's header comment is updated: «The old "datos" token
+  survives as a Settings alias (issue #135)».
 
-### 3. CSS: se elimina `.data-card` y se añade `.settings-card--data`
+### 3. CSS: `.data-card` removed and `.settings-card--data` added
 
-- **Eliminadas** las reglas `.data-card` (muertas: ya no existe ninguna
-  tarjeta con esa clase en el DOM).
-- **Añadidas** las reglas de apilado vertical de los botones del
-  apartado «Datos» dentro de Ajustes (`.settings-card--data .btn` con
-  `display:block`, `width:fit-content`, `max-width:100%` y margen
-  inferior de `1.2rem`, excepto `:last-child`), reutilizando el resto
-  del estilo de `.settings-card` sin duplicar nada.
+- The `.data-card` rules are **removed** (dead: no card with that class
+  exists in the DOM anymore).
+- The vertical stacking rules of the «Datos» section's buttons inside
+  Settings are **added** (`.settings-card--data .btn` with
+  `display:block`, `width:fit-content`, `max-width:100%` and a bottom
+  margin of `1.2rem`, except `:last-child`), reusing the
+  rest of `.settings-card`'s style without duplicating anything.
 
-### 4. Documentación, manual de usuario y PWA
+### 4. Documentation, user manual and PWA
 
-- **Manual** (`docs/manual-de-usuario.md`): listas de secciones del
-  perfil reducidas de 5 a 4; eliminada la subsección «13.4 Datos»;
-  «13.5 Ajustes» renumerada a «13.4 Ajustes»; apartado «Datos» añadido
-  en la sección 14 (exportar/importar copia de seguridad y exportar
-  `.ics`); nota en 13.0 de que `#/perfil/datos` sigue funcionando y
-  abre Ajustes.
-- **Bump PWA** `20260830` → `20260831` (un bump por PR que toca
+- **Manual** (`docs/manual-de-usuario.md`): profile sections lists
+  reduced from 5 to 4; the «13.4 Datos» subsection removed;
+  «13.5 Ajustes» renumbered to «13.4 Ajustes»; the «Datos» section added
+  to row 14 (export/import backup and export `.ics`); a note in 13.0
+  that `#/perfil/datos` keeps working and opens Settings.
+- **PWA bump** `20260830` → `20260831` (one bump per PR touching
   assets, cf. ADR-049): `js/config.js` (`APP_VERSION`), `index.html`
-  (`?v=20260831` ×3) y `service-worker.js` (`?v=20260831` ×6).
-- **ADR históricos intactos**: `adr-008-export-backup.md`,
-  `adr-014-export-ics.md` y `adr-051-enrutamiento-hash.md` mencionan
-  `#profile-section-data`, `.data-card` y el token «datos»; son
-  registro histórico del estado previo y **no se modifican**.
+  (`?v=20260831` ×3) and `service-worker.js` (`?v=20260831` ×6).
+- **Historical ADRs intact**: `adr-008-export-backup.md`,
+  `adr-014-export-ics.md` and `adr-051-enrutamiento-hash.md` mention
+  `#profile-section-data`, `.data-card` and the «datos» token; they are
+  historical records of the previous state and are **not modified**.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Eliminar el token «datos» del router** (normalizar
-  `#/perfil/datos` a `#/perfil/estadisticas`): descartado — rompería
-  favoritos y URLs compartidas que los usuarios ya han guardado desde
-  ADR-051; el alias cuesta una línea y mantiene la compatibilidad.
-- **Mantener `.data-card` con reglas propias dentro de Ajustes**:
-  descartado — CSS duplicado innecesario; la card «Datos» reutiliza el
-  patrón `.settings-card` y solo necesita las reglas de apilado de
-  botones.
-- **Mover la sección sin alias de URL**: descartado — inconsistente con
-  la función de deep links del ADR-051 (cada sección del perfil tiene
-  URL propia y compartible); dejar `#/perfil/datos` roto degradaría
-  silenciosamente una URL pública ya documentada.
+- **Removing the «datos» token from the router** (normalizing
+  `#/perfil/datos` to `#/perfil/estadisticas`): rejected — it would break
+  favorites and shared URLs users have already saved since
+  ADR-051; the alias costs one line and keeps compatibility.
+- **Keeping `.data-card` with its own rules inside Settings**:
+  rejected — unnecessary duplicated CSS; the «Datos» card reuses the
+  `.settings-card` pattern and only needs the button stacking rules.
+- **Moving the section without a URL alias**: rejected — inconsistent with
+  ADR-051's deep-link feature (each profile section has its own shareable
+  URL); leaving `#/perfil/datos` broken would silently degrade a
+  documented public URL.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Un solo lugar para datos y ajustes**: menos superficie de
-  navegación (4 subtabs y 4 entradas de dropdown); el perfil queda más
-  limpio y el usuario encuentra exportar/importar junto al resto de
-  ajustes.
-- **Deep links legado preservados**: `#/perfil/datos` sigue abriendo
-  Ajustes sin romper favoritos ni URLs compartidas (ADR-051).
-- **Wiring intacto**: al conservar los ids de los botones,
-  `setupExportBackup`/`setupExportIcs` no cambian — cero riesgo de
-  regresión en exportar/importar copia de seguridad y `.ics`.
-- **CSS sin duplicados ni código muerto**: `.data-card` eliminada
-  (no quedaba ninguna en el DOM) y una sola clase nueva
-  (`.settings-card--data`) para el apilado.
-- **Manual al día**: regla 3 de AGENTS.md cumplida en la misma tarea
-  (listas a 4 secciones, apartado «Datos» en sección 14 y nota de
-  legado en 13.0).
-- **QA y seguridad PASS** antes de documentar: la decisión está
-  validada en la práctica.
+- **A single place for data and settings**: less navigation surface
+  (4 subtabs and 4 dropdown entries); the profile is cleaner and the user
+  finds export/import alongside the rest of the settings.
+- **Legacy deep links preserved**: `#/perfil/datos` keeps opening
+  Settings without breaking favorites or shared URLs (ADR-051).
+- **Wiring intact**: by keeping the buttons' ids,
+  `setupExportBackup`/`setupExportIcs` do not change — zero regression
+  risk in backup export/import and `.ics`.
+- **CSS with no duplicates nor dead code**: `.data-card` removed
+  (none was left in the DOM) and a single new class
+  (`.settings-card--data`) for the stacking.
+- **Manual up to date**: AGENTS.md's rule 3 met in the same task
+  (lists at 4 sections, the «Datos» section in row 14 and the
+  legacy note in 13.0).
+- **QA and security PASS** before documenting: the decision is
+  validated in practice.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Cambio visible para el usuario**: quien buscaba la pestaña «Datos»
-  del perfil debe ir ahora a Ajustes. Mitigado con la actualización del
-  manual y la nota de legado de `#/perfil/datos`.
-- **Canónico dependiente del orden de claves**: si un futuro editor
-  reordena `PROFILE_KEY_TO_SECTION` (p. ej. «ajustes» antes que
-  «datos»), el inverso `Object.fromEntries` haría que `settings` se
-  canonicalizara como `#/perfil/datos`. Mitigado con el comentario
-  fijando el orden en el propio mapa.
-- **Desincronización con los ADRs históricos**: los ADR-008, ADR-014
-  y ADR-051 describen `#profile-section-data`, `.data-card` y el token
-  «datos» como sección real; ya no reflejan el estado actual (quedan
-  como legado histórico, sin modificar). Este ADR es el que describe
-  el estado vigente.
+- **Visible change for the user**: whoever looked for the profile's
+  «Datos» tab must now go to Settings. Mitigated by the manual's
+  update and the `#/perfil/datos` legacy note.
+- **Canonical dependent on key order**: if a future editor
+  reorders `PROFILE_KEY_TO_SECTION` (e.g. «ajustes» before
+  «datos»), the inverse `Object.fromEntries` would canonicalize `settings`
+  as `#/perfil/datos`. Mitigated by the comment fixing the order in the
+  map itself.
+- **Desync with historical ADRs**: ADR-008, ADR-014
+  and ADR-051 describe `#profile-section-data`, `.data-card` and the
+  «datos» token as a real section; they no longer reflect the current
+  state (left as historical legacy, unmodified). This ADR describes the
+  current state.
 
-### Neutras
+### Neutral
 
-- **URLs sin normalizar**: `#/perfil/datos` permanece en la barra de
-  direcciones al abrir Ajustes (no se reescribe a `#/perfil/ajustes`);
-  el canónico sigue siendo `#/perfil/ajustes`.
-- **Sin cambios en `js/export-backup.js` ni `js/export-ics.js`**: los
-  módulos de exportación/importación no se tocan; solo cambia su
-  ubicación en el DOM.
-- **Bump PWA de rutina**: `20260830` → `20260831` siguiendo la
-  práctica de un bump por PR (ADR-049); los navegadores purgan las
-  cachés anteriores en el siguiente `activate`.
+- **URLs not normalized**: `#/perfil/datos` remains in the address bar
+  when opening Settings (not rewritten to `#/perfil/ajustes`); the
+  canonical stays `#/perfil/ajustes`.
+- **No changes in `js/export-backup.js` nor `js/export-ics.js`**: the
+  export/import modules are untouched; only their DOM location
+  changes.
+- **Routine PWA bump**: `20260830` → `20260831` following the
+  one-bump-per-PR practice (ADR-049); browsers purge the
+  previous caches on the next `activate`.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `index.html` | **Modificado**: eliminadas la subtab «Datos» (quedan 4 subtabs) y la entrada «Datos» del dropdown (quedan 4 entradas); eliminada `#profile-section-data`; añadida la card «Datos» (`settings-card settings-card--data`) en `#profile-section-settings` con los 3 botones conservando sus ids (`#btn-export-backup`, `#btn-import-backup`, `#btn-export-ics`); bump `?v=20260830` → `?v=20260831` (×3) |
-| `js/router.js` | **Modificado**: token «datos» pasa de sección `"data"` a alias de `"settings"` en `PROFILE_KEY_TO_SECTION` (con comentario fijando el orden: «ajustes» debe quedar después de «datos» para que el canónico siga siendo `#/perfil/ajustes`, porque el inverso `Object.fromEntries` deja ganar a la última clave); comentario de cabecera del módulo actualizado |
-| `js/profile.js` | **Modificado**: eliminada la referencia a `dataSection` (const + toggle hidden); el wiring `setupExportBackup(ctx)`/`setupExportIcs(ctx)` queda intacto (los ids de los botones no cambian) |
-| `css/styles.css` | **Modificado**: eliminadas las reglas `.data-card` (muertas); añadidas `.settings-card--data .btn` (`display:block`, `width:fit-content`, `max-width:100%`, `margin:0 0 1.2rem`) y `.settings-card--data .btn:last-child` (sin margen inferior) |
-| `js/config.js` | **Modificado**: `APP_VERSION` `20260830` → `20260831` |
-| `service-worker.js` | **Modificado**: bump `?v=20260830` → `?v=20260831` en los 6 assets versionados de `STATIC_ASSETS` |
-| `docs/manual-de-usuario.md` | **Modificado**: listas de secciones del perfil a 4; eliminada «13.4 Datos»; «13.5 Ajustes» renumerada a «13.4 Ajustes»; apartado «Datos» añadido en la sección 14; nota en 13.0 de que `#/perfil/datos` sigue funcionando y abre Ajustes (regla 3 de AGENTS.md) |
-| `tasks/task-issue-135.json` | Task file de la tarea (title/description, plan de cambios, criterios de aceptación y bloque `issue` con la issue #135) |
-| `docs/adr-058-unificar-pestana-datos-en-ajustes.md` | **Nuevo**: este documento |
+| `index.html` | **Modified**: the «Datos» subtab removed (4 subtabs remain) and the dropdown's «Datos» entry removed (4 entries remain); `#profile-section-data` removed; the «Datos» card (`settings-card settings-card--data`) added in `#profile-section-settings` with the 3 buttons keeping their ids (`#btn-export-backup`, `#btn-import-backup`, `#btn-export-ics`); bump `?v=20260830` → `?v=20260831` (×3) |
+| `js/router.js` | **Modified**: the «datos» token goes from the `"data"` section to being an alias of `"settings"` in `PROFILE_KEY_TO_SECTION` (with a comment fixing the order: «ajustes» must come after «datos» so the canonical stays `#/perfil/ajustes`, because the `Object.fromEntries` inverse lets the last key win); module header comment updated |
+| `js/profile.js` | **Modified**: the `dataSection` reference removed (const + hidden toggle); the `setupExportBackup(ctx)`/`setupExportIcs(ctx)` wiring stays intact (the buttons' ids do not change) |
+| `css/styles.css` | **Modified**: the `.data-card` rules removed (dead); `.settings-card--data .btn` (`display:block`, `width:fit-content`, `max-width:100%`, `margin:0 0 1.2rem`) and `.settings-card--data .btn:last-child` (no bottom margin) added |
+| `js/config.js` | **Modified**: `APP_VERSION` `20260830` → `20260831` |
+| `service-worker.js` | **Modified**: bump `?v=20260830` → `?v=20260831` on the 6 versioned assets of `STATIC_ASSETS` |
+| `docs/manual-de-usuario.md` | **Modified**: profile sections lists at 4; «13.4 Datos» removed; «13.5 Ajustes» renumbered to «13.4 Ajustes»; the «Datos» section added to row 14; note in 13.0 that `#/perfil/datos` keeps working and opens Settings (AGENTS.md's rule 3) |
+| `tasks/task-issue-135.json` | Task file of the task (title/description, change plan, acceptance criteria and the `issue` block with issue #135) |
+| `docs/adr-058-unificar-pestana-datos-en-ajustes.md` | **New**: this document |
 
 Related issue: #135 — https://github.com/gonzalitojh/Registro-personal/issues/135

@@ -1,35 +1,35 @@
 // =============================================================
-// Migración de almacenamiento mínimo (issue #200, A2): poda de
-// campos de ficha que ya no se persisten (ON_DEMAND_DETAIL_FIELDS).
+// Minimal storage migration (issue #200, A2): pruning of detail
+// fields that are no longer persisted (ON_DEMAND_DETAIL_FIELDS).
 //
-// Los ítems añadidos tras el despliegue de esta feature ya solo
-// guardan los campos mínimos (tarjeta + avisos); los documentos
-// antiguos conservan los datos históricos de la curación diaria
-// (sinopsis, reparto, tráiler, plataformas...). Esta migración los
-// elimina una sola vez por usuario: reduce el tamaño de los
-// documentos (Firestore factura por byte) sin perder nada visible,
-// porque la ficha vuelve a pedir esos campos a la API bajo demanda
-// (js/item-details.js + caché de 24 h).
+// Items added after the deployment of this feature only store the
+// minimum fields (card + alerts); older documents keep the
+// historical data from the daily curation (synopsis, cast,
+// trailer, platforms...). This migration removes them once per
+// user: it shrinks the documents (Firestore bills per byte)
+// without losing anything visible, because the detail view asks
+// the API for those fields on demand (js/item-details.js + 24 h
+// cache).
 //
-// Best-effort y fail-open: un error de red/permisos aborta la
-// migración sin bloquear el arranque de la app y se reintenta en la
-// próxima sesión (no se estampa el marcador). Los libros conservan
-// `description` (excepción documentada en constants.js: la tarjeta y
-// la ficha de libro la pintan al instante).
+// Best-effort and fail-open: a network/permissions error aborts
+// the migration without blocking app startup, and it is retried
+// in the next session (the marker is not stamped). Books keep
+// `description` (exception documented in constants.js: the card
+// and the book detail view render it instantly).
 // =============================================================
 
 import { ON_DEMAND_DETAIL_FIELDS } from "./constants.js";
 import { deleteField } from "./firebase.js";
 
-// Versión de la migración: al cambiarla (o al añadir campos a la
-// lista), los usuarios se vuelven a podar una vez.
+// Migration version: whenever it changes (or fields are added to
+// the list), users get pruned again once.
 const MIGRATION_VERSION = "200-a2";
 
-// Concurrencia de las escrituras de poda.
+// Concurrency of the pruning writes.
 const PODA_CONCURRENCY = 4;
 
-// Pool simple de promesas (mismo patrón que mapConcurrent de
-// daily-check.js, sin depender de él).
+// Simple promise pool (same pattern as mapConcurrent in
+// daily-check.js, without depending on it).
 async function mapConcurrent(items, limit, fn) {
   let nextIndex = 0;
   async function worker() {
@@ -47,16 +47,16 @@ async function mapConcurrent(items, limit, fn) {
 }
 
 /**
- * Poda los campos de ficha bajo demanda de todos los grupos del
- * usuario. Idempotente: deleteField sobre un campo inexistente es
- * un no-op, así que una interrupción a medias no rompe nada.
+ * Prunes the on-demand detail fields of all the user's groups.
+ * Idempotent: deleteField on a nonexistent field is a no-op, so an
+ * interrupted run halfway through breaks nothing.
  *
- * @param {string} uid - UID del usuario de Firebase Auth
- * @param {object} ctx - Contexto de app (getItemsOnce, updateItem,
+ * @param {string} uid - UID of the Firebase Auth user
+ * @param {object} ctx - App context (getItemsOnce, updateItem,
  *   getUserProfile, upsertUserProfile)
- * @returns {Promise<boolean>} - true si la migración terminó y se
- *   estampó el marcador; false si falló (reintento en la próxima
- *   sesión).
+ * @returns {Promise<boolean>} - true if the migration finished and the
+ *   marker was stamped; false if it failed (retried in the next
+ *   session).
  */
 export async function runStorageMigration(uid, ctx) {
   let profile = null;
@@ -82,7 +82,7 @@ export async function runStorageMigration(uid, ctx) {
       await mapConcurrent(items, PODA_CONCURRENCY, async (item) => {
         const update = {};
         for (const field of ON_DEMAND_DETAIL_FIELDS) {
-          // Excepción de libros: description se conserva (constants.js).
+          // Books exception: description is kept (constants.js).
           if (type === "book" && field === "description") continue;
           if (field in item) update[field] = deleteField();
         }

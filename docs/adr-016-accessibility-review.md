@@ -1,43 +1,43 @@
-# ADR-016: Revisión y mejora de accesibilidad — Navegación por teclado y lectores de pantalla
+# ADR-016: Accessibility review and improvement — Keyboard navigation and screen readers
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
-Julio 2026
+## Date
+July 2026
 
-## Contexto
+## Context
 
-La aplicación "Mi Registro" había crecido significativamente en funcionalidad (buscador global, feed de actividad, ajustes, exportación, etc.) sin una revisión de accesibilidad dedicada. Esto generaba varias barreras para usuarios con discapacidades visuales o que navegan exclusivamente por teclado:
+The application "Mi Registro" had grown significantly in functionality (global search, activity feed, settings, export, etc.) without a dedicated accessibility review. This created several barriers for users with visual disabilities or those who navigate exclusively by keyboard:
 
-1. **Falta de skip link**: No existía un enlace para saltar directamente al contenido principal, obligando a usuarios de teclado a tabular por toda la navegación del header en cada carga de página.
-2. **Gestión de foco ausente en modales**: Al abrir un modal, el foco permanecía en el elemento que lo activó, y al cerrarlo no se restauraba. No había atrapado de foco (_focus trapping_), por lo que Tab podía llevar el foco detrás del modal.
-3. **Falta de roles y landmarks ARIA**: Los paneles de contenido dinámico, las subpestañas del perfil y el dropdown de notificaciones carecían de roles ARIA (`tabpanel`, `tablist`, `dialog`, `alert`) que permitieran a los lectores de pantalla interpretar correctamente la estructura.
-4. **Focus visible insuficiente**: Muchos componentes interactivos no mostraban un outline visible al recibir foco, o usaban `outline: none` sin alternativa.
-5. **Falta de soporte por teclado en elementos clickables**: Los eventos del feed de actividad y los resultados del buscador global solo respondían a clics de ratón, no a Enter/Space.
-6. **Contraste de color incorrecto**: Existía una anulación que empeoraba el contraste en el nombre del usuario en modo claro.
-7. **Regiones dinámicas no anunciadas**: Los paneles que se cargan dinámicamente (series, películas, libros) no notificaban a los lectores de pantalla sobre los cambios de contenido.
+1. **Lack of skip link**: There was no link to jump directly to the main content, forcing keyboard users to tab through the entire header navigation on every page load.
+2. **Missing focus management in modals**: When opening a modal, focus remained on the element that triggered it, and it was not restored when closing. There was no focus trapping (_focus trapping_), so Tab could move the focus behind the modal.
+3. **Lack of ARIA roles and landmarks**: Dynamic content panels, profile sub-tabs and the notifications dropdown lacked ARIA roles (`tabpanel`, `tablist`, `dialog`, `alert`) that would allow screen readers to correctly interpret the structure.
+4. **Insufficient visible focus**: Many interactive components did not show a visible outline when receiving focus, or used `outline: none` with no alternative.
+5. **Lack of keyboard support on clickable elements**: Activity feed events and global search results only responded to mouse clicks, not to Enter/Space.
+6. **Incorrect color contrast**: There was an override that worsened the contrast on the user's name in light mode.
+7. **Unannounced dynamic regions**: Panels loaded dynamically (series, movies, books) did not notify screen readers about content changes.
 
-El objetivo era alcanzar un nivel de cumplimiento **WCAG 2.1 AA** sin introducir regresiones funcionales.
+The goal was to reach a **WCAG 2.1 AA** compliance level without introducing functional regressions.
 
-## Decisión
+## Decision
 
-Realizar una revisión integral de accesibilidad que abarca los siguientes ejes:
+Carry out a comprehensive accessibility review covering the following axes:
 
-### 1. Nuevo módulo de utilidades de foco (`js/focus-utils.js`)
-Se creó un módulo reutilizable con dos funciones:
+### 1. New focus utilities module (`js/focus-utils.js`)
+A reusable module was created with two functions:
 
-- **`getFocusableElements(container)`**: Obtiene todos los elementos enfocables visibles dentro de un contenedor usando `querySelectorAll` con los selectores estándar (`a[href]`, `button:not([disabled])`, `input:not([disabled])`, etc.) y filtra por visibilidad (`offsetParent !== null`).
-- **`trapFocus(container)`**: Atrapa el foco dentro de un contenedor modal/dropdown. Escucha eventos `keydown` para interceptar Tab y Shift+Tab, ciclando entre el primer y último elemento enfocable. Enfoca el primer elemento automáticamente tras un `requestAnimationFrame`. Devuelve una función `cleanup` para restaurar el comportamiento normal.
+- **`getFocusableElements(container)`**: Gets all visible focusable elements inside a container using `querySelectorAll` with the standard selectors (`a[href]`, `button:not([disabled])`, `input:not([disabled])`, etc.) and filters by visibility (`offsetParent !== null`).
+- **`trapFocus(container)`**: Traps focus inside a modal/dropdown container. It listens to `keydown` events to intercept Tab and Shift+Tab, cycling between the first and last focusable element. It focuses the first element automatically after a `requestAnimationFrame`. It returns a `cleanup` function to restore the normal behavior.
 
 ### 2. Skip link (`index.html` + `css/styles.css`)
-- Se añadió un enlace `<a href="#main-content" class="skip-link">` como primer elemento del `<body>`.
-- El `<main>` ahora tiene `id="main-content"` y `tabindex="-1"` para recibir foco.
-- Estilos CSS: el skip link está oculto fuera de pantalla (`top: -100%`) y se vuelve visible al recibir foco (`top: 0`), con un outline grueso de color `--teal-reel`.
+- A link `<a href="#main-content" class="skip-link">` was added as the first element of the `<body>`.
+- The `<main>` now has `id="main-content"` and `tabindex="-1"` so it can receive focus.
+- CSS styles: the skip link is hidden off-screen (`top: -100%`) and becomes visible when it receives focus (`top: 0`), with a thick outline in `--teal-reel`.
 
-### 3. Gestión de foco en todos los modales y paneles dinámicos
+### 3. Focus management in all modals and dynamic panels
 
-Se añadió `trapFocus` y registro de `document.activeElement` en las siguientes funciones de `js/ui.js`:
+`trapFocus` and registration of `document.activeElement` were added to the following `js/ui.js` functions:
 - `openEditModal`
 - `openManualAddModal`
 - `openMovieModal`
@@ -47,112 +47,112 @@ Se añadió `trapFocus` y registro de `document.activeElement` en las siguientes
 - `openBookConfirmModal`
 - `openReadOnlyModal`
 
-La función `closeModal()` fue modificada para:
-- Restaurar el foco al elemento `_previousActiveElement` registrado antes de abrir el modal.
-- Ejecutar `_focusTrapCleanup()` para eliminar el listener del focus trap.
-- Limpiar las propiedades auxiliares del modal.
+The `closeModal()` function was modified to:
+- Restore focus to the `_previousActiveElement` registered before opening the modal.
+- Run `_focusTrapCleanup()` to remove the focus trap listener.
+- Clear the modal's auxiliary properties.
 
-### 4. Búsqueda global (`js/global-search.js`)
-- Se importó `trapFocus` para atrapar el foco dentro del panel de búsqueda al abrir.
-- Se registra `document.activeElement` al abrir (`_previousActiveElement`) y se restaura al cerrar.
-- Los resultados cambiaron de `tabindex="-1"` a `tabindex="0"`.
-- Se añadieron manejadores `keydown` para Enter y Space en cada resultado, activando la navegación.
+### 4. Global search (`js/global-search.js`)
+- `trapFocus` was imported to trap focus inside the search panel when opening.
+- `document.activeElement` is registered when opening (`_previousActiveElement`) and restored when closing.
+- Results changed from `tabindex="-1"` to `tabindex="0"`.
+- `keydown` handlers for Enter and Space were added to each result, triggering navigation.
 
-### 5. Dropdown de notificaciones (`js/notifications-setup.js`)
-- Se importó `trapFocus` para atrapar el foco dentro del dropdown al abrir.
-- Se registra un manejador de Escape para cerrar el dropdown.
-- Al cerrar (tanto por Escape como por click fuera), se restaura el foco al botón de notificaciones.
-- Se extrajo la lógica de cierre a una función `closeNotifDropdown()` que también limpia el focus trap.
+### 5. Notifications dropdown (`js/notifications-setup.js`)
+- `trapFocus` was imported to trap focus inside the dropdown when opening.
+- An Escape handler is registered to close the dropdown.
+- When closing (both via Escape and click outside), focus is restored to the notifications button.
+- The closing logic was extracted into a `closeNotifDropdown()` function that also cleans up the focus trap.
 
-### 6. Manejador global de Escape (`js/modal-handlers.js`)
-Se unificó el manejador de Escape con un sistema de prioridades:
-1. **Modal activo**: si `#item-modal` no está oculto, se cierra el modal.
-2. **Búsqueda global**: si `#global-search` está abierto, se delega a su manejador interno (no se interfiere).
-3. **Notificaciones**: si `#notif-dropdown` está visible, se cierra y se restaura el foco al botón.
+### 6. Global Escape handler (`js/modal-handlers.js`)
+The Escape handler was unified with a priority system:
+1. **Active modal**: if `#item-modal` is not hidden, the modal is closed.
+2. **Global search**: if `#global-search` is open, the keystroke is delegated to its internal handler (no interference).
+3. **Notifications**: if `#notif-dropdown` is visible, it is closed and focus is restored to the button.
 
-### 7. Roles y landmarks ARIA (`index.html`)
+### 7. ARIA roles and landmarks (`index.html`)
 
-| Elemento | Cambio |
+| Element | Change |
 |----------|--------|
 | `<main>` | `id="main-content"` + `tabindex="-1"` |
-| Paneles dinámicos (`#panel-tv`, `#panel-movies`, `#panel-books`) | `aria-live="polite"` + `aria-atomic="true"` |
+| Dynamic panels (`#panel-tv`, `#panel-movies`, `#panel-books`) | `aria-live="polite"` + `aria-atomic="true"` |
 | `#profile-view` | `role="main"` + `aria-label="Vista de perfil"` |
 | `.profile-subtabs` | `role="tablist"` + `aria-label="Secciones del perfil"` |
-| Cada `.profile-subtab` | `role="tab"` + `aria-selected="true"/"false"` + `aria-controls="profile-section-{section}"` |
-| Secciones del perfil (`#profile-section-*`) | Cambiadas de `<div>` a `<section>` con `role="tabpanel"` + `aria-labelledby` apuntando a un `<h2>` oculto visualmente |
-| Periodo de estadísticas `<select>` | `aria-label="Periodo de estadísticas"` |
+| Each `.profile-subtab` | `role="tab"` + `aria-selected="true"/"false"` + `aria-controls="profile-section-{section}"` |
+| Profile sections (`#profile-section-*`) | Changed from `<div>` to `<section>` with `role="tabpanel"` + `aria-labelledby` pointing to a visually hidden `<h2>` |
+| Statistics period `<select>` | `aria-label="Periodo de estadísticas"` |
 | Toast (`#toast`) | `role="alert"` + `aria-live="assertive"` |
-| Dropdown de notificaciones (`#notif-dropdown`) | `role="dialog"` + `aria-label="Notificaciones"` |
-| Switch labels (`.switch`) | Cambiadas de `aria-label` redundante a `aria-hidden="true"` (el `<label>` textual ya existe) |
-| Flecha entre fechas (`→`) | `aria-hidden="true"` |
+| Notifications dropdown (`#notif-dropdown`) | `role="dialog"` + `aria-label="Notificaciones"` |
+| Switch labels (`.switch`) | Changed from redundant `aria-label` to `aria-hidden="true"` (the textual `<label>` already exists) |
+| Arrow between dates (`→`) | `aria-hidden="true"` |
 
-### 8. Foco en cambio de pestañas (`js/app.js`)
-Al cambiar de pestaña (Series/Películas/Libros), el foco se mueve al `<h2>` del panel activo, que recibe `tabindex="-1"` para poder recibir foco mediante `focus()`.
+### 8. Focus on tab change (`js/app.js`)
+When switching tabs (Series/Movies/Books), focus moves to the `<h2>` of the active panel, which receives `tabindex="-1"` so it can receive focus via `focus()`.
 
-### 9. Sincronización de ARIA en subpestañas del perfil (`js/profile.js`)
-Al hacer clic en una subpestaña del perfil, además de la clase `is-active`, se actualizan los atributos `aria-selected` (`true` en la activa, `false` en las demás).
+### 9. ARIA synchronization in profile sub-tabs (`js/profile.js`)
+When clicking a profile sub-tab, besides the `is-active` class, the `aria-selected` attributes are updated (`true` on the active one, `false` on the rest).
 
-### 10. Feed de actividad — soporte por teclado (`js/ui.js`)
-Los eventos del feed de actividad ahora tienen:
-- `tabindex="0"` y `role="button"` para ser enfocables.
-- Manejadores `keydown` para Enter y Space que ejecutan la misma acción que el clic.
+### 10. Activity feed — keyboard support (`js/ui.js`)
+Activity feed events now have:
+- `tabindex="0"` and `role="button"` so they are focusable.
+- `keydown` handlers for Enter and Space that execute the same action as the click.
 
-### 11. Episodios — etiquetas ARIA (`js/ui.js`)
-- Los checkboxes de episodios ahora tienen `aria-label` descriptivo (ej. "Marcar E1 — Nombre del episodio como visto").
-- El `<span>` con el número de episodio tiene `aria-hidden="true"` (la información ya está en el `aria-label`).
+### 11. Episodes — ARIA labels (`js/ui.js`)
+- Episode checkboxes now have a descriptive `aria-label` (e.g. "Marcar E1 — Nombre del episodio como visto").
+- The `<span>` with the episode number has `aria-hidden="true"` (the information is already in the `aria-label`).
 
-### 12. Avatares de amigos — texto alternativo (`js/ui.js`)
-El `alt` de las imágenes de avatar de amigos pasó de `alt=""` a `alt="Avatar de {nombre}"`.
+### 12. Friend avatars — alternative text (`js/ui.js`)
+The `alt` of the friend avatar images changed from `alt=""` to `alt="Avatar de {nombre}"`.
 
-### 13. Estilos de foco visible (`css/styles.css` y `ocio/ocio.css`)
+### 13. Visible focus styles (`css/styles.css` and `ocio/ocio.css`)
 
 **Global (`css/styles.css`):**
-- El `:focus-visible` global se actualizó con color `--teal-reel`, `outline-offset: 2px` y `border-radius`.
-- Se añadieron estilos `:focus-visible` específicos para 13 componentes: `.friend-card`, `.profile-subtab`, `.modal__close`, `.global-search__close`, `.global-search__item`, `.global-search__friend`, `.notif-row__delete`, `.season-toggle`, `.list-row__action`, `.item-card__btn`, `.tab`, `.icon-btn`, `.btn-link`.
-- `.global-search__input`: se eliminó `outline: none` y se añadió `:focus-visible` con outline teal.
-- Se eliminó un override de contraste incorrecto (comentario: "El `user-badge__name` en modo claro usa el `--ink-soft` ya definido que proporciona contraste suficiente contra fondos oscuros").
+- The global `:focus-visible` was updated with color `--teal-reel`, `outline-offset: 2px` and `border-radius`.
+- Specific `:focus-visible` styles were added for 13 components: `.friend-card`, `.profile-subtab`, `.modal__close`, `.global-search__close`, `.global-search__item`, `.global-search__friend`, `.notif-row__delete`, `.season-toggle`, `.list-row__action`, `.item-card__btn`, `.tab`, `.icon-btn`, `.btn-link`.
+- `.global-search__input`: `outline: none` was removed and a `:focus-visible` with teal outline was added.
+- An incorrect contrast override was removed (comment: "El `user-badge__name` en modo claro usa el `--ink-soft` ya definido que proporciona contraste suficiente contra fondos oscuros").
 
 **Ocio (`ocio/ocio.css`):**
-- El `.library-search-input:focus-visible` reemplazó `outline: none` por `outline: 2px solid var(--teal-reel)`.
-- Se añadieron estilos `:focus-visible` para 8 componentes: `.view-toggle__btn`, `.chip`, `.season-mark-all`, `.episode-rating__star`, `.cover-picker__item`, `.desc-picker__item`, `.saga-row` (con `:focus-within`), `.sort-select`.
+- The `.library-search-input:focus-visible` replaced `outline: none` with `outline: 2px solid var(--teal-reel)`.
+- `:focus-visible` styles were added for 8 components: `.view-toggle__btn`, `.chip`, `.season-mark-all`, `.episode-rating__star`, `.cover-picker__item`, `.desc-picker__item`, `.saga-row` (with `:focus-within`), `.sort-select`.
 
-## Alternativas consideradas
+## Alternatives considered
 
-- **Usar una librería externa de focus trapping** (ej. `focus-trap`): Descartado porque el proyecto no tiene build tool ni gestor de dependencias npm. La implementación nativa es simple (63 líneas) y suficiente para los casos de uso.
-- **Usar `aria-activedescendant` en la búsqueda global**: Descartado por la complejidad adicional; el enfoque actual con `tabindex="0"` y navegación por flechas funciona correctamente con lectores de pantalla.
-- **Mantener los `aria-label` redundantes en los switches**: Se valoró mantenerlos por claridad, pero la práctica recomendada por WCAG es no duplicar información cuando ya existe un `<label>` textual asociado. Se optó por `aria-hidden="true"` para evitar confusión en lectores de pantalla.
+- **Using an external focus trapping library** (e.g. `focus-trap`): Rejected because the project has no build tool or npm dependency manager. The native implementation is simple (63 lines) and sufficient for the use cases.
+- **Using `aria-activedescendant` in the global search**: Rejected due to the extra complexity; the current approach with `tabindex="0"` and arrow navigation works correctly with screen readers.
+- **Keeping the redundant `aria-label`s on the switches**: Keeping them was considered for clarity, but the WCAG-recommended practice is not to duplicate information when a textual `<label>` already exists. `aria-hidden="true"` was chosen to avoid confusion for screen readers.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **Cumplimiento WCAG 2.1 AA**: Se abordan los principios de Perceptible (ARIA labels, landmarks), Operable (teclado, skip link, focus visible) y Robusto (roles correctos, regiones dinámicas).
-- **Navegación por teclado completa**: Todos los elementos interactivos son accesibles mediante Tab, Enter, Space y Escape, con gestión de foco adecuada en modales y dropdowns.
-- **Experiencia consistente con lectores de pantalla**: La estructura de landmarks, tabpanels y regiones `aria-live` permite una navegación semántica.
-- **Código reutilizable**: `focus-utils.js` puede usarse en cualquier nuevo modal o dropdown sin duplicación.
-- **Sin regresiones**: Todos los cambios son aditivos o sustitutivos (no se eliminó funcionalidad existente). La gestión de foco es transparente para usuarios de ratón.
-- **Documentación del cambio**: Este ADR sirve como referencia de las mejoras aplicadas y la justificación de cada una.
+### Positive
+- **WCAG 2.1 AA compliance**: The Perceivable (ARIA labels, landmarks), Operable (keyboard, skip link, visible focus) and Robust (correct roles, dynamic regions) principles are addressed.
+- **Complete keyboard navigation**: All interactive elements are accessible via Tab, Enter, Space and Escape, with proper focus management in modals and dropdowns.
+- **Consistent experience with screen readers**: The structure of landmarks, tabpanels and `aria-live` regions allows semantic navigation.
+- **Reusable code**: `focus-utils.js` can be used in any new modal or dropdown without duplication.
+- **No regressions**: All changes are additive or substitutive (no existing functionality was removed). Focus management is transparent for mouse users.
+- **Documentation of the change**: This ADR serves as a reference for the applied improvements and the justification for each one.
 
-### Negativas
-- **Aumento de complejidad en `closeModal()`**: Ahora debe gestionar `_previousActiveElement` y `_focusTrapCleanup`, lo que añade acoplamiento con el estado interno del modal. Sin embargo, el patrón es consistente en todas las funciones que abren modales.
-- **Dependencia de propiedades expandidas en elementos DOM**: `_previousActiveElement` y `_focusTrapCleanup` se almacenan como propiedades directas del DOM. Esto podría colisionar con futuros cambios o con otros scripts, aunque es una práctica común en JS sin framework.
-- **El skip link no es visible inicialmente**: Por diseño, solo aparece al recibir foco (primer Tab). Esto es estándar en WCAG, pero requiere que el usuario sepa que debe presionar Tab al cargar la página.
+### Negative
+- **Increased complexity in `closeModal()`**: It must now manage `_previousActiveElement` and `_focusTrapCleanup`, which adds coupling with the modal's internal state. However, the pattern is consistent across all functions that open modals.
+- **Dependence on expanded properties on DOM elements**: `_previousActiveElement` and `_focusTrapCleanup` are stored as direct properties of the DOM. This could collide with future changes or with other scripts, although it is a common practice in framework-less JS.
+- **The skip link is not visible initially**: By design, it only appears when it receives focus (first Tab). This is standard in WCAG, but requires the user to know they must press Tab when the page loads.
 
-### Neutras
-- La función `trapFocus` enfoca siempre el primer elemento enfocable del modal. En algunos modales largos (ej. series con muchas temporadas), el usuario podría querer empezar por otro elemento, pero es el comportamiento esperado.
-- El manejo de Escape ahora delega la búsqueda global a su propio manejador. Si en el futuro se añaden más paneles modales, habrá que actualizar la cadena de prioridades en `modal-handlers.js`.
-- Los atributos `aria-live="polite"` en los paneles se activarán cada vez que se inyecte contenido HTML en ellos, lo que es correcto. Sin embargo, si se actualiza solo una parte del panel (ej. filtrado), podría no anunciarse; para eso está `aria-atomic="true"`.
+### Neutral
+- The `trapFocus` function always focuses the first focusable element of the modal. In some long modals (e.g. series with many seasons), the user might want to start with another element, but this is the expected behavior.
+- Escape handling now delegates the global search to its own handler. If more modal panels are added in the future, the priority chain in `modal-handlers.js` will have to be updated.
+- The `aria-live="polite"` attributes on the panels will fire every time HTML content is injected into them, which is correct. However, if only part of the panel is updated (e.g. filtering), it might not be announced; that is what `aria-atomic="true"` is for.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/focus-utils.js` | **Nuevo**: módulo con `getFocusableElements()` y `trapFocus()` (63 líneas) |
-| `index.html` | Skip link, `id="main-content"` + `tabindex="-1"` en `<main>`, roles ARIA en profile view, tablist/tab/tabpanel, `aria-live` en paneles, `aria-label` en select, `role="alert"` en toast, `role="dialog"` en notificaciones, `aria-hidden` en switches y flecha |
-| `css/styles.css` | Estilos `.skip-link`, `:focus-visible` mejorado global, estilos de foco para 13 componentes, eliminación de `outline:none` en search input, eliminación de override de contraste |
-| `ocio/ocio.css` | Focus visible para 8 componentes de ocio, reemplazo de `outline:none` por outline visible en `.library-search-input` |
-| `js/ui.js` | Import de `trapFocus`, focus trap + registro en 8 funciones de apertura, restauración de foco en `closeModal()`, soporte por teclado en actividad, `aria-label` en episodios, `aria-hidden` en números de episodio, `alt` descriptivo en avatares |
-| `js/modal-handlers.js` | Escape unificado con prioridad: modal > búsqueda > notificaciones |
-| `js/global-search.js` | Focus trap, restauración de foco, `tabindex="0"` en resultados, manejadores Enter/Space |
-| `js/notifications-setup.js` | Focus trap en dropdown, Escape para cerrar, restauración de foco al botón |
-| `js/app.js` | Foco al `<h2>` del panel activo al cambiar de pestaña |
-| `js/profile.js` | Sincronización de `aria-selected` en subpestañas del perfil |
+| `js/focus-utils.js` | **New**: module with `getFocusableElements()` and `trapFocus()` (63 lines) |
+| `index.html` | Skip link, `id="main-content"` + `tabindex="-1"` on `<main>`, ARIA roles in profile view, tablist/tab/tabpanel, `aria-live` on panels, `aria-label` on select, `role="alert"` on toast, `role="dialog"` on notifications, `aria-hidden` on switches and arrow |
+| `css/styles.css` | `.skip-link` styles, improved global `:focus-visible`, focus styles for 13 components, removal of `outline:none` on search input, removal of contrast override |
+| `ocio/ocio.css` | Visible focus for 8 ocio components, replacement of `outline:none` with a visible outline on `.library-search-input` |
+| `js/ui.js` | Import of `trapFocus`, focus trap + registration in 8 open functions, focus restoration in `closeModal()`, keyboard support on activity, `aria-label` on episodes, `aria-hidden` on episode numbers, descriptive `alt` on avatars |
+| `js/modal-handlers.js` | Unified Escape with priority: modal > search > notifications |
+| `js/global-search.js` | Focus trap, focus restoration, `tabindex="0"` on results, Enter/Space handlers |
+| `js/notifications-setup.js` | Focus trap on dropdown, Escape to close, focus restoration to the button |
+| `js/app.js` | Focus to the `<h2>` of the active panel on tab change |
+| `js/profile.js` | Synchronization of `aria-selected` on profile sub-tabs |

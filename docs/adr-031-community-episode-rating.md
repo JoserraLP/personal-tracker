@@ -1,28 +1,28 @@
-# ADR-031: Puntuación de la comunidad por episodios — badge compacto TMDB en la lista de temporadas del modal de detalle de serie (issue #45)
+# ADR-031: Community rating per episode — compact TMDB badge in the series detail modal's season list (issue #45)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
-Agosto 2026
+## Date
+August 2026
 
-## Contexto
+## Context
 
-La issue #45 pide que, en las series, se muestre la puntuación de la comunidad para **cada episodio**. Antes de esta decisión, la nota de comunidad TMDB se mostraba en las tarjetas de ítems (ADR-005, campo persistido `communityRating`), en el modal de detalle (ADR-005) y en la ventana de valoración por episodio (ADR-022, `communityLabel` "TMDB · episodio"), pero la **lista de episodios de cada temporada** dentro del modal de detalle de serie (`renderEpisodeRows` en `js/ui.js`) no exponía ningún dato comunitario por episodio: solo número, nombre, fecha y estado de visionado.
+Issue #45 asks that, in series, the community rating be shown for **each episode**. Before this decision, the TMDB community score was shown on item cards (ADR-005, persisted field `communityRating`), in the detail modal (ADR-005) and in the per-episode rating window (ADR-022, `communityLabel` "TMDB · episodio"), but the **episode list of each season** inside the series detail modal (`renderEpisodeRows` in `js/ui.js`) exposed no community data per episode: only number, name, date and watch status.
 
-El dato ya existía en la capa de API: `getSeasonEpisodes()` en `js/api-movies.js` devolvía `episodeRating` (`e.vote_count > 0 ? e.vote_average : null` — misma política truthy-only que ADR-005 y ADR-022, para no tratar un `0` sin votos como valoración real), pero no se usaba en el render. Los episodios **no se persisten en Firestore**: se sirven desde TMDB con la caché en memoria compartida de 24 h de `getSeasonEpisodes`, de modo que exponer el dato no requería tocar la capa de datos ni añadir persistencia.
+The data already existed at the API layer: `getSeasonEpisodes()` in `js/api-movies.js` returned `episodeRating` (`e.vote_count > 0 ? e.vote_average : null` — same truthy-only policy as ADR-005 and ADR-022, so that a `0` with no votes is not treated as a real rating), but it was not used in the render. Episodes are **not persisted in Firestore**: they are served from TMDB with `getSeasonEpisodes`' shared 24 h in-memory cache, so exposing the data did not require touching the data layer or adding persistence.
 
-El distintivo comunitario ya tenía un lenguaje visual consolidado (`.community-rating` con label `__label` y valor `__value` en `ocio/ocio.css`), pero su tamaño base estaba pensado para tarjetas, no para filas de episodio densas: se necesitaba una **variante compacta** sin duplicar el HTML del badge.
+The community badge already had a consolidated visual language (`.community-rating` with `__label` label and `__value` value in `ocio/ocio.css`), but its base size was meant for cards, not for dense episode rows: a **compact variant** was needed without duplicating the badge's HTML.
 
 Related issue: #45 — https://github.com/gonzalitojh/Registro-personal/issues/45
 
-## Decisión
+## Decision
 
-Mostrar un **badge compacto `.community-rating--sm`** con la nota de la comunidad TMDB (`x.x`, un decimal) junto al nombre de cada episodio en la lista de temporadas del modal de detalle de serie, reutilizando el lenguaje visual del distintivo comunitario existente (ADR-005) y la semántica de datos ya definida en ADR-005/ADR-022. La decisión se organiza en cuatro capas: helper de render reutilizable, inserción en `renderEpisodeRows`, variante CSS compacta y fuente del dato sin cambios.
+Show a **compact badge `.community-rating--sm`** with the TMDB community score (`x.x`, one decimal) next to each episode's name in the series detail modal's season list, reusing the existing community badge's visual language (ADR-005) and the data semantics already defined in ADR-005/ADR-022. The decision is organized in four layers: reusable render helper, insertion in `renderEpisodeRows`, compact CSS variant and unchanged data source.
 
-### 1. Nuevo helper `communityRatingValueHtml(value, label = "TMDB")` (`js/ui.js`)
+### 1. New helper `communityRatingValueHtml(value, label = "TMDB")` (`js/ui.js`)
 
-Genera el HTML del badge compacto:
+Generates the compact badge's HTML:
 
 ```html
 <span class="community-rating community-rating--sm">
@@ -31,12 +31,12 @@ Genera el HTML del badge compacto:
 </span>
 ```
 
-- El valor se formatea con `Number(value).toFixed(1)` (un decimal, como el distintivo base).
-- El parámetro `label` permite etiquetas distintas de "TMDB" sin duplicar HTML.
+- The value is formatted with `Number(value).toFixed(1)` (one decimal, like the base badge).
+- The `label` parameter allows labels other than "TMDB" without duplicating HTML.
 
-**`communityRatingHtml(item)` se refactoriza para delegar en él**: llama a `communityRatingValueHtml(item.communityRating)` y reemplaza `"community-rating community-rating--sm"` → `"community-rating"`. El HTML resultante para las tarjetas es **idéntico al anterior** (solo cambia la clase base, sin `--sm`), y el guard existente se conserva: devuelve cadena vacía si `item.communityRating == null`, para no ocupar espacio en la cuadrícula.
+**`communityRatingHtml(item)` is refactored to delegate to it**: it calls `communityRatingValueHtml(item.communityRating)` and replaces `"community-rating community-rating--sm"` → `"community-rating"`. The resulting HTML for cards is **identical to the previous one** (only the base class changes, without `--sm`), and the existing guard is kept: it returns an empty string if `item.communityRating == null`, to not take up space in the grid.
 
-### 2. Inserción en `renderEpisodeRows` (`js/ui.js`)
+### 2. Insertion in `renderEpisodeRows` (`js/ui.js`)
 
 ```js
 const communityBadge =
@@ -45,55 +45,55 @@ const communityBadge =
     : "";
 ```
 
-El badge se inserta **tras el nombre del episodio** (después de `.episode-row__name`, incluyendo el `em` de "sin estrenar" cuando aplica). Se muestra **solo** cuando:
+The badge is inserted **after the episode's name** (after `.episode-row__name`, including the `em` of "sin estrenar" when applicable). It shows **only** when:
 
-- La serie **no es manual** (`!manual`): las series manuales no tienen datos reales de TMDB (misma exclusión histórica que ADR-020/ADR-023/ADR-024).
-- El episodio **tiene votos** (`e.episodeRating != null`): `vote_count === 0` ⇒ `episodeRating === null` ⇒ sin badge (semántica truthy-only de ADR-005).
+- The series **is not manual** (`!manual`): manual series have no real TMDB data (same historical exclusion as ADR-020/ADR-023/ADR-024).
+- The episode **has votes** (`e.episodeRating != null`): `vote_count === 0` ⇒ `episodeRating === null` ⇒ no badge (truthy-only semantics of ADR-005).
 
-### 3. Variante CSS compacta (`ocio/ocio.css`)
+### 3. Compact CSS variant (`ocio/ocio.css`)
 
-`.community-rating--sm` reutiliza los tokens del distintivo base `.community-rating` (label con `--teal-reel`/`--paper`, valor con `--teal-reel-dark`, fuentes mono) y solo ajusta tamaños:
+`.community-rating--sm` reuses the base badge's tokens (label with `--teal-reel`/`--paper`, value with `--teal-reel-dark`, mono fonts) and only adjusts sizes:
 
 - `.community-rating--sm`: `gap: 0.25rem`, `flex-shrink: 0`, `font-size: 0.68rem`, `line-height: 1.2`.
 - `.community-rating--sm .community-rating__label`: `font-size: 0.5rem`, `padding: 0.05rem 0.25rem`.
 - `.community-rating--sm .community-rating__value`: `font-size: 0.7rem`.
 
-Todas las medidas en `rem` (unidades relativas, criterio de responsividad de AGENTS.md / ADR-026) y `flex-shrink: 0` para que el badge nunca se comprima ni desborde la fila en móvil: sin scroll horizontal en ningún ancho.
+All measurements in `rem` (relative units, responsiveness criterion of AGENTS.md / ADR-026) and `flex-shrink: 0` so the badge never compresses nor overflows the row on mobile: no horizontal scroll at any width.
 
-### 4. Fuente del dato: sin cambios en la capa de datos
+### 4. Data source: no changes in the data layer
 
-`getSeasonEpisodes()` (`js/api-movies.js`) ya devolvía `episodeRating: e.vote_count > 0 ? e.vote_average : null` por episodio — esta decisión **solo lo expone en la UI**. Los episodios siguen sin persistirse en Firestore: se sirven desde TMDB con la caché en memoria de 24 h (misma caché compartida `season_<tvId>_<seasonNumber>` que los watch providers, ver ADR-022). No hay llamadas adicionales a la API ni cambios de contrato.
+`getSeasonEpisodes()` (`js/api-movies.js`) already returned `episodeRating: e.vote_count > 0 ? e.vote_average : null` per episode — this decision **only exposes it in the UI**. Episodes continue to not be persisted in Firestore: they are served from TMDB with the 24 h in-memory cache (same shared cache `season_<tvId>_<seasonNumber>` as the watch providers, see ADR-022). There are no additional API calls nor contract changes.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Mostrar el badge base `.community-rating` sin variante compacta**: descartado — el label de 0.55rem y el padding base están pensados para tarjetas; en filas de episodio densas (checkbox + `E<n>` + nombre + fecha + estrellas) el badge completo desbordaría la fila en móvil, violando el criterio de responsividad.
-- **Reutilizar `communityRatingHtml` directamente con los episodios**: descartado — está acoplado al campo `item.communityRating` y fija la clase base sin `--sm`; el helper nuevo con parámetro `label` y variante `--sm` cubre ambos casos sin duplicar HTML ni cambiar la salida de las tarjetas.
-- **Persistir `episodeRating` en Firestore** (p. ej. junto a `nextEpisodeAirDate`): descartado — el dato es "en vivo" de TMDB y los episodios ya se cachean en memoria 24 h; persistirlo añadiría lecturas/escrituras por episodio sin beneficio observable (coherente con ADR-022, que tampoco persiste ratings de episodio).
-- **No hacer nada**: la issue pedía explícitamente la puntuación por episodio; el dato ya existía y no mostrarlo dejaba la petición sin resolver.
+- **Showing the base badge `.community-rating` without a compact variant**: rejected — the 0.55rem label and the base padding are meant for cards; in dense episode rows (checkbox + `E<n>` + name + date + stars) the full badge would overflow the row on mobile, violating the responsiveness criterion.
+- **Reusing `communityRatingHtml` directly with the episodes**: rejected — it is coupled to the `item.communityRating` field and fixes the base class without `--sm`; the new helper with a `label` parameter and the `--sm` variant covers both cases without duplicating HTML or changing the cards' output.
+- **Persisting `episodeRating` in Firestore** (e.g. next to `nextEpisodeAirDate`): rejected — the data is "live" from TMDB and episodes are already cached in memory for 24 h; persisting it would add per-episode reads/writes without observable benefit (consistent with ADR-022, which also does not persist episode ratings).
+- **Doing nothing**: the issue explicitly asked for the per-episode rating; the data already existed and not showing it left the request unresolved.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **Issue #45 resuelta**: cada episodio de una serie automática muestra su nota de comunidad en el contexto adecuado (modal de detalle de serie → temporada → episodio), con estilo consistente con el resto de la aplicación (ADR-005/ADR-022).
-- **Cero duplicación de render**: `communityRatingHtml` delega en el helper nuevo y el HTML de las tarjetas es idéntico al anterior — sin riesgo de regresión visual en cuadrícula/lista.
-- **Sin coste adicional de API ni persistencia**: `episodeRating` ya existía en `getSeasonEpisodes`; solo se añade render, sin cambios en la capa de datos ni en el contrato de la función.
-- **Responsive verificado**: badge con unidades `rem` y `flex-shrink: 0`; la web se ve correctamente en móvil (~360 px), tablet (~768 px) y ordenador (~1280 px) sin scroll horizontal (criterio de aceptación 4 de la issue y regla de AGENTS.md).
+### Positive
+- **Issue #45 solved**: every episode of an automatic series shows its community score in the proper context (series detail modal → season → episode), with a style consistent with the rest of the application (ADR-005/ADR-022).
+- **Zero render duplication**: `communityRatingHtml` delegates to the new helper and the cards' HTML is identical to the previous one — no visual regression risk in grid/list.
+- **No additional API cost nor persistence**: `episodeRating` already existed in `getSeasonEpisodes`; only render is added, without changes to the data layer or the function's contract.
+- **Responsive verified**: badge with `rem` units and `flex-shrink: 0`; the web looks correct on mobile (~360 px), tablet (~768 px) and computer (~1280 px) without horizontal scroll (issue acceptance criterion 4 and AGENTS.md rule).
 
-### Negativas
-- **Episodios sin votos y series manuales sin badge**: `vote_count === 0` y `manual === true` no muestran la nota; es la semántica truthy-only heredada de ADR-005/ADR-022 — un 0 sin votos no es una valoración real, y las series manuales no tienen datos de TMDB.
-- **El badge puede quedar desactualizado hasta 24 h**: depende de la caché en memoria de `getSeasonEpisodes`; si TMDB actualiza la nota de un episodio, el dato nuevo no se verá hasta que expire la caché.
+### Negative
+- **Episodes without votes and manual series without badge**: `vote_count === 0` and `manual === true` do not show the score; it is the truthy-only semantics inherited from ADR-005/ADR-022 — a 0 with no votes is not a real rating, and manual series have no TMDB data.
+- **The badge can be stale up to 24 h**: it depends on `getSeasonEpisodes`' in-memory cache; if TMDB updates an episode's score, the new data will not be seen until the cache expires.
 
-### Neutras
-- **`communityRatingValueHtml` es reutilizable**: el parámetro `label` permite otros contextos (p. ej. una fuente distinta de TMDB) sin tocar el badge.
-- **Sin cambios de contrato**: `communityRatingHtml(item)` conserva firma y salida; `renderEpisodeRows` conserva su API (`{ manual }`); `getSeasonEpisodes` no cambia.
-- **Propagación PWA por el flujo habitual**: los archivos tocados (`js/ui.js`, `ocio/ocio.css`) ya están precacheados (ADR-019); el bump de versión sigue el proceso estándar de publicación, sin nada específico en esta decisión.
+### Neutral
+- **`communityRatingValueHtml` is reusable**: the `label` parameter allows other contexts (e.g. a source other than TMDB) without touching the badge.
+- **No contract changes**: `communityRatingHtml(item)` keeps signature and output; `renderEpisodeRows` keeps its API (`{ manual }`); `getSeasonEpisodes` does not change.
+- **PWA propagation through the usual flow**: the touched files (`js/ui.js`, `ocio/ocio.css`) are already precached (ADR-019); the version bump follows the standard publishing process, with nothing specific in this decision.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/ui.js` | Nuevo helper `communityRatingValueHtml(value, label = "TMDB")` que genera el badge `.community-rating community-rating--sm` (valor con `toFixed(1)`); `communityRatingHtml(item)` refactorizado para delegar en él (HTML idéntico para tarjetas, guard `null` conservado); en `renderEpisodeRows`, badge tras `.episode-row__name` cuando `!manual && e.episodeRating != null` |
-| `ocio/ocio.css` | Variante compacta `.community-rating--sm` (gap 0.25rem, `flex-shrink: 0`, tamaños en rem: label 0.5rem / value 0.7rem) reutilizando los tokens de `.community-rating` base |
-| `docs/adr-031-community-episode-rating.md` | **Nuevo**: este documento |
+| `js/ui.js` | New helper `communityRatingValueHtml(value, label = "TMDB")` generating the `.community-rating community-rating--sm` badge (value with `toFixed(1)`); `communityRatingHtml(item)` refactored to delegate to it (identical HTML for cards, `null` guard kept); in `renderEpisodeRows`, badge after `.episode-row__name` when `!manual && e.episodeRating != null` |
+| `ocio/ocio.css` | Compact variant `.community-rating--sm` (gap 0.25rem, `flex-shrink: 0`, sizes in rem: label 0.5rem / value 0.7rem) reusing the tokens of the base `.community-rating` |
+| `docs/adr-031-community-episode-rating.md` | **New**: this document |
 
 Related issue: #45 — https://github.com/gonzalitojh/Registro-personal/issues/45

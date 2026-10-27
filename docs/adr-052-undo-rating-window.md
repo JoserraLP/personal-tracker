@@ -1,242 +1,241 @@
-# ADR-052: Botón «Deshacer» en la ventana de valoración
+# ADR-052: «Deshacer» button in the rating window
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
-Agosto 2026
+## Date
+August 2026
 
-## Contexto
+## Context
 
-Desde ADR-022 (issue #21), al marcar como visto/leído una película, un
-libro o un episodio de serie se abre la **ventana de valoración
-emergente** y el marcado se persiste **antes** de abrirse la ventana.
-Si el usuario había marcado un ítem por error, la vía para revertirlo
-pasaba por cerrar la ventana y buscar la opción correspondiente: quitar
-el visionado en el historial de la ficha, desmarcar el episodio o
-corregir la fecha de fin de la lectura. Eran pasos extra, poco
-descubribles y con riesgo de dejar datos incorrectos registrados.
+Since ADR-022 (issue #21), when marking a movie, a
+book or a series episode as watched/read the **pop-up rating
+window** opens and the marking is persisted **before** the window opens.
+If the user had marked an item by mistake, the path to reverse it went
+through closing the window and finding the corresponding option: remove
+the watch from the profile's history, un-mark the episode or
+correct the reading's end date. Those were extra steps, barely
+discoverable and with the risk of leaving incorrect data registered.
 
-La issue #136 pide un botón **«Deshacer»** dentro de la propia ventana
-de valoración: anular el marcado recién hecho **sin salir de ella**.
-Requisitos de comportamiento:
+Issue #136 asks for a **«Deshacer»** button inside the rating
+window itself: cancel the just-made marking **without leaving it**.
+Behavioral requirements:
 
-- La ventana muestra «Deshacer» al marcar una película, al terminar un
-  libro o al marcar un episodio de serie.
-- El deshacer restaura el estado previo persistido (watchLog
-  /readLog/watched), el `status` previo y el flag `awaitingRelease`
-  previo cuando aplique, y deja la UI de debajo coherente sin recargar:
-  el modal de ficha, o la fila/banner/contador del episodio en series.
-- Los cierres externos (✕, backdrop, Escape, «Ahora no») siguen
-  descartando **sin deshacer**.
-- Si el deshacer falla (p. ej. sin red), la web avisa con un toast de
-  error y la ventana permanece abierta.
+- The window shows «Deshacer» when marking a movie, when finishing a
+  book or when marking a series episode.
+- The undo restores the persisted previous state (watchLog
+  /readLog/watched), the previous `status` and the previous
+  `awaitingRelease` flag when applicable, and leaves the underlying UI
+  coherent without reloading: the profile modal, or the series' episode
+  row/banner/counter.
+- External closings (✕, backdrop, Escape, «Ahora no») keep
+  discarding **without undoing**.
+- If the undo fails (e.g. no network), the web warns with an error
+  toast and the window stays open.
 
 Related issue: #136 — https://github.com/gonzalitojh/Registro-personal/issues/136
 
-## Decisión
+## Decision
 
-Implementar el botón «Deshacer» como **primer botón de la fila de
-acciones** de la ventana de valoración (estilo `btn--outline`, mismo
-idioma visual que «Ahora no») con un **enfoque snapshot**: cada llamador
-captura el estado previo del ítem **ANTES** de persistir el marcado y
-el `onUndo` lo restaura con `ctx.updateItem` + mutación en memoria.
-No se reutilizan los helpers de persistencia del marcado para el undo:
-`persist()` de película fuerza `awaitingRelease:false` y el status
-recomputado, así que el undo es un `updateItem` directo que restaura
-los campos capturados literalmente.
+Implement the «Deshacer» button as the **first button of the rating
+window's action row** (`btn--outline` style, same visual language as
+«Ahora no») with a **snapshot approach**: each caller captures the
+item's previous state **BEFORE** persisting the marking and the
+`onUndo` restores it with `ctx.updateItem` + in-memory mutation.
+The marking's persistence helpers are not reused for the undo:
+the movie's `persist()` forces `awaitingRelease:false` and the
+recomputed status, so the undo is a direct `updateItem` restoring
+the captured fields literally.
 
-### 1. Contrato ampliado de `openRatingModal`
+### 1. Expanded contract of `openRatingModal`
 
-`js/rating-modal.js` acepta dos opciones nuevas:
+`js/rating-modal.js` accepts two new options:
 
 ```
 openRatingModal({ ..., onUndo, undoLabel = "Deshacer" })
   => Promise<number|"undone"|null>
 ```
 
-- `opts.onUndo` (opcional): `async () => {}` que anula el marcado
-  recién hecho. Si está presente, se renderiza el botón `#rm-undo`
-  como **primer elemento** de `.rating-modal__actions` (antes de
-  «Ahora no» y «Guardar valoración»), con `btn btn--outline` y el
-  texto `undoLabel` escapado con `escapeHtml`.
-- La promesa ahora se resuelve con el **rating guardado (1-5)**, con
-  la constante exportada **`RATING_MODAL_UNDONE` (`"undone")** si el
-  usuario deshizo el marcado, o con `null` si se descartó. Sigue sin
-  rechazar nunca: los fallos de `onSave` y de `onUndo` se notifican con
-  toast robusto (`String(err && err.message ? err.message : err)`, sin
-  "undefined") y la ventana queda abierta para reintentar.
-- **Guarda `undoInProgress` en el cierre**: mientras el deshacer corre,
-  `close()` ignora cualquier cierre externo (✕, backdrop, Escape,
-  «Ahora no») para que la promesa no resuelva con `null` a mitad de la
-  restauración. El doble clic es imposible: `disabled` en «Deshacer» y
-  «Guardar valoración» durante la operación + la guarda `settled` + la
-  guarda `undoInProgress`.
+- `opts.onUndo` (optional): `async () => {}` that cancels the just-made
+  marking. If present, the `#rm-undo` button renders as the **first
+  element** of `.rating-modal__actions` (before
+  «Ahora no» and «Guardar valoración»), with `btn btn--outline` and the
+  `undoLabel` text escaped with `escapeHtml`.
+- The promise now resolves with the **saved rating (1-5)**, with the
+  exported constant **`RATING_MODAL_UNDONE` (`"undone")** if the
+  user undid the marking, or with `null` if dismissed. It still never
+  rejects: `onSave` and `onUndo` failures are notified with a robust
+  toast (`String(err && err.message ? err.message : err)`, without
+  "undefined") and the window stays open to retry.
+- **`undoInProgress` guard on closing**: while the undo runs,
+  `close()` ignores any external closing (✕, backdrop, Escape,
+  «Ahora no») so the promise does not resolve with `null` mid
+  restoration. Double click is impossible: `disabled` on «Deshacer» and
+  «Guardar valoración» during the operation + the `settled` guard + the
+  `undoInProgress` guard.
 
-### 2. Snapshot previo en los 4 llamadores (modal de detalle)
+### 2. Prior snapshot in the 4 callers (detail modal)
 
-Las ventanas se abren desde los mismos wrappers de ADR-022, que ahora
-aceptan `opts` y devuelven `true` si el resultado fue
+The windows open from ADR-022's same wrappers, which now
+accept `opts` and return `true` if the result was
 `RATING_MODAL_UNDONE`:
 
 `modal-handlers.js`:
 
-- **Película** (`onAddWatch`): captura `prevWatchLog`, `prevStatus` y
-  `prevAwaitingRelease` antes de `persist(addWatch(...))`. El
-  `onUndo` restaura con `updateItem({ watchLog, status,
-  awaitingRelease })` + mutación en memoria. El status se restaura
-  **literal** al capturado (no recomputado del log) por si el usuario
-  lo tenía en un estado manual (recurso de la QA, hallazgos LOW).
-- **Libro** (`onFinishReading`): captura `prevReadLog` y `prevStatus`
-  antes del `persist(finishReading(...))`; el `onUndo` restaura
-  `readLog` y `status` («Leyendo» vuelve a «Leyendo», una pausa/
-  abandono previo se conserva).
-- **Serie, episodio** (`onSetEpisodeDate`): captura la entrada previa
+- **Movie** (`onAddWatch`): captures `prevWatchLog`, `prevStatus` and
+  `prevAwaitingRelease` before `persist(addWatch(...))`. `onUndo`
+  restores with `updateItem({ watchLog, status, awaitingRelease })`
+  + in-memory mutation. The status is restored **literally** to the
+  captured one (not recomputed from the log) in case the user had it in a
+  manual state (QA's resource, LOW findings).
+- **Book** (`onFinishReading`): captures `prevReadLog` and `prevStatus`
+  before the `persist(finishReading(...))`; `onUndo` restores
+  `readLog` and `status` («Leyendo» goes back to «Leyendo», a previous
+  pause/abandonment is kept).
+- **Series, episode** (`onSetEpisodeDate`): captures the previous entry
   (`prevEntry` via `normalizeEntry`), `wasWatched`,
-  `prevAwaitingRelease` y `prevStatus`. Solo abre la ventana en la
-  transición no-visto → visto (mismo criterio que ADR-022). El `onUndo`
-  **desmarca** con `setEpisodeDate(item.watched, s, e, null)` vía
-  `persistWatched` (elimina fecha y valoración puesta en la ventana),
-  y restaura después `awaitingRelease` y `status` previos con
-  `updateItem`. Si el resultado es undo, `onSetEpisodeDate` devuelve el
-  **progreso recomputado del estado revertido**
-  (`computeProgress(seasonsMeta, item.watched)`) para que `ui.js`
-  pinte el banner con el estado real — sin cambiar la firma.
+  `prevAwaitingRelease` and `prevStatus`. It only opens the window on the
+  not-watched → watched transition (same criterion as ADR-022). `onUndo`
+  **un-marks** with `setEpisodeDate(item.watched, s, e, null)` via
+  `persistWatched` (removes the date and the rating set in the window),
+  and afterwards restores the previous `awaitingRelease` and `status` with
+  `updateItem`. If the result is undo, `onSetEpisodeDate` returns the
+  **recomputed progress of the reverted state**
+  (`computeProgress(seasonsMeta, item.watched)`) so `ui.js`
+  paints the banner with the real state — without changing the signature.
 
 `quick-actions.js`:
 
-- `maybeQuickItemRating` / `maybeQuickEpisodeRating` equivalentes; el
-  resto de snapshots viven en los quick de cada tipo (abajo).
+- `maybeQuickItemRating` / `maybeQuickEpisodeRating` equivalents; the
+  rest of the snapshots live in each type's quick actions (below).
 
-### 3. Undo en acciones rápidas y toasts condicionales
+### 3. Undo in quick actions and conditional toasts
 
 `js/quick-actions.js`:
 
-- **`quickMarkMovie`**: captura `prevWatchLog`, `prevAwaitingRelease`,
-  `prevStatus` antes de persistir; mismo `onUndo` de restauración.
-- **`quickMarkBook`**: solo ofrece ventana al terminar (`isReading`);
-  captura `prevReadLog` y `prevStatus`.
-- **`quickMarkTv`**: captura `prevWatched`, `prevAwaitingRelease`,
-  `prevStatus` y `prevNextEpisodeAirDate`. El `onUndo` restaura **el
-  payload completo** del progreso previo: `watched`, `status` literal,
-  `nextEpisode`/`firstWatchedAt`/`lastWatchedAt` recomputados del
-  `prevWatched` con `computeProgress`, `awaitingRelease` y
-  `nextEpisodeAirDate` previo (o `null` si no existía), de modo que el
-  aviso de «no estrenado» del siguiente episodio también vuelve a su
-  estado.
-- **Toasts condicionales**: cada quick acción muestra el toast de
-  marcado solo si **no** hubo undo:
-  - Película/libro: `«Marcado deshecho.»` en lugar de ««Título» marcada
+- **`quickMarkMovie`**: captures `prevWatchLog`, `prevAwaitingRelease`,
+  `prevStatus` before persisting; same restoration `onUndo`.
+- **`quickMarkBook`**: only offers the window on finishing
+  (`isReading`); captures `prevReadLog` and `prevStatus`.
+- **`quickMarkTv`**: captures `prevWatched`, `prevAwaitingRelease`,
+  `prevStatus` and `prevNextEpisodeAirDate`. `onUndo` restores the
+  **whole payload** of the previous progress: `watched`, literal
+  `status`, `nextEpisode`/`firstWatchedAt`/`lastWatchedAt` recomputed from
+  `prevWatched` with `computeProgress`, `awaitingRelease` and the
+  previous `nextEpisodeAirDate` (or `null` if it did not exist), so the
+  next episode's «not released» notice also goes back to its
+  state.
+- **Conditional toasts**: each quick action shows the marking toast
+  only if there was **no** undo:
+  - Movie/book: `«Marcado deshecho.»` instead of ««Título» marcada
     como vista.» / ««Título» terminado.».
-  - Episodio: «Desmarcado.» en lugar de «T2E5 marcado como visto.».
+  - Episode: «Desmarcado.» instead of «T2E5 marcado como visto.».
 
-### 4. Repintado de la UI sin recargar (`js/ui.js`)
+### 4. UI repainting without reloading (`js/ui.js`)
 
-- **Episodio (modal de detalle de serie)**: tras `onSetEpisodeDate`, la
-  fila se pinta **derivando de `item.watched`** (entrada normalizada),
-  no del checkbox pulsado: estado del checkbox, clase `is-watched`,
-  fecha habilitada/valor y estrellas del rating (ocultas si no visto,
-  activas según `entry.rating`). Así una «Deshacer» desde la ventana se
-  refleja en la casilla, el contador de la temporada
-  (`updateSeasonCount`) y el banner (`updateBanner` con el progreso
-  revertido devuelto).
-- **Película/libro (modal de ficha)**: el `rerender()` ya existente
-  (tras `onAddWatch` / `onFinishReading`) se ejecuta después de que la
-  ventana se cierre — y como el `onUndo` muta `item` en memoria antes
-  de resolver, el modal re-renderizado muestra el estado revertido.
+- **Episode (series detail modal)**: after `onSetEpisodeDate`, the
+  row is painted by **deriving from `item.watched`** (normalized entry),
+  not from the pressed checkbox: checkbox state, `is-watched` class,
+  enabled date/value and the rating's stars (hidden if not watched,
+  active per `entry.rating`). Thus an «Undo» from the window is
+  reflected in the checkbox, the season counter
+  (`updateSeasonCount`) and the banner (`updateBanner` with the
+  reverted returned progress).
+- **Movie/book (profile modal)**: the already existing `rerender()`
+  (after `onAddWatch` / `onFinishReading`) runs after the window
+  closes — and since `onUndo` mutates `item` in memory before
+  resolving, the re-rendered modal shows the reverted state.
 
-### 5. Responsividad: `flex-wrap` en `.rating-modal__actions`
+### 5. Responsiveness: `flex-wrap` on `.rating-modal__actions`
 
-La fila pasa de 2 a **3 botones** (Deshacer · Ahora no · Guardar
-valoración). En `ocio/ocio.css`, `.rating-modal__actions` añade
-`flex-wrap: wrap` para que los 3 botones no desborden en móvil
-(~360 px), cumpliendo la responsividad obligatoria de AGENTS.md
-(sin scroll horizontal).
+The row goes from 2 to **3 buttons** (Deshacer · Ahora no · Guardar
+valoración). In `ocio/ocio.css`, `.rating-modal__actions` adds
+`flex-wrap: wrap` so the 3 buttons do not overflow on mobile
+(~360 px), meeting AGENTS.md's mandatory responsiveness
+(no horizontal scroll).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Deshacer por índice del `watchLog` (`removeWatch` a ciegas)**:
-  descartado — `addWatch` hace `.sort()` sobre el array antes de
-  persistir, de modo que la posición de la entrada recién añadida no
-  es determinista; el snapshot del log completo restaura exactamente el
-  estado previo (incluidos log con fechas idénticas y revisionados
-  intermedios).
-- **Reutilizar `persist()` para el undo de película**: descartado —
-  `persist()` de la película fuerza `awaitingRelease:false` tras
-  `statusFromWatchLog`, con lo que un ítem «sin estrenar» deshecho no
-  volvería a estar sin estrenar ni se conservarían estados manuales. El
-  undo es un `updateItem` directo con los tres/ dos campos capturados.
-- **Cambiar la firma de `onSetEpisodeDate` a `{ progress, undone }`**:
-  descartado — alteraría el contrato para todos los consumidores del
-  callback (casilla, fecha, «Marcar todo»); devolver el progress de la
-  rama undo (`computeProgress(seasonsMeta, item.watched)`) mantiene la
-  firma `Promise<progress>` y `ui.js` no cambia su manera de pintar.
-- **Bloquear el cierre externo deshabilitando ✕/backdrop/elementos**:
-  descartado — modificaría la apariencia y el foco del modal durante la
-  operación; la guarda `undoInProgress` dentro de `close() resuelve el
-  mismo problema (ignorar los cierres externos) sin tocar la UI.
-- **Botón «Deshacer» al final de la fila de acciones**: descartado —
-  como primer botón de `.rating-modal__actions` queda pegada a «Ahora
-  no» (ambos `btn--outline`, familia de "cancelación") y alejado del
-  botón primario «Guardar valoración», y se lee como la respuesta a la
-  pregunta implícita de la ventana ("¿marcado? ¿lo deshizo?").
+- **Undoing by `watchLog` index (`removeWatch` blindly)**:
+  rejected — `addWatch` does `.sort()` on the array before
+  persisting, so the newly added entry's position is not
+  deterministic; the snapshot of the whole log restores exactly the
+  previous state (including logs with identical dates and intermediate
+  re-watches).
+- **Reusing `persist()` for the movie's undo**: rejected —
+  the movie's `persist()` forces `awaitingRelease:false` after
+  `statusFromWatchLog`, so an undone "not released" item would not go
+  back to being unreleased nor would manual states be kept. The
+  undo is a direct `updateItem` with the three/ two captured fields.
+- **Changing `onSetEpisodeDate`'s signature to `{ progress, undone }`**:
+  rejected — it would alter the contract for all the callback's consumers
+  (checkbox, date, «Marcar todo»); returning the progress of the undo
+  branch (`computeProgress(seasonsMeta, item.watched)`) keeps the
+  `Promise<progress>` signature and `ui.js` does not change its
+  painting.
+- **Blocking the external closing by disabling ✕/backdrop/elements**:
+  rejected — it would change the modal's look and focus during the
+  operation; the `undoInProgress` guard inside `close()` solves the
+  same problem (ignoring the external closings) without touching the UI.
+- **«Deshacer» button at the end of the action row**: rejected —
+  as the first button of `.rating-modal__actions` it sits next to «Ahora
+  no» (both `btn--outline`, "cancellation" family) and far from the
+  primary button «Guardar valoración», and it reads as the answer to the
+  window's implicit question ("did you mark it? did you undo it?").
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- El usuario revierte el marcado por error **sin salir del contexto**:
-  un gesto dentro de la ventana que ya está abierta, sin buscar en
-  historiales.
-- La persistencia del revés es un `updateItem` directo que restaura el
-  **estado literal previo** (logs, `status` y `awaitingRelease`/
-  `nextEpisodeAirDate`), incluidos estados manuales (pausa/abandono).
-- La UI queda coherente sin recargar: el modal de ficha re-renderiza de
-  la manera existente y la fila del episodio se pinta derivando del
-  estado real (casilla, fecha y estrellas incluidas).
-- Los cierres externos (✕, backdrop, Escape, «Ahora no») mantienen su
-  semántica de descarte; el flujo de guardado de la valoración no se
-  ve afectado.
-- Sin cambios de esquema ni de reglas de Firebase.
+### Positive
+- The user reverses the mistaken marking **without leaving the context**:
+  one gesture inside the already-open window, without searching histories.
+- The reversal's persistence is a direct `updateItem` restoring the
+  **previous literal state** (logs, `status` and `awaitingRelease`/
+  `nextEpisodeAirDate`), including manual states (pause/abandonment).
+- The UI stays coherent without reloading: the profile modal re-renders
+  the existing way and the episode's row paints by deriving from the
+  real state (checkbox, date and stars included).
+- The external closings (✕, backdrop, Escape, «Ahora no») keep their
+  discard semantics; the rating's save flow is
+  unaffected.
+- No schema nor Firebase rules changes.
 
-### Negativas
-- **Una o dos `updateItem` extra por deshacer** (solo cuando el
-  usuario pulsa «Deshacer», no en el flujo normal): en el undo de
-  episodio del modal de detalle, el primer `updateItem` desmarca
-  (con `awaitingRelease:false` y status recomputado) y el/los
-  siguiente(s) restauran el flag/estado previo: **ventana transitoria
-  en Firestore** con estado intermedio visible para amigos (sección
-  Amigos). Hallazgo **LOW** del security scan, ya documentado en un
-  comentario del código: cosmético, idempotente y auto-reparable, no
-  bloquea.
-- El contrato de la promesa de `openRatingModal` crece a
-  `number | "undone" | null`: los consumidores existentes deben
-  comparar contra `RATING_MODAL_UNDONE` (los 4 nuevos llamadores ya lo
-  hacen; el resto continúa interpretando `null` y el número como
-  antes). Documentado en el JSDoc del módulo.
+### Negative
+- **One or two extra `updateItem`s per undo** (only when the
+  user presses «Deshacer», not in the normal flow): in the detail modal's
+  episode undo, the first `updateItem` un-marks
+  (with `awaitingRelease:false` and recomputed status) and the
+  following one(s) restore the previous flag/status: **transient window
+  in Firestore** with an intermediate state visible to friends (Friends
+  section). **LOW** finding of the security scan, already documented in a
+  code comment: cosmetic, idempotent and self-mending, not blocking.
+- `openRatingModal`'s promise contract grows to
+  `number | "undone" | null`: existing consumers must compare against
+  `RATING_MODAL_UNDONE` (the 4 new callers already do; the rest keep
+  interpreting `null` and the number as before). Documented in the
+  module's JSDoc.
 
-### Neutras
-- `ui.js` cambia únicamente el pintado de la fila del episodio
-  (derivado de `item.watched` en lugar del checkbox pulsado); el resto
-  de renders no se toca.
-- `.rating-modal__actions` añade `flex-wrap: wrap`: afecta a la
-  superposición de la ventana en pantallas estrechas, no a otros
-  componentes.
-- Manual de usuario actualizado (regla 3 de AGENTS.md — cambio visible
-  para el usuario): botón «Deshacer» documentado en las secciones 4.3,
-  5.3, 6.3, 10 y 11, y en Problemas frecuentes.
-- Sin cambios de esquema ni de reglas de Firebase Security Rules.
+### Neutral
+- `ui.js` only changes the episode row's painting
+  (derived from `item.watched` instead of the pressed checkbox); the rest
+  of the renders are untouched.
+- `.rating-modal__actions` adds `flex-wrap: wrap`: it affects the
+  window's layout on narrow screens, not other components.
+- User manual updated (AGENTS.md's rule 3 — change visible
+  to the user): the «Deshacer» button documented in sections 4.3,
+  5.3, 6.3, 10 and 11, and in Frequent problems.
+- No schema nor Firebase Security Rules changes.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/rating-modal.js` | **Modificado**: constante exportada `RATING_MODAL_UNDONE ("undone")`; `opts.onUndo`/`opts.undoLabel` en `openRatingModal` con botón `#rm-undo` (primer botón, `btn--outline`); promesa `number\|"undone"\|null`; guarda `undoInProgress` en `close()`; toasts robustos para guardar/deshacer; JSDoc del contrato actualizado |
-| `js/modal-handlers.js` | **Modificado**: `maybeOpenItemRatingWindow`/`maybeOpenEpisodeRatingWindow` con `opts` (devuelven `result === RATING_MODAL_UNDONE`); snapshots previos en `onAddWatch` (película), `onFinishReading` (libro) y `onSetEpisodeDate` (serie: desmarca con `setEpisodeDate(null)`, restaura `awaitingRelease`/`status`; devuelve `computeProgress` del estado revertido si hubo undo) |
-| `js/quick-actions.js` | **Modificado**: snapshots previos en `quickMarkMovie`, `quickMarkBook` y `quickMarkTv` (payload completo: `watched`, `status`, `nextEpisode`, fechas, `awaitingRelease`, `nextEpisodeAirDate` previo o `null`); toasts condicionales («Marcado deshecho.» / «Desmarcado.») según `RATING_MODAL_UNDONE` |
-| `js/ui.js` | **Modificado**: fila del episodio pintada derivando de `item.watched` (check/estrellas/fecha) para reflejar el deshacer; contador de temporada y banner actualizados con el progreso (revertido si hubo undo) |
-| `ocio/ocio.css` | **Modificado**: `.rating-modal__actions` añade `flex-wrap: wrap` (3 botones sin desborde en ~360 px) |
-| `docs/manual-de-usuario.md` | **Modificado**: botón «Deshacer» documentado en 4.3 (episodios), 5.3 (películas), 6.3 (libros), 10 (ventana de valoración), 11 (acciones rápidas, toasts) y en 18 (probl. frecuentes) |
-| `docs/adr-052-undo-rating-window.md` | **Nuevo**: este documento |
-| `tasks/task-issue-136.json` | Task file de la tarea (plan, validación QA, security scan LOW, criterios de aceptación y bloque `issue` con la issue #136) |
+| `js/rating-modal.js` | **Modified**: exported constant `RATING_MODAL_UNDONE ("undone")`; `opts.onUndo`/`opts.undoLabel` in `openRatingModal` with `#rm-undo` button (first button, `btn--outline`); promise `number\|"undone"\|null`; `undoInProgress` guard in `close()`; robust toasts for save/undo; contract's JSDoc updated |
+| `js/modal-handlers.js` | **Modified**: `maybeOpenItemRatingWindow`/`maybeOpenEpisodeRatingWindow` with `opts` (they return `result === RATING_MODAL_UNDONE`); previous snapshots in `onAddWatch` (movie), `onFinishReading` (book) and `onSetEpisodeDate` (series: un-marks with `setEpisodeDate(null)`, restores `awaitingRelease`/`status`; returns `computeProgress` of the reverted state if there was an undo) |
+| `js/quick-actions.js` | **Modified**: previous snapshots in `quickMarkMovie`, `quickMarkBook` and `quickMarkTv` (full payload: `watched`, `status`, `nextEpisode`, dates, `awaitingRelease`, previous `nextEpisodeAirDate` or `null`); conditional toasts («Marcado deshecho.» / «Desmarcado.») based on `RATING_MODAL_UNDONE` |
+| `js/ui.js` | **Modified**: episode row painted by deriving from `item.watched` (check/stars/date) to reflect the undo; season counter and banner updated with the progress (reverted if there was an undo) |
+| `ocio/ocio.css` | **Modified**: `.rating-modal__actions` adds `flex-wrap: wrap` (3 buttons with no overflow at ~360 px) |
+| `docs/manual-de-usuario.md` | **Modified**: the «Deshacer» button documented in 4.3 (episodes), 5.3 (movies), 6.3 (books), 10 (rating window), 11 (quick actions, toasts) and in 18 (frequent problems) |
+| `docs/adr-052-undo-rating-window.md` | **New**: this document |
+| `tasks/task-issue-136.json` | Task file of the task (plan, QA validation, security scan LOW, acceptance criteria and the `issue` block with issue #136) |
 
 Related issue: #136 — https://github.com/gonzalitojh/Registro-personal/issues/136

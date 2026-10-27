@@ -1,8 +1,8 @@
 // =============================================================
-// Historial de sesiones de juego de un videojuego: un array de
-// tramos { startedAt, finishedAt }. finishedAt es null mientras
-// la partida está en curso. Permite rejugar sin perder el
-// registro de partidas anteriores.
+// Play session history of a videogame: an array of
+// segments { startedAt, finishedAt }. finishedAt is null while
+// the play session is in progress. It allows replaying without losing the
+// record of previous play sessions.
 // =============================================================
 
 export function startPlay(playLog, date) {
@@ -42,12 +42,13 @@ function logIndex(playLog) {
 }
 
 /**
- * Horas jugadas totales de un videojuego (ADR-111): la SUMA de las
- * horas de las sesiones del historial cuando existe (la fuente de
- * verdad de la web); si no hay sesiones pero Steam ya aportó horas
- * (steamPlaytimeHours, sesión backfill), se usa esa cifra. Devuelve
- * null si no hay nada computable (no se muestra la línea).
- * Puro y testeado.
+ * Total played hours of a videogame (ADR-111): the SUM of the
+ * hours of the history's sessions when it exists (the web's
+ * source of truth); if there are no sessions but Steam already
+ * provided hours (steamPlaytimeHours, backfill session), that
+ * figure is used. Returns
+ * null when nothing is computable (the line is not shown).
+ * Pure and tested.
  */
 export function totalPlayHours(item) {
   if (!item) return null;

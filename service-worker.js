@@ -1,21 +1,20 @@
 // =============================================================
 // Service Worker — Mi Registro (PWA offline support)
-// Estrategias: Cache First para recursos estáticos,
-// Network First para APIs externas, Network Only para
-// escrituras y endpoints de autenticación, y Network Only con
-// timeout para las lecturas GET de Firestore (issue #286):
-// un stream colgado se convierte en un 503 que dispara los
-// reintentos del wrapper subscribeWithRetry (issue #147), y las
-// respuestas de Firestore nunca se cachean (protobufs stale,
-// streams de long-polling imposibles de guardar).
+// Strategies: Cache First for static assets, Network First for
+// external APIs, Network Only for writes and authentication
+// endpoints, and Network Only with timeout for Firestore GET
+// reads (issue #286): a hung stream becomes a 503 that triggers
+// the retries of the subscribeWithRetry wrapper (issue #147),
+// and Firestore responses are never cached (stale protobufs,
+// long-polling streams impossible to store).
 // =============================================================
 
 // -------------------------------------------------------------
-// Base dinámica: cada rama se despliega en su propio
-// subdirectorio (p. ej. …/<rama>/), así que
-// todas las rutas se resuelven RELATIVAS al scope del propio SW
-// (self.registration.scope). El mismo fichero sirve para la
-// raíz (main) y para cada preview de rama, sin nada hardcodeado.
+// Dynamic base: each branch is deployed in its own
+// subdirectory (e.g. .../<branch>/), so all routes are resolved
+// RELATIVE to the SW's own scope (self.registration.scope).
+// The same file serves the root (main) and each branch preview,
+// with nothing hardcoded.
 // -------------------------------------------------------------
 const scopeURL = new URL(self.registration.scope);
 const scopePath = scopeURL.pathname;
@@ -23,12 +22,13 @@ const resolved = (p) => new URL(p, scopeURL).toString();
 
 const CACHE_STATIC = 'mi-registro-v17-static';
 const CACHE_DYNAMIC = 'mi-registro-v11-dynamic';
-const DYNAMIC_MAX_ENTRIES = 100; // issue #200: la ficha bajo demanda cachea más imágenes (pósters/backdrops) en la caché dinámica
+const DYNAMIC_MAX_ENTRIES = 100; // issue #200: the on-demand detail caches more images (posters/backdrops) in the dynamic cache
 
 // -------------------------------------------------------------
-// Recursos precargados durante el evento "install".
-// Rutas relativas al scope: se resuelven con `resolved()` en el
-// install, así que valen igual en la raíz y en subdirectorios.
+// Assets preloaded during the "install" event.
+// Scope-relative paths: they are resolved with `resolved()` at
+// install, so they work the same at the root and in
+// subdirectories.
 // -------------------------------------------------------------
 const STATIC_ASSETS = [
   './',
@@ -77,12 +77,12 @@ const STATIC_ASSETS = [
   './js/sidebar.js',
   './js/auto-hide-nav.js',
   './js/push.js',
-  // Sección de recetas (issue #64)
+  // Recipes section (issue #64)
   './js/recipes-data.js',
   './js/recipes.js',
   './js/menu.js',
   './js/shopping-list.js',
-  // Sección de gimnasio (issue #62)
+  // Gym section (issue #62)
   './js/gym.js',
   './resources/icon.png',
   './ocio/series.html?v=20261029b',
@@ -93,13 +93,13 @@ const STATIC_ASSETS = [
 ];
 
 // -------------------------------------------------------------
-// Install: precargar todos los recursos estáticos
+// Install: preload all the static assets
 // -------------------------------------------------------------
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_STATIC).then((cache) => {
-      // Usamos cache.addAll pero con manejo de errores individual
-      // para que un recurso que falle no bloquee el resto
+      // We use cache.addAll but with individual error handling
+      // so a failing asset does not block the rest
       return Promise.allSettled(
         STATIC_ASSETS.map((path) => {
           const url = resolved(path);
@@ -113,7 +113,7 @@ self.addEventListener('install', (event) => {
 });
 
 // -------------------------------------------------------------
-// Activate: limpiar caches antiguas y tomar control
+// Activate: clean old caches and take control
 // -------------------------------------------------------------
 self.addEventListener('activate', (event) => {
   const allowedCaches = [CACHE_STATIC, CACHE_DYNAMIC];
@@ -129,12 +129,12 @@ self.addEventListener('activate', (event) => {
 });
 
 // -------------------------------------------------------------
-// Helpers de caching
+// Caching helpers
 // -------------------------------------------------------------
 
 /**
- * Cache First: responde desde la caché si existe; si no,
- * hace fetch, almacena en caché estática y responde.
+ * Cache First: responds from the cache if present; if not,
+ * fetches, stores in the static cache and responds.
  */
 async function cacheFirst(request) {
   const cached = await caches.match(request);
@@ -147,7 +147,7 @@ async function cacheFirst(request) {
     }
     return response;
   } catch (err) {
-    // Fallback offline: para navegación, devolver el app shell
+    // Offline fallback: for navigation, return the app shell
     if (request.mode === 'navigate') {
       return caches.match(resolved('./index.html'));
     }
@@ -156,9 +156,9 @@ async function cacheFirst(request) {
 }
 
 /**
- * Fetch con timeout: evita que una red lenta o colgada bloquee
- * la navegación. Rechaza si la respuesta tarda más de `ms` ms,
- * lo que deja que el fallback de caché de networkFirst actúe.
+ * Fetch with timeout: prevents a slow or hung network from
+ * blocking navigation. Rejects if the response takes longer than
+ * `ms` ms, letting the networkFirst cache fallback act.
  */
 function fetchWithTimeout(request, ms = 3000) {
   const timeout = new Promise((_, reject) =>
@@ -168,10 +168,11 @@ function fetchWithTimeout(request, ms = 3000) {
 }
 
 /**
- * Respuesta 503 amigable para cuando una petición falla o se cuelga.
- * Es la fuente única del fallback: el SDK de Firestore la interpreta
- * como error de red y dispara el onError de la suscripción, que el
- * wrapper subscribeWithRetry convierte en reintento (ADR-057).
+ * Friendly 503 response for when a request fails or hangs.
+ * It is the single source of the fallback: the Firestore SDK
+ * interprets it as a network error and fires the subscription's
+ * onError, which the subscribeWithRetry wrapper turns into a
+ * retry (ADR-057).
  */
 function offlineApiResponse() {
   return new Response(
@@ -185,17 +186,17 @@ function offlineApiResponse() {
 }
 
 /**
- * Network First: intenta la red primero; si falla, busca en la
- * caché dinámica. Limita el número de entradas en caché.
+ * Network First: tries the network first; if it fails, looks in
+ * the dynamic cache. Limits the number of cached entries.
  *
- * `timeoutMs` es opcional y SOLO debe usarse para navegación: evita
- * que una red lenta o colgada bloquee la carga del documento. Las
- * APIs externas no llevan timeout para no provocar falsos "offline"
- * en redes lentas. (Las lecturas GET de Firestore ya no pasan por
- * aquí: desde la issue #286 usan networkOnlyWithTimeout.)
+ * `timeoutMs` is optional and must ONLY be used for navigation:
+ * it prevents a slow or hung network from blocking the document
+ * load. External APIs carry no timeout to avoid false "offline"
+ * on slow networks. (Firestore GET reads no longer go through
+ * here: since issue #286 they use networkOnlyWithTimeout.)
  *
- * Devuelve `{ response, fromNetwork }` para que el llamador sepa si
- * la respuesta vino de la red (y pueda refrescar caches canónicas).
+ * Returns `{ response, fromNetwork }` so the caller knows whether
+ * the response came from the network (to refresh canonical caches).
  */
 async function networkFirst(request, timeoutMs = null) {
   let fromNetwork = false;
@@ -207,30 +208,31 @@ async function networkFirst(request, timeoutMs = null) {
       fromNetwork = true;
       const cache = await caches.open(CACHE_DYNAMIC);
       cache.put(request, response.clone());
-      // Limitar tamaño de la caché dinámica
+      // Limit the size of the dynamic cache
       trimCache(CACHE_DYNAMIC, DYNAMIC_MAX_ENTRIES);
     }
     return { response, fromNetwork };
   } catch (err) {
     const cached = await caches.match(request);
     if (cached) return { response: cached, fromNetwork: false };
-    // Fallback para navegación
+    // Fallback for navigation
     if (request.mode === 'navigate') {
       return { response: await caches.match(resolved('./index.html')), fromNetwork: false };
     }
-    // Para APIs, devolver un 503 amigable
+    // For APIs, return a friendly 503
     return { response: offlineApiResponse(), fromNetwork: false };
   }
 }
 
 /**
- * Network Only con timeout (issue #286): para las lecturas GET de
- * Firestore. Sin caché de ningún tipo (ni match ni put: un stream de
- * long-polling abierto hace que cache.put no resuelva jamás, y los
- * protobufs no deben servirse stale desde la dinámica) y sin propagar
- * el rechazo: el timeout o el fallo devuelven el 503 amigable, que es
- * el camino probado que dispara el onError del SDK y los reintentos
- * del wrapper subscribeWithRetry (ADR-057).
+ * Network Only with timeout (issue #286): for Firestore GET
+ * reads. No cache of any kind (neither match nor put: an open
+ * long-polling stream makes cache.put never resolve, and
+ * protobufs must not be served stale from the dynamic cache) and
+ * without propagating the rejection: the timeout or the failure
+ * returns the friendly 503, which is the tested path that fires
+ * the SDK's onError and the retries of the subscribeWithRetry
+ * wrapper (ADR-057).
  */
 async function networkOnlyWithTimeout(request, ms = 8000) {
   try {
@@ -241,48 +243,49 @@ async function networkOnlyWithTimeout(request, ms = 8000) {
 }
 
 /**
- * Limita la caché dinámica a un número máximo de entradas.
- * Elimina las más antiguas cuando se supera el límite.
+ * Limits the dynamic cache to a maximum number of entries.
+ * Deletes the oldest ones when the limit is exceeded.
  */
 async function trimCache(cacheName, maxEntries) {
   const cache = await caches.open(cacheName);
   const keys = await cache.keys();
   if (keys.length > maxEntries) {
-    // Eliminar las entradas más antiguas (las primeras de la lista)
+    // Delete the oldest entries (the first ones of the list)
     const toDelete = keys.slice(0, keys.length - maxEntries);
     await Promise.all(toDelete.map((key) => cache.delete(key)));
   }
 }
 
 // -------------------------------------------------------------
-// Fetch: enrutamiento de estrategias según el tipo de recurso
+// Fetch: strategy routing depending on the resource type
 // -------------------------------------------------------------
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // ---- Network Only: operaciones de escritura y auth ----
+  // ---- Network Only: write operations and auth ----
   if (
     url.hostname === 'firestore.googleapis.com' &&
     event.request.method !== 'GET'
   ) {
-    return; // Pasan sin intervención del SW
+    return; // They pass without SW intervention
   }
 
   if (
     url.hostname === 'identitytoolkit.googleapis.com' ||
     url.hostname === 'securetoken.googleapis.com'
   ) {
-    return; // Pasan sin intervención del SW
+    return; // They pass without SW intervention
   }
 
-  // ---- Navegación: Network First (con timeout) y fallback al app shell ----
+  // ---- Navigation: Network First (with timeout) and fallback to the app shell ----
   if (event.request.mode === 'navigate') {
     event.respondWith(
       networkFirst(event.request, 3000).then(({ response, fromNetwork }) => {
-        // Solo si vino de la red, refrescar la entrada canónica del
-        // app shell en la caché estática, para que el fallback offline
-        // nunca quede desfasado respecto al último deploy. Si la
-        // respuesta vino de la caché (timeout/offline), no se toca.
+        // Only if it came from the network, refresh the canonical
+        // app shell entry in the static cache, so the offline
+        // fallback never stays outdated with respect to the last
+        // deploy. If the response came from the cache
+        // (timeout/offline), it is left untouched.
         if (fromNetwork && response && response.ok) {
           caches
             .open(CACHE_STATIC)
@@ -297,7 +300,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ---- Cache First: recursos estáticos propios ----
+  // ---- Cache First: own static assets ----
   if (url.pathname.startsWith(scopePath)) {
     event.respondWith(cacheFirst(event.request));
     return;
@@ -327,25 +330,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ---- Cache First: imágenes de TMDB (posters) ----
+  // ---- Cache First: TMDB images (posters) ----
   if (url.hostname === 'image.tmdb.org') {
     event.respondWith(cacheFirst(event.request));
     return;
   }
 
-  // ---- Cache First: portadas de Open Library ----
+  // ---- Cache First: Open Library covers ----
   if (url.hostname === 'covers.openlibrary.org') {
     event.respondWith(cacheFirst(event.request));
     return;
   }
 
-  // ---- Cache First: imágenes de IGDB (portadas) ----
+  // ---- Cache First: IGDB images (covers) ----
   if (url.hostname === 'images.igdb.com') {
     event.respondWith(cacheFirst(event.request));
     return;
   }
 
-  // ---- Network First: APIs externas (TMDB, Google Books, Open Library) ----
+  // ---- Network First: external APIs (TMDB, Google Books, Open Library) ----
   if (
     url.hostname === 'api.themoviedb.org' ||
     url.hostname === 'www.googleapis.com' ||
@@ -355,15 +358,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ---- Network Only con timeout: lecturas GET de Firestore (issue #286) ----
-  // networkFirst NO sirve aquí: las respuestas de Firestore son
-  // streams de long-polling; el cache.put de un stream abierto no
-  // resuelve y deja la petición colgada para siempre (ni onChange ni
-  // onError en el SDK → «Cargando…» eterno, sin reintentos), y los
-  // protobufs nunca deberían servirse desde la caché dinámica. Con
-  // networkOnlyWithTimeout, un colgado se convierte en un 503 que el
-  // SDK trata como error de red: el wrapper subscribeWithRetry
-  // (issue #147) reintenta y la web se recupera sola.
+  // ---- Network Only with timeout: Firestore GET reads (issue #286) ----
+  // networkFirst does NOT work here: Firestore responses are
+  // long-polling streams; the cache.put of an open stream never
+  // resolves and leaves the request hung forever (neither onChange nor
+  // onError in the SDK → eternal «Cargando…», no retries), and
+  // protobufs should never be served from the dynamic cache. With
+  // networkOnlyWithTimeout, a hung request becomes a 503 that the
+  // SDK treats as a network error: the subscribeWithRetry wrapper
+  // (issue #147) retries and the site recovers on its own.
   if (
     url.hostname === 'firestore.googleapis.com' &&
     event.request.method === 'GET'
@@ -372,20 +375,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ---- Todo lo demás: pasar sin intervención ----
+  // ---- Everything else: pass without intervention ----
 });
 
 // -------------------------------------------------------------
-// Mensajes desde la página (ej: SKIP_WAITING para actualizar)
+// Messages from the page (e.g. SKIP_WAITING to update)
 // -------------------------------------------------------------
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 
-  // Notificación del sistema: la página (js/push.js) reenvía aquí
-  // las notificaciones internas de la campana cuando la app está en
-  // segundo plano y el usuario tiene activado el push de dispositivo.
+  // System notification: the page (js/push.js) forwards here the
+  // internal bell notifications when the app is in the background
+  // and the user has device push enabled.
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
     const { id, message } = event.data || {};
     if (!id || typeof message !== 'string' || !message) return;
@@ -402,8 +405,8 @@ self.addEventListener('message', (event) => {
 });
 
 // -------------------------------------------------------------
-// Clic en una notificación del sistema: llevar el foco a la ventana
-// existente de la app o abrirla si no hay ninguna.
+// Click on a system notification: bring focus to the existing
+// app window or open it if there is none.
 // -------------------------------------------------------------
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

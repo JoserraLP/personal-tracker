@@ -1,38 +1,37 @@
 // =============================================================
-// Sección de Recetas (issue #64) — pestaña «Lista de la compra».
-// Calcula automáticamente lo que se necesita a partir del menú
-// semanal (js/menu.js): cada ingrediente se multiplica por
-// (comensales / porciones de la receta). Las «recetas a la
-// semana» no escalan (cantidad fija) y las recetas excluidas
-// (recetasExcluidasCompra del menú) se saltan.
+// Recetas section (issue #64) — «Lista de la compra» tab.
+// It automatically computes what is needed from the weekly menu
+// (js/menu.js): each ingredient is multiplied by
+// (diners / recipe servings). The «weekly recipes» do not scale
+// (fixed amount) and the excluded recipes
+// (recetasExcluidasCompra of the menu) are skipped.
 //
-// Mejoras de la issue #225:
-//  - Selección de VARIAS semanas a la vez: los chips de la toolbar
-//    permiten marcar/desmarcar semanas y se suman los ingredientes
-//    totales de todas las seleccionadas (cada semana escala con sus
-//    propios comensales y aplica sus propias exclusiones).
-//  - Cantidad en PAQUETES: si el ingrediente del catálogo tiene
-//    cantidad y unidad de paquete (paqueteCantidad/paqueteUnidad,
-//    issue #224), la cantidad necesaria se compara con la del
-//    paquete y se redondea al alza (550 g con paquete de 1 Kg → 1
-//    paquete; 2,5 Kg → 3). El usuario puede ajustar esa cantidad
-//    con el stepper −/+ y el ajuste persiste en localStorage. Si no
-//    hay dato de paquete (o las unidades no son comparables) se
-//    muestra la cantidad necesaria.
-//  - Eliminar ítems DESPLAZÁNDOLOS HACIA LA IZQUIERDA: el swipe
-//    revela el fondo rojo y, si se continúa deslizando un poco más
-//    (desplazamiento extra), el ítem se elimina al soltar — sin
-//    necesidad de pulsar ningún botón. También hay una ✕ roja
-//    siempre visible a la derecha de cada línea (sobre todo para
-//    escritorio). Al pasar el ratón por encima la línea solo se
-//    marca (nada de revelar el estado de eliminar). Los ítems de
-//    recetas dejan de calcularse en las semanas seleccionadas
-//    (itemsEliminados del documento de menú); los ítems extra se
-//    quitan de las semanas donde estaban. Hay deshacer (toast) y
-//    una nota para volver a incluir lo quitado.
-// Además permite ítems extra manuales (comestibles y no
-// comestibles) persistidos en el documento del menú (itemsExtra),
-// y marcar lo ya comprado (estado visual de la sesión).
+// Improvements of issue #225:
+//  - Selection of SEVERAL weeks at once: the toolbar chips allow
+//    marking/unmarking weeks and the total ingredients of all the
+//    selected ones are added up (each week scales with its own
+//    diners and applies its own exclusions).
+//  - Amount in PACKAGES: if the catalog ingredient has package
+//    amount and unit (paqueteCantidad/paqueteUnidad, issue #224),
+//    the needed amount is compared with the package's and rounded
+//    up (550 g with a 1 Kg package → 1 package; 2.5 Kg → 3). The
+//    user can adjust that amount with the −/+ stepper and the
+//    adjustment persists in localStorage. If there is no package
+//    data (or the units are not comparable) the needed amount is
+//    shown.
+//  - Delete items by SWIPING THEM LEFT: the swipe reveals the red
+//    background and, if you keep swiping a bit further (extra
+//    offset), the item is deleted on release — no need to press any
+//    button. There is also a red ✕ always visible on the right of
+//    each line (mainly for desktop). On hover the line is only
+//    highlighted (no delete-state reveal). Recipe items stop being
+//    computed in the selected weeks (itemsEliminados of the menu
+//    document); extra items are removed from the weeks where they
+//    were. There is undo (toast) and a note to re-include what was
+//    removed.
+// It also allows manual extra items (edible and non-edible)
+// persisted in the menu document (itemsExtra), and marking what is
+// already bought (visual state of the session).
 // =============================================================
 
 import { showToast, showUndoToast } from "./ui.js";
@@ -57,28 +56,29 @@ import {
 } from "./recipes-data.js";
 import { getMenuDataByWeek, updateMenuWeek, getActiveWeekOffset } from "./menu.js";
 
-// ---------- Estado ----------
+// ---------- State ----------
 
 let ctx = null;
 let showingExtraForm = false;
-// Ventana de chips visible: semanas chipOffset-2 … chipOffset+2.
+// Visible chips window: weeks chipOffset-2 … chipOffset+2.
 let chipOffset = 0;
-// Semanas seleccionadas (semanaInicio ISO). Por defecto la semana
-// activa del menú; se puede sumar más marcando los chips.
+// Selected weeks (ISO week start). Default: the active menu week;
+// more can be added by checking the chips.
 let selectedWeeks = new Set([mondayISO(0)]);
-// Hasta que el usuario toca los chips, la selección sigue la semana
-// activa del menú (si navegas el menú a otra semana, la lista pasa
-// a esa semana). Tras tocar los chips, la selección es del usuario.
+// Until the user touches the chips, the selection follows the active
+// menu week (if you navigate the menu to another week, the list goes
+// to that week). After touching the chips, the selection is the
+// user's.
 let userTouchedChips = false;
-// Ajustes manuales de paquetes (issue #225): clave «nombre|unidad»
-// → nº de paquetes. Persiste en localStorage por usuario.
+// Manual package adjustments (issue #225): key «nombre|unidad»
+// → number of packages. Persisted in localStorage per user.
 let pkgOverrides = new Map();
 
-// Desplazamiento del contenido al revelar el fondo rojo (px).
+// Content offset when revealing the red background (px).
 const SWIPE_OPEN = -88;
-// Desplazamiento extra que dispara la eliminación directa al
-// soltar (issue #225, iteración): un pequeño empujón más allá de
-// la posición de revelado borra el ítem sin pulsar nada.
+// Extra offset that triggers the direct deletion on
+// release (issue #225, iteration): a small push beyond the reveal
+// position deletes the item without pressing anything.
 const SWIPE_DELETE = -112;
 
 export function setupShoppingList(opts) {
@@ -101,7 +101,7 @@ export function setupShoppingList(opts) {
     }
   });
 
-  // Navegación de la ventana de semanas.
+  // Navigation of the weeks window.
   document.getElementById("shopping-prev-week").addEventListener("click", () => {
     userTouchedChips = true;
     chipOffset -= 1;
@@ -113,7 +113,7 @@ export function setupShoppingList(opts) {
     renderWeekChips();
   });
 
-  // Selección de semanas (multi-semana, issue #225).
+  // Week selection (multi-week, issue #225).
   document.getElementById("shopping-week-chips").addEventListener("change", (e) => {
     const box = e.target.closest("input[data-week-chip]");
     if (!box) return;
@@ -132,32 +132,33 @@ export function setupShoppingList(opts) {
   });
 
   document.getElementById("shopping-list").addEventListener("click", (e) => {
-    // Eliminar un ítem (✕ de la derecha, issue #225 iteración).
+    // Delete an item (✕ on the right, issue #225 iteration).
     const delBtn = e.target.closest("[data-del-key]");
     if (delBtn) {
       deleteLine(delBtn.dataset.delKey);
       return;
     }
-    // Volver a incluir un ítem quitado de la lista.
+    // Re-include an item removed from the list.
     const restoreBtn = e.target.closest("[data-restore-key]");
     if (restoreBtn) {
       restoreKey(restoreBtn.dataset.restoreKey);
       return;
     }
-    // Volver a incluir una receta excluida del cálculo.
+    // Re-include a recipe excluded from the computation.
     const excludeBtn = e.target.closest("[data-exclude-recipe]");
     if (excludeBtn) {
       includeRecipe(excludeBtn.dataset.excludeRecipe);
       return;
     }
-    // Stepper de paquetes (issue #225).
+    // Package stepper (issue #225).
     const pkgBtn = e.target.closest("[data-pkg-op]");
     if (pkgBtn) {
       adjustPackages(pkgBtn.dataset.pkgKey, pkgBtn.dataset.pkgOp);
     }
   });
 
-  // «Comprado»: estado visual de la sesión (la línea se tacha).
+  // «Comprado»: visual state of the session (the line is struck
+  // through).
   document.getElementById("shopping-list").addEventListener("change", (e) => {
     const box = e.target.closest("input[type=checkbox][data-bought]");
     if (!box) return;
@@ -165,13 +166,13 @@ export function setupShoppingList(opts) {
     if (lineEl) lineEl.classList.toggle("is-bought", box.checked);
   });
 
-  // Adder del modal del ingrediente (issue #249): «Añadir a la lista
-  // de la compra» persiste el ítem en las mismas semanas seleccionadas
-  // que el formulario de ítem extra (la escritura comparte la cola de
-  // mutaciones). Si el usuario aún no ha tocado los chips, la selección
-  // se alinea con la semana activa del menú (lo que verá al abrir la
-  // pestaña Compra); si ya eligió semanas, esas son las que se usan.
-  // recipes.js lo invoca vía registerShoppingListAdder.
+  // Adder of the ingredient modal (issue #249): «Añadir a la lista de
+  // la compra» persists the item in the same selected weeks as the
+  // extra item form (the write shares the mutation queue). If the
+  // user has not touched the chips yet, the selection aligns with the
+  // active menu week (what they will see when opening the Compra
+  // tab); if they already chose weeks, those are the ones used.
+  // recipes.js invokes it via registerShoppingListAdder.
   registerShoppingListAdder(async (item) => {
     if (!userTouchedChips) syncSelectionWithMenu();
     await persistExtraItem(item, { create: true });
@@ -183,8 +184,8 @@ export function setupShoppingList(opts) {
   });
 }
 
-// Vacía el estado local (lo llama app.js al cerrar sesión, para que
-// los datos del usuario anterior no se muestren al siguiente).
+// Clears the local state (called by app.js on logout, so the previous
+// user's data is not shown to the next one).
 export function resetShoppingListState() {
   showingExtraForm = false;
   chipOffset = 0;
@@ -193,8 +194,8 @@ export function resetShoppingListState() {
   pkgOverrides = new Map();
 }
 
-// Mientras el usuario no haya tocado los chips, la selección sigue
-// la semana activa del menú (issue #225).
+// As long as the user has not touched the chips, the selection
+// follows the active menu week (issue #225).
 function syncSelectionWithMenu() {
   if (userTouchedChips) return;
   const off = getActiveWeekOffset();
@@ -202,7 +203,7 @@ function syncSelectionWithMenu() {
   selectedWeeks = new Set([mondayISO(off)]);
 }
 
-// ---------- Ajustes de paquetes (localStorage por usuario) ----------
+// ---------- Package adjustments (localStorage per user) ----------
 
 function pkgStorageKey() {
   const uid = ctx?.getCurrentUser?.()?.uid;
@@ -244,16 +245,16 @@ function adjustPackages(lineKey, op) {
   renderShoppingList();
 }
 
-// ---------- Cálculo ----------
+// ---------- Computation ----------
 
-// Suma los ingredientes de las semanas seleccionadas (issue #225).
-// Cada semana escala con sus propios comensales y aplica sus
-// exclusiones (recetasExcluidasCompra) e ítems eliminados
+// Adds up the ingredients of the selected weeks (issue #225).
+// Each week scales with its own diners and applies its own
+// exclusions (recetasExcluidasCompra) and removed items
 // (itemsEliminados).
 function computeLines(weekStarts) {
   const recipes = getRecipes();
   const byId = new Map(recipes.map((r) => [r.id, r]));
-  const lines = new Map(); // key (nombre|unidad) → línea
+  const lines = new Map(); // key (name|unit) → line
 
   function addLine(nombre, cantidad, unidad, categoriaId, comestible, origen) {
     if (!nombre) return;
@@ -281,10 +282,11 @@ function computeLines(weekStarts) {
     const skip = (nombre, unidad) =>
       eliminados.has(`${normalizeIngredientName(nombre)}|${normalizeUnit(unidad)}`);
 
-    // Recetas del menú (por día y comida), escaladas por comensales.
-    // Desde la issue #242 cada entrada puede ser un string (id) o un
-    // objeto { recipeId, comensales } con sus propios comensales:
-    // si los lleva, escalan con ellos; si no, con los globales.
+    // Menu recipes (by day and meal), scaled by diners.
+    // Since issue #242 each entry can be a string (id) or an
+    // object { recipeId, comensales } with its own diners:
+    // if it carries them, it scales with them; if not, with the
+    // global ones.
     const comensales = Number(data.comensales) || 1;
     DAY_KEYS.forEach((day) => {
       MEAL_KEYS.forEach((meal) => {
@@ -307,7 +309,7 @@ function computeLines(weekStarts) {
       });
     });
 
-    // Recetas a la semana: cantidad fija, sin escalar.
+    // Weekly recipes: fixed amount, no scaling.
     (data.recetasPorSemana || []).forEach((entry) => {
       if (excluded.has(entry.recipeId)) return;
       const recipe = byId.get(entry.recipeId);
@@ -318,7 +320,7 @@ function computeLines(weekStarts) {
       });
     });
 
-    // Ítems extra manuales (comestibles y no comestibles).
+    // Manual extra items (edible and non-edible).
     (data.itemsExtra || []).forEach((item) => {
       if (skip(item.nombre, item.unidad)) return;
       addLine(item.nombre, item.cantidad, item.unidad, item.categoriaId, item.comestible, "extra");
@@ -328,11 +330,11 @@ function computeLines(weekStarts) {
   return lines;
 }
 
-// ---------- Cantidad en paquetes (issue #225) ----------
+// ---------- Amount in packages (issue #225) ----------
 
-// Familias de unidades comparables entre «cantidad necesaria» y
-// «cantidad del paquete»: masa (g/Kg), volumen (mL/L) y unidades.
-// `base` convierte la unidad a la unidad base de su familia.
+// Families of units comparable between «needed amount» and
+// «package amount»: mass (g/Kg), volume (mL/L) and units.
+// `base` converts the unit to the base unit of its family.
 function unitFamily(unit) {
   const u = normalizeUnit(unit);
   if (["g", "gr", "grs", "gramo", "gramos"].includes(u)) return { family: "mass", base: 1 };
@@ -343,11 +345,11 @@ function unitFamily(unit) {
   return null;
 }
 
-// Calcula los paquetes de una línea: busca el ingrediente en el
-// catálogo, compara unidades (solo si son de la misma familia) y
-// redondea al alza con tolerancia de coma flotante. Devuelve null si
-// el ingrediente no tiene cantidad de paquete o no es comparable (en
-// ese caso se muestra la cantidad necesaria).
+// Computes the packages of a line: it looks the ingredient up in the
+// catalog, compares units (only if they are from the same family)
+// and rounds up with floating point tolerance. Returns null if the
+// ingredient has no package amount or it is not comparable (in that
+// case the needed amount is shown).
 function pkgInfo(line) {
   const ing = getIngredients().find((i) => normalizeIngredientName(i.nombre) === line.nombre);
   if (!ing) return null;
@@ -377,7 +379,7 @@ export function renderShoppingList() {
   pkgOverrides = loadPkgOverrides();
   const container = document.getElementById("shopping-list");
 
-  // Agrupación por categoría (predefinidas en orden + sin categoría).
+  // Grouping by category (predefined in order + no category).
   const groups = new Map();
   INGREDIENT_CATEGORIES.forEach((c) => groups.set(c.id, []));
   groups.set("", []);
@@ -414,7 +416,7 @@ export function renderShoppingList() {
     y continúa deslizando un poco más (o pulsa la ✕ de la derecha) para quitarlo de la lista. Los ajustes de
     paquetes se guardan en este dispositivo.</p>`);
 
-  // Swipe para eliminar (issue #225): patrón ADR-028 con axis lock.
+  // Swipe to delete (issue #225): ADR-028 pattern with axis lock.
   container.querySelectorAll(".shopping-line-wrap").forEach((wrap) => {
     attachLineSwipe(wrap, wrap.querySelector(".shopping-line__content"));
   });
@@ -438,10 +440,10 @@ function lineHtml(line) {
   </li>`;
 }
 
-// Cantidad de la línea: con paquete → solo el número de paquetes
-// (sin la palabra «paquetes» ni el peso, issue #225 iteración) con
-// stepper −/+ (y ↺ para volver al cálculo automático si hay ajuste
-// manual); sin paquete → la cantidad necesaria.
+// Amount of the line: with package → only the number of packages
+// (without the «paquetes» word nor the weight, issue #225 iteration)
+// with −/+ stepper (and ↺ to go back to the automatic computation if
+// there is a manual adjustment); without package → the needed amount.
 function qtyHtml(line) {
   const info = pkgInfo(line);
   if (!info) {
@@ -462,7 +464,7 @@ function qtyHtml(line) {
     </span>`;
 }
 
-// Chips de semanas (issue #225): ventana de 5 alrededor de chipOffset.
+// Week chips (issue #225): window of 5 around chipOffset.
 function renderWeekChips() {
   const container = document.getElementById("shopping-week-chips");
   const chips = [];
@@ -477,8 +479,8 @@ function renderWeekChips() {
   container.innerHTML = chips.join("");
 }
 
-// Nota con los ítems quitados de la lista en las semanas
-// seleccionadas (issue #225): pulsa uno para volver a incluirlo.
+// Note with the items removed from the list in the selected
+// weeks (issue #225): press one to re-include it.
 function deletedItemsNote() {
   const seen = new Map(); // key → nombre
   [...selectedWeeks].forEach((weekStart) => {
@@ -496,8 +498,8 @@ function deletedItemsNote() {
   </div>`;
 }
 
-// Nota con las recetas excluidas del cálculo en las semanas
-// seleccionadas (y botón para volver a incluirlas).
+// Note with the recipes excluded from the computation in the
+// selected weeks (and a button to re-include them).
 function excludedRecipesNote() {
   const recipes = getRecipes();
   const byId = new Map(recipes.map((r) => [r.id, r]));
@@ -515,28 +517,28 @@ function excludedRecipesNote() {
   </div>`;
 }
 
-// ---------- Eliminar ítems (swipe hacia la izquierda, issue #225) ----------
+// ---------- Delete items (swipe left, issue #225) ----------
 
-// Serializa las escrituras de la lista de la compra (issue #225):
-// dos eliminaciones rápidas consecutivas leían ambas el mismo
-// itemsEliminados previo y la segunda sobrescribía a la primera.
+// Serializes the shopping list writes (issue #225): two quick
+// consecutive deletions both read the same previous itemsEliminados
+// and the second overwrote the first.
 let mutationQueue = Promise.resolve();
 function enqueueMutation(fn) {
   mutationQueue = mutationQueue.then(fn, fn);
   return mutationQueue;
 }
 
-// Aplica la eliminación a las semanas seleccionadas y ofrece
-// deshacer. Ítems de recetas → itemsEliminados (dejan de calcularse
-// en esas semanas); ítems extra → se quitan de itemsExtra de las
-// semanas donde estaban. La clave solo se marca en las semanas que
-// realmente contienen el ítem.
+// Applies the deletion to the selected weeks and offers undo.
+// Recipe items → itemsEliminados (they stop being computed in those
+// weeks); extra items → they are removed from itemsExtra of the
+// weeks where they were. The key is only marked in the weeks that
+// actually contain the item.
 async function deleteLine(key) {
   const lines = computeLines([...selectedWeeks]);
   const line = lines.get(key);
   if (!line) return;
   const isExtra = line.origen === "extra";
-  const snapshots = []; // para el deshacer
+  const snapshots = []; // for the undo
 
   await enqueueMutation(async () => {
     for (const weekStart of [...selectedWeeks]) {
@@ -574,8 +576,8 @@ async function deleteLine(key) {
   });
 }
 
-// Vuelve a incluir un ítem quitado: elimina su clave de
-// itemsEliminados en las semanas seleccionadas que lo tengan.
+// Re-includes a removed item: it deletes its key from
+// itemsEliminados in the selected weeks that have it.
 async function restoreKey(key) {
   await enqueueMutation(async () => {
     for (const weekStart of [...selectedWeeks]) {
@@ -591,7 +593,7 @@ async function restoreKey(key) {
   showToast("Ítem de vuelta en la lista.");
 }
 
-// Vuelve a incluir una receta excluida en las semanas seleccionadas.
+// Re-includes an excluded recipe in the selected weeks.
 async function includeRecipe(recipeId) {
   await enqueueMutation(async () => {
     for (const weekStart of [...selectedWeeks]) {
@@ -607,22 +609,22 @@ async function includeRecipe(recipeId) {
   showToast("Receta de vuelta en la lista.");
 }
 
-// Swipe horizontal con axis lock (patrón ADR-028): a la izquierda
-// revela el fondo rojo; si el gesto supera el desplazamiento extra
-// (SWIPE_DELETE) el ítem se elimina directamente al soltar (issue
-// #225, iteración) — sin botón que pulsar. Deslizar a la derecha
-// vuelve a cerrar. La posición final la aplica el CSS
-// (.is-revealed → translateX(-88px)); durante el arrastre se usa
-// transform inline, que gana sobre la clase. El botón ✕ de la
-// derecha queda siempre visible (accesible por teclado) y no
-// depende de este gesto.
+// Horizontal swipe with axis lock (ADR-028 pattern): to the left
+// it reveals the red background; if the gesture exceeds the extra
+// offset (SWIPE_DELETE) the item is deleted directly on release
+// (issue #225, iteration) — with no button to press. Swiping to the
+// right closes again. The final position is applied by the CSS
+// (.is-revealed → translateX(-88px)); during the drag an inline
+// transform is used, which wins over the class. The ✕ button on the
+// right stays always visible (keyboard accessible) and does not
+// depend on this gesture.
 //
-// Iteración 2 (issue #225): el transform y la revelación SOLO se
-// aplican cuando el axis lock decide 'horizontal'. Un scroll
-// vertical (aunque arrastre un poco en horizontal) nunca revela el
-// fondo rojo: al soltar con lock 'vertical' se cierra
-// (snap(false)) — antes, una deriva de >44 px durante el scroll
-// dejaba el ítem marcado en rojo sin haberlo seleccionado.
+// Iteration 2 (issue #225): the transform and the reveal are ONLY
+// applied when the axis lock decides 'horizontal'. A vertical
+// scroll (even while dragging a bit horizontally) never reveals the
+// red background: on release with a 'vertical' lock it closes
+// (snap(false)) — before, a drift of >44 px during the scroll left
+// the item marked red without having selected it.
 function attachLineSwipe(wrap, content) {
   let startX = 0;
   let startY = 0;
@@ -658,25 +660,27 @@ function attachLineSwipe(wrap, content) {
       const touch = Array.from(e.touches).find((t) => t.identifier === startTouchId) || e.touches[0];
       deltaX = touch.clientX - startX;
       const deltaY = touch.clientY - startY;
-      // Axis lock (ADR-028): al cruzar el slop se decide el eje y no
-      // se vuelve atrás; el empate gana 'vertical' (el scroll manda).
-      // 'is-dragging' (que muestra la ✕ blanca del fondo y quita la
-      // transición) SOLO se activa si el gesto es horizontal: un
-      // scroll vertical no debe mostrar la ✕ (issue #225, iteración 2).
+      // Axis lock (ADR-028): when crossing the slop the axis is
+      // decided and not turned back; a tie wins 'vertical' (scroll
+      // rules). 'is-dragging' (which shows the white ✕ of the
+      // background and removes the transition) is ONLY activated if
+      // the gesture is horizontal: a vertical scroll must not show
+      // the ✕ (issue #225, iteration 2).
       if (lock === null && (Math.abs(deltaX) >= lockThreshold || Math.abs(deltaY) >= lockThreshold)) {
         lock = Math.abs(deltaX) > Math.abs(deltaY) ? "horizontal" : "vertical";
         if (lock === "horizontal") wrap.classList.add("is-dragging");
       }
-      // Hasta que el lock decida, o si es 'vertical', no se mueve
-      // nada: el scroll nunca debe arrastrar el ítem (issue #225,
-      // iteración 2 — antes el dedo desplazando la página podía
-      // revelar el fondo rojo).
+      // Until the lock decides, or if it is 'vertical', nothing is
+      // moved: the scroll must never drag the item (issue #225,
+      // iteration 2 — before, a finger scrolling the page could
+      // reveal the red background).
       if (lock !== "horizontal") return;
       const offset = Math.max(SWIPE_DELETE, Math.min(0, (revealed ? SWIPE_OPEN : 0) + deltaX));
       content.style.transform = `translateX(${offset}px)`;
       wrap.classList.toggle("is-revealed", offset < SWIPE_OPEN / 2);
-      // Al cruzar el umbral de borrado, el fondo rojo lo comunica
-      // visualmente (más oscuro) para que el gesto se perciba.
+      // When crossing the delete threshold, the red background
+      // communicates it visually (darker) so the gesture is
+      // perceived.
       wrap.classList.toggle("is-deleting", offset <= SWIPE_DELETE);
     },
     { passive: true }
@@ -694,17 +698,17 @@ function attachLineSwipe(wrap, content) {
   wrap.addEventListener(
     "touchend",
     (e) => {
-      // Solo se borra o se revela si el gesto fue horizontal (axis
-      // lock): un scroll vertical con deriva horizontal no debe
-      // eliminar ni marcar el ítem en rojo (issue #225, iteración
-      // 2 — antes el ítem quedaba revelado al soltar el scroll).
+      // Delete or reveal only if the gesture was horizontal (axis
+      // lock): a vertical scroll with horizontal drift must not
+      // delete or mark the item red (issue #225, iteration 2 —
+      // before, the item stayed revealed on scroll release).
       if (lock === "vertical") {
         snap(false);
       } else if (lock === "horizontal") {
         const offset = Math.max(SWIPE_DELETE, Math.min(0, (revealed ? SWIPE_OPEN : 0) + deltaX));
         if (offset <= SWIPE_DELETE) {
-          // Desplazamiento extra: eliminar directamente (issue #225,
-          // iteración), sin necesidad de pulsar nada.
+          // Extra offset: delete directly (issue #225, iteration),
+          // no need to press anything.
           const delBtn = wrap.querySelector(".shopping-line__remove");
           const key = delBtn?.dataset.delKey;
           snap(false);
@@ -713,17 +717,17 @@ function attachLineSwipe(wrap, content) {
           snap(offset < SWIPE_OPEN / 2);
         }
       }
-      // lock === null (toque sin desplazamiento): no se toca el
-      // estado — un toque sobre una línea revelada la mantiene
-      // revelada; sobre una cerrada, cerrada.
-      // Click fantasma (issue #225): tras un gesto horizontal el
-      // navegador sintetiza un click al soltar el dedo, que caería
-      // sobre el checkbox/stepper de la fila desplazada y los
-      // activaría sin querer. Suprimirlo aquí evita esos eventos
-      // sintéticos; los toques deliberados (p. ej. pulsar la ✕) son
-      // gestos nuevos con deltaX ≈ 0 y no se ven afectados. El
-      // listener es no-pasivo solo para poder hacer preventDefault
-      // en el touchend (no bloquea el scroll).
+      // lock === null (tap without offset): the state is not
+      // touched — a tap on a revealed line keeps it revealed; on a
+      // closed one, closed.
+      // Ghost click (issue #225): after a horizontal gesture the
+      // browser synthesizes a click on release, which would fall on
+      // the checkbox/stepper of the shifted row and activate them
+      // unintentionally. Suppressing it here avoids those synthetic
+      // events; deliberate taps (e.g. pressing the ✕) are new
+      // gestures with deltaX ≈ 0 and are not affected. The listener
+      // is non-passive only to be able to preventDefault on the
+      // touchend (it does not block the scroll).
       if (lock === "horizontal" && Math.abs(deltaX) > lockThreshold) {
         e.preventDefault();
       }
@@ -742,14 +746,14 @@ function attachLineSwipe(wrap, content) {
   );
 }
 
-// ---------- Ítems extra manuales ----------
+// ---------- Manual extra items ----------
 
-// Formulario de ítem extra (issue #249): el nombre ya no se escribe
-// libremente ni se elige categoría ni «es/no es comestible»: es un
-// combobox con buscador sobre el catálogo de ingredientes (el mismo
-// de las recetas, issue #240). De ahí salen el nombre y la categoría
-// (y con ella si es comestible o de hogar); el usuario solo añade la
-// cantidad y la unidad de medida.
+// Extra item form (issue #249): the name is no longer typed freely,
+// nor is category or «edible/non-edible» chosen: it is a combo box
+// with a search over the ingredient catalog (the same one as the
+// recipes, issue #240). Name and category come from there (and with
+// them whether it is edible or household); the user only adds the
+// amount and the measurement unit.
 function renderExtraForm() {
   const form = document.getElementById("shopping-extra-form");
   form.innerHTML = `<div class="shopping-extra-form__row">
@@ -778,10 +782,10 @@ function renderExtraForm() {
   });
 }
 
-// Persiste un ítem extra en todas las semanas seleccionadas (issue
-// #225): la escritura va por la cola de mutaciones para no pisar
-// eliminaciones o añadidos casi simultáneos. Lo usan tanto el
-// formulario de ítem extra como el modal del ingrediente (issue #249).
+// Persists an extra item in all the selected weeks (issue #225):
+// the write goes through the mutation queue so it does not
+// overwrite near-simultaneous deletions or adds. Both the extra item
+// form and the ingredient modal use it (issue #249).
 async function persistExtraItem(item, { create = true } = {}) {
   await enqueueMutation(async () => {
     for (const weekStart of [...selectedWeeks]) {
@@ -793,10 +797,10 @@ async function persistExtraItem(item, { create = true } = {}) {
 
 async function addExtraItem() {
   const form = document.getElementById("shopping-extra-form");
-  // El nombre y la categoría vienen del combobox (solo las opciones
-  // del catálogo escriben el valor oculto; el texto libre no vale,
-  // patrón de las recetas, issue #240). Si no hay selección o el
-  // texto visible ya no coincide, la fila se descarta con aviso.
+  // Name and category come from the combo box (only the catalog
+  // options write the hidden value; free text is not valid, recipes
+  // pattern, issue #240). If there is no selection or the visible
+  // text no longer matches, the row is discarded with a notice.
   const nombre = form.querySelector(".ing-nombre-valor").value.trim();
   const textoVisible = form.querySelector(".ing-nombre").value.trim();
   if (!nombre || normalizeIngredientName(textoVisible) !== normalizeIngredientName(nombre)) {
@@ -808,9 +812,9 @@ async function addExtraItem() {
     cantidad: form.querySelector("#extra-cantidad").value === "" ? null : Number(form.querySelector("#extra-cantidad").value),
     unidad: normalizeUnit(form.querySelector("#extra-unidad").value),
     categoriaId: form.querySelector(".ing-categoria-valor").value,
-    // El catálogo no guarda «comestible»: se deduce de la categoría
-    // (la categoría «hogar» es la de los productos de limpieza, y la
-    // lista marca esas líneas con su estilo propio).
+    // The catalog does not store «edible»: it is inferred from the
+    // category (the «hogar» category holds the cleaning products, and
+    // the list marks those lines with their own style).
     comestible: form.querySelector(".ing-categoria-valor").value !== "hogar",
   };
   try {

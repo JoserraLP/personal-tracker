@@ -1,68 +1,69 @@
-# ADR-103: Eliminación de la sección de Amigos y del feed de Actividad
+# ADR-103: Removal of the Friends section and the Activity feed
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-10-23
 
-## Contexto
+## Context
 
-La web tenía un flujo social completo: pestaña **Amigos** (y su
-subsección de perfil con detalle de solo lectura del registro de
-cada persona), pestaña **Actividad** (feed de lo que eliminaban los
-amigos, `js/activity-feed.js`) y el buscador del Perfil (buscaba
-amigos). El registro personal es un uso individual y el interés era
-recuperar el historial perdido desde otras apps (TV Time), no social.
+The web app had a full social flow: the **Friends** tab (and its profile
+sub-section with read-only detail of each person's tracking), the
+**Activity** tab (feed of what friends removed, `js/activity-feed.js`)
+and the Profile search (it searched for friends). The personal tracker is
+an individual use case and the interest was recovering lost history from
+other apps (TV Time), not social features.
 
-Eliminarlos toca:
+Removing them touches:
 
-- `index.html`: item «Amigos», item «Actividad» del dropdown de
-  perfil, subtabs `friends`/`activity`, sección `profile-section-friends`
-  (con su detalle completo), sección `profile-section-activity`,
-  toggle «Actividad de amigos» de Notificaciones y placeholder de la
-  búsqueda («...o amigos»).
-- `js/profile.js`: funciones `openFriendCard`, `loadFriendsList`,
+- `index.html`: the «Amigos» [Friends] item, the «Actividad» [Activity]
+  item of the profile dropdown, the `friends`/`activity` subtabs, the
+  `profile-section-friends` section (with its full detail), the
+  `profile-section-activity` section, the «Actividad de amigos»
+  [Friends' activity] toggle in Notifications and the search placeholder
+  («...o amigos» [...or friends]).
+- `js/profile.js`: functions `openFriendCard`, `loadFriendsList`,
   `openFriendByUid`, `openFriend`, `renderFriendTab`, `setFriendTab`,
-  `setFriendFilter`, `loadActivityFeed` y su wiring.
-- `js/ui.js`: `renderFriendsList`, `renderFriendTab` y
-  `renderActivityFeed` (+ helpers de fechas de label del feed).
-- `js/activity-feed.js` (módulo entero) e import de
-  `item-details.js` en `ui.js` (solo servía a la ficha de solo
-  lectura de amigo).
-- `js/router.js`: rutas `amigos`/`actividad` y deep-links
+  `setFriendFilter`, `loadActivityFeed` and their wiring.
+- `js/ui.js`: `renderFriendsList`, `renderFriendTab` and
+  `renderActivityFeed` (+ feed label date helpers).
+- `js/activity-feed.js` (whole module) and the import of
+  `item-details.js` in `ui.js` (it only served the friend read-only
+  card).
+- `js/router.js`: the `amigos`/`actividad` routes and deep links
   `#/perfil/amigos/<uid>`.
-- `js/app.js`: import/contexto `getAllUserProfiles` y `friendUid`.
-- `js/global-search.js`: grupo «friends» (datos, render, highlight,
-  avatares y caché de perfiles).
-- `js/settings.js`: preferencia `friend_activity` y su toggle.
+- `js/app.js`: the `getAllUserProfiles` import/context and `friendUid`.
+- `js/global-search.js`: the «friends» group (data, render, highlight,
+  avatars and profile cache).
+- `js/settings.js`: the `friend_activity` preference and its toggle.
 
-## Decisión
+## Decision
 
-Se elimina **todo el flujo social**: la pestaña de amigos, el feed de
-actividad y la búsqueda de amigos. El perfil queda con dos
-secciones: **Estadísticas** y **Ajustes**.
+The **entire social flow** is removed: the friends tab, the activity
+feed and the friends search. The profile is left with two sections:
+**Estadísticas** [Statistics] and **Ajustes** [Settings].
 
-- El router normaliza de forma tolerante rutas antiguas
-  (`#/perfil/amigos`, `#/perfil/actividad` y amigos con uid) a la
-  ruta por defecto (`#/perfil` con `invalid: true`), de modo que
-  URLs antiguas ya no rompan.
-- Las **funciones de datos de db.js** (`getAllUserProfiles`,
-  `subscribeToNotifications` y el resto de perfil) se mantienen: son
-  neutrales de la UI y `subscribeToNotifications` sigue alimentando
-  la campana. La limpieza de las que queden muertas queda para
-  refactor (estilo ADR-001).
-- Las **clases CSS** de amigos/feed (`friend-*`, `activity-*`) se
-  quedan de momento: no afectan a nada visible y quitarlas en masa
-  arriesga romper estilos en uso (los grupos del buscador comparten
-  gran parte del CSS). Limpieza diferida.
-- La preferencia guardada `friend_activity` en localStorage
-  antiguos queda como dato muerto tolerado (deep merge ignora claves
-  sobrantes al no haber wiring).
+- The router tolerantly normalizes old routes (`#/perfil/amigos`,
+  `#/perfil/actividad` and friends with uid) to the default route
+  (`#/perfil` with `invalid: true`), so old URLs no longer break.
+- The **data functions in db.js** (`getAllUserProfiles`,
+  `subscribeToNotifications` and the rest of profile) are kept: they
+  are UI-neutral and `subscribeToNotifications` still feeds the bell.
+  Cleaning up the ones left dead is deferred to a refactor (ADR-001
+  style).
+- The **CSS classes** for friends/feed (`friend-*`, `activity-*`) stay
+  for now: they affect nothing visible and removing them en masse risks
+  breaking styles in use (the search groups share much of the CSS).
+  Deferred cleanup.
+- The saved `friend_activity` preference in old localStorage remains as
+  tolerated dead data (the deep merge ignores leftover keys since there
+  is no wiring).
 
-## Consecuencias
+## Consequences
 
-- El Perfil gana foco: Estadísticas y Ajustes, sin repartos sociales.
-- Menos peticiones: la apertura ya no lee perfiles ajenos; la
-  búsqueda tampoco cachea perfiles ajenos.
-- Ningún dato del usuario se borra: los documentos siguen intactos.
+- The Profile gains focus: Statistics and Settings, with no social
+  shares.
+- Fewer requests: opening no longer reads other people's profiles; the
+  search no longer caches other people's profiles either.
+- No user data is deleted: documents remain intact.

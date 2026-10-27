@@ -1,70 +1,81 @@
-# ADR-077: Relanzamiento automático en fallo y cola de ejecuciones en auto-resolve-issues (issue #226)
+# ADR-077: Automatic relaunch on failure and a run queue in auto-resolve-issues (issue #226)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-12
 
-## Contexto
+## Context
 
-El workflow `.github/workflows/auto-resolve-issues.yml` (ADR-047 y
-ampliaciones ADR-050, ADR-054, ADR-055) resuelve automáticamente el backlog
-de issues con label `ai`: selecciona la issue más prioritaria, lanza una
-sesión headless de OpenCode (agente `sdd-master`, modelo free) que crea la
-rama y la PR contra `dev`, y tras la sesión relanza el despliegue de Pages
-(ADR-050).
+The workflow `.github/workflows/auto-resolve-issues.yml` (ADR-047 and
+the expansions ADR-050, ADR-054, ADR-055) automatically resolves the
+backlog of issues with the `ai` label: it selects the most
+prioritary issue, launches a headless OpenCode session (the `sdd-master`
+agent, the free
+model) that creates the branch and the PR against `dev`, and after the session relaunches the
+Pages deployment (ADR-050).
 
-La issue #226 reporta dos problemas del comportamiento actual:
+Issue #226 reports two problems of today's behavior:
 
-1. **Un fallo de sesión deja la issue abandonada hasta un disparo manual**:
-   en fallo (tokens del modelo free, watchdog del ADR-055, timeout), el paso
-   «Rollback en fallo de sesión» devuelve la issue a la cola y comenta el
-   motivo, pero **no relanza nada**: la issue queda en `status: todo` a la
-   espera de un nuevo evento (issue abierta, comentario o `workflow_dispatch`
-   manual). Si no llega ninguno, puede quedarse días sin procesar.
-2. **Solo caben dos ejecuciones encoladas**: el concurrency group
-   `sdd-auto-resolver` con `cancel-in-progress: false` permite 1 run en
-   ejecución + 1 en cola; cuando llega una 3ª run, GitHub **cancela
-   automáticamente** la run encolada anterior («Canceling since a higher
-   priority waiting request exists»). En la práctica, si se abren N issues
-   seguidas, solo 2 runs llegan a ejecutarse y el resto se pierden sin
-   procesar (se observó en el propio run: la run de la issue #226 disparada
-   por el evento `issues` quedó `cancelled` al entrar el dispatch manual en
-   el grupo).
+1. **A session failure leaves the issue abandoned until
+   a manual trigger**:
+   on failure (the free model's tokens, ADR-055's watchdog, a timeout), the
+   "Rollback on session failure" step returns the issue to the queue and
+   comments the reason, but **does not relaunch anything**: the issue stays in
+   `status: todo` waiting for a new event (a new issue, a comment or
+   a manual `workflow_dispatch`). If none arrives, it can
+   stay unprocessed for days.
+2. **Only two runs fit in the queue**: the concurrency
+   group `sdd-auto-resolver` with `cancel-in-progress: false` allows 1
+   run running + 1 queued; when a 3rd run arrives, GitHub
+   **automatically cancels** the previously queued run («Canceling since
+   a higher priority waiting request exists»). In practice, if
+   N issues are opened in a row, only 2 runs
+   run and the rest are lost
+   unprocessed (observed in the run itself: issue
+   #226's run triggered by the `issues` event got
+   `cancelled` when the manual dispatch entered the
+   group).
 
-Hallazgos técnicos verificados:
+Verified technical findings:
 
-- GitHub publicó (changelog 2026-05-07) **`queue: max`** en el concurrency:
-  encola **hasta 100 runs por grupo** que se ejecutan **en orden**, sin
-  cancelar las encoladas, cuando `cancel-in-progress` es `false` (o no está
-  definido). Es exactamente la semántica «encolar varias ejecuciones, no
-  solo dos».
-- `gh workflow run` (y la API de `workflow_dispatch`) **rechaza inputs no
-  declarados** en el workflow con HTTP 422 (`Unexpected inputs provided`).
-  Por tanto, el relanzamiento necesita un input declarado (`retry`) y debe
-  apuntar a un ref cuya versión del workflow lo declare: `--ref dev` (dev
-  se actualiza antes que main al fusionar la PR; main solo tras la
-  promoción).
-- El mecanismo WIP del ADR-047 (sección 7-d, issue #128) ya conserva el
-  progreso de una sesión fallida en `wip/issue-N` y lo restaura en la run
-  siguiente (`wip-restore`): el relanzamiento reutiliza ese mecanismo tal
-  cual, de modo que un reintento **continúa el trabajo**, no empieza de
-  cero.
-- Las runs canceladas **mientras están encoladas no ejecutan ningún paso**:
-  desde dentro de un run en ejecución, un paso con `if: cancelled()` solo se
-  ejecuta cuando se cancela el run en marcha, que con `queue: max` y
-  `cancel-in-progress: false` solo puede hacer el usuario manualmente (GitHub
-  ya no cancela runs encoladas). La cláusula «o es cancelado» del
-  requerimiento (con su salvedad «siempre que no lo haya cancelado el
-  usuario manualmente») queda resuelta por la **causa raíz**: con la cola
-  nueva, las ejecuciones ya no se cancelan automáticamente.
+- GitHub released (a 2026-05-07 changelog) **`queue: max`** in the
+  concurrency: it queues **up to 100 runs per group** that run **in
+  order**, without cancelling the queued ones, when
+  `cancel-in-progress` is `false` (or
+  undefined). That is exactly the "queue several runs, not
+  just two" semantics.
+- `gh workflow run` (and the
+  `workflow_dispatch` API) **rejects inputs not
+  declared** in the workflow with HTTP 422 (`Unexpected inputs provided`).
+  Therefore the relaunch needs a declared input (`retry`) and must
+  point at a ref whose workflow version declares it:
+  `--ref dev` (dev updates before
+  main on PR merge; main only after the
+  promotion).
+- ADR-047's WIP mechanism (section 7-d, issue #128) already keeps a
+  failed session's progress in `wip/issue-N` and restores it on
+  the next run (`wip-restore`): the relaunch reuses that
+  mechanism as-is, so a retry **continues the
+  work**, it does not start from
+  scratch.
+- Runs cancelled **while queued run no step at
+  all**: from inside a running run, a step with
+  `if: cancelled()` only runs when the active run is
+  cancelled, which with `queue: max` and
+  `cancel-in-progress: false` only the user can do manually
+  (GitHub no longer cancels queued runs). The requirement's "or is
+  cancelled" clause (with its caveat "unless the
+  user cancelled it manually") is resolved by the **root
+  cause**: with the new queue, runs are no longer cancelled
+  automatically.
 
-## Decisión
+## Decision
 
-**Dos cambios en `.github/workflows/auto-resolve-issues.yml`:**
+**Two changes in `.github/workflows/auto-resolve-issues.yml`:**
 
-### 1. Cola de ejecuciones: `queue: max` en el concurrency group
+### 1. A run queue: `queue: max` in the concurrency group
 
 ```yaml
 concurrency:
@@ -73,171 +84,209 @@ concurrency:
   queue: max
 ```
 
-- Hasta **100 runs encoladas** en el grupo; se ejecutan **en orden, una
-  sesión a la vez** (se conserva el diseño «una sola sesión activa» de
-  ADR-047; `cancel-in-progress: false` nunca mata una sesión activa).
-- Las runs encoladas **ya no se cancelan** al llegar una nueva: N issues
-  abiertas seguidas generan N runs que se procesan secuencialmente; cada
-  run selecciona la issue más prioritaria en `status: todo` y la reclama a
-  `in-progress` (paso «Reclamar», anti-race), así que cada una trabaja una
-  issue distinta.
-- La **cancelación manual** del usuario sigue siendo posible (cancela la
-  run en marcha; la siguiente de la cola empieza). No hay relanzamiento en
-  ese caso: ver punto 3.
+- Up to **100 queued runs** in the
+  group; they run **in order, one session at a time**
+  (ADR-047's "one active session" design is kept;
+  `cancel-in-progress: false` never kills an active session).
+- Queued runs **are no longer cancelled** when a new one arrives: N
+  issues opened in a row generate N runs processed sequentially; each
+  run selects the most prioritary issue in `status: todo` and claims it to
+  `in-progress` (the "Claim" step, anti-race), so each one works
+  a different issue.
+- The user's **manual cancellation** stays possible (it cancels
+  the in-flight run; the next one in the queue starts). There is no
+  relaunch in that case: see point 3.
 
-### 2. Relanzamiento automático en fallo de sesión (con tope de reintentos)
+### 2. Automatic relaunch on session failure (with a retry cap)
 
-Nuevo input interno `retry` (número, default 0) en `workflow_dispatch` y el
-paso «Rollback en fallo de sesión» se sustituye por «Relanzar o devolver a
-la cola en fallo de sesión» (`if: failure() && selected != 'NONE' &&
-dry_run != 'true'`), best-effort, con dos ramas:
+A new internal input `retry` (a number, default
+ 0) in `workflow_dispatch`, and the "Rollback on session
+failure" step is replaced by "Relaunch or return to the
+queue on session failure" (`if: failure() && selected != 'NONE'
+&& dry_run != 'true'`), best-effort, with two branches:
 
-- **Quedan reintentos** (`retry + 1 <= MAX_RELAUNCHES`, con
-  `MAX_RELAUNCHES = 2` → **3 intentos en total**):
-  1. La issue **se mantiene en `status: in-progress`** (el relanzamiento la
-     retoma vía dispatch con `issue_number`, que acepta cualquier status, y
-     el selector no la vuelve a elegir mientras tanto).
-  2. Se comenta en la issue el fallo con su motivo y el intento
-     (`⚠️ La sesión automática de SDD falló. Motivo: ... Se relanza
-     automáticamente (intento N de 3).`; N cuenta el intento global, el
-     fallido inclusive).
-  3. Se relanza: `gh workflow run auto-resolve-issues.yml --ref dev
-     -f issue_number=<N> -f retry=<N+1>`.
-  4. La run relanzada entra en la cola del concurrency (si hay otras runs,
-     espera su turno), restaura el progreso con `wip-restore` (issue #128)
-     y recibe el prompt MODO ITERACIÓN (dispatch con `issue_number` →
-     `resume=true`): reanuda el task file y actualiza la rama/PR existentes.
-- **Reintentos agotados** (`retry + 1 > MAX_RELAUNCHES`): comportamiento
-  previo — la issue vuelve a la cola (`status: todo`, o `prev_status` si es
-  un estado significativo distinto de `in-progress`: `blocked`,
-  `needs-review`…) con comentario indicando el agotamiento y el motivo.
-- **Fallo del propio dispatch de relanzamiento** (p. ej. en la ventana
-  previa a la fusión de esta PR, cuando `dev` aún no declara el input
-  `retry` y la API lo rechaza con HTTP 422): se aplica el mismo
-  `return_to_queue` que en el agotamiento (issue a la cola + comentario
-  «no se pudo relanzar automáticamente»), de modo que la issue **nunca se
-  queda colgada en `in-progress`** sin sesión en marcha.
+- **Retries left** (`retry + 1 <= MAX_RELAUNCHES`, with
+  `MAX_RELAUNCHES = 2` → **3 attempts in total**):
+  1. The issue **stays in `status: in-progress`** (the relaunch
+     resumes it via a dispatch with `issue_number`, which accepts
+     any status, and the selector does not re-pick it meanwhile).
+  2. The failure is commented on the issue with its reason and the
+     attempt (`⚠️ La sesión automática de SDD falló. Motivo: ... Se
+     relanza automáticamente (intento N de 3).`; N counts
+     the global attempt, the failed one included).
+  3. It relaunches: `gh workflow run auto-resolve-issues.yml --ref
+     dev -f issue_number=<N> -f retry=<N+1>`.
+  4. The relaunched run enters the concurrency's queue (if there are
+     other runs, it waits its turn), restores the
+     progress with `wip-restore` (issue #128) and
+     receives the ITERATION
+     MODE prompt (a dispatch with
+     `issue_number` →
+     `resume=true`): it resumes the task file and updates the
+     existing branch/PR.
+- **Retries exhausted** (`retry + 1 > MAX_RELAUNCHES`): the previous
+  behavior — the
+  issue returns to the queue (`status: todo`, or
+  `prev_status` if it is a meaningful state other than
+  `in-progress`: `blocked`,
+  `needs-review`…) with a comment indicating the exhaustion and the
+  reason.
+- **The relaunch's own dispatch fails** (e.g. in the window before this PR's
+  merge, when `dev` does not yet declare the
+  `retry` input and the API rejects it with HTTP
+  422): the same `return_to_queue` as on exhaustion
+  applies (the issue to the queue + a comment "it could not be
+  relaunched automatically"), so the issue **never
+  stays hung in `in-progress`** with no
+  session running.
 
-Detalles de robustez:
+Robustness details:
 
-- El input `retry` se **sanitiza** (solo dígitos) antes de usar; los fallos
-  del propio paso son best-effort (`|| true`/`|| echo AVISO`): un fallo del
-  dispatch nunca tiñe el run con un motivo falso.
-- El `--ref dev` es deliberado y documentado en el YAML: el input `retry`
-  solo existe en la versión nueva del workflow, y el dispatch API valida los
-  inputs contra el ref indicado (HTTP 422 si el input no está declarado).
-  Tras la promoción `dev → main`, el ref `dev` sigue siendo válido (dev
-  tiene la versión nueva).
-- El paso **no relanza si no hay `candidate.json`** (el fallo fue anterior a
-  la selección: checkout/instalación) ni en runs `dry_run`.
-- Orden de pasos intacto: sesión → `wip-save` (fallo) → relanzar/devolver a
-  la cola (fallo) → dispatch de deploy (éxito) → resumen. Un fallo del paso
-  de deploy **no** relanza la sesión (los pasos con `if: failure()` ya
-  corrieron).
+- The `retry` input is **sanitized** (digits only) before use;
+  the step's own failures are best-effort
+  (`|| true`/`|| echo AVISO`): a dispatch failure never
+  tinges the run with a false reason.
+- The `--ref dev` is deliberate and documented in the YAML: the
+  `retry` input only exists in the workflow's new version, and the
+  dispatch API validates the inputs against the given ref (HTTP 422 if
+  the input is not declared). After the
+  `dev → main` promotion, the `dev` ref
+  stays valid (dev has the new version).
+- The step **does not relaunch without
+  `candidate.json`** (the failure preceded the selection:
+  checkout/installation) nor on
+  `dry_run` runs.
+- The steps' order is intact: session →
+  `wip-save` (failure) → relaunch/return to the queue
+  (failure) → the deploy dispatch (success) → the summary. A deploy
+  step's failure does **not** relaunch the session (the steps with
+  `if: failure()` already ran).
 
-### 3. Cancelación: NO relanzar la cancelación manual
+### 3. Cancellation: do NOT relaunch the manual cancellation
 
-El requerimiento pide relanzar si el run «es cancelado, siempre que no lo
-haya cancelado el usuario manualmente». Con `queue: max`:
+The requirement asks to relaunch if the run "is cancelled, unless
+the user cancelled it manually". With `queue: max`:
 
-- GitHub **ya no cancela runs encoladas** por prioridad (era la única
-  cancelación automática relevante: la causa del «solo dos» y de la run
-  `cancelled` observada).
-- Una run en marcha solo se cancela manualmente (`cancel-in-progress:
-  false` protege las activas). Un paso `if: cancelled()` en una run
-  cancelada **mientras estaba encolada ni siquiera se ejecuta** (no hay
-  job), así que relanzar desde `cancelled()` relanzaría exactamente las
-  cancelaciones manuales que la issue excluye.
+- GitHub **no longer cancels queued runs** by priority (it was
+  the only relevant automatic cancellation: the cause of
+  "only two" and of the observed `cancelled`
+  run).
+- An in-flight run is only cancelled manually
+  (`cancel-in-progress: false` protects the active ones). A
+  `if: cancelled()` step on a run cancelled **while queued is not
+  even run** (there is no job), so relaunching from
+  `cancelled()` would relaunch exactly the
+  manual cancellations the issue excludes.
 
-Por eso **no hay paso de relanzamiento por cancelación**: la cláusula queda
-satisfecha por la causa raíz (ya no existen cancelaciones automáticas que
-relanzar) y se evita el efecto adverso de relanzar una cancelación explícita
-del usuario (que cancelaría también los reintentos del relanzamiento). Se
-documenta en la cabecera del workflow y en este ADR.
+That is why **there is no cancellation-based relaunch step**: the
+clause is satisfied by the root cause (there are no more
+automatic cancellations to relaunch) and the adverse effect of relaunching
+an explicit user cancellation is avoided (which would also cancel the
+relaunch's retries). It is documented in the workflow's header and in
+this ADR.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Quitar el concurrency group** (dejar que GitHub ejecute N runs en
-  paralelo): descartado — pierde la garantía «una sesión a la vez» de
-  ADR-047, multiplica el consumo del modelo free y reintroduce la carrera de
-  selección (dos runs podrían elegir la misma issue antes de reclamarla).
-- **Groups por issue** (`group: sdd-${{ inputs.issue_number }}`): descartado
-  — no resuelve «encolar varias ejecuciones» del backlog global (el número
-  de issue no se conoce en el evento `issues` hasta seleccionar) y añade
-  complejidad sin beneficio frente a `queue: max`.
-- **Relanzar con `gh workflow run` sin el input `retry`** (contar reintentos
-  por otra vía, p. ej. labels `retry: N`): descartado — el input declarado
-  es el mecanismo más simple y no contamina las labels de la issue.
-- **Relanzar también en `if: cancelled()`**: descartado — con `queue: max`
-  la cancelación de una run en marcha solo es manual (la única cancelación
-  automática, la de runs encoladas, desaparece), y el requerimiento excluye
-  explícitamente la cancelación manual.
-- **Sin tope de reintentos (relanzar siempre)**: descartado — un fallo
-  sistemático (p. ej. cuota del modelo agotada de verdad) lanzaría un bucle
-  infinito de runs que consumen minutos de Actions; el tope de 2 reintentos
-  (3 intentos) equilibra la recuperación real (con WIP, cada intento avanza)
-  y el coste.
+- **Removing the concurrency group** (letting GitHub run N runs
+  in parallel): rejected — it loses ADR-047's "one
+  session at a time" guarantee, multiplies the free model's consumption
+  and reintroduces the selection race (two runs could pick
+  the same issue before claiming it).
+- **Groups per issue** (`group: sdd-${{ inputs.issue_number }}`):
+  rejected — it does not solve "queue several runs" of the global backlog
+  (the issue number is unknown in the `issues`
+  event until selecting) and adds
+  complexity without benefit over `queue: max`.
+- **Relaunching with `gh workflow run` without the `retry`
+  input** (counting retries by another path, e.g.
+  `retry: N` labels): rejected — the declared input
+  is the simplest mechanism and does not pollute the issue's labels.
+- **Relaunching also on `if: cancelled()`**: rejected — with
+  `queue: max` cancelling an in-flight run is only manual (the
+  only automatic cancellation, of queued runs, disappears), and the
+  requirement explicitly excludes the manual cancellation.
+- **No retry cap (always relaunch)**: rejected — a systematic
+  failure (e.g. the model's quota truly exhausted) would
+  launch an infinite loop of runs consuming Actions minutes; the
+  cap of 2 retries (3 attempts) balances real
+  recovery (with WIP, each attempt advances) and cost.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Un fallo ya no abandona la issue**: la sesión se relanza automáticamente
-  sobre la misma issue hasta 3 intentos, y cada intento continúa el progreso
-  guardado en `wip/issue-N` (issue #128) en vez de empezar de cero.
-- **Cola real de ejecuciones**: N runs encoladas se procesan en orden, una
-  sesión a la vez; ya no se pierden runs por la cancelación automática de la
-  3ª en llegar (el problema que motivó la issue).
-- **Trazabilidad**: cada fallo se comenta en la issue con motivo e intento;
-  el agotamiento de reintentos devuelve la issue a la cola con comentario
-  explícito.
-- **La issue queda protegida durante los reintentos**: se mantiene en
-  `in-progress`, así que el selector no la re-elige ni otra run la adopta
-  mientras el relanzamiento hace cola.
-- **Retrocompatible y best-effort**: si el dispatch del relanzamiento falla
-  (permisos, red), el run no miente sobre el motivo; el flujo previo
-  (devolver a la cola + comentario) sigue como última red.
+- **A failure no longer abandons the issue**: the session is
+  relaunched automatically over the same issue up to
+  3 attempts, and each attempt continues the progress
+  saved in `wip/issue-N` (issue #128) instead of starting from
+  scratch.
+- **A real run queue**: N queued runs are processed in order,
+  one session at a time; runs are no longer lost to the automatic
+  cancellation of the 3rd arriving one (the problem that
+  motivated the issue).
+- **Traceability**: every failure is commented on the issue with
+  reason and attempt; the retries' exhaustion returns the issue to
+  the queue with an explicit comment.
+- **The issue is protected during the retries**: it stays in
+  `in-progress`, so the selector does not re-pick it
+  nor does another run adopt it while the relaunch queues.
+- **Backwards compatible and best-effort**: if the relaunch's dispatch
+  fails (permissions, network), the run does not lie about
+  the reason; the previous flow
+  (return to the queue + a comment) remains as the last
+  resort.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Consumo de minutos de Actions en reintentos**: un fallo sistemático
-  cuesta hasta 3 intentos × hasta 90 min; mitigado con el tope y con el
-  hecho de que el watchdog del ADR-055 corta las sesiones estancadas.
-- **`queue: max` depende de la disponibilidad de la función en GitHub**:
-  publicada en GA (changelog 2026-05-07); si el plan del repositorio no la
-  soportara, GitHub rechazaría el workflow al evaluarlo desde la rama por
-  defecto (visible en el primer run tras la promoción). Riesgo asumido y
-  fácil de revertir (quitar una línea).
-- **El relanzamiento usa `--ref dev`**: si `dev` no contuviera la versión
-  nueva del workflow en el momento del fallo (p. ej. fallo antes de
-  fusionar), el dispatch sería rechazado (HTTP 422); en ese caso el paso
-  aplica el `return_to_queue` (issue a la cola + comentario) en vez de
-  dejar la issue colgada en `in-progress`. Tras la fusión de esta PR, `dev`
-  siempre tiene la versión nueva.
-- **Posible doble procesamiento leve**: si entre el fallo y la ejecución del
-  relanzamiento otra run encolada selecciona la misma issue (solo posible si
-  la issue volvió a `todo` por una ruta previa a esta versión), el
-  relanzamiento la retoma igualmente en modo iteración (actualiza la
-  rama/PR existente, no duplica PRs). Caso improbable y sin consecuencias
-  graves.
+- **Actions minutes consumed in retries**: a systematic failure
+  costs up to 3 attempts
+  ×
+  up to 90 min; mitigated by the cap and by
+  ADR-055's watchdog cutting stalled sessions.
+- **`queue: max` depends on the feature's availability on
+  GitHub**: released in GA (the 2026-05-07 changelog); if the repository's plan did not support it,
+  GitHub would reject the workflow when evaluating it from the
+  default branch (visible on the first run after the promotion).
+  An assumed risk, easy to
+  reverse (remove one line).
+- **The relaunch uses `--ref dev`**: if `dev` did not
+  contain the workflow's new
+  version at the moment of failure (e.g. a failure
+  before merging), the dispatch would be rejected (HTTP
+  422); in that case the
+  step applies `return_to_queue` (the issue
+  to the queue + a comment) instead
+  of
+  leaving the issue hung in `in-progress`. After
+  this PR's merge, `dev` always
+  has the new version.
+- **A possible light double processing**: if between the
+  failure and the relaunch's execution another queued run selects the same
+  issue (only possible if the issue went back to
+  `todo` by a pre-this-version path), the
+  relaunch resumes it in iteration mode anyway (it updates the existing
+  branch/PR, it does not duplicate PRs). An unlikely case with no
+  serious consequences.
 
-### Neutras
+### Neutral
 
-- **`docs/manual-de-usuario.md` sin cambios**: cambio interno de
-  infraestructura de CI, no visible para el usuario final de la web (regla
-  3 de AGENTS.md; misma decisión que ADR-047, ADR-050).
-- **README actualizado** (sección 6, punto 6): relanzamiento automático en
-  fallo (hasta 2 reintentos) y cola de ejecuciones.
-- **El resto del workflow no cambia**: selección, reclamación, WIP,
-  iteración por comentario, dispatch de deploy y resumen quedan intactos.
+- **`docs/manual-de-usuario.md` unchanged**: an internal CI infrastructure
+  change, not visible to the web's end user (AGENTS.md's rule
+  3; the same decision as ADR-047, ADR-050).
+- **README updated** (section 6, point 6): the automatic
+  relaunch on failure (up to 2 retries) and the run
+  queue.
+- **The rest of the workflow does not change**: selection,
+  claim, WIP, iteration via comment, the deploy dispatch and the summary
+  stay intact.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `.github/workflows/auto-resolve-issues.yml` | **Modificado**: input `retry` en `workflow_dispatch` (número, default 0, sanitizado); concurrency con `queue: max` (comentario de la sección y de la cabecera actualizados con la cola y el relanzamiento); el paso «Rollback en fallo de sesión» se sustituye por «Relanzar o devolver a la cola en fallo de sesión» (best-effort: reintentos con `gh workflow run --ref dev -f issue_number -f retry`, issue mantenida en in-progress y comentario por intento; agotados → vuelve a la cola con `prev_status` y comentario; `MAX_RELAUNCHES=2`); log del reintento en el caso dispatch del paso candidato; eliminado el output `claim_owner` (ya no lo consume nadie) |
-| `README.md` | **Modificado**: sección 6, punto 6 — relanzamiento automático en fallo de sesión (hasta 2 reintentos) y encolado de varias ejecuciones |
-| `docs/adr-077-relanzamiento-y-cola-auto-resolve.md` | **Nuevo**: este documento |
-| `tasks/task-issue-226.json` | Task file de la tarea (title/description, criterios de aceptación AC1–AC8, DoD y bloque `issue` con la issue #226) |
+| `.github/workflows/auto-resolve-issues.yml` | **Modified**: the `retry` input in `workflow_dispatch` (a number, default 0, sanitized); the concurrency with `queue: max` (the section's and the header's comments updated with the queue and the relaunch); the "Rollback on session failure" step is replaced by "Relaunch or return to the queue on session failure" (best-effort: retries with `gh workflow run --ref dev -f issue_number -f retry`, the issue kept in-progress and a comment per attempt; exhausted → it returns to the queue with `prev_status` and a comment; `MAX_RELAUNCHES=2`); the retry log in the candidate step's dispatch case; the `claim_owner` output removed (nobody consumes it anymore) |
+| `README.md` | **Modified**: section 6, point 6 — the automatic relaunch on session failure (up to 2 retries) and queueing several runs |
+| `docs/adr-077-relanzamiento-y-cola-auto-resolve.md` | **New**: this document |
+| `tasks/task-issue-226.json` | Task file of the task (title/description, acceptance criteria AC1–AC8, DoD and the `issue` block with issue #226) |
 
 Related issue: #226 — https://github.com/gonzalitojh/Registro-personal/issues/226

@@ -1,11 +1,11 @@
 // =============================================================
-// Búsqueda de libros.
-// Fuente principal: Google Books, con agrupación inteligente por
-// título + autor para que múltiples ediciones de la misma obra
-// aparezcan como un solo resultado. Se muestran todas las portadas
-// y sinopsis disponibles al añadir, dejando al usuario elegir.
-// Fuente de respaldo: Open Library, cuando Google Books no
-// encuentra nada o falla.
+// Book search.
+// Main source: Google Books, with smart grouping by
+// title + author so that multiple editions of the same work
+// appear as a single result. All available covers
+// and synopses are shown when adding, letting the user choose.
+// Fallback source: Open Library, when Google Books
+// finds nothing or fails.
 // =============================================================
 
 import { GOOGLE_BOOKS_API_KEY } from "./config.js";
@@ -15,8 +15,8 @@ const OPEN_LIBRARY_URL = "https://openlibrary.org/search.json";
 const GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes";
 const PAGE_SIZE = 20;
 
-// Google Books a veces devuelve 503 "Service temporarily unavailable"
-// de forma puntual. Reintentamos un par de veces antes de rendirnos.
+// Google Books sometimes sporadically returns 503 "Service temporarily unavailable".
+// We retry a couple of times before giving up.
 async function fetchWithRetry(url, retries = 2, delayMs = 700) {
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -35,11 +35,11 @@ async function fetchWithRetry(url, retries = 2, delayMs = 700) {
   throw lastError;
 }
 
-/* ---------- Utilidades de agrupación (Google Books) ---------- */
+/* ---------- Grouping utilities (Google Books) ---------- */
 
-// Normaliza un título para agrupación: minúsculas, quita información
-// de serie tipo "(Series, #N)" y normaliza espacios. No elimina
-// subtítulos porque Google Books ya los separa en volumeInfo.subtitle.
+// Normalizes a title for grouping: lowercase, removes series info
+// like "(Series, #N)" and normalizes spaces. It does not remove
+// subtitles because Google Books already separates them in volumeInfo.subtitle.
 function normalizeTitle(title) {
   return (title || "")
     .trim()
@@ -49,8 +49,8 @@ function normalizeTitle(title) {
     .replace(/\s+/g, " ");
 }
 
-// Puntuación de una edición para elegir la mejor representante de un
-// grupo. Prioriza portada + sinopsis + más metadatos.
+// Scores an edition to pick the best representative of a
+// group. Prioritizes cover + synopsis + more metadata.
 function scoreEdition(item) {
   const info = item.volumeInfo || {};
   let score = 0;
@@ -62,8 +62,8 @@ function scoreEdition(item) {
   return score;
 }
 
-// Elige la mejor edición de un grupo para servir como representante
-// (título, autor, año, páginas, externalId).
+// Picks the best edition of a group to serve as the representative
+// (title, author, year, pages, externalId).
 function pickBestEdition(editions) {
   let best = editions[0];
   let bestScore = scoreEdition(best);
@@ -77,15 +77,15 @@ function pickBestEdition(editions) {
   return best;
 }
 
-// Normaliza una URL de portada: http → https, quita parámetros innecesarios.
+// Normalizes a cover URL: http → https, removes unnecessary parameters.
 function normalizeCoverUrl(url) {
   if (!url) return null;
   return url.replace(/^http:\/\//, "https://");
 }
 
-// Agrupa raw items de Google Books por título+autor normalizados.
-// Devuelve un array de resultados enriquecidos con allCovers[],
-// allDescriptions[] y editionsCount.
+// Groups raw Google Books items by normalized title+author.
+// Returns an array of results enriched with allCovers[],
+// allDescriptions[] and editionsCount.
 function groupBooksByWork(rawItems) {
   const groups = new Map();
 
@@ -103,7 +103,7 @@ function groupBooksByWork(rawItems) {
     group.editions.push(item);
     group.editionIds.push(item.id);
 
-    // Recoger portadas únicas (preferir thumbnail)
+    // Collect unique covers (prefer thumbnail)
     const coverRaw =
       (info.imageLinks && info.imageLinks.thumbnail) ||
       (info.imageLinks && info.imageLinks.smallThumbnail);
@@ -112,14 +112,14 @@ function groupBooksByWork(rawItems) {
       group.covers.push(cover);
     }
 
-    // Recoger sinopsis únicas (recortar y deduplicar)
+    // Collect unique synopses (trim and deduplicate)
     const desc = (info.description || "").trim();
     if (desc && !group.descriptions.includes(desc)) {
       group.descriptions.push(desc);
     }
   }
 
-  // Convertir cada grupo en un único resultado de búsqueda
+  // Turn each group into a single search result
   return Array.from(groups.values()).map((group) => {
     const best = pickBestEdition(group.editions);
     const info = best.volumeInfo || {};
@@ -133,7 +133,7 @@ function groupBooksByWork(rawItems) {
       pages: info.pageCount || null,
       coverUrl: group.covers[0] || null,
       description: group.descriptions[0] || "",
-      // Campos enriquecidos (solo para resultados de Google Books agrupados)
+      // Enriched fields (only for grouped Google Books results)
       allCovers: group.covers,
       allDescriptions: group.descriptions,
       editionsCount: group.editions.length,
@@ -141,7 +141,7 @@ function groupBooksByWork(rawItems) {
   });
 }
 
-/* ---------- Google Books (fuente principal) ---------- */
+/* ---------- Google Books (main source) ---------- */
 
 export async function searchGoogleBooksResults(searchTerm, page = 1) {
   const startIndex = (page - 1) * PAGE_SIZE;
@@ -159,10 +159,10 @@ export async function searchGoogleBooksResults(searchTerm, page = 1) {
   return { items, hasMore, source: "googlebooks" };
 }
 
-/* ---------- Open Library (respaldo) ---------- */
+/* ---------- Open Library (fallback) ---------- */
 
-// Dedupe simple para Open Library (ya agrupa por obra, pero por
-// si acaso dos ediciones distintas se cuelan).
+// Simple dedupe for Open Library (it already groups by work, but
+// just in case two different editions slip through).
 function dedupeBooks(results) {
   const seen = new Map();
   for (const r of results) {
@@ -189,7 +189,7 @@ function extractEditionLanguage(doc) {
 
 function mapOpenLibraryResult(d) {
   return {
-    externalId: d.key, // p.ej. "/works/OL27258W"
+    externalId: d.key, // e.g. "/works/OL27258W"
     type: "book",
     title: d.title,
     author: (d.author_name || []).join(", "),
@@ -197,18 +197,18 @@ function mapOpenLibraryResult(d) {
     pages: null,
     coverUrl: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
     language: extractEditionLanguage(d),
-    // Open Library no tiene allCovers/allDescriptions: un solo resultado por obra.
+    // Open Library has no allCovers/allDescriptions: a single result per work.
     allCovers: d.cover_i ? [`https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg`] : [],
     allDescriptions: [],
     editionsCount: 1,
   };
 }
 
-// spanishOnly: si es true, descarta directamente los libros cuya edición
-// representativa esté confirmada en otro idioma (se conservan los que no
-// tienen ese dato, para no perder resultados por falta de metadatos).
-// Si es false, no se descarta nada, pero los que sí están en español
-// aparecen primero.
+// spanishOnly: if true, books whose representative edition is confirmed
+// in another language are directly discarded (those without that
+// data are kept, so results are not lost for lack of metadata).
+// If false, nothing is discarded, but those that are indeed in Spanish
+// appear first.
 export async function searchOpenLibrary(searchTerm, page = 1, spanishOnly = false) {
   const url =
     `${OPEN_LIBRARY_URL}?q=${encodeURIComponent(searchTerm)}` +
@@ -233,8 +233,8 @@ export async function searchOpenLibrary(searchTerm, page = 1, spanishOnly = fals
   return { items, hasMore, source: "openlibrary" };
 }
 
-// Sinopsis de un libro de Open Library. Se pide solo al añadirlo,
-// no durante la búsqueda.
+// Synopsis of an Open Library book. It is only requested when adding it,
+// not during the search.
 export async function getOpenLibraryDescription(workKey) {
   const url = `https://openlibrary.org${workKey}.json`;
   const data = await fetchJson(url, { retries: 1 }).catch(() => null);
@@ -246,13 +246,13 @@ export async function getOpenLibraryDescription(workKey) {
   return "";
 }
 
-/* ---------- Punto de entrada ---------- */
+/* ---------- Entry point ---------- */
 
-// page 1: Google Books como fuente principal (mejores metadatos,
-// agrupación inteligente por título+autor).
-// Para páginas siguientes, pásale la fuente que devolvió la página 1
-// en forceSource, para seguir "cargando más" desde la misma fuente.
-// Si Google Books falla o no encuentra nada, se intenta Open Library.
+// Page 1: Google Books as the main source (best metadata,
+// smart grouping by title+author).
+// For subsequent pages, pass the source returned by page 1
+// in forceSource, to keep "loading more" from the same source.
+// If Google Books fails or finds nothing, Open Library is tried.
 export async function searchBooks(searchTerm, page = 1, forceSource = null, spanishOnly = false) {
   const source = forceSource || "googlebooks";
 
@@ -267,7 +267,7 @@ export async function searchBooks(searchTerm, page = 1, forceSource = null, span
     if (forceSource === "googlebooks") throw err;
   }
 
-  // Respaldo: Open Library
+  // Fallback: Open Library
   try {
     return await searchOpenLibrary(searchTerm, page, spanishOnly);
   } catch (err) {

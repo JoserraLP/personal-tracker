@@ -1,7 +1,7 @@
 // =============================================================
-// Utilidades de fecha. Todas las fechas se guardan como string
-// "YYYY-MM-DD" (el mismo formato que produce <input type="date">),
-// así que se pueden ordenar como texto sin conversiones.
+// Date utilities. All dates are stored as "YYYY-MM-DD" strings
+// (the same format produced by <input type="date">),
+// so they can be sorted as text without conversions.
 // =============================================================
 
 export function todayISO() {
@@ -14,9 +14,9 @@ export function formatDateEs(iso) {
   return `${d}/${m}/${y}`;
 }
 
-// Resta días a una fecha "YYYY-MM-DD" y devuelve otra fecha en el mismo
-// formato canónico. Se usa para calcular umbrales de actividad (p. ej.
-// "hace un año") comparables como texto.
+// Subtracts days from a "YYYY-MM-DD" date and returns another date in the same
+// canonical format. It is used to compute activity thresholds (e.g.
+// "a year ago") comparable as text.
 export function subtractDays(iso, days) {
   const d = new Date(iso + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() - days);

@@ -1,217 +1,214 @@
-# ADR-056: Re-búsqueda automática en el catálogo activo y fallback de portadas en el buscador global (issue #149)
+# ADR-056: Automatic re-search on the active catalog and cover fallback in the global search (issue #149)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-09
 
-## Contexto
+## Context
 
-La issue #149 («Múltiple búsqueda en catálogo») reporta dos bugs en el
-buscador global (`js/global-search.js`):
+Issue #149 («Múltiple búsqueda en catálogo») reports two bugs in the
+global search (`js/global-search.js`):
 
-1. **Bug 1 — catálogo «pegado»**: al buscar en el catálogo (p. ej.
-   películas), borrar el texto para buscar otra cosa y escribir una
-   query nueva, la sección del catálogo se queda **colgada en
-   «Buscando en el catálogo…»** y el botón de tipo (Serie/Película/
-   Libro) sigue marcado, aunque ya no se esté buscando nada. Diagnóstico
-   de la issue: `performSearch()` no resetea `activeGroup` cuando la
-   query queda vacía o < 2 caracteres, y al escribir una query nueva con
-   un grupo activo, `renderResults()` muestra el estado de carga sin
-   volver a llamar a `runExternalSearch()` para la nueva query (la caché
-   `externalCache[group].query` no coincide con la query nueva). La
-   issue proponía dos opciones: desmarcar el catálogo al borrar, o
-   esperar 1-2 segundos sin input (debounce) y re-buscar en el mismo
-   catálogo ya seleccionado.
-2. **Bug 2 — errores 403 en consola**: las portadas de la colección
-   guardadas con `coverUrl` (p. ej. URLs de CDNs que bloquean
-   hotlinking, como `fbcdn.net`) fallan al cargar con 403 (Forbidden) y
-   no hay ningún fallback que sustituya la imagen por el placeholder,
-   generando errores en la consola del navegador. Lo mismo puede
-   ocurrir con los avatares de amigos.
+1. **Bug 1 — "stuck" catalog**: when searching in the catalog (e.g.
+   movies), clearing the text to search something else and typing a new
+   query, the catalog section stays **hung on "Buscando en el
+   catálogo…"** and the type button (Series/Movie/
+   Book) stays marked, even though nothing is being searched anymore. The
+   issue's diagnosis: `performSearch()` does not reset `activeGroup` when the
+   query is empty or < 2 characters, and when typing a new query with
+   an active group, `renderResults()` shows the loading state without
+   calling `runExternalSearch()` again for the new query (the cache
+   `externalCache[group].query` does not match the new query). The
+   issue proposed two options: unmark the catalog on clearing, or
+   wait 1-2 seconds without input (debounce) and re-search the already
+   selected catalog.
+2. **Bug 2 — 403 errors in the console**: collection covers stored with
+   `coverUrl` (e.g. URLs from CDNs that block
+   hotlinking, like `fbcdn.net`) fail to load with 403 (Forbidden) and there is
+   no fallback replacing the image with the placeholder,
+   generating console errors. The same can happen with friend
+   avatars.
 
 Related issue: #149 — https://github.com/gonzalitojh/Registro-personal/issues/149
 
-## Decisión
+## Decision
 
-### 1. Bug 1 — desmarcar al borrar + re-búsqueda automática en el catálogo activo
+### 1. Bug 1 — unmark on clearing + automatic re-search of the active catalog
 
-En `performSearch()` (el punto de entrada con debounce de 200 ms para
-los cambios del input) se hacen dos cambios:
+In `performSearch()` (the 200 ms-debounced entry point for
+input changes) two changes are made:
 
-- **Al borrar el texto (query vacía o < 2 caracteres)**: se asigna
-  `activeGroup = null` **antes** de llamar a `renderHint()`. Es
-  suficiente para desmarcar visualmente el botón de tipo porque
-  `renderTypeButtons()` marca la clase `is-active` comparando cada
-  grupo con `activeGroup`; al re-renderizar el hint, los tres botones
-  vuelven a quedar sin pulsar y el usuario elige de nuevo el tipo de
-  catálogo.
-- **Al escribir una query nueva (>= 2 caracteres) con un catálogo
-  activo**: si la query actual **no tiene estado** en ese grupo, se
-  relanza automáticamente `runExternalSearch(group, trimmed)` y se hace
-  `return` explícito. `runExternalSearch()` ya hace su propio
-  `renderResults()` (primero muestra «Buscando en el catálogo…» vía
-  `externalSectionLoadingHtml()` y luego el resultado); el `return`
-  evita que se ejecute el `renderResults(collectionResults(trimmed),
-  trimmed)` final de `performSearch()` y se renderice dos veces.
+- **When clearing the text (empty query or < 2 characters)**:
+  `activeGroup = null` is assigned **before** calling `renderHint()`. It is
+  enough to visually unmark the type button because
+  `renderTypeButtons()` marks the `is-active` class by comparing each
+  group against `activeGroup`; when re-rendering the hint, the three buttons
+  go back to unpressed and the user chooses the catalog type again.
+- **When typing a new query (>= 2 characters) with an active catalog**:
+  if the current query **has no state** in that group,
+  `runExternalSearch(group, trimmed)` is automatically relaunched and an
+  explicit `return` is done. `runExternalSearch()` does its own
+  `renderResults()` (first shows «Buscando en el catálogo…» via
+  `externalSectionLoadingHtml()` and then the result); the `return`
+  avoids running the final `renderResults(collectionResults(trimmed),
+  trimmed)` of `performSearch()` and rendering twice.
 
-Se combinan así **las dos opciones que proponía la issue** (desmarcar
-al borrar + re-buscar automáticamente al seguir escribiendo), en lugar
-de añadir un debounce de 1-2 segundos: el debounce existente de 200 ms
-es suficiente y no retrasa la respuesta del catálogo.
+Thus **the issue's two proposed options are combined** (unmark on
+clearing + automatic re-search while continuing to type), instead of
+adding a 1-2-second debounce: the existing 200 ms
+debounce is enough and does not delay the catalog's response.
 
-**Por qué en `performSearch()` y no en `renderResults()`**:
-`renderResults()` es una función de render puro con varios llamadores
+**Why in `performSearch()` and not in `renderResults()`**:
+`renderResults()` is a pure rendering function with several callers
 (`runExternalSearch`, `refreshExternalResults`, `handleTypeClick`,
-`performSearch`); poner ahí la lógica de relanzamiento crearía
-recursión (`runExternalSearch` → `renderResults` → `runExternalSearch`
-→ …) y dispararía búsquedas en flujos que no son entrada del usuario.
-En cambio, `performSearch()` es el único punto de entrada de los
-cambios de texto (debounced), ya invalida búsquedas en curso
-(`searchSeq++`) y conoce el valor actual del input.
+`performSearch`); putting the relaunch logic there would create
+recursion (`runExternalSearch` → `renderResults` → `runExternalSearch`
+→ …) and fire searches in flows that are not user input.
+Instead, `performSearch()` is the only entry point for text changes
+(debounced), it already invalidates searches in progress
+(`searchSeq++`) and knows the input's current value.
 
-**Por qué las tres guardas** (solo se relanza si ninguna se cumple):
+**Why the three guards** (it only relaunches if none holds):
 
 - `sameQueryInFlight` (`inFlight[group] && externalQuery[group] ===
-  trimmed`): si ya hay una búsqueda en vuelo para esa query exacta,
-  relanzar duplicaría la llamada a la API (el mecanismo `searchSeq` la
-  descartaría, pero sería trabajo desperdiciado).
+  trimmed`): if a search is already in flight for that exact query,
+  relaunching would duplicate the API call (the `searchSeq` mechanism
+  would discard it, but it would be wasted work).
 - `cachedForQuery` (`externalCache[group] && externalCache[group].query
-  === trimmed`): si hay caché válida para esa query exacta, la sección
-  ya se renderiza desde caché en `renderResults()`; relanzar golpearía
-  la API innecesariamente.
+  === trimmed`): if there is a valid cache for that exact query, the
+  section already renders from cache in `renderResults()`; relaunching
+  would hit the API unnecessarily.
 - `erroredForQuery` (`externalError[group] && externalError[group].query
-  === trimmed`): si la última búsqueda de esa query falló, el
-  relanzamiento automático en cada tecla spamearía la API con
-  reintentos; la sección de error se muestra igualmente (la renderiza
-  `renderResults()`) y el usuario puede reintentar explícitamente
-  volviendo a pulsar el botón de tipo (`handleTypeClick()` relanza
-  cuando no hay caché válida).
+  === trimmed`): if that query's last search failed, the
+  automatic relaunch on every keystroke would spam the API with
+  retries; the error section shows anyway (rendered by
+  `renderResults()`) and the user can retry explicitly
+  by pressing the type button again (`handleTypeClick()` relaunches
+  when there is no valid cache).
 
-Se respeta la **selección única de la issue #82**: solo se muestra la
-sección del catálogo del grupo pulsado, y el estado (carga/error/caché)
-se conserva por grupo para poder volver sin re-buscar.
+Issue #82's **single selection** is respected: only the pressed group's
+catalog section shows, and the state (loading/error/cache) is
+kept per group so one can return without re-searching.
 
-### 2. Bug 2 — fallback de portadas y avatares con listener de «error» en fase de captura
+### 2. Bug 2 — cover and avatar fallback with an "error" listener in capture phase
 
-Se registra una vez, en `setupGlobalSearch()`, un listener del evento
-`error` en **fase de CAPTURA** sobre `#global-search-results` (el
-contenedor persistente del dropdown):
+One `error` listener is registered once, in `setupGlobalSearch()`, in
+**CAPTURE phase** over `#global-search-results` (the dropdown's
+persistent container):
 
-- Cuando cualquier `<img>` descendiente falla al cargar (403/404 por
-  hotlinking bloqueado, red…), se sustituye su `src` por
-  `ui.PLACEHOLDER_COVER` (data URI fijo «Sin imagen» de `ui.js`) si la
-  imagen es un `HTMLImageElement` y tiene la clase
-  `.global-search__item-cover` (portadas de la colección) o
-  `.global-search__friend-avatar` (avatares de amigos) — las únicas dos
-  clases de imagen que renderiza el dropdown.
-- **Guard anti-bucle**: si `img.src` ya es `ui.PLACEHOLDER_COVER`, no se
-  reasigna (`return`). Reasignar `src` dispara una nueva carga; sin la
-  guarda, un fallo repetido entraría en un bucle infinito de
-  error → reasignación → error.
+- When any descendant `<img>` fails to load
+  (403/404 from blocked hotlinking, network…), its `src` is replaced with
+  `ui.PLACEHOLDER_COVER` (the fixed "Sin imagen" data URI of `ui.js`) if the
+  image is an `HTMLImageElement` and has the class
+  `.global-search__item-cover` (collection covers) or
+  `.global-search__friend-avatar` (friend avatars) — the only two
+  image classes the dropdown renders.
+- **Anti-loop guard**: if `img.src` is already `ui.PLACEHOLDER_COVER`, it is
+  not reassigned (`return`). Reassigning `src` fires a new load; without
+  the guard, a repeated failure would enter an infinite loop of
+  error → reassignment → error.
 
-**Por qué `capture: true`**: el evento `error` de los elementos media
-(`<img>`, `<video>`…) **no burbujea**, así que un listener en fase de
-burbuja sobre el contenedor nunca se dispararía. En fase de captura, el
-evento sí atraviesa el contenedor en su camino de la raíz al objetivo,
-con lo que se capturan los errores de **cualquier** imagen descendiente,
-**incluidas las de los renders futuros** que se inyectan con `innerHTML`
-(el contenedor persiste y el listener no se re-registra por render — el
-mismo patrón de delegación que ya usa el click de los botones de tipo).
+**Why `capture: true`**: media elements' (`<img>`, `<video>`…) `error`
+event **does not bubble**, so a bubble-phase listener on the container
+would never fire. In capture phase, the event does pass through the
+container on its way from the root to the target, so the errors of
+**any** descendant image are captured,
+**including future renders** injected with `innerHTML` (the container
+persists and the listener is not re-registered per render — the same
+delegation pattern the type buttons' click already uses).
 
-## Consideraciones
+## Considerations
 
-- **El fallback sustituye la imagen, no borra el histórico de la
-  consola**: los errores 403 ya impresos antes de la sustitución no
-  desaparecen del log; los nuevos sí se evitan (el navegador no loguea
-  el error de la data URI del placeholder, que siempre carga).
-- **Cobertura acotada al dropdown**: el listener solo actúa sobre las
-  dos clases de `#global-search-results`. Portadas con 403 fuera del
-  dropdown (p. ej. el modal de detalle) quedan fuera del alcance de la
-  issue #149 (ya muestran placeholder solo si la URL falta en origen,
-  vía `safeCoverUrl()`/`coverUrl || PLACEHOLDER_COVER`).
-- **Más llamadas a la API al seguir escribiendo con catálogo activo**:
-  cada query nueva (debounced 200 ms) dispara una búsqueda externa.
-  Antes el flujo quedaba colgado; ahora consulta de verdad — es el
-  comportamiento pedido por la issue, y las guardas lo acotan a queries
-  realmente nuevas.
-- **Cambio visible para el usuario**: sí aplica la regla 3 de AGENTS.md —
-  `docs/manual-de-usuario.md` se actualiza en la misma tarea (sección
-  7.1), a diferencia de los ADR-054/055 (cambios internos de CI).
+- **The fallback replaces the image, it does not erase the console's
+  history**: the 403 errors printed before the replacement do not
+  disappear from the log; new ones are avoided (the browser does not log
+  the placeholder data URI's error, which always loads).
+- **Coverage bounded to the dropdown**: the listener only acts on the
+  two classes of `#global-search-results`. Covers with 403 outside the
+  dropdown (e.g. the detail modal) are out of issue #149's
+  scope (they already shows a placeholder only if the URL is missing at
+  the source, via `safeCoverUrl()`/`coverUrl || PLACEHOLDER_COVER`).
+- **More API calls while continuing to type with an active catalog**:
+  each new query (debounced 200 ms) fires an external search.
+  Before, the flow hung; now it actually searches — it is the
+  behavior requested by the issue, and the guards bound it to really new
+  queries.
+- **Visible change for the user**: AGENTS.md's rule 3 applies —
+  `docs/manual-de-usuario.md` is updated in the same task (section
+  7.1), unlike ADR-054/055 (internal CI changes).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Debounce de 1-2 segundos para re-buscar en el catálogo activo**
-  (opción 2 de la issue): descartada como sustituto — el debounce de
-  200 ms existente ya agrupa la escritura; un debounce largo retrasaría
-  la respuesta del catálogo sin aportar nada, y no resuelve el bug del
-  botón marcado al borrar. Se mantiene la opción 1 (desmarcar al
-  borrar) y se añade la re-búsqueda inmediata con el debounce actual.
-- **Listener de `error` en fase de burbuja sobre el contenedor**:
-  descartado — inviable: `error` no burbujea, nunca se dispararía.
-- **Atributo `onerror` inline por imagen o listener por render**:
-  descartado — obligaría a re-registrar listeners en cada
-  `innerHTML`/re-render (coste y riesgo de fugas) o a mezclar lógica en
-  las plantillas; la delegación en captura con un único listener
-  persistente cubre también los renders futuros.
+- **1-2-second debounce to re-search the active catalog**
+  (issue's option 2): rejected as a substitute — the existing 200 ms
+  debounce already batches typing; a long debounce would delay
+  the catalog's response without contributing anything, and does not solve the
+  bug of the marked button on clearing. Option 1 is kept (unmark on
+  clearing) and the immediate re-search is added with the current debounce.
+- **`error` listener in bubble phase on the container**:
+  rejected — unviable: `error` does not bubble, it would never fire.
+- **Inline `onerror` attribute per image or per-render listener**:
+  rejected — it would force re-registering listeners on every
+  `innerHTML`/re-render (cost and leak risk) or mixing logic into
+  the templates; the persistent single capture listener also covers
+  future renders.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Fin del catálogo «pegado»**: al borrar el texto, el botón de tipo
-  se desmarca y los tres vuelven a quedar sin pulsar; al seguir
-  escribiendo con un catálogo activo, la búsqueda se relanza
-  automáticamente en ese mismo catálogo (nunca más colgada en
-  «Buscando…»).
-- **Sin errores 403 en consola**: las portadas de la colección y los
-  avatares de amigos que fallen (hotlinking bloqueado, p. ej.
-  `fbcdn.net`) se sustituyen por la imagen «Sin imagen», y el resultado
-  sigue siendo funcional (navegación, «Añadir», vista previa).
-- **Un único listener permanente**: la delegación en captura cubre
-  todos los renders futuros con coste cero por render.
-- **Guardas anti-duplicado**: no se llama a la API para queries ya en
-  vuelo, cacheadas o con error; tampoco hay reintentos automáticos en
-  bucle sobre una query fallida.
-- **Issue #82 intacta**: selección única del catálogo del grupo pulsado
-  y estado (carga/error/caché) conservado por grupo.
-- **Manual de usuario al día**: sección 7.1 documenta el nuevo
-  comportamiento (desmarcado al borrar, re-búsqueda automática y
-  sustitución de portadas rotas) — regla 3 de AGENTS.md cumplida en la
-  misma tarea.
+- **End of the "stuck" catalog**: when clearing the text, the type button
+  unmarks and the three go back to unpressed; while continuing to type
+  with an active catalog, the search relaunches automatically in that
+  same catalog (no more hanging on "Buscando…").
+- **No 403 errors in the console**: collection covers and friend
+  avatars that fail (blocked hotlinking, e.g. `fbcdn.net`) are replaced
+  by the "Sin imagen" image, and the result
+  stays functional (navigation, «Añadir», preview).
+- **A single permanent listener**: capture delegation covers
+  all future renders with zero per-render cost.
+- **Anti-duplicate guards**: the API is not called for queries already in
+  flight, cached or errored; there are also no automatic in-loop
+  retries over a failed query.
+- **Issue #82 intact**: single selection of the pressed group's catalog
+  and state (loading/error/cache) kept per group.
+- **User manual up to date**: section 7.1 documents the new
+  behavior (unmarking on clearing, automatic re-search and
+  replacement of broken covers) — AGENTS.md's rule 3 met in the
+  same task.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Más tráfico a la API del catálogo**: al seguir escribiendo con un
-  catálogo activo, cada query nueva dispara una búsqueda externa (el
-  flujo anterior ni siquiera buscaba). Aceptado: es el comportamiento
-  pedido por la issue; las guardas evitan duplicados para la misma
-  query.
-- **Sin reintento automático sobre una query con error**: si la última
-  búsqueda de una query falló, volver a escribir esa misma query no
-  relanza la búsqueda (guarda `erroredForQuery`). Mitigación: el
-  usuario puede reintentar pulsando de nuevo el botón de tipo, que
-  siempre relanza cuando no hay caché válida.
-- **Cobertura del fallback limitada al dropdown**: imágenes con 403
-  fuera de `#global-search-results` siguen sin sustitución (fuera del
-  alcance de #149).
+- **More traffic to the catalog API**: while continuing to type with an
+  active catalog, each new query fires an external search (the previous
+  flow did not even search). Accepted: it is the behavior requested by
+  the issue; the guards avoid duplicates for the same query.
+- **No automatic retry over a query with an error**: if a query's last
+  search failed, retyping that same query does not relaunch the search
+  (`erroredForQuery` guard). Mitigation: the
+  user can retry by pressing the type button again, which
+  always relaunches when there is no valid cache.
+- **The fallback's coverage is limited to the dropdown**: images with 403
+  outside `#global-search-results` keep having no replacement (out of
+  #149's scope).
 
-### Neutras
+### Neutral
 
-- **Sin cambios en la interacción existente**: navegación por teclado,
-  botones de tipo, paginación (cap 5), vista previa y alta manual no se
-  tocan (AC4 de la issue).
-- **Estado por grupo sin cambios**: cerrar el dropdown sigue limpiando
-  todo el estado externo (`closeGlobalSearch()`); la caché por grupo
-  sigue permitiendo volver a un catálogo sin re-buscar.
+- **No changes to the existing interaction**: keyboard navigation,
+  type buttons, pagination (cap 5), preview and manual creation are
+  untouched (issue's AC4).
+- **Per-group state unchanged**: closing the dropdown still clears
+  all the external state (`closeGlobalSearch()`); the per-group
+  cache still allows returning to a catalog without re-searching.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/global-search.js` | **Modificado**: `performSearch()` — `activeGroup = null` al borrar la query (< 2 caracteres) antes de `renderHint()`; relanzamiento automático de `runExternalSearch(group, trimmed)` con `return` explícito si la query (>= 2 caracteres) no tiene estado en el grupo activo (guardas `sameQueryInFlight` / `cachedForQuery` / `erroredForQuery`); nuevo listener del evento `error` en fase de captura sobre `#global-search-results` que sustituye por `ui.PLACEHOLDER_COVER` las imágenes `.global-search__item-cover` y `.global-search__friend-avatar` fallidas, con guard anti-bucle (`img.src === ui.PLACEHOLDER_COVER` → `return`) |
-| `docs/manual-de-usuario.md` | **Modificado**: sección 7.1 — al borrar lo escrito el catálogo elegido se desmarca y hay que volver a pulsar el botón de tipo; al seguir escribiendo con un catálogo ya elegido la búsqueda se repite automáticamente en ese mismo catálogo; las portadas que no se pueden cargar se sustituyen automáticamente por la imagen «Sin imagen» (regla 3 de AGENTS.md) |
-| `docs/adr-056-buscador-catalogo-rebusqueda-y-fallback-portadas.md` | **Nuevo**: este documento |
+| `js/global-search.js` | **Modified**: `performSearch()` — `activeGroup = null` when clearing the query (< 2 characters) before `renderHint()`; automatic relaunch of `runExternalSearch(group, trimmed)` with an explicit `return` if the query (>= 2 characters) has no state in the active group (guards `sameQueryInFlight` / `cachedForQuery` / `erroredForQuery`); new `error` event listener in capture phase over `#global-search-results` replacing failed `.global-search__item-cover` and `.global-search__friend-avatar` images with `ui.PLACEHOLDER_COVER`, with the anti-loop guard (`img.src === ui.PLACEHOLDER_COVER` → `return`) |
+| `docs/manual-de-usuario.md` | **Modified**: section 7.1 — when clearing the text the chosen catalog unmarks and the type button must be pressed again; while continuing to type with an already-chosen catalog the search repeats automatically in that same catalog; covers that cannot load are automatically replaced by the «Sin imagen» image (AGENTS.md's rule 3) |
+| `docs/adr-056-buscador-catalogo-rebusqueda-y-fallback-portadas.md` | **New**: this document |
 
 Related issue: #149 — https://github.com/gonzalitojh/Registro-personal/issues/149

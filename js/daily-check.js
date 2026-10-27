@@ -1,20 +1,20 @@
 // =============================================================
-// Comprobación diaria: estrenos y episodios pendientes. Extraída
-// de app.js para aislar la lógica de revisión periódica.
-// Una vez al día se piden datos frescos a TMDB / Open Library SOLO
-// para lo que puede generar un aviso (pasada mínima A5-a del
-// estudio de almacenamiento mínimo, issue #183/#200):
-//   - películas que buscan estreno (awaitingRelease),
-//   - series que esperan estreno o con el próximo episodio sin
-//     estrenar (hoy o en el futuro) — avisos y auto-standby,
-//   - libros de Open Library (/works/) sin sinopsis guardada,
-//   - videojuegos: sin red (el aviso de lanzamiento se decide con
-//     los datos guardados, ADR-071).
-// El resto de metadatos de ficha ya NO se cura a diario: con el
-// almacenamiento mínimo los detalles se piden bajo demanda al
-// abrir la ficha (issue #200). También soporta sincronización
-// manual forzada (syncNow, «Comprobar estrenos») con cooldown de
-// 30 minutos persistido en profile.lastManualSyncAt.
+// Daily check: pending releases and episodes. Extracted
+// from app.js to isolate the periodic review logic.
+// Once a day fresh data is requested from TMDB / Open Library ONLY
+// for what can generate an alert (minimal pass A5-a of the
+// minimal storage study, issue #183/#200):
+//   - movies waiting for release (awaitingRelease),
+//   - TV series expecting a premiere or with the next episode not yet
+//     released (today or in the future) — alerts and auto-standby,
+//   - Open Library books (/works/) without a saved synopsis,
+//   - videogames: no network (the launch alert is decided with
+//     saved data, ADR-071).
+// The rest of the detail metadata is NO LONGER curated daily: with the
+// minimal storage the details are requested on demand when
+// opening the detail view (issue #200). It also supports forced
+// manual synchronization (syncNow, «Check for releases») with a
+// 30 minute cooldown persisted in profile.lastManualSyncAt.
 // =============================================================
 
 import { isNextEpisodeUnreleased, getNextEpisodeAirInfo } from "./sorting.js";
@@ -24,23 +24,23 @@ import { normalizeEntry } from "./tv-progress.js";
 import { subtractDays } from "./dates.js";
 import { sanitizeSteamId, fetchOwnedSteamGames } from "./api-steam.js";
 
-// Cooldown entre sincronizaciones manuales (30 minutos).
+// Cooldown between manual synchronizations (30 minutes).
 const MANUAL_SYNC_COOLDOWN_MS = 30 * 60 * 1000;
-// Límite de peticiones simultáneas a la API durante una pasada.
+// Limit of simultaneous API requests during one pass.
 const REFRESH_CONCURRENCY = 4;
-// Si se encadenan más de este número de fallos consecutivos por ítem,
-// se aborta la pasada (la API debe estar caída o el plan de datos raro).
+// If more than this number of consecutive failures per item is chained,
+// the pass is aborted (the API must be down or the data plan odd).
 const MAX_CONSECUTIVE_FAILURES = 5;
 
-// Flag anti-concurrencia: lo gestiona checkForUpdates para cubrir tanto
-// la pasada diaria automática como la manual (syncNow). Evita que dos
-// pasadas corran a la vez (coste de API duplicado y notificaciones
-// duplicadas de estreno/episodio nuevo).
+// Anti-concurrency flag: managed by checkForUpdates to cover both
+// the automatic daily pass and the manual one (syncNow). It prevents two
+// passes from running at once (duplicated API cost and duplicated
+// premiere/new-episode notifications).
 let isRefreshing = false;
 
-// ¿La serie tiene algún episodio marcado como visto (cualquier temporada)?
-// Recorre watched (temporada -> episodio -> { date, rating }) y también
-// tolera el formato antiguo de fecha como texto plano vía normalizeEntry.
+// Does the show have any episode marked as watched (any season)?
+// It walks watched (season -> episode -> { date, rating }) and also
+// tolerates the old date-as-plain-text format via normalizeEntry.
 function hasAnyWatchedEpisode(show) {
   if (!show.watched) return false;
   for (const seasonMap of Object.values(show.watched)) {
@@ -53,19 +53,19 @@ function hasAnyWatchedEpisode(show) {
   return false;
 }
 
-// Días sin actividad (visualización o estreno) tras los cuales una serie
-// en curso pasa automáticamente a standby (issue #48).
+// Days without activity (watching or airing) after which a TV series
+// in progress automatically goes to standby (issue #48).
 const AUTO_STANDBY_DAYS = 365;
 
-// ¿Debe la serie pasar automáticamente a standby?
-// - Solo status "en_curso".
-// - Regla 1: si el próximo episodio está sin estrenar (fecha futura o sin
-//   fecha), la serie está "esperando nuevos episodios": NO se mueve.
-// - Regla 2: si la fecha más actual entre el último estreno (airDate del
-//   próximo episodio ya emitido) y la última visualización (lastWatchedAt)
-//   está dentro del último año, hay actividad: NO se mueve.
-// - Si no hay ninguna fecha conocida, no se mueve (conservador).
-// - Comparaciones de strings "YYYY-MM-DD" (formato canónico del proyecto).
+// Should the TV series automatically go to standby?
+// - Only status "en_curso".
+// - Rule 1: if the next episode is unreleased (future date or no
+//   date), the series is "waiting for new episodes": NO move.
+// - Rule 2: if the most recent date between the last airing (airDate of the
+//   already-aired next episode) and the last watching (lastWatchedAt)
+//   is within the last year, there is activity: NO move.
+// - If there is no known date, no move (conservative).
+// - Comparisons of "YYYY-MM-DD" strings (canonical project format).
 export function shouldAutoStandby(show, today) {
   if (!show || show.status !== "en_curso") return false;
   if (isNextEpisodeUnreleased(show)) return false;
@@ -79,8 +79,8 @@ export function shouldAutoStandby(show, today) {
   return activity <= threshold;
 }
 
-// Ejecuta fn sobre cada ítem con un pool de `limit` promesas
-// simultáneas. Devuelve los resultados en orden.
+// Runs fn over each item with a pool of `limit` simultaneous
+// promises. Returns the results in order.
 async function mapConcurrent(items, limit, fn) {
   const results = new Array(items.length);
   let nextIndex = 0;
@@ -99,10 +99,10 @@ async function mapConcurrent(items, limit, fn) {
   return results;
 }
 
-// Pasada mínima (A5-a): ¿una película necesita consultar la API hoy?
-// Solo las que buscan estreno: el flag awaitingRelease (puesto al
-// alta) o una fecha de estreno futura sin avisar todavía (cubre
-// ítems antiguos guardados antes de existir el flag).
+// Minimal pass (A5-a): does a movie need to query the API today?
+// Only the ones waiting for release: the awaitingRelease flag (set on
+// creation) or a future release date not yet alerted (covers
+// old items saved before the flag existed).
 function movieNeedsCheck(movie) {
   if (movie.manual || !movie.externalId) return false;
   if (movie.awaitingRelease) return true;
@@ -113,37 +113,37 @@ function movieNeedsCheck(movie) {
   );
 }
 
-// Pasada mínima (A5-a): ¿una serie necesita consultar la API hoy?
-// Las que esperan estreno (awaitingRelease), las que aún no han
-// estrenado (flag antiguo pendiente de backfill) o cuyo siguiente
-// episodio está sin estrenar HOY o en el futuro (fuente de los
-// avisos de episodio nuevo y del auto-standby con datos frescos).
-// Las series con el próximo episodio ya emitido no se consultan:
-// su auto-standby se evalúa sin red con los datos guardados.
+// Minimal pass (A5-a): does a TV series need to query the API today?
+// The ones expecting a premiere (awaitingRelease), the ones that haven't
+// premiered yet (old flag pending backfill) or whose next
+// episode is unreleased TODAY or in the future (source of the
+// new-episode alerts and of the auto-standby with fresh data).
+// Series whose next episode already aired are not queried:
+// their auto-standby is evaluated offline with the saved data.
 function showNeedsCheck(show, today) {
   if (show.manual || !show.externalId) return false;
   if (show.awaitingRelease) return true;
-  // Estreno pendiente de producirse: mismo tratamiento que una
-  // película que busca estreno (cubre ítems antiguos guardados
-  // antes de existir el flag awaitingRelease).
+  // Pending premiere to happen: same treatment as a
+  // movie waiting for release (covers old items saved
+  // before the awaitingRelease flag existed).
   if (!hasAnyWatchedEpisode(show) && isUnreleasedDate(show.firstAirDate)) return true;
   const info = getNextEpisodeAirInfo(show);
-  // info.airDate >= today: hoy se emite o aún no → se vigila. La
-  // comparación es de strings "YYYY-MM-DD" (formato canónico).
+  // info.airDate >= today: it airs today or later → it is watched. The
+  // comparison is of "YYYY-MM-DD" strings (canonical format).
   return !!info && (!info.airDate || info.airDate >= today);
 }
 
-// Política truthy-only para libros: la sinopsis se sobrescribe solo si
-// la nueva es no vacía (la API de Open Library a veces no la devuelve).
+// Truthy-only policy for books: the synopsis is overwritten only if
+// the new one is non-empty (the Open Library API sometimes doesn't return it).
 function buildBookUpdates(book, description) {
   if (!description) return {};
   return { description };
 }
 
-// Rellena nextEpisodeAirDate cuando ni nextEpisodeToAir ni el dato
-// guardado coinciden con el siguiente episodio del usuario (p. ej.
-// serie entre temporadas sin fecha anunciada). Fail-open: si la
-// consulta de la temporada falla, no se aborta la pasada.
+// Fills nextEpisodeAirDate when neither nextEpisodeToAir nor the saved
+// data matches the user's next episode (e.g. series between seasons
+// with no announced date). Fail-open: if the
+// season query fails, the pass is not aborted.
 async function ensureNextEpisodeAirDate(show, fresh, getSeasonEpisodes) {
   if (show.manual || !show.nextEpisode) return null;
   if (
@@ -170,25 +170,25 @@ async function ensureNextEpisodeAirDate(show, fresh, getSeasonEpisodes) {
 }
 
 /**
- * Revisa todos los ítems no manuales y refresca sus metadatos desde
- * TMDB / Open Library, además de la lógica histórica de avisos
- * (estrenos, episodios nuevos, liberación de episodios bloqueados).
+ * Reviews all the non-manual items and refreshes their metadata from
+ * TMDB / Open Library, plus the historical alerts logic
+ * (premieres, new episodes, unlocking of blocked episodes).
  *
- * Gestión de concurrencia: el flag isRefreshing se setea al entrar en
- * la pasada real (de forma síncrona, sin awaits entre el chequeo y el
- * seteo) y se limpia en finally. Si ya hay una pasada en curso (diaria
- * o manual), esta llamada sale con { aborted: true } sin marcar
+ * Concurrency management: the isRefreshing flag is set when entering
+ * the real pass (synchronously, with no awaits between the check and the
+ * set) and is cleared in finally. If there is already a pass in progress (daily
+ * or manual), this call exits with { aborted: true } without stamping
  * lastReleaseCheckAt.
  *
- * Guard diario: si ya se hizo hoy (profile.lastReleaseCheckAt === today)
- * y no es un refresco forzado (force), se sale sin hacer nada.
+ * Daily guard: if it was already done today (profile.lastReleaseCheckAt === today)
+ * and it is not a forced refresh (force), it exits without doing anything.
  *
- * @param {object} ctx              - Contexto con dependencias inyectadas
+ * @param {object} ctx              - Context with injected dependencies
  * @param {object} [options]
- * @param {boolean} [options.force] - true para ignorar el guard diario
- *                                     (sincronización manual)
- * @returns {Promise<{aborted: boolean}>} - Estado de la pasada; aborted
- *   true si se abortó por fallos consecutivos o por reentrancia.
+ * @param {boolean} [options.force] - true to ignore the daily guard
+ *                                     (manual synchronization)
+ * @returns {Promise<{aborted: boolean}>} - State of the pass; aborted is
+ *   true if it was aborted due to consecutive failures or reentrancy.
  */
 export async function checkForUpdates(ctx, { force = false } = {}) {
   const {
@@ -209,8 +209,8 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
   const user = getCurrentUser();
   if (!user) return { aborted: true };
 
-  // Anti-concurrencia: el chequeo y el seteo son síncronos y contiguos,
-  // así que dos llamadas nunca atraviesan el guard a la vez.
+  // Anti-concurrency: the check and the set are synchronous and contiguous,
+  // so two calls never cross the guard at once.
   if (isRefreshing) return { aborted: true };
   isRefreshing = true;
   try {
@@ -225,12 +225,12 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
       return { aborted: false };
     }
 
-    // Lectura puntual de cada grupo (issue #178): las pestañas ya no
-    // se suscriben todas al entrar (lazy loading), así que el estado
-    // en memoria puede no estar completo. Se lee de Firestore bajo
-    // demanda. Los videojuegos no refrescan metadatos en la pasada
-    // (IGDB no se consulta), pero participan en el aviso de lanzamiento
-    // (issue #175), así que también se leen de Firestore.
+    // One-time read of each group (issue #178): tabs no longer
+    // all subscribe on entering (lazy loading), so the in-memory
+    // state may be incomplete. It is read from Firestore on
+    // demand. Videogames don't refresh metadata in the pass
+    // (IGDB is not queried), but they participate in the launch alert
+    // (issue #175), so they are also read from Firestore.
     const [allMovies, allTv, allBooks, allGames] = await Promise.all([
       getItemsOnce(user.uid, "movie"),
       getItemsOnce(user.uid, "tv"),
@@ -239,14 +239,14 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
     ]);
     const prefs = getNotificationPrefs();
 
-    // Fallos consecutivos: si se encadenan demasiados (p.ej. API caída),
-    // se aborta la pasada para no seguir haciendo peticiones inútiles.
+    // Consecutive failures: if too many are chained (e.g. API down),
+    // the pass is aborted to avoid continuing to make useless requests.
     let consecutiveFailures = 0;
     let aborted = false;
 
-    // Películas: pasada mínima (A5-a) — solo las que buscan estreno.
-    // Ya no se curan metadatos de ficha (con el almacenamiento mínimo
-    // se piden bajo demanda al abrir la ficha, issue #200).
+    // Movies: minimal pass (A5-a) — only the ones waiting for release.
+    // Detail metadata is no longer curated (with minimal storage
+    // they are requested on demand when opening the detail view, issue #200).
     const movies = allMovies.filter((m) => movieNeedsCheck(m));
     await mapConcurrent(movies, REFRESH_CONCURRENCY, async (movie) => {
       if (aborted) return;
@@ -254,9 +254,9 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
         const fresh = await getMovieDetails(movie.externalId);
         const updates = {};
 
-        // La fecha de estreno se mantiene al día: si cambió, se
-        // refresca (el badge de "no estrenada" y el aviso dependen
-        // de ella).
+        // The release date is kept up to date: if it changed, it is
+        // refreshed (the "not released" badge and the alert depend
+        // on it).
         if (fresh.releaseDate && fresh.releaseDate !== movie.releaseDate) {
           updates.releaseDate = fresh.releaseDate;
         }
@@ -290,10 +290,10 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
     });
     if (aborted) return { aborted: true };
 
-    // Series: pasada mínima (A5-a) — solo las que esperan estreno o cuyo
-    // próximo episodio está por emitirse. Se conserva la lógica de avisos
-    // (estreno, episodio nuevo, liberación de bloqueado) y el auto-standby
-    // evaluado con los datos frescos del episodio.
+    // TV series: minimal pass (A5-a) — only the ones waiting for a premiere or whose
+    // next episode is yet to air. The alerts logic
+    // (premiere, new episode, unlocking of blocked one) and the auto-standby
+    // evaluated with the fresh episode data are kept.
     const shows = allTv.filter((s) => showNeedsCheck(s, today));
     await mapConcurrent(shows, REFRESH_CONCURRENCY, async (show) => {
       if (aborted) return;
@@ -302,10 +302,10 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
         const fresh = await getTvExtraDetails(show.externalId);
         const updates = {};
 
-        // Campos de emisión que alimentan badges y avisos: se
-        // sobrescriben cuando la API los devuelve (nextEpisodeToAir
-        // siempre; seasonAirDates siempre que la llamada tenga éxito,
-        // porque un null dentro del mapa es información real).
+        // Airing fields that feed badges and alerts: they are
+        // overwritten when the API returns them (nextEpisodeToAir
+        // always; seasonAirDates as long as the call succeeds,
+        // because a null inside the map is real information).
         if (fresh.nextEpisodeToAir) {
           updates.nextEpisodeToAir = fresh.nextEpisodeToAir;
           updates.nextEpisodeAirDate = {
@@ -321,11 +321,11 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
           updates.seasonAirDates = fresh.seasonAirDates;
         }
 
-        // Backfill de nextEpisodeAirDate: si ni next_episode_to_air ni
-        // el dato guardado coinciden con el siguiente episodio (serie
-        // entre temporadas), se consulta la temporada para conocer su
-        // fecha (o su ausencia) y poder seguir avisando de "no
-        // estrenado". Fail-open: nunca aborta la pasada ni incrementa
+        // Backfill of nextEpisodeAirDate: if neither next_episode_to_air nor
+        // the saved data matches the next episode (series
+        // between seasons), the season is queried to learn its
+        // date (or its absence) and keep alerting of "not
+        // released". Fail-open: it never aborts the pass nor increments
         // consecutiveFailures.
         const airInfo = await ensureNextEpisodeAirDate(show, fresh, getSeasonEpisodes);
         if (airInfo) updates.nextEpisodeAirDate = airInfo;
@@ -371,8 +371,8 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
           updates.awaitingRelease = true;
         }
 
-        // Auto-standby por inactividad (issue #48): evaluado con los datos
-        // frescos de esta pasada (incluido el backfill recién calculado).
+        // Auto-standby by inactivity (issue #48): evaluated with the
+        // fresh data of this pass (including the just-computed backfill).
         const evaluatedShow = {
           ...show,
           nextEpisodeToAir: fresh.nextEpisodeToAir,
@@ -401,10 +401,10 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
     });
     if (aborted) return { aborted: true };
 
-    // Series no incluidas en la pasada mínima (su próximo episodio ya se
-    // emitió o no buscan estreno): el auto-standby por inactividad
-    // (ADR-033) se evalúa SIN red, con los datos guardados. Fail-open: un
-    // error de escritura no aborta la pasada ni cuenta como fallo de API.
+    // TV series not included in the minimal pass (their next episode already
+    // aired or they don't expect a premiere): the auto-standby by inactivity
+    // (ADR-033) is evaluated WITHOUT network, with the saved data. Fail-open: a
+    // write error does not abort the pass nor count as an API failure.
     const offlineStandbyShows = allTv.filter(
       (s) => !s.manual && s.externalId && s.status === "en_curso" && !showNeedsCheck(s, today)
     );
@@ -419,9 +419,9 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
       }
     }
 
-    // Series manuales en curso: mismo auto-standby, evaluado solo con datos
-    // guardados (no hay datos TMDB). Sin red. Fail-open: un error de
-    // escritura no aborta la pasada ni cuenta como fallo de API.
+    // Manual TV series in progress: same auto-standby, evaluated only with saved
+    // data (there are no TMDB data). No network. Fail-open: a write
+    // error does not abort the pass nor count as an API failure.
     const manualShows = allTv.filter((s) => s.manual && s.status === "en_curso");
     for (const show of manualShows) {
       if (aborted) break;
@@ -434,9 +434,9 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
       }
     }
 
-    // Libros: sinopsis solo para los de Open Library que aún no la
-    // tienen guardada (pasada mínima A5-a). Truthy-only: la nueva
-    // sinopsis solo se sobrescribe si es no vacía.
+    // Books: synopsis only for the Open Library ones that don't have it
+    // saved yet (minimal pass A5-a). Truthy-only: the new
+    // synopsis is only overwritten if it is non-empty.
     const books = allBooks.filter(
       (b) => !b.manual && b.externalId && b.externalId.startsWith("/works/") && !b.description
     );
@@ -462,27 +462,27 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
     });
     if (aborted) return { aborted: true };
 
-    // Videojuegos: aviso de lanzamiento con los datos guardados (sin
-    // red, IGDB no se consulta en la pasada). Se revisan todos los no
-    // manuales. Fail-open: un error de escritura no aborta la pasada ni
-    // cuenta como fallo de API (mismo patrón que el bloque de series
-    // manuales).
+    // Videogames: launch alert with the saved data (no
+    // network, IGDB is not queried in the pass). All non-manual
+    // ones are reviewed. Fail-open: a write error does not abort the pass nor
+    // count as an API failure (same pattern as the manual series
+    // block).
     const games = allGames.filter((g) => !g.manual);
     for (const g of games) {
       if (aborted) break;
       try {
         const updates = {};
 
-        // Backfill del flag para juegos guardados antes de la issue
-        // #175 (sin awaitingRelease). La guarda releaseDate truthy es
-        // OBLIGATORIA: sin fecha no hay lanzamiento que esperar.
+        // Backfill of the flag for games saved before issue
+        // #175 (without awaitingRelease). The truthy releaseDate guard is
+        // MANDATORY: without a date there is no launch to wait for.
         if (!g.awaitingRelease && g.releaseDate && isUnreleasedDate(g.releaseDate) && !(g.playLog && g.playLog.length)) {
           updates.awaitingRelease = true;
         }
 
-        // Aviso de lanzamiento. La guarda del playLog es necesaria:
-        // quick-actions.js y modal-handlers.js no limpian awaitingRelease
-        // al marcar como jugado.
+        // Launch alert. The playLog guard is needed:
+        // quick-actions.js and modal-handlers.js don't clear awaitingRelease
+        // when marking as played.
         if (prefs.game_release !== false && g.awaitingRelease && g.releaseDate && g.releaseDate <= today && !(g.playLog && g.playLog.length)) {
           await addNotification(user.uid, {
             message: `«${g.title}» ya está a la venta (${formatDateEs(g.releaseDate)}).`,
@@ -499,12 +499,12 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
       }
     }
 
-    // Steam (ADR-108): con la cuenta vinculada, refrescar las horas
-    // jugadas de los juegos del registro que vinieron de Steam. NO se
-    // auto-alta nada nuevo (evita inundar el registro con toda la
-    // biblioteca; el alta es manual desde Ajustes). Fail-open y
-    // silencioso para el flujo principal: un fallo de Steam no
-    // aborta la pasada ni toca el lastReleaseCheckAt.
+    // Steam (ADR-108): with the linked account, refresh the played
+    // hours of the registry games that came from Steam. Nothing new is
+    // auto-added (it avoids flooding the registry with the whole
+    // library; adding is manual from Settings). Fail-open and
+    // silent for the main flow: a Steam failure does
+    // not abort the pass nor touch lastReleaseCheckAt.
     try {
       const steamId = sanitizeSteamId(loadSettings().steamId);
       const linkedGames = allGames.filter((game) => game.steamAppId);
@@ -513,14 +513,14 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
         const byAppId = new Map(steam.games.map((entry) => [entry.appid, entry]));
         for (const game of linkedGames) {
           const fresh = byAppId.get(game.steamAppId);
-          if (!fresh) continue; // ya no lo tiene en la biblioteca
+          if (!fresh) continue; // no longer in the library
           const updates = { steamPlaytimeHours: fresh.playtimeHours };
           let log = (game.playLog || []).map((session) =>
             session && session.source === "steam"
               ? { ...session, hours: fresh.playtimeHours > 0 ? fresh.playtimeHours : null }
               : session
           );
-          // Backfill: juegos añadidos a Steam sin sesión marcada aún.
+          // Backfill: games added to Steam without a session marked yet.
           if (
             !(game.playLog || []).some((session) => session && session.source === "steam") &&
             fresh.playtimeHours > 0
@@ -548,17 +548,17 @@ export async function checkForUpdates(ctx, { force = false } = {}) {
 }
 
 /**
- * Sincronización manual forzada ("Comprobar estrenos" en Ajustes).
- * Aplica el cooldown de MANUAL_SYNC_COOLDOWN_MS persistido en
- * profile.lastManualSyncAt. El flag anti-concurrencia isRefreshing
- * lo gestiona checkForUpdates (cubre también la pasada diaria), así
- * que aquí solo se comprueba y se confía en su retorno de estado.
+ * Forced manual synchronization ("Check for releases" in Settings).
+ * Applies the MANUAL_SYNC_COOLDOWN_MS cooldown persisted in
+ * profile.lastManualSyncAt. The anti-concurrency flag isRefreshing
+ * is managed by checkForUpdates (it also covers the daily pass), so
+ * here it is only checked and its state return is trusted.
  *
- * Si la pasada se aborta (fallos consecutivos o reentrancia) NO se
- * estampa lastManualSyncAt: el cooldown no se quema y el usuario
- * puede reintentar.
+ * If the pass is aborted (consecutive failures or reentrancy) lastManualSyncAt
+ * is NOT stamped: the cooldown is not burned and the user
+ * can retry.
  *
- * @param {object} ctx - Contexto con dependencias inyectadas
+ * @param {object} ctx - Context with injected dependencies
  * @returns {Promise<{ok: boolean, reason?: string, message?: string}>}
  */
 export async function syncNow(ctx) {
@@ -567,7 +567,7 @@ export async function syncNow(ctx) {
   const user = ctx.getCurrentUser();
   if (!user) return { ok: false, reason: "error", message: "Sesión no iniciada." };
 
-  // El perfil se lee ANTES de forzar la pasada para respetar el cooldown.
+  // The profile is read BEFORE forcing the pass to respect the cooldown.
   let profile = null;
   try {
     profile = await ctx.getUserProfile(user.uid);
@@ -581,9 +581,9 @@ export async function syncNow(ctx) {
     }
   }
 
-  // Segundo chequeo: la pasada diaria pudo arrancar mientras se leía
-  // el perfil. Entre este chequeo y el seteo interno de checkForUpdates
-  // no hay awaits, así que no hay ventana de carrera.
+  // Second check: the daily pass might have started while the
+  // profile was being read. Between this check and checkForUpdates's
+  // internal set there are no awaits, so there is no race window.
   if (isRefreshing) return { ok: false, reason: "running" };
 
   try {
@@ -604,8 +604,8 @@ export async function syncNow(ctx) {
 }
 
 /**
- * Indica si hay una sincronización en curso (diaria o manual). La usa
- * settings.js para deshabilitar el botón "Comprobar estrenos".
+ * Indicates whether a synchronization is in progress (daily or manual). settings.js
+ * uses it to disable the "Check for releases" button.
  */
 export function isSyncRunning() {
   return isRefreshing;

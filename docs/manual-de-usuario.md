@@ -1,1527 +1,1616 @@
-# Manual de usuario — Mi Registro
+# User manual — Mi Registro [My Tracker]
 
-Bienvenido a **Mi Registro**, tu cuaderno privado para llevar la cuenta de
-las películas que ves, las series que sigues, los libros que lees y los
-videojuegos que juegas.
+Welcome to **Mi Registro**, your private notebook to keep track of the
+movies you watch, the series you follow, the books you read and the
+video games you play.
 
-Este manual explica, paso a paso y sin tecnicismos, todo lo que puedes hacer
-en la web. Léelo por secciones según lo que necesites.
+This manual explains, step by step and without technical jargon,
+everything you can do in the web app. Read it by sections as needed.
 
 ---
 
-## Contenido
+## Contents
 
-1. [Qué es Mi Registro](#1-qué-es-mi-registro)
-2. [Cómo entrar](#2-cómo-entrar)
-3. [La pantalla principal](#3-la-pantalla-principal)
+1. [What is Mi Registro](#1-what-is-mi-registro)
+2. [How to sign in](#2-how-to-sign-in)
+3. [The main screen](#3-the-main-screen)
 4. [Series](#4-series)
-5. [Películas](#5-películas)
-6. [Libros](#6-libros)
-7. [Videojuegos](#7-videojuegos)
-8. [Recetas](#8-recetas)
-9. [Gimnasio](#9-gimnasio)
-10. [Cómo buscar](#10-cómo-buscar)
-11. [Organizar y ordenar tu registro](#11-organizar-y-ordenar-tu-registro)
-12. [La ficha de cada película, serie, libro o videojuego](#12-la-ficha-de-cada-película-serie-libro-o-videojuego)
-13. [Valoraciones con estrellas](#13-valoraciones-con-estrellas)
-14. [Acciones rápidas](#14-acciones-rápidas)
-15. [Notificaciones](#15-notificaciones)
-16. [Tu perfil](#16-tu-perfil)
-17. [Ajustes](#17-ajustes)
-18. [¿Cuándo se actualizan los datos?](#18-cuándo-se-actualizan-los-datos)
-19. [Privacidad](#19-privacidad)
-20. [Instalar la web en tu teléfono](#20-instalar-la-web-en-tu-teléfono)
-21. [Problemas frecuentes](#21-problemas-frecuentes)
+5. [Movies](#5-movies)
+6. [Books](#6-books)
+7. [Video games](#7-video-games)
+8. [Recipes](#8-recipes)
+9. [Gym](#9-gym)
+10. [How to search](#10-how-to-search)
+11. [Organizing and sorting your tracker](#11-organizing-and-sorting-your-tracker)
+12. [The card of each movie, series, book or video game](#12-the-card-of-each-movie-series-book-or-video-game)
+13. [Star ratings](#13-star-ratings)
+14. [Quick actions](#14-quick-actions)
+15. [Notifications](#15-notifications)
+16. [Your profile](#16-your-profile)
+17. [Settings](#17-settings)
+18. [When is the data refreshed?](#18-when-is-the-data-refreshed)
+19. [Privacy](#19-privacy)
+20. [Install the web app on your phone](#20-install-the-web-app-on-your-phone)
+21. [Common problems](#21-common-problems)
 
-Además: [Compras (lista de deseos)](#compras-lista-de-deseos) ·
-[Veces visto / leído / jugado (contadores)](#veces-visto--leído--jugado)
+Also: [Purchases (wishlist)](#purchases-wishlist) ·
+[Times watched / read / played (counters)](#times-watched--read--played)
 
 ---
 
-## 1. Qué es Mi Registro
+## 1. What is Mi Registro
 
-Mi Registro es una web para anotar:
+Mi Registro is a web app for noting down:
 
-- **Series** que estás viendo, has visto o quieres ver, episodio a episodio.
-- **Películas** vistas o pendientes, con historial de revisionados.
-- **Libros** leídos, en curso o pendientes.
-- **Videojuegos** jugados, en curso o pendientes, con historial de sesiones.
-- **Entrenos de gimnasio**, con sus ejercicios y los pesos y
-  repeticiones de cada serie.
+- **Series** you are watching, have watched or want to watch, episode by
+  episode.
+- **Movies** watched or pending, with a rewatch history.
+- **Books** read, in progress or pending.
+- **Video games** played, in progress or pending, with a session history.
+- **Gym workouts**, with their exercises and the weights and
+  repetitions of each set.
 
-La web se encarga de completar sola los datos de cada título: portada,
-sinopsis, reparto, fechas de estreno, valoraciones de la comunidad, etc.
-Tú solo te ocupas de marcar lo que ves, lees y juegas.
+The web app fills in each title's data on its own: cover, synopsis,
+cast, release dates, community ratings, etc. You only take care of
+marking what you watch, read and play.
 
-## 2. Cómo entrar
+## 2. How to sign in
 
-1. Abre la dirección de la web en tu navegador (ordenador, tablet o móvil).
-2. Pulsa el botón **«Entrar con Google»**.
-3. Elige la cuenta de Google con la que quieras entrar.
+1. Open the web address in your browser (computer, tablet or mobile).
+2. Press the **«Entrar con Google»** [Sign in with Google] button.
+3. Choose the Google account you want to sign in with.
 
-**Importante:** solo pueden entrar los correos que estén en la lista de
-invitados. Si tu correo no está en la lista, la web te lo dirá
-(*«Tu correo no está en la lista de invitados. Pide que te añadan.»*) y no
-podrás entrar. Pídele a quien administre la web que te añada (solo tiene
-que actualizar la lista en las reglas de seguridad de Firebase).
+**Important:** only the emails on the guest list can sign in. If your
+email is not on the list, the web app will tell you
+(*«Tu correo no está en la lista de invitados. Pide que te añadan.»*
+[Your email is not on the guest list. Ask to be added.]) and you will
+not be able to enter. Ask whoever administers the web app to add you
+(they only need to update the list in the Firebase security rules).
 
-La primera vez que entras se crea tu cuenta automáticamente, con tu nombre
-y tu foto de Google. Para salir, pulsa tu foto (arriba a la derecha) y
-elige **«Cerrar sesión»** en el menú que se despliega.
+The first time you sign in, your account is created automatically, with
+your name and your Google photo. To sign out, tap your photo (top
+right) and choose **«Cerrar sesión»** [Sign out] in the menu that
+unfolds.
 
-## 3. La pantalla principal
+## 3. The main screen
 
-Nada más entrar verás:
+Right after signing in you will see:
 
-- **Arriba, la cabecera** (visible en las secciones de **Ocio**,
-  **Recetas** y **Gimnasio**; en **tu perfil no aparece**: allí tienes
-  la flecha de volver y las pestañas en la misma fila, ver
-  [sección 16](#16-tu-perfil); en la pantalla de acceso tampoco):
-  - ☰ **Hamburguesa**: abre la barra lateral de navegación (un panel
-    deslizante a la izquierda). Tiene la entrada **«Ocio»**, que te
-    devuelve a las pestañas de Series, Películas, Libros y Videojuegos,
-    **«Recetas»**, **«Gimnasio»** y, en la parte de abajo,
-    **«Ajustes»**, que abre la
-    sección de ajustes de tu perfil (más en [sección 17](#17-ajustes)).
-    Se cierra pulsando fuera, la ✕, la tecla **Esc** o la propia
-    entrada. Si en [Ajustes → Secciones y pestañas](#17-ajustes) dejas
-    solo **una sección visible**, la barra lateral se sustituye por un
-    botón **engranaje ⚙** en la cabecera que abre directamente Ajustes;
-    en cuanto vuelvas a tener más de una sección visible, la barra
-    lateral reaparece.
-  - **Barra de búsqueda** (en el centro): busca **dentro de la sección
-    en la que estés** (más en [sección 10](#10-cómo-buscar)). Al entrar,
-    la barra muestra brevemente el nombre de la web —**«Mi Registro»**—
-    y a los pocos segundos pasa al texto de la sección: «Buscar
-    películas, series, libros y videojuegos...» en Ocio, «Buscar
-    recetas...» en Recetas y «Buscar en tu gimnasio...» en Gimnasio.
-  - A la derecha:
-    - **Icono de campana**: tus notificaciones (más en [sección 15](#15-notificaciones)).
-    - **Tu foto**: pulsándola se abre un menú con las dos secciones de
-      tu perfil (**Estadísticas, Ajustes**) y la
-      opción **«Cerrar sesión»**. Desde aquí entras y sales del perfil:
-      en las secciones de Recetas y de Gimnasio no hay botón de
-      «volver» — la navegación siempre está en la cabecera.
-  - La cabecera **se oculta al bajar por las listas de Ocio, de
-    Recetas o de Gimnasio y vuelve al subir**: siempre está ahí cuando
-    la necesitas
-    ([sección 3.2](#32-la-cabecera-y-las-pestañas-al-hacer-scroll)).
-- **Las pestañas** (en la barra fija bajo la cabecera en el ordenador
-  y la tablet, o anclada abajo en el móvil): **Series**, **Películas**,
-  **Libros**, **Videojuegos** y **Compras**. Cada pestaña lleva un icono y tiene su
-  propio color: **Series en verde**, **Películas en rojo**, **Libros en
-  ocre**, **Videojuegos en violeta** y **Compras en ocre**. La pestaña activa se marca con
-  una franja de su color y un fondo claro. Pulsa una pestaña para ver
-  tu lista de ese tipo, con sus filtros y su orden. Como la cabecera,
-  la barra de pestañas se oculta al bajar por la lista y
-  reaparece al subir
-  ([sección 3.2](#32-la-cabecera-y-las-pestañas-al-hacer-scroll)).
-- **La sección de Recetas tiene su propia barra de pestañas, igual que
-  Ocio**: **Recetas en ocre**, **Ingredientes en violeta**, **Menú en
-  verde** y **Compra en rojo**, cada una con su icono. Es
-  fija de la misma manera (abajo en el móvil, bajo la barra de búsqueda
-  en ordenador y tableta), se oculta al bajar por la lista como la de
-  Ocio y sus pestañas se pueden ocultar desde
-  [Ajustes → Secciones y pestañas](#17-ajustes) igual que las de Ocio
-  (más en [sección 8](#8-recetas)).
-- **La sección de Gimnasio tiene su propia barra de pestañas
-  (Resumen, Entrenos, Ejercicios), igual que Ocio y Recetas**:
-  **Resumen en violeta**, **Entrenos en teal** y **Ejercicios en
-  ocre**, cada una con su icono. Es fija de
-  la misma manera (abajo en el móvil, bajo la barra de búsqueda en
-  ordenador y tableta), se oculta al bajar por la lista como las
-  demás y sus pestañas se pueden ocultar desde
-  [Ajustes → Secciones y pestañas](#17-ajustes) igual que las de Ocio
-  (más en [sección 9](#9-gimnasio)).
+- **At the top, the header** (visible in the **Ocio** [Leisure],
+  **Recetas** [Recipes] and **Gimnasio** [Gym] sections; in **your
+  profile it does not appear**: there you have the back arrow and the
+  tabs in the same row, see
+  [section 16](#16-your-profile); on the sign-in screen neither):
+  - ☰ **Hamburger**: opens the navigation sidebar (a sliding
+    panel on the left). It has the **«Ocio»** entry, which takes you
+    back to the Series, Movies, Books and Video games tabs,
+    **«Recetas»**, **«Gimnasio»** and, at the bottom,
+    **«Ajustes»**, which opens your profile's settings section
+    (more in [section 17](#17-settings)).
+    It closes by tapping outside, the ✕, the **Esc** key or the entry
+    itself. If in [Ajustes → Secciones y pestañas](#17-settings)
+    [Settings → Sections and tabs] you leave only **one section
+    visible**, the sidebar is replaced by a **gear ⚙** button in the
+    header that opens Settings directly; as soon as you have more than
+    one section visible again, the sidebar reappears.
+  - **Search bar** (in the middle): searches **within the section you
+    are in** (more in [section 10](#10-how-to-search)). On sign-in,
+    the bar briefly shows the name of the web app —**«Mi Registro»**—
+    and after a few seconds it switches to the section's text: «Buscar
+    películas, series, libros y videojuegos...» [Search movies, series,
+    books and video games...] in Leisure, «Buscar
+    recetas...» [Search recipes...] in Recipes and «Buscar en tu
+    gimnasio...» [Search your gym...] in Gym.
+  - On the right:
+    - **Bell icon**: your notifications (more in
+      [section 15](#15-notifications)).
+    - **Your photo**: tapping it opens a menu with the two sections of
+      your profile (**Estadísticas** [Statistics],
+      **Ajustes**) and the **«Cerrar sesión»** [Sign out]
+      option. From here you enter and leave the profile:
+      in the Recipes and Gym sections there is no «back»
+      button — navigation is always in the header.
+  - The header **hides when scrolling down the Leisure, Recipes or Gym
+    lists and comes back when scrolling up**: it is always there when
+    you need it
+    ([section 3.2](#32-the-header-and-tabs-when-scrolling)).
+- **The tabs** (in the fixed bar under the header on the computer
+  and tablet, or anchored at the bottom on mobile): **Series**,
+  **Películas** [Movies], **Libros** [Books], **Videojuegos**
+  [Video games] and **Compras** [Purchases]. Each tab carries an icon and has its
+  own color: **Series in green**, **Películas in red**, **Libros in
+  ochre**, **Videojuegos in violet** and **Compras in ochre**. The active tab is marked with
+  a stripe of its color and a light background. Tap a tab to see
+  your list of that type, with its filters and its sort order. Like the
+  header, the tab bar hides when scrolling down the list and
+  reappears when scrolling up
+  ([section 3.2](#32-the-header-and-tabs-when-scrolling)).
+- **The Recipes section has its own tab bar, just like Leisure**:
+  **Recetas in ochre**, **Ingredientes in violet**, **Menú in
+  green** and **Compra in red**, each with its icon. It is
+  fixed in the same way (at the bottom on mobile, under the search bar
+  on computer and tablet), hides when scrolling down the list like the
+  Leisure one and its tabs can be hidden from
+  [Ajustes → Secciones y pestañas](#17-settings) just like Leisure's
+  (more in [section 8](#8-recipes)).
+- **The Gym section has its own tab bar
+  (Resumen [Summary], Entrenos [Workouts], Ejercicios [Exercises]), just
+  like Leisure and Recipes**:
+  **Resumen in violet**, **Entrenos in teal** and **Ejercicios in
+  ochre**, each with its icon. It is fixed in
+  the same way (at the bottom on mobile, under the search bar on
+  computer and tablet), hides when scrolling down the list like the
+  others and its tabs can be hidden from
+  [Ajustes → Secciones y pestañas](#17-settings) just like Leisure's
+  (more in [section 9](#9-gym)).
 
-La pestaña activa indica siempre en qué colección estás, por eso cada
-colección no repite un título como «Mis series»: nada más entrar ves
-directamente su barra de herramientas.
+The active tab always tells you which collection you are in, which is
+why each collection does not repeat a title like «Mis series» [My
+series]: right after signing in you see its toolbar directly.
 
-**Cada pestaña carga sus datos al abrirla por primera vez.** Cuando
-entras, la web solo pide la información de la pestaña en la que estás.
-Al abrir una pestaña que no habías visitado, verás un breve indicador
-de **«Cargando…»** (con una animación) mientras llegan sus datos; a
-partir de ese momento, cada vez que vuelvas a esa pestaña aparece todo
-al instante. Así la web no tiene que pedir los cuatro registros a la
-vez cada vez que entras. Si los datos no llegan en unos segundos, la
-web ya lo ha intentado varias veces y muestra un aviso con el botón
-**«Reintentar»** para que lo vuelvas a intentar sin recargar la página
-(más en [sección 21](#21-problemas-frecuentes)).
+**Each tab loads its data the first time you open it.** When you sign
+in, the web app only requests the information of the tab you are in.
+When you open a tab you had not visited, you will see a brief
+**«Cargando…»** [Loading…] indicator (with an animation) while its
+data arrives; from then on, every time you return to that tab
+everything appears instantly. That way the web app does not have to
+request all four trackers at once every time you sign in. If the data
+does not arrive within a few seconds, the app has already tried
+several times and shows a notice with the **«Reintentar»** [Retry]
+button so you can try again without reloading the page
+(more in [section 21](#21-common-problems)).
 
-Al entrar por primera vez aterrizas en **Series**, con el filtro **«Viendo»**
-activo y en vista de lista — el uso más habitual.
+When you sign in for the first time you land on **Series**, with the
+**«Viendo»** [Watching] filter active and in list view — the most
+common use.
 
-Cada pestaña se divide en dos zonas:
+Each tab is divided into two zones:
 
-- **Arriba**: tu biblioteca, con su barra de herramientas para filtrar
-  por estado, ordenar y cambiar la vista entre cuadrícula y lista
-  (más en [sección 11](#11-organizar-y-ordenar-tu-registro)).
-- **Debajo**: la lista de tus títulos de ese tipo.
+- **At the top**: your library, with its toolbar to filter
+  by status, sort and switch the view between grid and list
+  (more in [section 11](#11-organizing-and-sorting-your-tracker)).
+- **Below**: the list of your titles of that type.
 
-Buscar títulos nuevos para añadir ya no se hace dentro de la pestaña:
-todo se busca desde la **barra de búsqueda de la cabecera**
-(más en [sección 10](#10-cómo-buscar)).
+Searching for new titles to add is no longer done inside the tab:
+everything is searched from the **header's search bar**
+(more in [section 10](#10-how-to-search)).
 
-### 3.1 Compartir direcciones y volver a las pestañas
+### 3.1 Sharing addresses and returning to the tabs
 
-Cada pestaña tiene su propia dirección web, que termina en
+Each tab has its own web address, ending in
 `#/ocio/series` (Series), `#/ocio/peliculas` (Películas),
-`#/ocio/libros` (Libros) o `#/ocio/videojuegos` (Videojuegos). Puedes
-copiar esa dirección desde la
-barra de direcciones del navegador y compartirla, guardarla en
-favoritos o enviártela a ti mismo: al volver a abrirla, la web se
-abre directamente en esa pestaña, aunque hayas entrado desde otro
-dispositivo.
+`#/ocio/libros` (Libros) or `#/ocio/videojuegos` (Videojuegos). You can
+copy that address from the
+browser's address bar and share it, save it in
+favorites or send it to yourself: when you open it again, the web app
+opens directly on that tab, even if you signed in from another
+device.
 
-Los botones **atrás** y **adelante** del navegador también cambian de
-pestaña, como si fueran parte de la misma página: si estás en
-Películas, pulsas Series y luego «atrás», vuelves a Películas.
+The browser's **back** and **forward** buttons also switch tabs, as if
+they were part of the same page: if you are in
+Películas, tap Series and then «back», you return to Películas.
 
-Si entras sin una dirección concreta, o con una que no corresponde a
-ninguna pestaña, la web te lleva siempre a **Series**, igual que
-hasta ahora.
+If you enter without a specific address, or with one that does not
+correspond to any tab, the web app always takes you to **Series**, just
+as until now.
 
-Tu perfil también tiene direcciones propias (`#/perfil/...`): ver
-[sección 16.0](#160-compartir-direcciones-de-tu-perfil).
+Your profile also has its own addresses (`#/perfil/...`): see
+[section 16.0](#160-sharing-your-profiles-addresses).
 
-### 3.2 La cabecera y las pestañas al hacer scroll
+### 3.2 The header and tabs when scrolling
 
-Al bajar por una lista de **Ocio** (series, películas, libros o
-videojuegos), de **Recetas** (Recetas, Ingredientes, Menú o Compra)
-o de **Gimnasio** (Resumen, Entrenos o Ejercicios),
-la barra de búsqueda de arriba y las pestañas se ocultan
-deslizándose hacia el borde de la pantalla, como si salieran de ella,
-para que la lista ocupe todo el espacio. En cuanto desplazas hacia
-arriba, vuelven a aparecer deslizándose desde su borde.
+When scrolling down a **Leisure** list (series, movies, books or
+video games), a **Recipes** list (Recetas, Ingredientes, Menú or
+Compra) or a **Gym** list (Resumen, Entrenos or Ejercicios),
+the search bar at the top and the tabs hide
+sliding toward the edge of the screen, as if they were leaving it,
+so the list takes up all the space. As soon as you scroll
+up, they reappear sliding from their edge.
 
-En **tu perfil** no hay cabecera global: tiene su propia cabecera con
-la flecha de volver y las pestañas en la misma fila. La flecha de
-volver del perfil te lleva de vuelta a la sección desde la que
-entraste, **Ocio**, **Recetas** o **Gimnasio**, con la pestaña que
-tenías activa.
+In **your profile** there is no global header: it has its own header
+with the back arrow and the tabs in the same row. The profile's
+back arrow takes you back to the section you came from,
+**Ocio**, **Recetas** or **Gimnasio**, with the tab you
+had active.
 
-Si sigues bajando y los controles de la lista (los filtros de estado,
-orden y vista en Ocio, la barra de herramientas de la pestaña de
-Recetas activa o el botón «+ Nuevo entreno» / «+ Nuevo ejercicio» de
-Gimnasio) quedan también fuera de la pantalla, verás un pequeño
-botón redondeado **«Volver arriba»** flotando en el centro, arriba,
-sobre la lista: púlsalo para volver al principio de la lista de un
-salto.
+If you keep scrolling and the list controls (the status filters,
+sort and view controls in Leisure, the toolbar of the active
+Recipes tab or the «+ Nuevo entreno» [New workout] / «+ Nuevo
+ejercicio» [New exercise] buttons in Gym) also go off-screen, you will
+see a small rounded **«Volver arriba»** [Back to top] button floating
+in the center, at the top, over the list: tap it to jump back to the
+top of the list.
 
-La navegación nunca se oculta mientras la estás usando: si estás
-escribiendo una búsqueda, o tienes abierto un menú (notificaciones,
-perfil, barra lateral) o una ficha, la cabecera y las pestañas
-permanecen en su sitio.
+Navigation never hides while you are using it: if you are
+typing a search, or you have a menu open (notifications,
+profile, sidebar) or a card, the header and tabs
+stay in place.
 
 ## 4. Series
 
-### 4.1 Los estados de una serie
+### 4.1 The statuses of a series
 
-Cada serie de tu lista tiene uno de estos estados (se ve en un sello de
-color sobre la portada):
+Each series on your list has one of these statuses (shown in a colored
+stamp on the cover):
 
-| Estado | Significado |
+| Status | Meaning |
 |---|---|
-| **Pendiente** | La has añadido pero todavía no has visto ningún episodio. |
-| **Viendo** | Has visto al menos un episodio. |
-| **Vista** | Has marcado todos los episodios. |
-| **Standby** | La has pausado tú, o la web la ha pausado automáticamente por inactividad; tu progreso se conserva. |
-| **Abandonada** | La has abandonado tú; tu progreso también se conserva. |
+| **Pendiente** [Pending] | You added it but have not watched any episode yet. |
+| **Viendo** [Watching] | You have watched at least one episode. |
+| **Vista** [Watched] | You have marked all the episodes. |
+| **Standby** | You paused it, or the web app paused it automatically due to inactivity; your progress is kept. |
+| **Abandonada** [Abandoned] | You abandoned it; your progress is also kept. |
 
-Una serie **«aún no estrenada»** muestra un aviso con su fecha de estreno
-(y la del próximo episodio si está en emisión).
+A series **«aún no estrenada»** [not yet released] shows a notice with
+its release date (and that of the next episode if it is airing).
 
-Si una serie que estás viendo lleva más de un año sin que veas ningún
-episodio ni se estrene ninguno nuevo, la web la pasa sola a Standby (en la
-comprobación diaria). Puedes retomarla cuando quieras desde su ficha; no se
-pierde nada.
+If a series you are watching goes more than a year without you watching
+any episode or any new one being released, the web app moves it to
+Standby on its own (in the daily check). You can resume it whenever you
+want from its card; nothing is lost.
 
-### 4.2 Añadir una serie
+### 4.2 Adding a series
 
-1. En la **barra de búsqueda de la cabecera**, escribe el título
-   (mínimo 2 caracteres).
-2. Pulsa el botón **«Serie»** que aparece en la parte superior de los
-   resultados para buscar en el catálogo.
-3. En los resultados, pulsa **«Añadir»** en la serie que quieras.
-4. Si quieres ver antes más información, pulsa sobre la fila del
-   resultado: se abrirá una vista previa con los detalles.
+1. In the **header's search bar**, type the title
+   (minimum 2 characters).
+2. Tap the **«Serie»** [Series] button that appears at the top of the
+   results to search the catalog.
+3. In the results, tap **«Añadir»** [Add] on the series you want.
+4. If you want to see more information first, tap the result row: a
+   preview with the details will open.
 
-¿No encuentras la serie? Al final de los resultados de catálogo
-aparece **«Añadir manualmente»** (más en [sección 10.3](#103-añadir-manualmente)).
+Can't find the series? At the end of the catalog results
+**«Añadir manualmente»** [Add manually] appears (more in
+[section 10.3](#103-add-manually)).
 
-### 4.3 Ver y marcar episodios
+### 4.3 Watching and marking episodes
 
-Pulsa sobre la serie de tu lista para abrir su ficha. Verás las
-**temporadas**; pulsa en una para desplegar sus **episodios**.
+Tap a series on your list to open its card. You will see the
+**seasons**; tap one to unfold its **episodes**.
 
-Para cada episodio puedes:
+For each episode you can:
 
-- **Marcarlo como visto** con la casilla. Si el episodio aún no se ha
-  estrenado, la web te preguntará antes si quieres marcarlo igualmente.
-  Si lo marcas por equivocación, la ventana de valoración ofrece
-  **«Deshacer»** y el episodio vuelve a estar sin marcar.
-- **Volver a ver un episodio**: si el episodio ya está marcado como visto
-  y pulsas su casilla, la web te preguntará si **lo has visto de nuevo** o
-  si quieres **desmarcarlo**. Si eliges «Lo he visto de nuevo», la fecha de
-  última visualización pasa a hoy y el contador del episodio suma uno.
-  Cuando un episodio se ha visto más de una vez, su casilla muestra el
-  **número de veces** en lugar de la marca ✓.
-- **Cambiar la fecha** en la que lo viste (por defecto se pone el día de hoy).
-- **Valorarlo** con estrellas, una vez visto (más en [sección 13](#13-valoraciones-con-estrellas)).
-- Ver la **puntuación de la comunidad** (TMDB) de ese episodio, si tiene.
+- **Mark it as watched** with the checkbox. If the episode has not
+  aired yet, the web app will ask first whether you want to mark it
+  anyway. If you mark it by mistake, the rating window offers
+  **«Deshacer»** [Undo] and the episode goes back to unmarked.
+- **Re-watch an episode**: if the episode is already marked as watched
+  and you tap its checkbox, the web app will ask whether **you watched
+  it again** or whether you want to **unmark it**. If you choose «Lo he
+  visto de nuevo» [I watched it again], the last-watched date becomes
+  today and the episode counter goes up by one.
+  When an episode has been watched more than once, its checkbox shows
+  the **number of times** instead of the ✓ mark.
+- **Change the date** you watched it (by default today's date is set).
+- **Rate it** with stars, once watched (more in
+  [section 13](#13-star-ratings)).
+- See the **community score** (TMDB) of that episode, if it has one.
 
-También hay dos botones por temporada: **«Marcar todo»** y
-**«Desmarcar todo»**. Si hay episodios aún sin estrenar, la web te pedirá
-confirmación antes de marcarlos todos.
+There are also two buttons per season: **«Marcar todo»** [Mark all] and
+**«Desmarcar todo»** [Unmark all]. If there are episodes that have not
+aired yet, the web app will ask for confirmation before marking them
+all.
 
-La serie se considera **«Vista»** cuando marcas el último episodio que
-falta. En tu lista verás siempre qué toca ver ahora (por ejemplo,
-«Siguiente: T2E5»).
+A series is considered **«Vista»** when you mark the last episode
+missing. On your list you will always see what to watch now (for
+example, «Siguiente: T2E5» [Next: S2E5]).
 
-### 4.4 Pausar, abandonar y retomar
+### 4.4 Pausing, abandoning and resuming
 
-Dentro de la ficha de la serie tienes tres botones según el momento:
+Inside the series card you have three buttons depending on the moment:
 
-- **«En pausa»**: detienes el seguimiento sin perder lo visto.
-- **«Abandonar»**: dejas la serie (la web te pregunta antes; no se pierde
-  el progreso).
-- **«Retomar»**: vuelves a una serie que tenías en pausa o abandonada.
+- **«En pausa»** [On pause]: you stop following it without losing what
+  you watched.
+- **«Abandonar»** [Abandon]: you drop the series (the web app asks
+  first; no progress is lost).
+- **«Retomar»** [Resume]: you return to a series you had on pause or
+  abandoned.
 
-### 4.5 Volver a ver una serie desde el principio
+### 4.5 Watching a series again from the beginning
 
-Si una serie está completa, la ficha ofrece **«Volver a verla desde el
-principio»**. La web guarda el visionado anterior en tu historial y
-reinicia la serie para que empieces de nuevo. Verás el aviso
-«Has terminado esta serie (visionado nº X)» cuando la vuelvas a completar.
+If a series is complete, the card offers **«Volver a verla desde el
+principio»** [Watch again from the beginning]. The web app saves the
+previous watch in your history and resets the series so you start
+again. You will see the notice «Has terminado esta serie (visionado nº
+X)» [You have finished this series (watch no. X)] when you complete it
+again.
 
-### 4.6 Historial de visionados
+### 4.6 Watch history
 
-En la ficha de una serie terminada puedes desplegar **«Visionados
-anteriores»** y ver las fechas de inicio y fin de cada vez que la has visto.
+On a finished series' card you can unfold **«Visionados
+anteriores»** [Previous watches] and see the start and end dates of
+each time you watched it.
 
-### 4.7 Editar y eliminar
+### 4.7 Editing and deleting
 
-En la ficha: **«✎ Editar información»** te permite corregir datos (título,
-año, portada...), y **«Eliminar»** borra la serie. El borrado no es
-inmediato: tienes unos segundos para pulsar **«Deshacer»** si te
-arrepientes (más en [sección 14.3](#143-deshacer-un-borrado)).
+On the card: **«✎ Editar información»** [Edit information] lets you
+correct data (title, year, cover...), and **«Eliminar»** [Delete]
+removes the series. Deletion is not immediate: you have a few seconds
+to press **«Deshacer»** if you change your mind (more in
+[section 14.3](#143-undo-a-deletion)).
 
-## 5. Películas
+## 5. Movies
 
-### 5.1 Los estados de una película
+### 5.1 The statuses of a movie
 
-Solo hay dos:
+There are only two:
 
-| Estado | Significado |
+| Status | Meaning |
 |---|---|
-| **Pendiente** | Añadida, aún no vista. |
-| **Vista** | Al menos un visionado registrado. |
+| **Pendiente** | Added, not watched yet. |
+| **Vista** | At least one watch registered. |
 
-Una película **«aún no estrenada»** muestra un aviso con su fecha; si
-intentas marcarla como vista antes de tiempo, la web te preguntará si
-quieres hacerlo igualmente.
+A movie **«aún no estrenada»** [not yet released] shows a notice with
+its date; if you try to mark it as watched early, the web app will ask
+whether you want to do it anyway.
 
-### 5.2 Añadir una película
+### 5.2 Adding a movie
 
-Igual que con las series: escribe el título en la **barra de búsqueda
-de la cabecera**, pulsa el botón **«Película»** y luego **«Añadir»** en
-el resultado que quieras, o usa la vista previa pulsando sobre la fila.
-Si no la encuentras, al final de los resultados aparece **«Añadir
-manualmente»** (más en [sección 10.3](#103-añadir-manualmente)).
+Same as with series: type the title in the **header's search
+bar**, tap the **«Película»** [Movie] button and then **«Añadir»** on
+the result you want, or use the preview by tapping the row.
+If you cannot find it, at the end of the results **«Añadir
+manualmente»** appears (more in [section 10.3](#103-add-manually)).
 
-### 5.3 Marcar como vista
+### 5.3 Marking as watched
 
-En tu lista, cada película tiene un botón **«Vista»**. Al pulsarlo se
-registra el visionado con la fecha de hoy y se abre la ventana de
-**valoración** para que la puntúes de 1 a 5 estrellas (con medias,
-pulsando dos veces el mismo número; puedes pulsar
-**«Ahora no»**). Si te arrepientes del marcado, pulsa **«Deshacer»** en
-esa ventana: el visionado se anula y no se añade al historial.
+On your list, each movie has a **«Vista»** button. Tapping it
+registers the watch with today's date and opens the
+**rating** window so you can score it 1 to 5 stars (with halves,
+by tapping the same number twice; you can tap
+**«Ahora no»** [Not now]). If you regret the marking, tap
+**«Deshacer»** in that window: the watch is canceled and not added to
+the history.
 
-Si ya la habías visto y vuelves a marcarla, el botón se convierte en
-**«Añadir otro visionado»** — la web guarda ambos en el historial.
+If you had already watched it and mark it again, the button becomes
+**«Añadir otro visionado»** [Add another watch] — the web app stores
+both in the history.
 
-### 5.4 Historial de visionados (revisionados)
+### 5.4 Watch history (rewatches)
 
-En la ficha de la película ves la lista de todas las veces que la has
-visto, con sus fechas. Puedes **editar la fecha** de cada visionado o
-**«Quitar»** uno del historial. En tu lista, si la has visto más de una vez,
-aparece «Vista el FECHA · ×2» (o el número que corresponda).
+On the movie's card you see the list of all the times you watched it,
+with their dates. You can **edit the date** of each watch or
+**«Quitar»** [Remove] one from the history. On your list, if you
+watched it more than once, it shows «Vista el FECHA · ×2» [Watched on
+DATE · ×2] (or the corresponding number).
 
-## 6. Libros
+## 6. Books
 
-### 6.1 Los estados de un libro
+### 6.1 The statuses of a book
 
-| Estado | Significado |
+| Status | Meaning |
 |---|---|
-| **Pendiente** | Añadido, aún sin empezar. |
-| **Leyendo** | Has empezado la lectura y no la has terminado. |
-| **Leído** | Lectura completada. |
-| **Standby** | Lo has pausado; tu página actual se conserva. |
-| **Abandonado** | Lo has dejado; tu página actual se conserva. |
+| **Pendiente** | Added, not started yet. |
+| **Leyendo** [Reading] | You started reading and have not finished. |
+| **Leído** [Read] | Reading completed. |
+| **Standby** | You paused it; your current page is kept. |
+| **Abandonado** [Abandoned] | You left it; your current page is kept. |
 
-### 6.2 Añadir un libro
+### 6.2 Adding a book
 
-Escribe el **título o el autor** en la barra de búsqueda de la
-cabecera y pulsa el botón **«Libro»** para buscar en el catálogo.
-Los libros se buscan siempre **en español** (se descartan las
-ediciones que las fuentes confirman en otro idioma).
+Type the **title or the author** in the header's search bar
+and tap the **«Libro»** [Book] button to search the catalog.
+Books are always searched **in Spanish** (editions that the sources
+confirm in another language are discarded).
 
-Si el libro tiene varias ediciones, la web te deja **elegir portada y
-sinopsis** antes de añadirlo. Si ya lo tienes en tu registro, el botón
-se muestra como «Añadido». Si no lo encuentras, al final de los
-resultados aparece **«Añadir manualmente»**
-(más en [sección 10.3](#103-añadir-manualmente)).
+If the book has several editions, the web app lets you **choose cover
+and synopsis** before adding it. If you already have it in your
+tracker, the button shows as «Añadido» [Added]. If you cannot find it,
+at the end of the results **«Añadir manualmente»** appears
+(more in [section 10.3](#103-add-manually)).
 
-### 6.3 Empezar y terminar lecturas
+### 6.3 Starting and finishing readings
 
-En tu lista, cada libro tiene un botón grande: **«Empezar ✓»** o, si ya
-está en curso, **«Terminar ✓»** (y **«Releer ↺»** cuando está leído).
+On your list, each book has a big button: **«Empezar ✓»** [Start ✓] or,
+if it is already in progress, **«Terminar ✓»** [Finish ✓] (and
+**«Releer ↺»** [Re-read ↺] when it is read).
 
-En la ficha del libro:
+On the book's card:
 
-- **«Empezar a leer»**: registra el inicio con la fecha de hoy.
-- **«Terminar de leer»**: cierra la lectura con la fecha de hoy y abre la
-  ventana de valoración. Si pulsas **«Deshacer»** en esa ventana, el
-  libro vuelve a quedar como estaba: si estabas leyendo, vuelve a
-  «Leyendo», y la lectura terminada no se registra.
-- **«Página actual»**: anota por qué página vas. Se guarda en la ficha del
-  libro.
-- **En pausa / Abandonar / Retomar**: como en las series, sin perder tu
-  progreso.
+- **«Empezar a leer»** [Start reading]: registers the start with
+  today's date.
+- **«Terminar de leer»** [Finish reading]: closes the reading with
+  today's date and opens the rating window. If you tap
+  **«Deshacer»** in that window, the book goes back to how it was: if
+  you were reading it, it goes back to
+  «Leyendo», and the finished reading is not registered.
+- **«Página actual»** [Current page]: note which page you are on. It is
+  saved on the book's card.
+- **En pausa / Abandonar / Retomar**: as with series, without losing
+  your progress.
 
-### 6.4 Historial de lecturas
+### 6.4 Reading history
 
-En la ficha ves todas tus lecturas del libro: fecha de inicio → fecha de
-fin (o «leyendo» si está en curso). Puedes **editar las fechas** y
-**«Quitar»** una lectura del historial. Las relecturas aparecen como
-lecturas adicionales.
+On the card you see all your readings of the book: start date → end
+date (or «leyendo» [reading] if in progress). You can **edit the
+dates** and **«Quitar»** a reading from the history. Re-reads appear as
+additional readings.
 
-## 7. Videojuegos
+## 7. Video games
 
-### 7.1 Los estados de un videojuego
+### 7.1 The statuses of a video game
 
-| Estado | Significado |
+| Status | Meaning |
 |---|---|
-| **Pendiente** | Añadido, aún sin empezar. |
-| **Jugando** | Has empezado una partida y no la has terminado. |
-| **Jugado** | Partida terminada. |
-| **Standby** | Lo has pausado; tu historial de sesiones se conserva. |
-| **Abandonado** | Lo has dejado; tu historial de sesiones se conserva. |
-
-### 7.2 Añadir un videojuego
-
-Escribe el título en la **barra de búsqueda de la cabecera** y pulsa el
-botón **«Videojuego»** para buscar en el catálogo de **IGDB** (el mismo
-catálogo de la web de videojuegos igdb.com, consultado a través de un
-proxy propio). Los resultados traen portada, año, sinopsis, plataformas,
-valoración de la comunidad y más datos.
-
-- Pulsa **«Añadir»** para añadirlo (el botón pasa a «Añadido»).
-- Pulsa **«Marcar jugado»** para añadirlo **ya marcado como jugado** (se
-  registra la sesión con la fecha de hoy) y **valorarlo al momento**: se
-  abre la ventana de estrellas para puntuarlo. Si pulsas **«Deshacer»**
-  en esa ventana, el videojuego se elimina de tu registro.
-- Pulsa sobre la fila (no sobre el botón) para ver la **vista previa**
-  con sus detalles antes de añadirlo.
-- Si ya lo tienes en tu registro, el botón aparece como **«Añadido»** y
-  no se puede pulsar.
-- Si no lo encuentras, al final de los resultados aparece **«Añadir
-  manualmente»** (más en [sección 10.3](#103-añadir-manualmente)).
-
-### 7.3 Empezar y terminar partidas
-
-En tu lista, cada videojuego tiene un botón grande: **«Empezar ✓»** o, si
-ya está en curso, **«Terminar ✓»** (y **«Rejugar ↺»** cuando está jugado).
-
-En la ficha del videojuego:
-
-- **«Empezar partida»**: registra el inicio con la fecha de hoy.
-- **«Terminar partida»**: cierra la sesión con la fecha de hoy y abre la
-  ventana de valoración. Si pulsas **«Deshacer»** en esa ventana, el
-  videojuego vuelve a quedar como estaba.
-- **En pausa / Abandonar / Retomar**: como en las series y los libros,
-  sin perder tu historial de sesiones.
-
-### 7.5 Horas jugadas
-
-En la ficha de cada videojuego se muestra el **total de horas jugadas**
-debajo del título (p. ej. «34,7 h jugadas»). Es la suma de tus sesiones;
-si vinculas tu cuenta de Steam y aún no hay sesiones registradas, se usa
-el total que informa Steam. En el historial puedes poner las horas de
-cada sesión a mano y el total se actualiza al guardar.
-
-### 7.4 Historial de sesiones
-
-En la ficha ves todas tus sesiones de juego: fecha de inicio → fecha de
-fin (o «jugando» si está en curso). Puedes **editar las fechas** y
-**«Quitar»** una sesión del historial. Las rejugadas aparecen como
-sesiones adicionales. Cada sesión tiene además un campo opcional de
-**horas** (cuántas horas dedicaste en esa partida, en pasos de media
-hora); ese campo se usa para la estadística de **horas jugadas** de tu
-perfil (sección 15.1).
-
-## Compras (lista de deseos)
-
-En la barra de pestañas de Ocio tienes la pestaña **«Compras»**: tu
-lista de cosas que comprar, para apuntar lo que vayas queriendo (un
-monitor, un libro, lo que sea).
-
-### Añadir una cosa
-
-Pulsa **«Añadir cosa»** y rellena lo que quieras:
-
-- **Título** (obligatorio): lo único imprescindible.
-- **Precio** (opcional): un número; da igual si usas coma o punto
-  («12,99» o «12.99»). Se mostrará en euros en la tarjeta.
-- **URL del producto** (opcional): se abrirá en tu navegador… la web
-  también acepta dominios sin «https://» (escribe «www.dominio.com/x»
-  y la web completa la dirección).
-- **Foto** (opcional): un **enlace** a una imagen (por ejemplo, la
-  portada del producto en la tienda). Si no pones ninguna, la tarjeta
-  muestra un placeholder «Sin foto».
-- **Descripción** (opcional): notas o detalles del producto.
-
-Guarda y la tarjeta aparece en la lista.
-
-### Marcar como comprada
-
-Cada tarjeta tiene un interruptor **«Comprado»**: márcalo cuando la
-compres y el título se tachará (la tarjeta se queda atenuada) y se
-guarda la fecha en la que la compraste. Si te equivocas, desmárcalo y
-vuelve a estar «por comprar».
-
-Pulsa una tarjeta para **editar** todos sus campos o **🗑️** para
-borrarla (se te pedirá confirmación). Con las fichitas de arriba
-puedes filtrar: **Todas**, **Por comprar** o **Compradas**.
-
-### Cosas que conviene saber
-
-- La lista es **privada**: es solo para ti; nadie más la ve (a
-  diferencia de tu registro de ocio).
-- Puedes **ocultarla** en Ajustes → Secciones y pestañas, y volver a
-  mostrarla cuando quieras; tus datos no se borran.
-- Una cosa comprada se queda en la lista: bórrala cuando no la
-  quieras conservar más.
-
-## 8. Recetas
-
-La sección **Recetas** (en la barra lateral, junto a «Ocio») te permite
-guardar tus recetas, planificar el menú de la semana y generar la lista
-de la compra automáticamente. Tiene cuatro pestañas — **Recetas**,
-**Ingredientes**, **Menú** y **Compra** — en una barra fija
-**igual que las de Ocio**: abajo en el móvil y bajo la barra de
-búsqueda en el ordenador y la tableta, cada una con su icono y su color
-(**ocre**, **violeta**, **verde** y **rojo**). La pestaña activa se
-marca con una franja de su color. Puedes ocultarlas desde [Ajustes →
-Secciones y pestañas](#17-ajustes), igual que las de Ocio.
-
-### 8.1 Tus recetas
-
-En la pestaña «Recetas» ves tus recetas en tarjetas. Con **«+ Nueva
-receta»** creas una con:
-
-- **Nombre** (obligatorio) y descripción.
-- **Porciones**: cuántas raciones salen (se usa para calcular la lista
-  de la compra).
-- **Foto**: una dirección (URL) de imagen.
-- **Enlaces de referencia**: la web de donde sacaste la receta, uno por
-  línea.
-- **Ingredientes**: se eligen de tu **catálogo de ingredientes** con
-  un **desplegable con buscador**: escribe para filtrar y elige una
-  opción de la lista (no se puede escribir un nombre libre). Si el
-  ingrediente no está en el catálogo, pulsa **«Nuevo ingrediente»**:
-  se abre la misma ventana de creación de la pestaña Ingredientes
-  (nombre y categoría, y si quieres supermercados y cantidad de
-  paquete) y el ingrediente queda ya elegido en la receta. A cada
-  ingrediente le pones la **cantidad** y eliges su **unidad de medida**
-  en un desplegable con las opciones **g, Kg, mL, L y Unidades** (puedes
-  dejarla sin elegir); la **categoría no se elige aquí**: viene de la
-  ficha del ingrediente en el catálogo y puedes cambiarla en la pestaña
-  Ingredientes (ver 8.5). Puedes añadir tantas filas como quieras.
-- **Instrucciones**: los pasos, en orden.
-- **Etiquetas de alérgenos** (Sin gluten, Vegetariano, Vegano, Sin
-  lactosa, Sin frutos secos, Sin huevo) y **tipo de comida** (Entrante,
-  Plato de cuchara, Plato principal, Masas y panes, Postres y dulces,
-  Salsas y guarniciones, Desayunos, Bebidas). Marca los que apliquen.
-
-En los desplegables de categorías y etiquetas puedes **crear etiquetas
-propias**: escribe el nombre en el campo «Nueva etiqueta propia…» y
-pulsa «Añadir». Las etiquetas propias se guardan en tu cuenta y aparecen
-marcadas como «(propia)».
-
-La **barra de búsqueda de la cabecera** busca **dentro de tus recetas**
-(más en [sección 10.2](#102-buscar-en-tu-registro)): encuentra recetas
-**por nombre, por ingrediente** (por ejemplo «huevo» muestra todas las
-recetas que lo usan) y **por etiqueta** (por ejemplo «vegetariano»).
-Pulsa un resultado para abrir la receta en modo lectura.
-
-Encima del listado hay dos **filtros desplegables**: uno de
-**alérgenos** y otro de **tipo de comida**. Púlsalos para marcar o
-desmarcar opciones (puedes seleccionar **varias a la vez** o «Todos»);
-las tarjetas se filtran al momento. Una receta se muestra si lleva
-**al menos una** de las etiquetas marcadas en cada filtro, y las
-recetas sin etiquetas de ese tipo se ven siempre.
-
-Las tarjetas de las recetas muestran sus **etiquetas en píldoras de
-colores**: las de **alérgenos en verde** y las de **tipo de comida en
-ocre**, igual que dentro de la ventana de información, para
-distinguirlas de un vistazo.
-
-Para abrir una receta **pulsa sobre su tarjeta, en cualquier sitio de
-ella**: se abre su ventana de información en **modo lectura** (no se
-puede modificar nada). Esta ventana es una **vista de texto**: no ves
-un formulario con casillas, sino **la foto de la receta** (si tiene) y,
-justo debajo, **el nombre como título** con las **etiquetas** de
-alérgenos y tipo de comida en **píldoras de colores** (las de
-**alérgenos en verde** y las de **tipo de comida en ocre**, para
-distinguirlas de un vistazo). Después se muestra la **descripción** y
-las **porciones**.
-
-Bajo eso aparecen los **ingredientes en forma de lista** (cada uno con
-su nombre y cantidad, por ejemplo «Harina — 200 g») y las
-**instrucciones numeradas paso a paso**. Al final, si la receta tiene,
-se muestran los **enlaces de referencia** (la web de donde la sacaste),
-que se abren en otra pestaña al pulsarlos (si un enlace no empieza por
-`http://` o `https://` se muestra como texto, sin pulsar).
-
-Dentro de la ventana hay dos botones: **«✎ Editar»** y **«Eliminar»**.
-Con **«Eliminar»** la borras (se quita del menú y de la lista de la
-compra); con **«Editar»** (el botón con el lápiz ✎) pasas al modo de
-edición con el mismo formulario de alta.
-
-La ventana se cierra con la **✕** de arriba. En modo lectura también
-se cierra al **pulsar fuera** de ella; en modo **edición** no, para
-que no se pierda lo que estés escribiendo si pulsas fuera por error
-(ciérrala con «Cancelar» o con la ✕).
-
-### 8.2 Importar una receta desde una web
-
-En el formulario de nueva receta hay una casilla **«Importar desde una
-URL»**: pega el enlace de la receta y pulsa «Importar». Si la web lo
-permite, se rellenan solos el nombre, la foto y la descripción. Muchas
-webs bloquean esta lectura desde otra página: en ese caso solo se
-guarda la URL.
-
-En cualquier caso, una receta importada queda **marcada con el
-distintivo «Revisar»** (borde naranja y etiqueta), para que la abras,
-completes los datos que falten y la guardes sin revisar cuando esté
-lista.
-
-### 8.3 El menú semanal
-
-En la pestaña **«Menú»** planificas la semana. Con las flechas eliges
-la semana; con **«Comensales»** indicas cuántas personas comen. Con
-**«Borrar semana»** vacías por completo el menú de la semana que
-tengas a la vista (se te pedirá confirmación).
-
-En cada día (Lunes a Domingo) y comida (**Almuerzo** y **Cena**)
-puedes añadir recetas con el botón **«+ Añadir receta»** de la barra
-superior. Se abre una ventana en la que primero eliges el **destino**:
-el **día** de la semana o **«Toda la semana»**, y la **comida**
-(**Almuerzo** o **Cena**; la comida solo aplica cuando eliges un día
-concreto).
-Después verás **todas tus recetas** en forma de tarjetas: la **foto**
-(si la tiene) a la izquierda, el **nombre** como título y las
-**etiquetas de alérgenos y tipos de plato** debajo. Puedes **buscar**
-por texto y **filtrar** por las dos etiquetas con los botones del
-buscador. Pulsa una tarjeta para **ver la receta** con la misma
-ventana de la pestaña Recetas (ciérrala y volverás al buscador).
-
-Para **añadirla**, pulsa **«+ Añadir»** y, si quieres, indica los
-**comensales de esa receta** (por si no todos comen de todo): si lo
-dejas vacío, la receta usa los **comensales globales del menú**. El
-número elegido aparece junto al nombre de la receta en la comida.
-
-Puedes añadir **varias recetas en la misma comida**: cada persona
-puede comer una opción distinta. Cada receta aparece en su día como
-una **tarjeta en miniatura** (foto, nombre y etiquetas); púlsala para
-**verla** o quítala con la **✕**. Ya no hace falta un botón por celda:
-todo se añade con el mismo «+ Añadir receta».
-
-En **«Recetas a la semana»** se guardan las recetas que eliges con
-**«Toda la semana»**: se preparan una vez para toda la semana (por
-ejemplo, una **masa de pizza**) y **no se multiplican por los
-comensales**. Aparecen como **tarjetas iguales a las de cada día**
-(foto, nombre y etiquetas): púlsalas para **verlas** o quítalas con
-la **✕**.
-
-Para marcar una receta como «ya hecha» (para que **no** entre en la
-lista de la compra), exclúyela desde la lista de la compra (ver 8.4).
-
-### 8.4 La lista de la compra
-
-La pestaña **«Compra»** calcula sola lo que necesitas
-comprar: cada ingrediente de cada receta se multiplica por
-(comensales ÷ porciones de la receta). Por ejemplo, una receta de 4
-porciones con 200 g de arroz, para 2 comensales, pedirá 100 g. Las
-recetas «a la semana» se apuntan con su cantidad fija.
-
-- **Varias semanas a la vez**: bajo la barra superior hay unos chips
-  con las fechas de las semanas. Marca los que quieras (al menos uno)
-  y la lista **suma los ingredientes** de todas las semanas
-  seleccionadas; con las flechas ← y → ves las semanas anteriores o
-  siguientes. Mientras no toques los chips, la lista sigue la semana
-  que tengas abierta en el Menú.
-- Las líneas se **agrupan por categoría** (Frutas, Carnes, Despensa…).
-- Marca la casilla de una línea para tacharla cuando la cojas en el
-  supermercado.
-- **Cantidad en paquetes**: si un ingrediente tiene marcada la
-  **cantidad del paquete** en su ficha (ver 8.5), la lista compara lo
-  que necesitas con el paquete y lo redondea al alza: si necesitas
-  550 g de harina y la harina se vende en paquetes de 1 Kg, aparecerá
-  el número **1**; si necesitas 2,5 Kg, el **3**. Junto al número
-  puedes **ajustar los paquetes** con los botones − y + (¿te sobra
-  harina de la semana pasada? quita un paquete; ¿quieres tener de
-  sobra? añade uno) y el ajuste se guarda en ese dispositivo; el
-  botón ↺ vuelve al cálculo automático. Si el ingrediente no tiene
-  cantidad de paquete (o las unidades no se pueden comparar), se
-  muestra lo que necesites.
-- **Quitar un ítem**: desliza una línea **hacia la izquierda** y
-  continúa deslizando un poco más (en el móvil) o pulsa la **✕ roja
-  de la derecha** (en ordenador) para quitarla de la lista; puedes
-  deshacerlo en el aviso que aparece al momento. Solo el gesto
-  horizontal de deslizar revela el fondo rojo con su ✕ (que se ve
-  únicamente mientras deslizas); desplazarte por la lista con el
-  dedo hacia arriba o abajo **no marca** ninguna línea. Los ítems de
-  recetas dejan de calcularse en las semanas marcadas (al pie de la
-  lista aparece «Quitados de la lista» y puedes volver a incluirlos
-  pulsando su nombre).
-- Con **«+ Ítem extra»** añades cosas a mano: se abre un campo con
-  **buscador de ingredientes** del catálogo (el mismo desplegable que
-  al añadir ingredientes a una receta): elige uno, escribe la
-  **cantidad** y elige la **unidad de medida** en un desplegable
-  (**g, Kg, mL, L o Unidades**) y pulsa «Añadir». No hay que
-  elegir categoría ni marcar si es de limpieza: eso se toma de la ficha
-  del ingrediente del catálogo (p. ej. un ingrediente con la categoría
-  «Artículos del hogar» se trata como producto no comestible). Si el
-  ingrediente no está en el catálogo, créalo antes con «+ Nuevo
-  ingrediente» en la pestaña Ingredientes (ver 8.5). El ítem se añade a
-  todas las semanas seleccionadas y se quita igual que el resto
-  (deslizando o con la ✕).
-- Si una receta del menú ya la tienes hecha o no necesitas comprar sus
-  ingredientes, **exclúyela**: al pie de la lista aparecen las recetas
-  excluidas y puedes volver a incluirlas pulsando su nombre. También se
-  indican en el menú (tachadas).
-
-### 8.5 El catálogo de ingredientes
-
-La pestaña **«Ingredientes»** muestra el catálogo de ingredientes de tu
-cuenta, agrupados **por categorías**. Se rellena solo con los que usas
-en tus recetas, y también puedes añadir ingredientes a mano con el
-botón **«+ Nuevo ingrediente»** (arriba a la izquierda): escribe el
-nombre y elige la categoría. También puedes rellenar, si quieres, los
-**supermercados** donde se puede comprar (Lidl, Aldi, Mercadona, Día,
-Carrefour y El Corte Inglés, cada uno con su etiqueta de color) y la
-**cantidad del paquete** (número y unidad: g, Kg, mL, L, unidades).
-
-Los ingredientes se guardan y muestran **tal y como los escribes**, con
-sus mayúsculas y tildes. Si escribes uno que ya existe (aunque lo
-escribas con otras mayúsculas o sin tildes), no se añade otra vez: se
-conserva la primera vez que lo escribiste.
-
-Sobre la lista tienes un control:
-
-- **Filtro por categorías**: un desplegable con una casilla por
-  categoría, todas marcadas por defecto. Desmarca las que no quieras
-  ver; la etiqueta del botón indica cuántas categorías se están
-  mostrando. El filtro se aplica **al momento, sin cerrar el
-  desplegable**: en cuanto marcas o desmarcas una casilla se colorea
-  para que veas qué está seleccionado y la lista se actualiza sola.
-  Con la casilla **«Todas»** marcas o desmarcas todas de una vez. Los
-  ingredientes **sin categoría** se muestran siempre.
-
-Cada ingrediente es una tarjeta con su **nombre**. Al pulsarla se abre
-una ventana **en modo lectura** con la información ampliada: la
-**categoría**, los **supermercados** donde se puede comprar (las
-etiquetas de color de Lidl, Aldi, Mercadona, Día, Carrefour y El Corte
-Inglés), la **cantidad del paquete** (número y unidad) y, si tiene, una
-**foto**. Si el ingrediente no tiene foto no se muestra nada de imagen.
-La ventana también indica **en qué recetas se usa** (pulsa el nombre de
-una receta para abrirla en modo lectura) y tiene un botón
-**«Añadir a la lista de la compra»** (con el carrito 🛒): se abre una
-  ventana para elegir **solo la cantidad y la unidad de medida** (la
-  unidad se elige en un desplegable con **g, Kg, mL, L y Unidades**),
-  y el ingrediente se apunta en la lista de la compra de las semanas
-  seleccionadas (igual que un ítem extra). También tiene un botón
-  **«Eliminar»** para quitarlo del catálogo (no afecta a las recetas
-  que lo usan) y un botón **✏️ Editar** para modificarlo: con el lápiz
-  se abre la misma ventana en modo edición, donde puedes cambiar el
-  **nombre**, la **foto** (pegando una URL de imagen), la **categoría**,
-  los **supermercados** y la **cantidad del paquete**; los cambios se
-  guardan todos juntos con el botón **«Guardar»** (o se descartan con
-  «Cancelar»). La ventana no tiene botón «Cerrar» abajo: se cierra con
-  la ✕ de arriba.
-
-Puedes ocultar esta pestaña desde [Ajustes → Secciones y
-pestañas](#17-ajustes) igual que el resto.
-
-### 8.6 Datos y sincronización
-
-Las recetas, el catálogo de ingredientes, las etiquetas propias y los
-menús se guardan en tu cuenta y se sincronizan en tiempo real entre
-tus dispositivos, igual que el resto de la web. Los menús de semanas
-anteriores se conservan.
-
-## 9. Gimnasio
-
-La sección **Gimnasio** (en la barra lateral, junto a «Ocio» y
-«Recetas») te permite registrar tus entrenos, ver un resumen de lo
-entrenado y llevar un catálogo propio de ejercicios, con los pesos y
-las repeticiones de cada serie.
-Tiene tres pestañas — **Resumen**, **Entrenos** y **Ejercicios** — en
-una barra fija **igual que las de Ocio y Recetas**: abajo en el móvil
-y bajo la barra de búsqueda en el ordenador y la tableta, cada una con
-su icono y su color (**Resumen en violeta**, **Entrenos en teal** y
-**Ejercicios en ocre**). La pestaña
-activa se marca con una franja de su color. Puedes ocultarlas desde
-[Ajustes → Secciones y pestañas](#17-ajustes), igual que las demás.
-
-Justo debajo de las pestañas está el selector **«Unidad de peso»**
-(ver 9.4), visible en toda la sección.
-
-### 9.1 Tu resumen
-
-La pestaña **«Resumen»** es la primera de la sección y te muestra un
-**resumen de lo que has entrenado en un periodo**. Eliges el periodo
-con el selector que hay bajo las pestañas, con tres opciones:
-
-- **«Semana en curso»**: de lunes a hoy (la opción que viene elegida
-  por defecto).
-- **«Mes en curso»**: del día 1 del mes a hoy.
-- **«Rango»**: eliges tú las fechas **desde** y **hasta**, lo que
-  quieras. Solo con esta opción se muestra el **recuadro del rango**,
-  un único recuadro con un **calendario**: al pulsar «Rango» se abre
-  y eliges las dos fechas allí mismo. El **primer día que pulsas** es
-  el **desde** y el **segundo** el **hasta**; el calendario **se
-  mantiene abierto** hasta que eliges las dos fechas (si pulsas el
-  hasta antes que el desde, la web **los da la vuelta** por ti).
-  Puedes **cambiar de mes** con las flechas ‹ › de la parte de
-  arriba, **borrar** el rango elegido con el botón «Borrar» para
-  empezar de nuevo, y cerrarlo con «Listo», con la tecla **Esc** o
-  pulsando fuera. Si dejas un extremo sin elegir, queda **sin
-  límite** (p. ej. sin desde, el periodo empieza en el primer
-  entreno). El recuadro ya muestra arriba el rango que llevas
-  elegido.
-
-El resumen muestra **dos tarjetas con los totales del periodo** — el
-**número de entrenos** y el **número de ejercicios distintos** que
-trabajaste — y, debajo, el desglose **por grupos musculares**: para
-cada grupo, cuántos ejercicios distintos y en cuántos entrenos
-apareció. Por último, una lista **por ejercicio** con las veces que lo
-hiciste (en cuántos entrenos aparece) y su **diferencia de peso** en
-el periodo: cuánto ha cambiado entre el **peso más antiguo** y el
-**más nuevo** que registraste, con **signo** — **+** si aumentó y
-**−** si bajó (en la unidad de peso que tengas elegida; si un
-ejercicio lo hiciste sin registrar peso, verás «—»). Además, la
-diferencia se **colorea**: **verde** si aumentó, **roja** si bajó y
-con el color normal de la tabla si no cambió (o si no hay pesos).
-Si un ejercicio **ya no está en tu catálogo**, el resumen
-**conserva su nombre** igualmente.
-
-El resumen se actualiza solo al añadir, editar o borrar entrenos. Si
-no hay entrenos en el periodo, la web te lo indica con un aviso.
-
-### 9.2 Tus entrenos
-
-En la pestaña «Entrenos» ves tus entrenos en **tarjetas**, ordenados
-por fecha, del más reciente al más antiguo. Cada tarjeta muestra el
-**nombre** (si le pusiste uno), la **fecha** y un resumen como
-«3 ejercicios · 12 series».
-
-Con **«+ Nuevo entreno»** creas uno con:
-
-- **Fecha** (obligatoria; por defecto, hoy).
-- **Nombre** (opcional): un nombre para el entreno (p. ej. «Push
+| **Pendiente** | Added, not started yet. |
+| **Jugando** [Playing] | You started a playthrough and have not finished it. |
+| **Jugado** [Played] | Playthrough finished. |
+| **Standby** | You paused it; your session history is kept. |
+| **Abandonado** | You left it; your session history is kept. |
+
+### 7.2 Adding a video game
+
+Type the title in the **header's search bar** and tap the
+**«Videojuego»** [Video game] button to search the **IGDB** catalog
+(the same catalog as the igdb.com video game website, queried through
+an own proxy). The results bring cover, year, synopsis, platforms,
+community rating and more data.
+
+- Tap **«Añadir»** to add it (the button switches to «Añadido»).
+- Tap **«Marcar jugado»** [Mark played] to add it **already marked as
+  played** (the session is registered with today's date) and **rate it
+  right away**: the stars window opens to score it. If you tap
+  **«Deshacer»** in that window, the video game is removed from your
+  tracker.
+- Tap the row (not the button) to see the **preview** with its details
+  before adding it.
+- If you already have it in your tracker, the button appears as
+  **«Añadido»** and cannot be tapped.
+- If you cannot find it, at the end of the results **«Añadir
+  manualmente»** appears (more in [section 10.3](#103-add-manually)).
+
+### 7.3 Starting and finishing playthroughs
+
+On your list, each video game has a big button: **«Empezar ✓»** or, if
+it is already in progress, **«Terminar ✓»** (and **«Rejugar ↺»**
+[Replay ↺] when it is played).
+
+On the video game's card:
+
+- **«Empezar partida»** [Start playthrough]: registers the start with
+  today's date.
+- **«Terminar partida»** [Finish playthrough]: closes the session with
+  today's date and opens the rating window. If you tap
+  **«Deshacer»** in that window, the video game goes back to how it
+  was.
+- **En pausa / Abandonar / Retomar**: as with series and books,
+  without losing your session history.
+
+### 7.5 Played hours
+
+On each video game's card the **total of played hours** is shown below
+the title (e.g. «34,7 h jugadas» [34.7 h played]). It is the sum of
+your sessions; if you link your Steam account and there are no
+registered sessions yet, the total reported by Steam is used. In the
+history you can enter each session's hours by hand and the total
+updates on save.
+
+### 7.4 Session history
+
+On the card you see all your play sessions: start date → end
+date (or «jugando» [playing] if in progress). You can **edit the
+dates** and **«Quitar»** a session from the history. Replays appear as
+additional sessions. Each session also has an optional **hours** field
+(how many hours you spent on that playthrough, in half-hour steps);
+that field is used for the **played hours** statistic of your
+profile (section 15.1).
+
+## Purchases (wishlist)
+
+In the Leisure tab bar you have the **«Compras»** tab: your
+list of things to buy, to note down whatever you want (a
+monitor, a book, anything).
+
+### Adding a thing
+
+Tap **«Añadir cosa»** [Add thing] and fill in what you want:
+
+- **Título** [Title] (required): the only essential field.
+- **Precio** [Price] (optional): a number; it does not matter if you
+  use a comma or a period («12,99» or «12.99»). It will be shown in
+  euros on the card.
+- **URL del producto** [Product URL] (optional): it will open in your
+  browser… the web app also accepts domains without «https://» (type
+  «www.dominio.com/x» and the web app completes the address).
+- **Foto** [Photo] (optional): a **link** to an image (for example, the
+  product cover in the store). If you do not add one, the card
+  shows a «Sin foto» [No photo] placeholder.
+- **Descripción** [Description] (optional): notes or details of the
+  product.
+
+Save and the card appears on the list.
+
+### Marking as purchased
+
+Each card has a **«Comprado»** [Purchased] switch: mark it when you
+buy it and the title gets struck through (the card is dimmed) and the
+date you bought it is saved. If you made a mistake, unmark it and it
+goes back to «to buy».
+
+Tap a card to **edit** all its fields or **🗑️** to
+delete it (you will be asked for confirmation). With the little chips
+at the top you can filter: **Todas** [All], **Por comprar** [To buy] or
+**Compradas** [Purchased].
+
+### Things worth knowing
+
+- The list is **private**: it is only for you; nobody else sees it (unlike
+  your leisure tracker).
+- You can **hide it** in Ajustes → Secciones y pestañas, and show it
+  again whenever you want; your data is not deleted.
+- A purchased thing stays on the list: delete it when you no
+  longer want to keep it.
+
+## 8. Recipes
+
+The **Recetas** section (in the sidebar, next to «Ocio») lets you
+save your recipes, plan the weekly menu and generate the shopping
+list automatically. It has four tabs — **Recetas**,
+**Ingredientes**, **Menú** and **Compra** — in a fixed bar
+**just like the Leisure ones**: at the bottom on mobile and under the
+search bar on the computer and tablet, each with its icon and its color
+(**ocre**, **violeta**, **verde** and **rojo**). The active tab is
+marked with a stripe of its color. You can hide them from [Ajustes →
+Secciones y pestañas](#17-settings), just like Leisure's.
+
+### 8.1 Your recipes
+
+In the «Recetas» tab you see your recipes as cards. With **«+ Nueva
+receta»** [New recipe] you create one with:
+
+- **Nombre** [Name] (required) and description.
+- **Porciones** [Servings]: how many servings it yields (used to
+  calculate the shopping list).
+- **Foto** [Photo]: an image address (URL).
+- **Enlaces de referencia** [Reference links]: the website you got the
+  recipe from, one per line.
+- **Ingredientes** [Ingredients]: chosen from your **ingredient
+  catalog** with a **searchable dropdown**: type to filter and choose
+  an option from the list (you cannot type a free name). If the
+  ingredient is not in the catalog, tap **«Nuevo ingrediente»**
+  [New ingredient]: the same creation window of the Ingredientes tab
+  opens (name and category, and if you want supermarkets and package
+  quantity) and the ingredient is already chosen in the recipe. For each
+  ingredient you set the **cantidad** [quantity] and choose its **unit
+  of measure** in a dropdown with the options **g, Kg, mL, L y
+  Unidades** [g, Kg, mL, L and Units] (you may leave it unchosen); the
+  **category is not chosen here**: it comes from the ingredient's record
+  in the catalog and you can change it in the Ingredientes tab
+  (see 8.5). You can add as many rows as you want.
+- **Instrucciones** [Instructions]: the steps, in order.
+- **Allergen tags** (Sin gluten [Gluten-free], Vegetariano
+  [Vegetarian], Vegano [Vegan], Sin lactosa [Lactose-free], Sin frutos
+  secos [Nut-free], Sin huevo [Egg-free]) and **meal type** (Entrante
+  [Starter], Plato de cuchara [Spoon dish], Plato principal [Main
+  course], Masas y panes [Doughs and breads], Postres y dulces
+  [Desserts and sweets], Salsas y guarniciones [Sauces and sides],
+  Desayunos [Breakfasts], Bebidas [Drinks]). Mark the ones that apply.
+
+In the category and tag dropdowns you can **create your own tags**:
+type the name in the «Nueva etiqueta propia…» [New own tag…] field and
+tap «Añadir». Your own tags are saved to your account and appear
+marked as «(propia)» [(own)].
+
+The **header's search bar** searches **within your recipes**
+(more in [section 10.2](#102-search-your-tracker)): it finds recipes
+**by name, by ingredient** (for example «huevo» [egg] shows all the
+recipes that use it) and **by tag** (for example «vegetariano»).
+Tap a result to open the recipe in read mode.
+
+Above the list there are two **filter dropdowns**: one for
+**allergens** and one for **meal type**. Tap them to mark or
+unmark options (you can select **several at once** or «Todos» [All]);
+the cards are filtered instantly. A recipe is shown if it carries
+**at least one** of the tags marked in each filter, and recipes
+without tags of that type are always shown.
+
+Recipe cards show their **tags as colored pills**: the
+**allergen ones in green** and the **meal type ones in
+ochre**, the same as inside the information window, to
+tell them apart at a glance.
+
+To open a recipe **tap its card, anywhere on it**: its information
+window opens in **read mode** (nothing can be modified). This window is a
+**text view**: you do not see
+a form with checkboxes, but **the recipe's photo** (if it has one) and,
+just below, **the name as a heading** with the **allergen and meal
+type tags** in **colored pills** (the
+**allergen ones in green** and the **meal type ones in ochre**, to
+tell them apart at a glance). Then the **description** and
+the **servings** are shown.
+
+Below that, the **ingredients appear as a list** (each with
+its name and quantity, for example «Harina — 200 g» [Flour — 200 g]) and the
+**instructions numbered step by step**. At the end, if the recipe has
+them, the **reference links** are shown (the website you got it from),
+which open in another tab when tapped (if a link does not start with
+`http://` or `https://` it is shown as text, not clickable).
+
+Inside the window there are two buttons: **«✎ Editar»** [Edit] and
+**«Eliminar»**. With **«Eliminar»** you delete it (it is removed from
+the menu and the shopping list); with **«Editar»** (the button with the
+pencil ✎) you switch to edit mode with the same registration form.
+
+The window closes with the **✕** at the top. In read mode it
+also closes by **tapping outside** it; in **edit** mode it does not, so
+you do not lose what you are typing if you tap outside by mistake
+(close it with «Cancelar» [Cancel] or the ✕).
+
+### 8.2 Importing a recipe from a website
+
+In the new recipe form there is a **«Importar desde una
+URL»** [Import from a URL] checkbox: paste the recipe's link and tap
+«Importar». If the website allows it, the name, photo and description
+fill in on their own. Many websites block this reading from another
+page: in that case only the URL is saved.
+
+In any case, an imported recipe is **marked with the «Revisar»**
+[Review] badge (orange border and tag), so you open it,
+complete the missing data and unmark it once reviewed when it is
+ready.
+
+### 8.3 The weekly menu
+
+In the **«Menú»** tab you plan the week. With the arrows you choose
+the week; with **«Comensales»** [Diners] you say how many people are
+eating. With **«Borrar semana»** [Clear week] you empty the whole menu
+of the week you are looking at (you will be asked for confirmation).
+
+On each day (Monday to Sunday) and meal (**Almuerzo** [Lunch] and
+**Cena** [Dinner]) you can add recipes with the **«+ Añadir receta»**
+[Add recipe] button of the top bar. A window opens where you first
+choose the **destination**: the **day** of the week or **«Toda la
+semana»** [Whole week], and the **meal**
+(**Almuerzo** or **Cena**; the meal only applies when you choose a
+specific day).
+Then you will see **all your recipes** as cards: the **photo**
+(if they have one) on the left, the **name** as heading and the
+**allergen and dish type tags** below. You can **search**
+by text and **filter** by the two tags with the search bar's buttons.
+Tap a card to **view the recipe** with the same
+window as the Recetas tab (close it and you return to the search
+bar).
+
+To **add it**, tap **«+ Añadir»** and, if you want, enter the
+**diners of that recipe** (in case not everyone eats everything): if
+you leave it empty, the recipe uses the **menu's global
+diners**. The chosen number appears next to the recipe name in the
+meal.
+
+You can add **several recipes to the same meal**: each person
+can eat a different option. Each recipe appears on its day as a
+**miniature card** (photo, name and tags); tap it to
+**view it** or remove it with the **✕**. There is no longer a button
+per cell: everything is added with the same «+ Añadir receta».
+
+In **«Recetas a la semana»** [Recipes for the week] the recipes you
+choose with **«Toda la semana»** are stored: they are prepared once
+for the whole week (for example, a **pizza dough**) and **are not
+multiplied by the diners**. They appear as **cards identical to the
+daily ones** (photo, name and tags): tap them to **view them** or
+remove them with the **✕**.
+
+To mark a recipe as «already made» (so it does **not** enter the
+shopping list), exclude it from the shopping list (see 8.4).
+
+### 8.4 The shopping list
+
+The **«Compra»** tab calculates on its own what you need
+to buy: each ingredient of each recipe is multiplied by
+(diners ÷ recipe servings). For example, a recipe of 4
+servings with 200 g of rice, for 2 diners, asks for 100 g. Recipes
+«for the week» are noted with their fixed quantity.
+
+- **Several weeks at once**: under the top bar there are chips
+  with the weeks' dates. Mark the ones you want (at least one)
+  and the list **adds up the ingredients** of all the selected
+  weeks; with the ← and → arrows you see the previous or next
+  weeks. As long as you do not touch the chips, the list follows the
+  week you have open in the Menú.
+- The lines are **grouped by category** (Frutas [Fruits], Carnes
+  [Meats], Despensa [Pantry]…).
+- Mark a line's checkbox to strike it through when you pick it up at
+  the supermarket.
+- **Quantity in packages**: if an ingredient has the **package
+  quantity** set in its record (see 8.5), the list compares what you
+  need with the package and rounds up: if you need
+  550 g of flour and flour is sold in 1 Kg packages, the number **1**
+  appears; if you need 2.5 Kg, **3**. Next to the number
+  you can **adjust the packages** with the − and + buttons (flour left
+  over from last week? remove a package; want some spare? add one) and
+  the adjustment is saved on that device; the ↺ button returns to the
+  automatic calculation. If the ingredient has no package quantity (or
+  the units cannot be compared), what you need is shown.
+- **Removing an item**: swipe a line **to the left** and
+  keep swiping a bit more (on mobile) or tap the **red ✕ on the
+  right** (on computer) to remove it from the list; you can undo it in
+  the notice that appears immediately. Only the horizontal swipe
+  gesture reveals the red background with its ✕ (visible only while
+  you swipe); scrolling through the list with your finger up or down
+  **does not mark** any line. Items of recipes stop being calculated
+  in the marked weeks (at the bottom of the list «Quitados de la
+  lista» [Removed from the list] appears and you can include them
+  again by tapping their name).
+- With **«+ Ítem extra»** [Extra item] you add things by hand: a field
+  opens with the catalog's **ingredient search** (the same dropdown as
+  when adding ingredients to a recipe): choose one, type the
+  **quantity** and choose the **unit of measure** in a dropdown
+  (**g, Kg, mL, L o Unidades**) and tap «Añadir». You do not have to
+  choose a category or mark whether it is a cleaning product: that
+  comes from the catalog ingredient's record (e.g. an ingredient with
+  the category «Artículos del hogar» [Household items] is treated as a
+  non-edible product). If the ingredient is not in the catalog, create
+  it first with «+ Nuevo ingrediente» in the Ingredientes tab (see
+  8.5). The item is added to all the selected weeks and is removed the
+  same way as the rest (swiping or with the ✕).
+- If you already made a menu recipe or do not need to buy its
+  ingredients, **exclude it**: at the bottom of the list the excluded
+  recipes appear and you can include them again by tapping their name.
+  They are also indicated in the menu (struck through).
+
+### 8.5 The ingredient catalog
+
+The **«Ingredientes»** tab shows your account's ingredient catalog,
+grouped **by category**. It fills itself with the ones you use in your
+recipes, and you can also add ingredients by hand with the
+**«+ Nuevo ingrediente»** button (top left): type the
+name and choose the category. You can also fill in, if you want, the
+**supermarkets** where it can be bought (Lidl, Aldi, Mercadona, Día,
+Carrefour and El Corte Inglés, each with its color tag) and the
+**package quantity** (number and unit: g, Kg, mL, L, unidades).
+
+Ingredients are saved and shown **exactly as you type them**, with
+their capital letters and accents. If you type one that already exists
+(even with different capitalization or without accents), it is not
+added again: the first time you typed it is kept.
+
+Above the list you have one control:
+
+- **Category filter**: a dropdown with a checkbox per category, all
+  marked by default. Unmark the ones you do not want
+  to see; the button's label says how many categories are being
+  shown. The filter applies **instantly, without closing the
+  dropdown**: as soon as you mark or unmark a checkbox it colors
+  so you can see what is selected and the list updates itself.
+  With the **«Todas»** checkbox you mark or unmark all at once. The
+  ingredients **without category** are always shown.
+
+Each ingredient is a card with its **name**. Tapping it opens a
+window **in read mode** with the extended information: the
+**category**, the **supermarkets** where it can be bought (the color
+tags of Lidl, Aldi, Mercadona, Día, Carrefour and El Corte Inglés),
+the **package quantity** (number and unit) and, if it has one, a
+**photo**. If the ingredient has no photo no image is shown.
+The window also states **which recipes use it** (tap a recipe's name
+to open it in read mode) and has a
+**«Añadir a la lista de la compra»** [Add to the shopping list]
+button (with the 🛒 cart): a window opens to choose **only the
+quantity and the unit of measure** (the unit is chosen in a dropdown
+with **g, Kg, mL, L y Unidades**),
+and the ingredient is noted in the shopping list of the selected
+weeks (same as an extra item). It also has an
+**«Eliminar»** button to remove it from the catalog (it does not
+affect the recipes using it) and a **✏️ Editar** button to modify it:
+with the pencil the same window opens in edit mode, where you can
+change the **name**, the **photo** (pasting an image URL), the
+**category**, the **supermarkets** and the **package quantity**; the
+changes are saved all together with the **«Guardar»** [Save] button
+(or discarded with «Cancelar»). The window has no «Cerrar» [Close]
+button at the bottom: it closes with the ✕ at the top.
+
+You can hide this tab from [Ajustes → Secciones y
+pestañas](#17-settings) like the rest.
+
+### 8.6 Data and synchronization
+
+The recipes, the ingredient catalog, your own tags and the
+menus are saved in your account and sync in real time between
+your devices, like the rest of the web app. The menus of previous
+weeks are kept.
+
+## 9. Gym
+
+The **Gimnasio** section (in the sidebar, next to «Ocio» and
+«Recetas») lets you record your workouts, see a summary of what you
+trained and keep your own exercise catalog, with the weights and
+repetitions of each set.
+It has three tabs — **Resumen**, **Entrenos** and **Ejercicios** — in
+a fixed bar **just like the Leisure and Recipes ones**: at the bottom
+on mobile and under the search bar on the computer and tablet, each
+with its icon and its color (**Resumen in violet**, **Entrenos in
+teal** and **Ejercicios in ochre**). The active tab is
+marked with a stripe of its color. You can hide them from
+[Ajustes → Secciones y pestañas](#17-settings), like the others.
+
+Right below the tabs is the **«Unidad de peso»** [Weight unit]
+selector (see 9.4), visible across the whole section.
+
+### 9.1 Your summary
+
+The **«Resumen»** tab is the first of the section and shows you a
+**summary of what you trained in a period**. You choose the period
+with the selector under the tabs, with three options:
+
+- **«Semana en curso»** [Current week]: from Monday to today (the
+  option chosen by default).
+- **«Mes en curso»** [Current month]: from the 1st of the month to
+  today.
+- **«Rango»** [Range]: you choose the **from** and **to** dates,
+  whatever you want. Only with this option the **range box** is
+  shown, a single box with a **calendar**: tapping «Rango» opens it
+  and you choose both dates right there. The **first day you tap** is
+  the **from** and the **second** the **to**; the calendar **stays
+  open** until you choose both dates (if you tap the to before the
+  from, the web app **swaps them** for you).
+  You can **change month** with the ‹ › arrows at the
+  top, **clear** the chosen range with the «Borrar» [Clear] button to
+  start over, and close it with «Listo» [Done], with the **Esc** key
+  or by tapping outside. If you leave one end unchosen, it stays
+  **unbounded** (e.g. without from, the period starts at the first
+  workout). The box already shows at the top the range you have
+  chosen.
+
+The summary shows **two cards with the period's totals** — the
+**number of workouts** and the **number of distinct exercises**
+you trained — and, below, the breakdown **by muscle groups**: for
+each group, how many distinct exercises and in how many workouts it
+appeared. Finally, a list **per exercise** with the times you did it
+(in how many workouts it appears) and its **weight difference** over
+the period: how much it changed between the **oldest weight** and the
+**newest** you registered, with a **sign** — **+** if it went up and
+**−** if it went down (in the weight unit you have chosen; if you did
+an exercise without registering weight, you will see «—»). Also, the
+difference is **colored**: **green** if it went up, **red** if it went
+down and with the table's normal color if it did not change (or if
+there are no weights).
+If an exercise **is no longer in your catalog**, the summary
+**keeps its name** anyway.
+
+The summary updates itself when adding, editing or deleting workouts.
+If there are no workouts in the period, the web app tells you with a
+notice.
+
+### 9.2 Your workouts
+
+In the «Entrenos» tab you see your workouts as **cards**, sorted
+by date, from the most recent to the oldest. Each card shows the
+**name** (if you gave it one), the **date** and a summary like
+«3 ejercicios · 12 series» [3 exercises · 12 sets].
+
+With **«+ Nuevo entreno»** you create one with:
+
+- **Fecha** [Date] (required; by default, today).
+- **Nombre** [Name] (optional): a name for the workout (e.g. «Push
   day»).
-- **Nota** (opcional): cómo fue el entreno, sensaciones, progreso…
-- **Ejercicios**: uno o más, cada uno con sus series. Para cada
-  ejercicio eliges uno de tu **catálogo** (pestaña Ejercicios) en su
-  desplegable; con **«+ Añadir ejercicio»** añades otro al entreno.
-  Si el ejercicio que quieres aún no está en el catálogo, pulsa
-  **«Nuevo ejercicio»** y se abre la misma ventana de creación que
-  en la pestaña Ejercicios, sin cerrar el entreno. Si todavía no
-  tienes ejercicios, el botón **«Ver catálogo de ejercicios»** te
-  lleva a crearlos. A cada ejercicio le añades **series** con
-  **«+ Añadir serie»**: en cada serie escribes el **peso** (en la
-  unidad que tengas elegida, ver 9.4) y las **repeticiones**. La
-  tabla de series tiene **etiquetas** («Peso» y «Repeticiones»)
-  encima de cada columna, para que sepas siempre qué hay que
-  escribir en cada recuadro. Con
-  **«Duplicar serie»** copias la última serie del ejercicio (peso y
-  repeticiones) para no volver a escribirlos. Puedes quitar una
-  serie o un ejercicio con su ✕.
-- Cuando eliges un ejercicio que **ya habías trabajado antes**, el
-  entreno se prepara con las **series de la última vez** (pesos y
-  repeticiones del entreno más reciente donde lo registraste): solo
-  tienes que ajustarlas si cambió algo. Si ya habías empezado a
-  escribir series, no se te sobrescriben.
+- **Nota** [Note] (optional): how the workout went, how it felt,
+  progress…
+- **Ejercicios** [Exercises]: one or more, each with its sets. For each
+  exercise you choose one from your **catalog** (Ejercicios tab) in
+  its dropdown; with **«+ Añadir ejercicio»** you add another to the
+  workout. If the exercise you want is not in the catalog yet, tap
+  **«Nuevo ejercicio»** and the same creation window as in the
+  Ejercicios tab opens, without closing the workout. If you do not
+  have exercises yet, the **«Ver catálogo de ejercicios»** [View
+  exercise catalog] button takes you to create them. To each exercise
+  you add **sets** with **«+ Añadir serie»** [Add set]: in each set
+  you type the **weight** (in the unit you have chosen, see 9.4) and
+  the **repetitions**. The sets table has **labels** («Peso» [Weight]
+  and «Repeticiones» [Repetitions])
+  above each column, so you always know what to type in each box.
+  With **«Duplicar serie»** [Duplicate set] you copy the exercise's
+  last set (weight and repetitions) so you do not type them again.
+  You can remove a set or an exercise with its ✕.
+- When you choose an exercise you **had already trained before**, the
+  workout is prefilled with the **sets of the last time** (weights and
+  repetitions of the most recent workout where you logged it): you
+  only have to adjust them if something changed. If you had already
+  started typing sets, yours are not overwritten.
 
-Pulsa **«Guardar»** para guardarlo. Los entrenos se guardan en tu
-cuenta y se sincronizan en tiempo real entre tus dispositivos.
+Tap **«Guardar»** to save it. Workouts are saved in your
+account and sync in real time between your devices.
 
-Pulsa sobre la tarjeta de un entreno para abrirlo **en modo lectura**:
-verás la fecha, el nombre y la nota (si los tiene) y cada ejercicio
-con su tabla de series (peso × repeticiones). Dentro hay dos botones:
-**«✎ Editar»**, que te devuelve al formulario con todo lo que ya
-tenías, y **«Eliminar»**, que borra el entreno (la web te pide
-confirmación antes).
+Tap a workout's card to open it **in read mode**: you will see the
+date, the name and the note (if it has them) and each exercise
+with its sets table (weight × repetitions). Inside there are two
+buttons: **«✎ Editar»**, which takes you back to the form with
+everything you already had, and **«Eliminar»**, which deletes the
+workout (the web app asks for confirmation first).
 
-### 9.3 Tus ejercicios
+### 9.3 Your exercises
 
-La pestaña **«Ejercicios»** muestra tu **catálogo de ejercicios** en
-tarjetas, ordenados por nombre. Con **«+ Nuevo ejercicio»** añades
-uno con:
+The **«Ejercicios»** tab shows your **exercise catalog** as
+cards, sorted by name. With **«+ Nuevo ejercicio»** you add one with:
 
-- **Nombre** (obligatorio).
-- **Grupo muscular** (opcional): elige un preset (Pecho, Espalda,
-  Hombros, Bíceps, Tríceps, Antebrazos, Piernas, Glúteos, Core,
-  Cardio, Cuerpo completo) o **«Otro»** para escribir el tuyo.
-- **Notas** (opcional): técnica, anotaciones, variantes…
+- **Nombre** (required).
+- **Grupo muscular** [Muscle group] (optional): choose a preset (Pecho
+  [Chest], Espalda [Back], Hombros [Shoulders], Bíceps [Biceps],
+  Tríceps [Triceps], Antebrazos [Forearms], Piernas [Legs], Glúteos
+  [Glutes], Core, Cardio, Cuerpo completo [Full body]) or
+  **«Otro»** [Other] to type your own.
+- **Notas** (optional): technique, notes, variants…
 
-Pulsa sobre un ejercicio para abrirlo **en modo lectura** (grupo
-muscular y notas) con **«✎ Editar»** y **«Eliminar»**. **Borrar un
-ejercicio no borra los entrenos que lo usan**: esos entrenos
-conservan su nombre, aunque el ejercicio ya no esté en el catálogo.
+Tap an exercise to open it **in read mode** (muscle
+group and notes) with **«✎ Editar»** and **«Eliminar»**. **Deleting an
+exercise does not delete the workouts that use it**: those workouts
+keep its name, even though the exercise is no longer in the catalog.
 
-Si el ejercicio **ya lo habías trabajado antes**, al abrirlo en modo
-lectura verás también la sección **«Última vez»**: la fecha del
-entreno más reciente donde lo registraste y su **tabla de series**
-(peso × repeticiones, en tu unidad de peso). Así puedes ver de un
-vistazo con qué cargas acabaste la última sesión. Si es un ejercicio
-**nuevo** (nunca lo has trabajado), esta sección no aparece.
+If you **had already trained the exercise before**, when opening it in
+read mode you will also see the **«Última vez»** [Last time] section:
+the date of the most recent workout where you logged it and its
+**sets table** (weight × repetitions, in your weight unit). This way
+you can see at a glance the loads you ended up with last session. If
+it is a **new** exercise (you have never trained it), this section
+does not appear.
 
-### 9.4 Cambiar entre kilos y libras
+### 9.4 Switching between kilos and pounds
 
-Bajo las pestañas de la sección hay un selector **«Unidad de peso»**
-con **kg** y **lbs**. Puedes cambiar entre kilos y libras **en
-cualquier momento**, y afecta a **todo lo que se muestra en la
-sección**: las series de las tarjetas y de los detalles, y los campos
-de peso de los formularios (lo que escribes y las sugerencias de los
-campos vacíos).
+Under the section's tabs there is a **«Unidad de peso»** selector with
+**kg** and **lbs**. You can switch between kilos and pounds **at any
+time**, and it affects **everything shown in the
+section**: the sets of the cards and the details, and the weight
+fields of the forms (what you type and the empty-field suggestions).
 
-**También puedes elegir la unidad desde la ventana de creación o
-edición de un entreno**: tiene su propio selector «Unidad de peso»
-(kg o lbs), que está **sincronizado** con el de la sección — al
-cambiar uno, el otro cambia también, y los pesos del formulario se
-convierten al momento.
+**You can also choose the unit from the workout creation or edit
+window**: it has its own «Unidad de peso» selector (kg or lbs), which
+is **synchronized** with the section's one — when you change one, the
+other changes too, and the form's weights convert instantly.
 
-**Los valores guardados no cambian**: la web guarda siempre el peso en
-kilogramos y solo convierte lo que te muestra (1 kg ≈ 2,2 lbs, con un
-decimal). Puedes alternar entre kilos y libras las veces que quieras
-sin perder nada de lo registrado.
+**The stored values do not change**: the web app always saves the
+weight in kilograms and only converts what it shows you (1 kg ≈ 2.2
+lbs, with one decimal). You can switch between kilos and pounds as
+many times as you want without losing anything recorded.
 
-Tu elección **se guarda y se sincroniza entre tus dispositivos**: si
-cambias a libras en el móvil, el ordenador recordará también esa
-preferencia.
+Your choice **is saved and synced between your devices**: if
+you switch to pounds on mobile, the computer will remember that
+preference too.
 
-## 10. Cómo buscar
+## 10. How to search
 
-### 10.1 Buscar en el catálogo
+### 10.1 Searching the catalog
 
-Todo se busca desde la **barra de búsqueda de la cabecera** (en Ocio,
-en Recetas y en Gimnasio; en tu perfil no hay barra de búsqueda)
-(también se abre con las teclas **Ctrl+K**, **Cmd+K** en Mac, o **/**).
-En la sección de **Ocio**, al escribir el título (mínimo 2 caracteres)
-verás los resultados, y en la parte superior del panel hay cuatro
-botones, siempre visibles: **«Serie»**, **«Película»**, **«Libro»** y
-**«Videojuego»** (en Recetas no aparecen: allí el buscador solo mira
-dentro de la sección; en Gimnasio tampoco: allí de momento no
-encuentra nada, ver 10.2). Pulsa el
-que corresponda para **buscar en el catálogo**:
+Everything is searched from the **header's search bar** (in Leisure,
+Recipes and Gym; there is no search bar in your profile)
+(it also opens with **Ctrl+K**, **Cmd+K** on Mac, or **/**).
+In the **Ocio** section, when you type the title (minimum 2 characters)
+you will see the results, and at the top of the panel there are four
+buttons, always visible: **«Serie»**, **«Película»**, **«Libro»** and
+**«Videojuego»** (they do not appear in Recipes: there the search only
+looks inside the section; in Gym neither: there it finds nothing for
+now, see 10.2). Tap the
+corresponding one to **search the catalog**:
 
-- Películas y series se buscan en **TMDB** (el mismo catálogo de
-  The Movie Database).
-- Libros se buscan en **Google Books** con respaldo de **Open Library**
-  (y se agrupan las ediciones del mismo libro). Se buscan siempre en
-  español.
-- Videojuegos se buscan en **IGDB** (igdb.com) a través de un proxy
-  propio (ver sección 21).
+- Movies and series are searched on **TMDB** (the same catalog as The
+  Movie Database).
+- Books are searched on **Google Books** with **Open Library** as
+  fallback (and the editions of the same book are grouped). They are
+  always searched in Spanish.
+- Video games are searched on **IGDB** (igdb.com) through an own proxy
+  (see section 21).
 
-Los resultados del catálogo aparecen en una sección **«Catálogo ·
-Series/Películas/Libros/Videojuegos»** bajo tus resultados de la
-colección. Solo se muestra el catálogo del **último botón pulsado**: si
-pulsas «Película» después de «Serie», los resultados de series se
-ocultan y se muestran los de películas (tu colección siempre se ve
-igual). Para cada resultado:
+The catalog results appear in a **«Catálogo ·
+Series/Películas/Libros/Videojuegos»** [Catalog ·
+Series/Movies/Books/Video games] section under your tracker results.
+Only the catalog of the **last button tapped** is shown: if you tap
+«Película» after «Serie», the series results hide and the movie ones
+show (your collection always shows the same). For each result:
 
-- Pulsa **«Añadir»** para añadirlo directamente (el botón pasa a
+- Tap **«Añadir»** to add it directly (the button switches to
   «Añadido»).
-- Pulsa el botón de marcar para añadirlo **ya completado** y **valorarlo
-  al momento**: el botón usa el término de cada tipo — **«Marcar visto»**
-  en películas y series, **«Marcar leído»** en libros y **«Marcar
-  jugado»** en videojuegos. Las películas quedan vistas con la fecha de
-  hoy, las series con **todos los episodios de todas sus temporadas**,
-  los libros como leídos y los videojuegos como jugados; se abre la
-  ventana de estrellas para puntuarlo (en las series, una sola
-  valoración para la serie en su conjunto). Si en esa ventana pulsas
-  **«Deshacer»**, el título se elimina de tu registro. Si la película
-  aún no está estrenada, o la serie tiene temporadas sin estrenar, la
-  web te lo pregunta antes de continuar.
-- Pulsa sobre la fila (no sobre el botón) para ver la **vista previa**
-  con sus detalles antes de añadirlo.
-- Si ya lo tienes en tu registro, el botón aparece como **«Añadido»** y
-  no se puede pulsar.
-- Al final de cada sección de catálogo aparece
-  **«¿No la encuentras? Añadir manualmente…»**
-  (más en [sección 10.3](#103-añadir-manualmente)).
+- Tap the mark button to add it **already completed** and **rate it
+  right away**: the button uses each type's term — **«Marcar visto»**
+  [Mark watched] for movies and series, **«Marcar leído»** [Mark read]
+  for books and **«Marcar jugado»** for video games. Movies become
+  watched with today's date, series with **all the episodes of all
+  their seasons**, books as read and video games as played; the stars
+  window opens to score it (for series, a single rating for the series
+  as a whole). If in that window you tap **«Deshacer»**, the title is
+  removed from your tracker. If the movie is not released yet, or the
+  series has unaired seasons, the web app asks you before continuing.
+- Tap the row (not the button) to see the **preview** with its details
+  before adding it.
+- If you already have it in your tracker, the button appears as
+  **«Añadido»** and cannot be tapped.
+- At the end of each catalog section,
+  **«¿No la encuentras? Añadir manualmente…»** [Can't find it? Add
+  manually…] appears
+  (more in [section 10.3](#103-add-manually)).
 
-Si no hay resultados del catálogo para esa búsqueda, la web te lo dice
-y te ofrece igualmente añadir el título manualmente.
+If there are no catalog results for that search, the web app tells you
+and still offers to add the title manually.
 
-Si borras lo escrito, el catálogo elegido se desmarca y los botones
-vuelven a quedar sin pulsar: para buscar en el catálogo tendrás que
-volver a pulsar **«Serie»**, **«Película»**, **«Libro»** o
-**«Videojuego»**. En cambio, si sigues escribiendo con un catálogo ya
-elegido, la búsqueda se repite automáticamente en ese mismo catálogo:
-no hace falta volver a pulsar el botón.
+If you clear what you typed, the chosen catalog gets unmarked and the
+buttons go back to unpressed: to search the catalog you will have to
+tap **«Serie»**, **«Película»**, **«Libro»** or
+**«Videojuego»** again. On the other hand, if you keep typing with a
+catalog already chosen, the search repeats automatically on that same
+catalog: no need to tap the button again.
 
-Si una portada no se puede cargar (imagen rota o bloqueada por la web
-que la aloja), se sustituye automáticamente por la imagen «Sin imagen»;
-el resultado sigue funcionando igual.
+If a cover cannot load (broken image or blocked by the site hosting
+it), it is automatically replaced by the «Sin imagen» [No image]
+image; the result keeps working the same.
 
-### 10.2 Buscar en tu registro
+### 10.2 Searching your tracker
 
-La **barra de búsqueda de la cabecera** (o las teclas **Ctrl+K**,
-**Cmd+K** en Mac, o **/**) busca **solo dentro de la sección en la que
-estás** (está disponible en **Ocio**, en **Recetas** y en **Gimnasio**;
-en tu perfil no hay barra de búsqueda):
+The **header's search bar** (or the **Ctrl+K**, **Cmd+K** on Mac, or
+**/** keys) searches **only within the section you are in** (it is
+available in **Ocio**, **Recetas** and **Gimnasio**; there is no
+search bar in your profile):
 
-- En **Ocio**: en lo que ya tienes anotado — **películas, series,
-  libros** (también por autor) y **videojuegos**.
-- En **Recetas**: en tus **recetas** (por nombre, ingrediente o
-  etiqueta). Al pulsar un resultado se abre la receta en modo lectura.
-- En **Gimnasio**: **de momento la búsqueda no encuentra nada**: la
-  barra está disponible, pero los entrenos y los ejercicios no se
-  buscan todavía (está previsto en una versión futura).
+- In **Ocio**: in what you already have noted — **movies, series,
+  books** (also by author) and **video games**.
+- In **Recetas**: in your **recipes** (by name, ingredient or
+  tag). Tapping a result opens the recipe in read mode.
+- In **Gimnasio**: **for now the search finds nothing**: the bar is
+  available, but workouts and exercises are not searchable yet (it is
+  planned for a future version).
 
-Al pulsar la barra (o usar el atajo de teclado) se abre un **panel
-desplegable** bajo ella con los resultados. Los resultados se agrupan
-con iconos: los mismos de las pestañas, cada uno en su color (series en
-verde, películas en rojo, libros en ocre, videojuegos en violeta) y el
-icono 🍽️ para recetas. Pulsa un resultado para abrir su ficha (o la
-receta, según la sección).
+Tapping the bar (or using the keyboard shortcut) opens a **dropdown
+panel** under it with the results. The results are grouped with
+icons: the same ones as the tabs, each in its color (series in
+green, movies in red, books in ochre, video games in violet) and the
+🍽️ icon for recipes. Tap a result to open its card (or the
+recipe, depending on the section).
 
-El panel se cierra con la tecla **Esc**, pulsando fuera de la barra o con la
-**✕** que aparece dentro de la barra (que además borra lo escrito). También
-puedes cerrarlo con el botón de la **esquina izquierda de la cabecera**:
-mientras la búsqueda está abierta, el botón de menú **☰ se convierte en una
-✕** (con una pequeña animación); pulsa esa ✕ para cerrar el panel y el
-botón vuelve a ser ☰, listo para abrir el menú lateral como siempre.
+The panel closes with the **Esc** key, tapping outside the bar or with
+the **✕** that appears inside the bar (which also clears what you
+typed). You can also close it with the button in the
+**header's left corner**:
+while the search is open, the menu button **☰ turns into a
+✕** (with a small animation); tap that ✕ to close the panel and the
+button goes back to being ☰, ready to open the side menu as always.
 
-### 10.3 Añadir manualmente
+### 10.3 Add manually
 
-Si un título no aparece en el catálogo, usa el enlace
-**«¿No la encuentras? Añadir manualmente»** que aparece al final de los
-resultados de catálogo del buscador. Rellena:
+If a title does not appear in the catalog, use the
+**«¿No la encuentras? Añadir manualmente»** link that appears at the
+end of the search bar's catalog results. Fill in:
 
-- **Series**: título, año, portada (opcional) y **número de episodios**
-  (se asume una sola temporada con ese número).
-- **Películas**: título, año y portada (opcional).
-- **Libros**: título, autor, año, páginas y portada (opcional).
-- **Videojuegos**: título, año y portada (opcional).
+- **Series**: title, year, cover (optional) and **number of episodes**
+  (a single season with that number is assumed).
+- **Películas**: title, year and cover (optional).
+- **Libros**: title, author, year, pages and cover (optional).
+- **Videojuegos**: title, year and cover (optional).
 
-Los títulos añadidos manualmente no tienen datos automáticos (fechas de
-episodios, sinopsis...), pero se comportan igual que el resto en tu lista.
+Titles added manually have no automatic data (episode dates, synopsis...),
+but they behave like the rest on your list.
 
-## 11. Organizar y ordenar tu registro
+## 11. Organizing and sorting your tracker
 
-En la barra de cada biblioteca tienes:
+In each library's bar you have:
 
-- **Chips de filtro por estado**: por ejemplo, en Series:
-  Todos / Pendiente / Viendo / Vista / Standby / Abandonada.
-  En Películas: Todos / Pendiente / Vista. En Libros:
+- **Status filter chips**: for example, in Series:
+  Todos [All] / Pendiente / Viendo / Vista / Standby / Abandonada.
+  In Películas: Todos / Pendiente / Vista. In Libros:
   Todos / Pendiente / Leyendo / Leído / Standby / Abandonado.
-  En Videojuegos: Todos / Pendiente / Jugando / Jugado / Standby /
+  In Videojuegos: Todos / Pendiente / Jugando / Jugado / Standby /
   Abandonado.
-- **Selector de orden**:
-  - **Actividad reciente** (el que viene por defecto): lo que viste,
-    leíste, jugaste o se estrenó más recientemente, primero.
-  - **Fecha de visionado/lectura/juego**: por la última vez que viste,
-    leíste o jugaste.
-  - **Alfabético**: por título, de la A a la Z.
-  - **Año de estreno / publicación / lanzamiento**: de más nuevo a más
-    antiguo (en libros, el selector se llama «Año de publicación», y en
-    videojuegos, «Año de lanzamiento»).
-- **Vista cuadrícula ▦ o lista ☰**: a tu gusto (cada sección recuerda la
-  suya mientras estás en la web).
+- **Sort selector**:
+  - **Actividad reciente** [Recent activity] (the default one): what
+    you watched, read, played or got released most recently, first.
+  - **Fecha de visionado/lectura/juego** [Watch/read/play date]: by
+    the last time you watched, read or played it.
+  - **Alfabético** [Alphabetical]: by title, from A to Z.
+  - **Año de estreno / publicación / lanzamiento** [Release /
+    publication / launch year]: from newest to
+    oldest (for books, the selector is called «Año de publicación»
+    [Publication year], and for video games, «Año de lanzamiento»
+    [Launch year]).
+- **Grid ▦ or list ☰ view**: to your liking (each section remembers
+  its own while you are in the web app).
 
-Sobre la disposición de esta barra: los **chips de filtro** están todos
-en una sola línea y, si no caben (en el móvil), esa línea de filtros se
-**desliza en horizontal** sin ocupar más espacio (la barra de
-desplazamiento no se muestra, pero puedes deslizar con el dedo). El
-**selector de orden** y el de **vista** van siempre juntos: en la misma
-línea que los filtros en pantallas anchas y en una segunda línea en el
-móvil. El selector de orden tiene el mismo tamaño y la misma fuente que
-los chips de filtro.
+About the layout of this bar: the **filter chips** are all
+in a single line and, if they do not fit (on mobile), that filter line
+**slides horizontally** without taking more space (the
+scrollbar is not shown, but you can swipe with your finger). The
+**sort selector** and the **view** one always go together: in the same
+line as the filters on wide screens and on a second line on
+mobile. The sort selector has the same size and font as
+the filter chips.
 
-Cada estado tiene su **color** en la tarjeta: Pendiente en rojo,
-Viendo/Leyendo en verde, Vista/Leído en ocre, Standby en gris y Abandonado
-en rojo con el texto tachado.
+Each status has its **color** on the card: Pendiente in red,
+Viendo/Leyendo in green, Vista/Leído in ochre, Standby in gray and
+Abandonado in red with the text struck through.
 
-## 12. La ficha de cada película, serie, libro o videojuego
+## 12. The card of each movie, series, book or video game
 
-Pulsa cualquier título de tu lista para abrir su ficha. Según el tipo,
-verás:
+Tap any title on your list to open its card. Depending on the type,
+you will see:
 
-- **Portada, título y año** (en la vista previa de búsqueda se indica el
-  tipo: «Película · año», «Serie · año» o «Videojuego · año»).
-- **Puntuación de la comunidad**: de TMDB para películas y series (sobre
-  10) y de IGDB para videojuegos (sobre 10), o «Sin puntuaciones».
-- **Tráiler ▶**: se abre el tráiler en YouTube en una pestaña nueva (si lo
-  tiene; en los videojuegos, solo cuando IGDB dispone de uno).
-- **Dónde verla**: plataformas de streaming disponibles (agrupadas en
-  **Streaming / Alquiler / Compra**, con sus logos) según tu país, o el
-  aviso «Sin info. de streaming para este país». Si hay plataformas, se
-  incluye también el enlace «Ver opciones en TMDB».
-- **Información ampliada**: duración, género, director (películas),
-  creadores (series), reparto y sinopsis. En los videojuegos:
-  desarrolladores, editores y clasificación por edades (ESRB).
-- **Plataformas** (videojuegos): las plataformas jugables se muestran
-  como etiquetas bajo el tráiler.
-- **Sagas** (películas): si la película forma parte de una saga, aparece
-  el aviso **«Saga: ...»** con el botón **«Añadir resto de la saga»**. Pulsa
-  el botón, marca las películas que quieras en la lista y pulsa
-  **«Añadir seleccionadas»**. Justo debajo del aviso se muestran también
-  **«Otras películas de la saga»** como tarjetas deslizables (portada,
-  título y año), igual que las recomendaciones: cada película que aún no
-  tengas en tu registro tiene un botón **«Añadir»** para añadirla
-  directamente; las que ya están en tu registro aparecen como
-  **«Añadida»** (botón deshabilitado).
+- **Cover, title and year** (in the search preview the type is stated:
+  «Película · año» [Movie · year], «Serie · año» [Series · year] or
+  «Videojuego · año» [Video game · year]).
+- **Community score**: TMDB's for movies and series (out of
+  10) and IGDB's for video games (out of 10), or «Sin
+  puntuaciones» [No ratings].
+- **Tráiler ▶**: the trailer opens on YouTube in a new tab (if it has
+  one; for video games, only when IGDB has one).
+- **Where to watch**: available streaming platforms (grouped in
+  **Streaming / Alquiler [Rent] / Compra [Buy]**, with their logos)
+  for your country, or the notice «Sin info. de streaming para este
+  país» [No streaming info for this country]. If there are platforms,
+  the «Ver opciones en TMDB» [See options on TMDB] link is also
+  included.
+- **Extended information**: runtime, genre, director (movies),
+  creators (series), cast and synopsis. For video games:
+  developers, publishers and age rating (ESRB).
+- **Platforms** (video games): the playable platforms are shown
+  as tags below the trailer.
+- **Sagas** (movies): if the movie belongs to a saga, the notice
+  **«Saga: ...»** appears with the **«Añadir resto de la saga»** [Add
+  rest of the saga] button. Tap
+  the button, mark the movies you want on the list and tap
+  **«Añadir seleccionadas»** [Add selected]. Just below the notice,
+  **«Otras películas de la saga»** [Other movies of the saga] are also
+  shown as swipeable cards (cover,
+  title and year), like the recommendations: each movie you do not
+  have in your tracker yet has an **«Añadir»** button to add it
+  directly; the ones already in your tracker appear as
+  **«Añadida»** [Added] (disabled button).
 
-  También puedes **pulsar sobre la tarjeta** de cualquiera de esas
-  películas para ver su información (portada, duración, género, director,
-  reparto, sinopsis, puntuación de la comunidad y tráiler si lo tiene)
-  antes de añadirla: se abre una ventana con los botones **«Añadir»** y
-  **«Cerrar»**, y al añadirla o cerrarla (con «Cerrar», la ✕, pulsando
-  fuera de la ventana o la tecla **Esc**) vuelves a la ficha de la
-  película que estabas viendo. Las películas que ya tienes en tu registro
-  se muestran con **«Ya añadido»** (botón deshabilitado).
-- **Recomendaciones**: al final, «Si te gustó esto, quizá te guste...»
-  con títulos similares que puedes añadir directamente. También puedes
-  **pulsar sobre la tarjeta** de una recomendación para ver su
-  información ampliada (igual que las tarjetas de saga: portada,
-  duración, género, reparto, sinopsis, puntuación de la comunidad y
-  tráiler si lo tiene; en las series, además, sus temporadas) antes de
-  añadirla: se abre una ventana con los botones **«Añadir»** y
-  **«Cerrar»**, y al añadirla o cerrarla vuelves a la ficha que estabas
-  viendo. Los títulos que ya tienes en tu registro se muestran con
-  **«Ya añadido»** (botón deshabilitado).
-- **Tu valoración** (1 a 5 estrellas, con medias) y **tus notas** (por ejemplo,
-  «Impresiones...»). Pulsa **«Guardar»** para guardar los cambios y
-  **«Eliminar»** para borrar el título.
+  You can also **tap the card** of any of those
+  movies to see its information (cover, runtime, genre, director,
+  cast, synopsis, community score and trailer if it has one)
+  before adding it: a window opens with the **«Añadir»** and
+  **«Cerrar»** [Close] buttons, and when you add or close it (with
+  «Cerrar», the ✕, tapping outside the window or the **Esc** key) you
+  return to the movie card you were viewing. Movies you already have
+  in your tracker show with **«Ya añadido»** [Already added]
+  (disabled button).
+- **Recommendations**: at the end, «Si te gustó esto, quizá te
+  guste...» [If you liked this, maybe you'll like...] with similar
+  titles you can add directly. You can also **tap the card** of a
+  recommendation to see its extended information (like the saga cards:
+  cover, runtime, genre, cast, synopsis, community score and
+  trailer if it has one; for series, also its seasons) before
+  adding it: a window opens with the **«Añadir»** and
+  **«Cerrar»** buttons, and when you add or close it you return to the
+  card you were viewing. Titles you already have in your tracker show
+  with **«Ya añadido»** (disabled button).
+- **Your rating** (1 to 5 stars, with halves) and **your notes** (for
+  example, «Impresiones...» [Impressions...]). Tap **«Guardar»** to
+  save the changes and **«Eliminar»** to delete the title.
 
-En la ficha de **un episodio cualquiera** también se ve la nota de la
-comunidad del episodio (formato «TMDB 8.5»).
+On the card of **any episode** you also see the episode's community
+score (format «TMDB 8.5»).
 
-En las series, junto a tu valoración general verás también la **media de
-tus notas de episodios** (ver sección 13).
+For series, next to your overall rating you will also see the
+**average of your episode ratings** (see section 13).
 
-En los videojuegos, la ficha incluye además el **historial de sesiones de
-juego** (más en [sección 7.4](#74-historial-de-sesiones)).
+For video games, the card also includes the **play session
+history** (more in [section 7.4](#74-session-history)).
 
-## Veces visto / leído / jugado
+## Times watched / read / played
 
-Cada título tiene un **contador** de las veces que lo has consumido:
+Each title has a **counter** of the times you consumed it:
 
-- **Película**: cuántas veces la has visto (cada «vista» del historial
-  suma 1; aparece como «×N»).
-- **Serie**: cuántas veces la has **completado** (el sello «Completa ·
-  ×N» suma también).
-- **Libro**: cuántas veces lo has leído hasta el final.
-- **Videojuego**: una sesión de juego es una "jugada" y suma 1.
+- **Movie**: how many times you watched it (each «Vista» in the
+  history adds 1; it appears as «×N»).
+- **Series**: how many times you **completed** it (the «Completa ·
+  ×N» [Complete · ×N] stamp adds too).
+- **Book**: how many times you read it to the end.
+- **Video game**: a play session is a "play" and adds 1.
 
-### Ver el contador
+### Viewing the counter
 
-Aparece como un chip **«×N»** en la tarjeta del título (cuadrícula y
-lista) y en el historial de la ficha se ven las sesiones que lo
-suman.
+It appears as a **«×N»** chip on the title's card (grid and
+list) and in the card's history you see the sessions that add
+it up.
 
-### Corregir la cuenta a mano
+### Correcting the count by hand
 
-Si viste/leíste/jugaste algo y NO anotaste cada sesión (por ejemplo,
-releíste un libro dos veces del tirón), entra en su ficha → **Editar
-información** → caja **«Veces vista / completada / leído / jugada»**:
+If you watched/read/played something and did NOT note each session
+(for example, you re-read a book twice in a row), open its card →
+**Editar información** → box **«Veces vista / completada / leído /
+jugada»** [Times watched / completed / read / played]:
 
-- Pon el número real de veces y guarda: se mostrará ese número
-  (menos de lo ya registrado no se puede: no se engaña con la cuenta).
-- Si dejas la caja vacía, la cuenta vuelve a la automática del
-  historial.
+- Enter the real number of times and save: that number will be shown
+  (less than already recorded is not possible: you cannot cheat the
+  count).
+- If you leave the box empty, the count returns to the history's
+  automatic one.
 
-## 13. Valoraciones con estrellas
+## 13. Star ratings
 
-Puedes valorar de **1 a 5 estrellas**, incluidas las **medias estrellas**
-(por ejemplo, 2.5):
+You can rate from **1 to 5 stars**, including **half stars**
+(for example, 2.5):
 
-- **Películas**: al marcarla como vista se abre la ventana de valoración.
-- **Libros**: al terminar la lectura se abre la misma ventana.
-- **Videojuegos**: al terminar una partida se abre la misma ventana.
-- **Series**: en cada episodio visto, bajo el episodio, aparecen 5
-  estrellas para valorarlo (además de la valoración general de la serie,
-  que se guarda desde su ficha).
+- **Movies**: marking it as watched opens the rating window.
+- **Books**: finishing the reading opens the same window.
+- **Video games**: finishing a playthrough opens the same window.
+- **Series**: on each watched episode, below the episode, 5
+  stars appear to rate it (in addition to the series' overall rating,
+  which is saved from its card).
 
-En la ficha de una **serie**, debajo de la valoración general, se muestra
-la **media de tus valoraciones de episodios** (por ejemplo
-«Media episodios: 4.2»). Solo cuentan los episodios que has valorado: los
-vistos sin valorar no se tienen en cuenta (la valoración mínima de un
-episodio es media estrella, 0.5). Si todavía no has valorado ningún
-episodio, la media no aparece. Se actualiza sola en cuanto valoras un
-episodio, quitas una valoración o desmarcas episodios.
+On a **series** card, below the overall rating, the **average of your
+episode ratings** is shown (for example
+«Media episodios: 4.2» [Episode average: 4.2]). Only the episodes you
+rated count: watched without rating are not taken into account (the
+minimum rating of an episode is half a star, 0.5). If you have not
+rated any episode yet, the average does not appear. It updates itself
+as soon as you rate an episode, remove a rating or unmark episodes.
 
-En la ventana emergente puedes pulsar **«Ahora no»** para valorar más
-tarde, o elegir estrellas y pulsar **«Guardar valoración»**. Si pulsas
-guardar sin elegir, la web te lo recuerda. Si vuelves a pulsar el mismo
-número, la valoración se queda en **media estrella** (por ejemplo:
-pulsas 3 y luego otra vez 3 → 2.5). Un **tercer pulso** sobre el mismo
-número quita la valoración por completo.
+In the popup window you can tap **«Ahora no»** to rate later, or
+choose stars and tap **«Guardar valoración»** [Save rating]. If you
+tap save without choosing, the web app reminds you. If you tap the
+same number again, the rating becomes a **half star** (for example:
+you tap 3 and then 3 again → 2.5). A **third tap** on the same
+number removes the rating entirely.
 
-También puedes pulsar **«Deshacer»**: anula el marcado recién hecho
-(el visionado de la película, el fin de la lectura o el episodio
-marcado) y te deja como estabas. En episodios, el deshacer se ofrece
-solo mientras la ventana está abierta.
+You can also tap **«Deshacer»**: it cancels the marking just made
+(the movie's watch, the end of the reading or the marked
+episode) and leaves you as you were. For episodes, undo is offered
+only while the window is open.
 
-En tu lista, cada título muestra tus estrellas (★, con «½» para las
-medias, por ejemplo ★★½) y la nota de la comunidad.
+On your list, each title shows your stars (★, with «½» for the
+halves, e.g. ★★½) and the community score.
 
-## 14. Acciones rápidas
+## 14. Quick actions
 
-### 14.1 El botón grande de cada fila
+### 14.1 Each row's big button
 
-En la vista de **lista**, cada título tiene un botón grande con la acción
-más probable:
+In **list** view, each title has a big button with the most likely
+action:
 
-- **Película**: «Vista ✓».
-- **Serie**: «Ver T2E5» (el siguiente episodio) o «Completa ✓» si ya está
-  terminada.
-- **Libro**: «Empezar ✓», «Terminar ✓» o «Releer ↺».
-- **Videojuego**: «Empezar ✓», «Terminar ✓» o «Rejugar ↺».
+- **Movie**: «Vista ✓» [Watched ✓].
+- **Series**: «Ver T2E5» [Watch S2E5] (the next episode) or «Completa
+  ✓» [Complete ✓] if it is already finished.
+- **Book**: «Empezar ✓», «Terminar ✓» or «Releer ↺».
+- **Video game**: «Empezar ✓», «Terminar ✓» or «Rejugar ↺».
 
-### 14.2 Deslizar en el móvil
+### 14.2 Swiping on mobile
 
-En el móvil (vista de lista) puedes **deslizar el dedo hacia un lado**
-sobre una fila para disparar esa misma acción. Deslizar en vertical sigue
-haciendo scroll normalmente.
+On mobile (list view) you can **swipe your finger sideways** over a
+row to trigger that same action. Swiping vertically keeps scrolling
+normally.
 
-La acción se confirma con un aviso flotante (por ejemplo, «marcada como
-vista»). Si en la ventana de valoración pulsas **«Deshacer»**, ese aviso
-cambia a «Marcado deshecho.» (o «Desmarcado.» para un episodio). En
-series en pausa o abandonadas no funciona: la web te avisa de que la
-abras para retomarla.
+The action is confirmed with a floating notice (for example, «marcada
+como vista» [marked as watched]). If in the rating window you tap
+**«Deshacer»**, that notice changes to «Marcado deshecho.» [Marking
+undone.] (or «Desmarcado.» [Unmarked.] for an episode). On paused or
+abandoned series it does not work: the web app tells you to open it
+and resume it.
 
-### 14.3 Deshacer un borrado
+### 14.3 Undoing a deletion
 
-Cuando pulsas **«Eliminar»** en cualquier ficha, la web no borra al
-instante: aparece el aviso ««Título» se eliminará…» con un botón
-**«Deshacer»**. Tienes unos segundos para pulsarlo y cancelar. Si no
-haces nada, el título se elimina de verdad. (Si recargas la página antes
-de que pase el tiempo, el borrado se cancela.)
+When you tap **«Eliminar»** on any card, the web app does not delete
+immediately: the notice ««Título» se eliminará…» [«Title» will be
+deleted…] appears with an
+**«Deshacer»** button. You have a few seconds to tap it and cancel. If
+you do nothing, the title is really deleted. (If you reload the page
+before the time passes, the deletion is canceled.)
 
-## 15. Notificaciones
+## 15. Notifications
 
-El **icono de campana** de la cabecera te avisa (solo dentro de la web, una vez al
-día) de:
+The header's **bell icon** warns you (only inside the web app, once a
+day) about:
 
-- **Estrenos de películas**: ««Título» ya se ha estrenado (fecha).»
-- **Estrenos de series**: ««Título» ya se ha estrenado.»
-- **Estrenos de videojuegos**: ««Título» ya está a la venta (fecha).»
-- **Nuevos episodios**: «Nuevo episodio disponible de «Título»: T2E5.»
+- **Movie releases**: ««Título» ya se ha estrenado (fecha).» [«Title»
+  has been released (date).]
+- **Series releases**: ««Título» ya se ha estrenado.» [«Title» has been
+  released.]
+- **Video game releases**: ««Título» ya está a la venta (fecha).»
+  [«Title» is now on sale (date).]
+- **New episodes**: «Nuevo episodio disponible de «Título»: T2E5.»
+  [New episode available of «Title»: S2E5.]
 
-La campana muestra un **número con las no leídas**. Al abrirla, las
-notificaciones se marcan como leídas. Puedes **«Borrar todas»** o cerrar
-cada una con su ✕. Pulsa fuera de la ventana (o la tecla **Esc**) para
-cerrarla.
+The bell shows a **number with the unread ones**. When you open it,
+the notifications are marked as read. You can **«Borrar todas»** [Clear
+all] or close each one with its ✕. Tap outside the window (or the
+**Esc** key) to close it.
 
-Puedes elegir qué tipos de avisos quieres (o desactivarlos todos) en
-**Ajustes → Notificaciones** ([sección 17](#17-ajustes)).
+You can choose which types of notices you want (or disable them all) in
+**Ajustes → Notificaciones** ([section 17](#17-settings)).
 
-Si además activas **«Notificaciones en el dispositivo»**, esos mismos
-avisos aparecen también como **notificación del sistema** (en la pantalla
-del teléfono o en el escritorio) cuando la web está abierta pero no la
-estás mirando.
+If you also enable **«Notificaciones en el dispositivo»** [Device
+notifications], those same notices also appear as a **system
+notification** (on the phone screen or the desktop) when the web app is
+open but you are not looking at it.
 
-## 16. Tu perfil
+## 16. Your profile
 
-Pulsa **tu foto** (arriba a la derecha) para abrir el menú de perfil y
-elige la sección a la que quieras ir: **Estadísticas o Ajustes**. Cada
-opción del menú lleva su icono. Desde el mismo menú también puedes
-**cerrar sesión**.
-El botón muestra únicamente tu foto, sin tu nombre, en cualquier
-dispositivo (móvil, tablet u ordenador).
-En tu perfil **no aparece la cabecera global** (barra lateral,
-búsqueda y botón de perfil): arriba tienes la **flecha de volver** y
-las pestañas de tu perfil en la misma fila. La flecha te devuelve a la
-sección **Ocio**, **Recetas** o **Gimnasio** desde la que entraste al
-perfil, con la pestaña que tenías activa.
-Tu perfil tiene dos secciones:
+Tap **your photo** (top right) to open the profile menu and
+choose the section you want to go to: **Estadísticas or Ajustes**. Each
+menu option carries its icon. From the same menu you can also
+**sign out**.
+The button shows only your photo, without your name, on any
+device (mobile, tablet or computer).
+In your profile **the global header does not appear** (sidebar,
+search and profile button): at the top you have the **back arrow** and
+your profile's tabs in the same row. The arrow returns you to the
+**Ocio**, **Recetas** or **Gimnasio** section you entered the
+profile from, with the tab you had active.
+Your profile has two sections:
 
-### 16.0 Compartir direcciones de tu perfil
+### 16.0 Sharing your profile's addresses
 
-Igual que las pestañas de [sección 3.1](#31-compartir-direcciones-y-volver-a-las-pestañas),
-cada sección del perfil tiene su propia dirección web, que termina en
-`#/perfil/estadisticas` (Estadísticas) o `#/perfil/ajustes` (Ajustes).
-Puedes copiarla desde la barra de direcciones, guardarla en favoritos o
-compartirla: al abrirla, la web te lleva directo a esa sección del
-perfil. La dirección antigua `#/perfil/datos` sigue funcionando y abre
+Like the tabs of [section 3.1](#31-sharing-addresses-and-returning-to-the-tabs),
+each profile section has its own web address, ending in
+`#/perfil/estadisticas` (Estadísticas) or `#/perfil/ajustes` (Ajustes).
+You can copy it from the address bar, save it in favorites or
+share it: when you open it, the web app takes you straight to that
+profile section. The old `#/perfil/datos` address keeps working and opens
 Ajustes.
 
-Entrar con una dirección de perfil sin sesión iniciada abre primero la
-pantalla de entrada; al iniciar sesión, la web te lleva a la sección
-que pedías.
+Entering with a profile address while signed out opens the sign-in
+screen first; after signing in, the web app takes you to the section
+you asked for.
 
-### 16.1 Estadísticas
+### 16.1 Statistics
 
-Ocho cifras: **Películas vistas, Episodios vistos, Series completadas,
-Libros leídos, Juegos jugados, Juegos completados, Sesiones de juego y
-Horas jugadas**. El selector de periodo te permite verlas de **Siempre**,
-**Este año**, **Este mes** o un **rango personalizado** (elige las fechas
-«Desde» y «Hasta»).
+Eight figures: **Películas vistas** [Movies watched],
+**Episodios vistos** [Episodes watched], **Series completadas** [Series
+completed], **Libros leídos** [Books read], **Juegos jugados** [Games
+played], **Juegos completados** [Games completed], **Sesiones de
+juego** [Play sessions] and **Horas jugadas** [Played hours]. The
+period selector lets you view them for **Siempre** [Always],
+**Este año** [This year], **Este mes** [This month] or a **custom
+range** (choose the «Desde» [From] and «Hasta» [To] dates).
 
-Un videojuego cuenta como **jugado** si tiene una sesión dentro del
-periodo (cada sesión cuenta una vez, por su fecha de fin o, si aún está
-en curso, por su fecha de inicio); las **horas jugadas** son la suma de
-las horas anotadas en las sesiones del periodo, y las **sesiones de
-juego** cuentan esas mismas sesiones del periodo.
+A video game counts as **played** if it has a session within the
+period (each session counts once, by its end date or, if still
+in progress, by its start date); the **played hours** are the sum of
+the hours noted in the period's sessions, and the **play sessions**
+count those same period's sessions.
 
-Debajo hay cinco gráficas:
+Below there are five charts:
 
-- **Actividad por mes**: barras con lo que viste/leíste/jugaste cada mes.
-- **Estados actuales**: qué parte de tu registro está pendiente, en curso,
-  completado, en pausa o abandonado (incluye también los videojuegos).
-- **Géneros**: los 6 géneros más jugados en el periodo.
-- **Plataformas**: las 6 plataformas más jugadas en el periodo.
+- **Actividad por mes** [Activity by month]: bars with what you
+  watched/read/played each month.
+- **Estados actuales** [Current statuses]: which part of your tracker
+  is pending, in progress, completed, paused or abandoned (it includes
+  video games too).
+- **Géneros** [Genres]: the 6 most played genres in the period.
+- **Plataformas** [Platforms]: the 6 most played platforms in the
+  period.
 
-### 16.2 Ajustes
+### 16.2 Settings
 
-Se explica completo en la [sección 17](#17-ajustes).
+Fully explained in [section 17](#17-settings).
 
-## 17. Ajustes
+## 17. Settings
 
-Se llega desde **«Ajustes» en la parte de abajo de la barra lateral**
-(abre el menú con la ☰ de la cabecera) o desde el
-**menú de tu foto → Ajustes**.
+It is reached from **«Ajustes» at the bottom of the sidebar**
+(open the menu with the header's ☰) or from the
+**menu of your photo → Ajustes**.
 
-- **Apariencia → Tema**: elige entre cuatro modos de visualización:
-  - **Oscuro**: el aspecto clásico, con fondo marrón oscuro.
-  - **Negro puro**: como el oscuro pero con el fondo y todas las
-    superficies (tarjetas, secciones de ajustes, menús) totalmente
-    negros, con el texto claro. Ideal para pantallas OLED: gasta menos
-    batería y los colores se ven más profundos.
-  - **Claro**: el aspecto clásico claro, con fondo crema y tarjetas
-    blancas.
-  - **Blanco puro**: como el claro pero con el fondo completamente
-    blanco, en contraposición al negro puro.
-  Tu elección se guarda automáticamente y se mantiene la próxima vez
-  que entres.
+- **Apariencia → Tema** [Appearance → Theme]: choose between four
+  display modes:
+  - **Oscuro** [Dark]: the classic look, with dark brown
+    background.
+  - **Negro puro** [Pure black]: like dark but with the background and
+    all surfaces (cards, settings sections, menus) fully
+    black, with light text. Ideal for OLED screens: it uses less
+    battery and colors look deeper.
+  - **Claro** [Light]: the classic light look, with cream background
+    and white cards.
+  - **Blanco puro** [Pure white]: like light but with the background
+    fully white, as opposed to pure black.
+  Your choice is saved automatically and kept the next time
+  you sign in.
 
-- **Apariencia > Idioma**: cambia el idioma de la interfaz entre
-  **Español** y **English**. Tu elección se guarda automáticamente y se
-  mantiene la próxima vez que entres (los mensajes puntuales de
-  avisos pueden seguir en español mientras se completa la
-  traducción).
-- **Secciones y pestañas**: elige qué secciones y pestañas de la web
-  ves. Hoy hay tres secciones: **«Ocio»**, con sus cinco pestañas
-  (**Series**, **Películas**, **Libros**, **Videojuegos** y **Compras**),
-  **«Recetas»**, con sus cuatro pestañas (**Recetas**, **Ingredientes**,
-  **Menú** y **Compra**), y **«Gimnasio»**, con sus tres pestañas
-  (**Resumen**, **Entrenos** y **Ejercicios**). Al **ocultar una pestaña**,
-  desaparece de la barra de pestañas de su sección (la de Ocio, la
-  de Recetas o la de Gimnasio) y de la vista: tus datos, avisos y
-  actualizaciones siguen funcionando igual, solo deja de verse. Al
-  **ocultar una sección**, desaparece de la barra lateral de
-  navegación; si solo
-  dejas **una sección visible**, la barra lateral (☰) se sustituye
-  por un botón **engranaje ⚙** en la cabecera que abre Ajustes
-  directamente, y vuelve a aparecer cuando tengas más de una sección
-  visible. Siempre queda al menos una sección y una pestaña de cada
-  sección visible: el interruptor de la última que quedaría se muestra
-  apagado (gris) y no se puede tocar, con una nota explicativa.
-  Ocultar algo **no borra tus datos**: solo lo quita de la vista, y
-  puedes volver a mostrarlo cuando quieras. Los cambios se guardan
-  solos.
-- **Notificaciones**: activa o desactiva cada tipo de aviso:
-  - Estrenos de películas
-  - Nuevos episodios de series
-  - Estrenos de series
-  - Estrenos de videojuegos
-  - **Notificaciones en el dispositivo**: si la activas, los avisos
-    anteriores también llegan como **notificaciones del sistema** (en la
-    pantalla del teléfono o en el escritorio) cuando la web está abierta
-    pero no la estás mirando. Al activarla, el navegador te pide permiso
-    la primera vez: si lo deniegas, la opción se desactiva sola (puedes
-    re-concederlo después en los ajustes del navegador). Al tocar la
-    notificación se abre la web. Para que funcione en el móvil, la web
-    debe estar instalada como app ([sección 20](#20-instalar-la-web-en-tu-teléfono))
-    y en iPhone hace falta **iOS 16.4 o superior**; en el ordenador
-    funciona con la pestaña abierta en segundo plano.
-- **Sincronización de datos → «Comprobar estrenos»**: revisa en ese
-  momento si algo se ha estrenado o ha salido un episodio nuevo (lo que la
-  web comprueba sola cada día). Solo puedes usarlo una vez cada **30
-  minutos** (la web te avisa si lo intentas antes). No hace falta usarlo:
-  la web ya lo comprueba sola a diario (ver siguiente sección).
-- **Integración de Steam**: trae tu biblioteca de Steam con las **horas
-  jugadas**. Con un clic: pulsa **«Vincular mi cuenta de
-  Steam»**, inicia sesión en la ventana de Steam que se abre y vuelve
-  a la web: tu cuenta queda **vinculada** (desaparece el pegado
-  a mano del SteamID64 — se guarda como respaldo) y la web
-  **actualiza las horas cada día al entrar** (también con «Comprobar
-  estrenos»). Desde la vista de juegos puedes buscar y añadir cada
-  juego con su horas y el día de la última partda, con «Añadir».
-  Condiciones: tu perfil de Steam debe tener los detalles del juego
-  públicos; el juego ya añadido aparece marcado «Añadido ✓»; y hay
-  que haber desplegado el proxy (`cloudflare/steam-proxy/README.md`).
-  **Epic Games** no ofrece una API pública de biblioteca/horas, así
-  que no se sincroniza.
-- **Datos**: exporta, importa o descarga tus datos:
-  - **Exportar copia de seguridad**: descarga un archivo con TODOS tus
-    datos (películas, series, libros, videojuegos, perfil y
-    notificaciones). Es tu seguro de vida: guárdalo donde quieras.
-  - **Importar copia de seguridad**: restaura datos desde un archivo que
-    exportaras antes. **Añade** lo que falte a lo que ya tienes: no
-    reemplaza ni borra nada.
-  - **Exportar calendario (.ics)**: descarga un archivo con los **próximos
-    episodios de tus series, los estrenos pendientes de películas y los
-    lanzamientos pendientes de tus videojuegos**, para importarlo en Google
-    Calendar, Apple Calendar o similar y tener todos los estrenos en tu
-    agenda.
-  - **Importar desde TV Time**: si usabas la aplicación **TV Time**, puedes
-    traer tu historial completo. Coge en TV Time su export (un archivo JSON
-    con todas tus series) y pulsa este botón para escoger ese archivo: la
-    web te muestra un resumen (cuántas series y cuántos episodios vistos
-    trae) y al confirmar **añade todas las series a tu registro**, con los
-    episodios vistos en sus fechas originales. Ten en cuenta:
-    - Las series se importan **añadiendo**, sin borrar nada: si una serie
-      ya estaba en tu registro, quedará **duplicada** (borra tú la copia
-      vieja antes de importar si no la quieres duplicada).
-    - Las temporadas **especiales** (temporada 0) y los **favoritos** de
-      TV Time no se importan.
-    - Al venir de TV Time, las series se guardan **sin conexión al
-      catálogo** de TMDB: no verán estrenos/episodios nuevos ni mostrarán
-      sinopsis ni plataforma de streaming. Puedes eliminarlas y volver a
-      añadirlas desde la búsqueda del catálogo y tener entonces todas
-      sus funciones de nuevo.
+- **Apariencia > Idioma** [Appearance > Language]: switch the interface
+  language between **Español** and **English**. Your choice is saved
+  automatically and kept the next time you sign in (the occasional
+  notice messages may remain in Spanish while the translation is
+  completed).
+- **Secciones y pestañas** [Sections and tabs]: choose which sections
+  and tabs of the web app you see. Today there are three sections:
+  **«Ocio»**, with its five tabs (**Series**, **Películas**,
+  **Libros**, **Videojuegos** and **Compras**),
+  **«Recetas»**, with its four tabs (**Recetas**, **Ingredientes**,
+  **Menú** and **Compra**), and **«Gimnasio»**, with its three tabs
+  (**Resumen**, **Entrenos** and **Ejercicios**). **Hiding a tab**
+  removes it from its section's tab bar (Leisure's,
+  Recipes' or Gym's) and from the view: your data, notices and
+  updates keep working the same, it just stops being seen. **Hiding a
+  section** removes it from the navigation sidebar; if you
+  only leave **one section visible**, the sidebar (☰) is replaced
+  by a **gear ⚙** button in the header that opens Ajustes
+  directly, and it comes back when you have more than one section
+  visible. At least one section and one tab of each section always
+  remain visible: the switch of the last remaining one is shown off
+  (gray) and cannot be tapped, with an explanatory note.
+  Hiding something **does not delete your data**: it only removes it
+  from the view, and you can show it again whenever you want. The
+  changes save themselves.
+- **Notificaciones**: enable or disable each type of notice:
+  - Estrenos de películas [Movie releases]
+  - Nuevos episodios de series [New series episodes]
+  - Estrenos de series [Series releases]
+  - Estrenos de videojuegos [Video game releases]
+  - **Notificaciones en el dispositivo**: if you enable it, the
+    previous notices also arrive as **system notifications** (on the
+    phone screen or the desktop) when the web app is open but you are
+    not looking at it. When you enable it, the browser asks for
+    permission the first time: if you deny it, the option turns off by
+    itself (you can re-grant it later in the browser settings).
+    Tapping the notification opens the web app. For it to work on
+    mobile, the web app must be installed as an app
+    ([section 20](#20-install-the-web-app-on-your-phone))
+    and on iPhone **iOS 16.4 or higher** is required; on the computer
+    it works with the tab open in the background.
+- **Sincronización de datos → «Comprobar estrenos»** [Data
+  synchronization → Check releases]: checks right then whether
+  something got released or a new episode came out (what the web app
+  checks by itself every day). You can only use it once every **30
+  minutes** (the web app warns you if you try earlier). There is no
+  need to use it: the web app checks by itself daily (see next
+  section).
+- **Integración de Steam** [Steam integration]: brings your Steam
+  library with the **played hours**. One click: tap **«Vincular mi
+  cuenta de Steam»** [Link my Steam account], sign in in the Steam
+  window that opens and return to the web app: your account is
+  **linked** (the hand-pasted SteamID64 disappears — it is kept as a
+  fallback) and the web app **updates the hours every day on sign-in**
+  (also with «Comprobar estrenos»). From the games view you can search
+  and add each game with its hours and the day of the last session,
+  with «Añadir».
+  Conditions: your Steam profile must have the game details public;
+  the already-added game appears marked «Añadido ✓» [Added ✓]; and the
+  proxy must be deployed (`cloudflare/steam-proxy/README.md`).
+  **Epic Games** offers no public library/hours API, so
+  it does not sync.
+- **Datos** [Data]: export, import or download your data:
+  - **Exportar copia de seguridad** [Export backup]: downloads a file
+    with ALL your data (movies, series, books, video games, profile and
+    notifications). It is your life insurance: keep it wherever you
+    want.
+  - **Importar copia de seguridad** [Import backup]: restores data from
+    a file you exported before. It **adds** what is missing to what you
+    already have: it replaces or deletes nothing.
+  - **Exportar calendario (.ics)** [Export calendar (.ics)]: downloads
+    a file with the **upcoming episodes of your series, the pending
+    releases of movies and the pending launches of your video
+    games**, to import into Google
+    Calendar, Apple Calendar or similar and have all the releases in
+    your agenda.
+  - **Importar desde TV Time** [Import from TV Time]: if you used the
+    **TV Time** app, you can bring your full history. Take TV Time's
+    export (a JSON file with all your series) and tap this button to
+    pick that file: the web app shows you a summary (how many series
+    and how many watched episodes it brings) and on confirm it **adds
+    all the series to your tracker**, with the watched episodes on
+    their original dates. Keep in mind:
+    - Series are imported **by adding**, deleting nothing: if a series
+      was already in your tracker, it will be **duplicated** (delete
+      the old copy before importing if you do not want it duplicated).
+    - **Special** seasons (season 0) and **favorites** from
+      TV Time are not imported.
+    - Coming from TV Time, series are saved **without the connection
+      to the TMDB catalog**: they will see no releases/new episodes
+      and will show no synopsis nor streaming platform. You can delete
+      them and add them again from the catalog search and then have
+      all their features again.
 
-## 18. ¿Cuándo se actualizan los datos?
+## 18. When is the data refreshed?
 
-- **Una vez al día**, al abrir la web, se comprueba automáticamente si ha
-  pasado algo: estrenos de tus películas y series pendientes, episodios
-  nuevos de las series que sigues... Si hay novedades, aparecen en el
-  icono de campana.
-- Los datos «extra» de las fichas (sinopsis, reparto, director, tráiler,
-  plataformas...) **no se guardan**: se consultan al catálogo cuando abres
-  la ficha y se recuerdan durante un tiempo para no pedirlos a cada rato.
-  Si falla la conexión en ese momento, la ficha se muestra con los datos
-  básicos (portada, título, fechas) y los detalles se cargan en cuanto haya
-  red. Por eso una ficha puede mostrarse sin sinopsis unos segundos: se
-  está pidiendo al catálogo. Los datos de episodios y plataformas de
-  streaming también se recuerdan durante un tiempo. Los videojuegos: su
-  información (sinopsis, plataformas, valoraciones de IGDB...) se pide al
-  abrir la ficha igualmente, y la comprobación diaria se ocupa de sus
-  **lanzamientos**: si uno con fecha de lanzamiento conocida sale a la
-  venta, te llega el aviso correspondiente (los juegos sin fecha no tienen
-  nada que avisar).
-- El botón **«Comprobar estrenos»** de Ajustes hace lo mismo en el momento
-  (máx. una vez cada 30 minutos).
-- Si al entrar hay un **fallo de conexión puntual** (un momento sin red
-  o un error pasajero del servidor), la web **reintenta sola durante
-  unos segundos** antes de avisarte. También lo hace si la conexión se
-  queda **«colgada»** (ni falla ni llegan los datos, algo que puede
-  pasar con conexiones lentas o inestables): pasados unos segundos sin
-  recibir nada, lo considera un fallo y lo intenta de nuevo. Puede
-  aparecer el aviso «Hay problemas de conexión. Reintentando…» mientras
-  lo hace; normalmente no tienes que hacer nada. Si aun así una pestaña
-  no llega a cargar, verás un mensaje con el botón **«Reintentar»**:
-  púlsalo para volver a intentarlo en ese momento, sin recargar la
-  página (más en [sección 21](#21-problemas-frecuentes)).
+- **Once a day**, when you open the web app, it automatically checks
+  whether something happened: releases of your pending movies and
+  series, new episodes of the series you follow... If there is news,
+  it appears in the bell icon.
+- The cards' «extra» data (synopsis, cast, director, trailer,
+  platforms...) is **not stored**: it is queried from the catalog when
+  you open the card and remembered for a while so it is not requested
+  every time. If the connection fails at that moment, the card shows
+  with the basic data (cover, title, dates) and the details load as
+  soon as there is network. That is why a card can show without a
+  synopsis for a few seconds: it is being requested from the catalog.
+  Episode and streaming platform data are also remembered for a while.
+  Video games: their information (synopsis, platforms, IGDB ratings...)
+  is requested when opening the card too, and the daily check takes
+  care of their **launches**: if one with a known launch date goes on
+  sale, you get the corresponding notice (games without a date have
+  nothing to announce).
+- The **«Comprobar estrenos»** button in Ajustes does the same at that
+  moment (max. once every 30 minutes).
+- If on sign-in there is a **sporadic connection failure** (a moment
+  without network or a passing server error), the web app **retries by
+  itself for a few seconds** before telling you. It also does it if
+  the connection **hangs** (neither fails nor delivers data, something
+  that can happen with slow or unstable connections): after a few
+  seconds without receiving anything, it considers it a failure and
+  tries again. The notice «Hay problemas de conexión. Reintentando…»
+  [There are connection problems. Retrying…] may appear while it does
+  it; normally you do not have to do anything. If a tab still fails to
+  load, you will see a message with the **«Reintentar»** button:
+  tap it to try again right then, without reloading the page
+  (more in [section 21](#21-common-problems)).
 
-## 19. Privacidad
+## 19. Privacy
 
-- **Tu registro es tuyo**: solo tú puedes editar tus películas, series,
-  libros, videojuegos y notas.
-- Tus **notas personales** son privadas: nadie más las ve.
-- Los ajustes de notificaciones se guardan en tu dispositivo y también en
-  tu cuenta.
+- **Your tracker is yours**: only you can edit your movies, series,
+  books, video games and notes.
+- Your **personal notes** are private: nobody else sees them.
+- The notification settings are saved on your device and also in
+  your account.
 
-## 20. Instalar la web en tu teléfono
+## 20. Install the web app on your phone
 
-Mi Registro funciona como una web normal, pero también se puede **instalar**
-para que se comporte como una aplicación:
+Mi Registro works as a normal website, but it can also be
+**installed** so it behaves like an application:
 
-- **En el móvil** (Android/iPhone): abre la web y usa la opción del
-  navegador «Añadir a pantalla de inicio» (o «Instalar app»).
-- **En el ordenador**: usa el botón de instalar del navegador (suele estar
-  en la barra de direcciones).
+- **On mobile** (Android/iPhone): open the web app and use the
+  browser's «Añadir a pantalla de inicio» [Add to home screen] option
+  (or «Instalar app» [Install app]).
+- **On the computer**: use the browser's install button (usually in
+  the address bar).
 
-Una vez instalada, tendrás su icono en tu pantalla. La web funciona
-aunque estés sin conexión para **ver lo que ya está cargado**; las
-anotaciones y cambios necesitan conexión a internet.
+Once installed, you will have its icon on your screen. The web app works
+even without connection to **see what is already loaded**; notes
+and changes need an internet connection.
 
-## 21. Problemas frecuentes
+## 21. Common problems
 
-**No puedo entrar con mi correo**
-Tu correo no está en la lista de invitados. Pide que te añadan (quien
-administra la web lo hace en las reglas de seguridad de Firebase: la
-lista de `isAllowedUser()` en `firestore.rules`, que hay que publicar
-después en Firebase console).
+**I cannot sign in with my email**
+Your email is not on the guest list. Ask to be added (whoever
+administers the web app does it in the Firebase security rules: the
+`isAllowedUser()` list in `firestore.rules`, which must then be
+published in the Firebase console).
 
-**Al buscar libros aparece «Error 503» o tarda mucho**
-Es un fallo puntual del servidor de libros, no tuyo: la web reintenta
-sola. Si persiste, espera unos segundos y vuelve a intentarlo.
+**When searching books an «Error 503» appears or it takes long**
+It is a sporadic failure of the books server, not your fault: the web
+app retries by itself. If it persists, wait a few seconds and try
+again.
 
-**Al buscar videojuegos aparece «Falta IGDB_PROXY_URL…» o «IGDB rechazó la petición…»**
-La búsqueda de videojuegos se hace a través de un **proxy propio**
-(IGDB no permite consultas directas desde el navegador). Si aparece
-«Falta IGDB_PROXY_URL…», quien administra la web tiene que desplegar el
-Cloudflare Worker de `cloudflare/igdb-proxy/` y poner su URL en
-`js/config.js`. Si aparece «IGDB rechazó la petición…», hay que revisar
-las credenciales de Twitch del Worker (Client ID y Client Secret) o el
-límite de peticiones. En cualquier caso, el resto de la web funciona
-igual.
+**When searching video games «Falta IGDB_PROXY_URL…» [IGDB_PROXY_URL
+missing…] or «IGDB rechazó la petición…» [IGDB rejected the request…]
+appears**
+Video game search goes through an **own proxy**
+(IGDB does not allow direct queries from the browser). If
+«Falta IGDB_PROXY_URL…» appears, whoever administers the web app has to
+deploy the Cloudflare Worker of `cloudflare/igdb-proxy/` and set its
+URL in `js/config.js`. If «IGDB rechazó la petición…» appears, the
+Worker's Twitch credentials (Client ID and Client Secret) or the
+request limit must be checked. In any case, the rest of the web app
+works the same.
 
-**Al buscar videojuegos aparece «No se pudo conectar con IGDB…»**
-Suele significar que la URL del Worker en `js/config.js` no es
-correcta (p. ej. el Worker se desplegó con otro nombre, o está detrás
-de una página de acceso de «Cloudflare Access»). Quien administra la
-web debe revisar el paso a paso de `cloudflare/igdb-proxy/README.md`,
-usar la URL exacta que imprime `wrangler deploy` y comprobar que el
-Worker es público (que se ve su JSON `{"ok": true, ...}` en el
-navegador).
+**When searching video games «No se pudo conectar con IGDB…» [Could
+not connect to IGDB…] appears**
+It usually means the Worker URL in `js/config.js` is not
+correct (e.g. the Worker was deployed with another name, or it is
+behind a «Cloudflare Access» login page). Whoever administers the
+web app must review the step-by-step of
+`cloudflare/igdb-proxy/README.md`, use the exact URL printed by
+`wrangler deploy` and check that the Worker is public (that its JSON
+`{"ok": true, ...}` is visible in the browser).
 
-**Al entrar no cargan mis datos**
-La web lo **reintenta automáticamente** durante unos segundos: puede
-aparecer el aviso «Hay problemas de conexión. Reintentando…» (la web
-también lo hace si la conexión se queda «colgada», sin llegar a
-fallar). Si pasados unos segundos sigue sin cargar, aparece el aviso de
-error («No se pudieron cargar tus películas/series/libros/videojuegos»)
-con el botón **«Reintentar»**: púlsalo para volver a intentarlo en ese
-momento, sin recargar la página. Si sigue sin cargar, comprueba tu
-conexión a internet y **recarga la página**.
+**My data does not load when I sign in**
+The web app **retries automatically** for a few seconds: the notice
+«Hay problemas de conexión. Reintentando…» may appear (the web app
+also does it if the connection hangs, without actually failing). If
+after a few seconds it still does not load, the error notice appears
+(«No se pudieron cargar tus películas/series/libros/videojuegos»
+[Your movies/series/books/video games could not be loaded])
+with the **«Reintentar»** button: tap it to try again right then,
+without reloading the page. If it still does not load, check your
+internet connection and **reload the page**.
 
-**He marcado algo por error**
-Tranquilo: si acabas de marcarlo, pulsa **«Deshacer»** en la ventana de
-valoración que se abre al marcar y todo vuelve a estar como antes.
-También puedes desmarcar episodios, quitar visionados del historial y
-«Deshacer» cualquier borrado en los segundos posteriores.
+**I marked something by mistake**
+Relax: if you just marked it, tap **«Deshacer»** in the rating window
+that opens when marking and everything goes back to how it was.
+You can also unmark episodes, remove watches from the history and
+«Deshacer» any deletion in the seconds after.
 
-**La web me dice que un título «aún no se ha estrenado» y creo que no es así**
-Los datos de estreno vienen del catálogo (TMDB). Si crees que hay un
-error, puedes marcarlo como visto/leído igualmente: la web te preguntará
-antes y tú decides.
+**The web app tells me a title «aún no se ha estrenado» [has not been
+released yet] and I think that is not the case**
+Release data comes from the catalog (TMDB). If you think there is an
+error, you can mark it as watched/read anyway: the web app will ask
+first and you decide.
 
-**No me llegan notificaciones del sistema**
-Comprueba lo siguiente:
+**I do not get system notifications**
+Check the following:
 
-- La web debe estar **abierta** (aunque sea en segundo plano): las
-  notificaciones del sistema solo se pueden mostrar mientras la web está
-  abierta. Si la cierras del todo, no pueden llegar.
-- El permiso de notificaciones debe estar **concedido** en los ajustes de
-  tu navegador o teléfono (y la opción **«Notificaciones en el
-  dispositivo»** activada en Ajustes → Notificaciones).
-- En **iPhone**, la web debe estar **instalada como app**
-  ([sección 20](#20-instalar-la-web-en-tu-teléfono)) y tener **iOS 16.4
-  o superior**.
+- The web app must be **open** (even in the background): system
+  notifications can only be shown while the web app is open. If you
+  close it completely, they cannot arrive.
+- The notification permission must be **granted** in your
+  browser or phone settings (and the **«Notificaciones en el
+  dispositivo»** option enabled in Ajustes → Notificaciones).
+- On **iPhone**, the web app must be **installed as an app**
+  ([section 20](#20-install-the-web-app-on-your-phone)) and have
+  **iOS 16.4 or higher**.
 
 ---
 
-*¿Algo no queda claro o falta en este manual? Coméntaselo a quien
-administre la web: lo añadiremos.*
+*Anything unclear or missing in this manual? Tell whoever administers
+the web app: we will add it.*

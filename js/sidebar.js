@@ -1,28 +1,28 @@
 // =============================================================
-// Barra lateral de navegación (issue #46) — drawer fijo a la
-// izquierda estilo Gmail. Se abre con el botón hamburguesa de la
-// cabecera (#btn-sidebar-toggle), se cierra con Escape (listener
-// temporal, patrón de notifications-setup.js), clic en el backdrop,
-// botón ✕ o al pulsar una entrada.
-// Las entradas viven en el array SECTIONS (exportado): para añadir
-// una sección futura solo hay que añadir una entrada, sin tocar el
-// resto del módulo. Las entradas con `pinned: true` se renderizan
-// en el footer inferior (#app-sidebar-footer), separadas del resto
-// (issue #75: «Ajustes» bajo «Ocio»).
+// Navigation sidebar (issue #46) — fixed drawer on the left, Gmail
+// style. It opens with the header's hamburger button
+// (#btn-sidebar-toggle), and closes with Escape (temporary listener,
+// pattern from notifications-setup.js), click on the backdrop, the
+// ✕ button or pressing an entry.
+// Entries live in the SECTIONS array (exported): to add a future
+// section you only need to add an entry, without touching the rest
+// of the module. Entries with `pinned: true` render in the lower
+// footer (#app-sidebar-footer), separated from the rest (issue #75:
+// «Ajustes» under «Ocio»).
 // =============================================================
 
 import { trapFocus } from "./focus-utils.js";
 import { closeGlobalSearch, isGlobalSearchOpen } from "./global-search.js";
 import { navigate, getLastRecipesTab, getLastGymTab } from "./router.js";
 
-// Entradas de la barra lateral: { id, label, icon, onClick, pinned }.
-// "Ocio" es la web actual (pestañas Series / Películas / Libros);
-// al pulsarla se cierra el drawer, se hace scroll suave al top y se
-// vuelve a la primera pestaña sincronizando la URL (issue #59).
-// "Recetas" (issue #64) abre la nueva sección de recetas
-// (#/recetas, pestaña que quedó activa la última vez).
-// "Ajustes" (pinned) abre el perfil en la sección Ajustes: el
-// callback lo inyecta app.js vía setupSidebar({ onOpenSettings }).
+// Sidebar entries: { id, label, icon, onClick, pinned }.
+// "Ocio" is the current site (tabs Shows / Movies / Books); when
+// pressed it closes the drawer, smooth-scrolls to the top and goes
+// back to the first tab, syncing the URL (issue #59).
+// "Recetas" (issue #64) opens the new recipes section
+// (#/recetas, the tab that was active last time).
+// "Ajustes" (pinned) opens the profile in the Settings section: the
+// callback is injected by app.js via setupSidebar({ onOpenSettings }).
 export const SECTIONS = [
   {
     id: "ocio",
@@ -47,8 +47,8 @@ export const SECTIONS = [
       } else {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
-      // Volver a la primera pestaña (Series) sincronizando la URL:
-      // el callback lo inyecta app.js vía setupSidebar({ onGoOcio }).
+      // Go back to the first tab (Series) syncing the URL:
+      // the callback is injected by app.js via setupSidebar({ onGoOcio }).
       if (onGoOcio) onGoOcio();
     },
   },
@@ -63,8 +63,8 @@ export const SECTIONS = [
       <path d="M7.5 5.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0" />
     </svg>`,
     onClick: () => {
-      // Abrir la sección Recetas sincronizando la URL: vuelve a la
-      // pestaña que quedó activa la última vez (issue #64).
+      // Open the Recetas section syncing the URL: it goes back to
+      // the tab that was active last time (issue #64).
       navigate({ section: "recetas", tab: getLastRecipesTab() });
     },
   },
@@ -80,8 +80,8 @@ export const SECTIONS = [
       <rect x="18.5" y="9" width="3" height="6" rx="1" />
     </svg>`,
     onClick: () => {
-      // Abrir la sección Gimnasio sincronizando la URL: vuelve a la
-      // pestaña que quedó activa la última vez (issue #62).
+      // Open the Gimnasio section syncing the URL: it goes back to
+      // the tab that was active last time (issue #62).
       navigate({ section: "gimnasio", tab: getLastGymTab() });
     },
   },
@@ -100,26 +100,26 @@ export const SECTIONS = [
   },
 ];
 
-// Callbacks de módulo inyectados por app.js en setupSidebar:
-// openSettings para «Ajustes» y onGoOcio para «Ocio» (router de hash).
+// Module callbacks injected by app.js in setupSidebar:
+// openSettings for «Ajustes» and onGoOcio for «Ocio» (hash router).
 let openSettings = null;
 let onGoOcio = null;
 
-// Sección activa para el marcado de la barra lateral (issue #206,
-// iteración 2026-08-11): antes el marcado estaba fijo en «Ocio» y no
-// cambiaba al navegar. La actualiza app.js vía setActiveSection en
-// cada cambio de ruta; renderSidebar la respeta al re-renderizar.
+// Active section for the sidebar highlight (issue #206, iteration
+// 2026-08-11): before, the highlight was fixed at «Ocio» and did not
+// change when navigating. app.js updates it via setActiveSection on
+// each route change; renderSidebar respects it when re-rendering.
 let activeSection = "ocio";
 
-// Predicado de visibilidad de secciones, inyectado por app.js vía
-// setupSidebar({ isSectionVisible }) (issue #97): con solo una
-// sección visible la barra lateral no tiene sentido y se sustituye
-// por el botón de Ajustes #btn-header-settings de la cabecera.
+// Visibility predicate for sections, injected by app.js via
+// setupSidebar({ isSectionVisible }) (issue #97): with only one
+// visible section the sidebar makes no sense and is replaced by the
+// header's Settings button #btn-header-settings.
 let isSectionVisible = () => true;
 
-// Elementos DOM resueltos en setupSidebar; los reutilizan
-// renderSidebar y updateHeaderNavButtons (issue #97), que se llaman
-// también desde app.js cuando cambian las secciones visibles.
+// DOM elements resolved in setupSidebar; reused by
+// renderSidebar and updateHeaderNavButtons (issue #97), which are
+// also called from app.js when the visible sections change.
 let sidebar = null;
 let backdrop = null;
 let toggle = null;
@@ -148,24 +148,24 @@ export function setupSidebar(opts) {
     return;
   }
 
-  // El botón engranaje de la cabecera (issue #97) abre Ajustes,
-  // igual que la entrada pinned de la barra lateral.
+  // The header gear button (issue #97) opens Settings,
+  // same as the pinned sidebar entry.
   headerSettings?.addEventListener("click", () => {
     if (openSettings) openSettings();
   });
 
   toggle.addEventListener("click", () => {
-    // Orden deliberado (issue #253): PRIMERO el drawer, LUEGO la
-    // búsqueda. openGlobalSearch marca isOpen=true antes de disparar
-    // toggle.click() para auto-cerrar el drawer; si este check de la
-    // búsqueda fuera el primero, ese click interno no cerraría la
-    // barra lateral y su backdrop taparía el dropdown.
+    // Deliberate order (issue #253): FIRST the drawer, THEN the
+    // search. openGlobalSearch sets isOpen=true before firing
+    // toggle.click() to auto-close the drawer; if this check of the
+    // search were first, that inner click would not close the
+    // sidebar and its backdrop would cover the dropdown.
     if (sidebar.classList.contains("is-open")) {
       closeSidebar();
     } else if (isGlobalSearchOpen()) {
-      // Modo ✕: con la búsqueda abierta, la hamburguesa se convierte
-      // en una ✕ (animación CSS, clase is-search-open) y pulsarla
-      // cierra la búsqueda en lugar de abrir el menú lateral.
+      // ✕ mode: with the search open, the hamburger turns into a ✕
+      // (CSS animation, class is-search-open) and pressing it
+      // closes the search instead of opening the side menu.
       closeGlobalSearch();
     } else {
       openSidebar();
@@ -175,8 +175,8 @@ export function setupSidebar(opts) {
   closeBtn.addEventListener("click", closeSidebar);
   backdrop.addEventListener("click", closeSidebar);
 
-  // Escape cierra el drawer solo si está abierto (listener único,
-  // registrado una vez: sin leaks al abrir/cerrar repetidamente).
+  // Escape closes the drawer only if open (single listener,
+  // registered once: no leaks from repeated open/close).
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && sidebar.classList.contains("is-open")) {
       e.preventDefault();
@@ -184,9 +184,9 @@ export function setupSidebar(opts) {
     }
   });
 
-  // Pulsar una entrada (nav o footer): cerrar el drawer y ejecutar
-  // su acción. El botón ✕ usa #btn-sidebar-close con clase
-  // app-sidebar__close, no interfiere con este delegado.
+  // Pressing an entry (nav or footer): close the drawer and run
+  // its action. The ✕ button uses #btn-sidebar-close with class
+  // app-sidebar__close, it does not interfere with this delegate.
   sidebar.addEventListener("click", (e) => {
     const btn = e.target.closest(".app-sidebar__link");
     if (!btn) return;
@@ -195,7 +195,7 @@ export function setupSidebar(opts) {
     if (section && section.onClick) section.onClick();
   });
 
-  // Estado inicial: entre ☰ y ⚙ según el número de secciones visibles.
+  // Initial state: between ☰ and ⚙ depending on the number of visible sections.
   renderSidebar();
 }
 
@@ -205,11 +205,11 @@ function openSidebar() {
   sidebar.setAttribute("aria-hidden", "false");
   toggle.setAttribute("aria-expanded", "true");
 
-  // Si el dropdown de búsqueda está abierto, cerrarlo: el backdrop
-  // del drawer (z-index 55) lo taparía (z-index 40).
+  // If the search dropdown is open, close it: the drawer's
+  // backdrop (z-index 55) would cover it (z-index 40).
   closeGlobalSearch();
 
-  // Atrapar foco dentro del drawer mientras esté abierto
+  // Trap focus inside the drawer while it is open
   focusTrapCleanup = trapFocus(sidebar);
 }
 
@@ -224,41 +224,42 @@ function closeSidebar() {
     focusTrapCleanup = null;
   }
 
-  // Restaurar foco al botón hamburguesa. Cuando solo queda una sección
-  // visible el toggle queda oculto (clase hidden) pero sigue en el DOM;
-  // el guard es por robustez si faltara el elemento.
+  // Restore focus to the hamburger button. When only one section
+  // remains visible the toggle becomes hidden (class hidden) but
+  // stays in the DOM; the guard is for robustness if the element
+  // were missing.
   if (toggle) toggle.focus();
 }
 
-// Número de secciones (no pinned) visibles según el predicado
-// inyectado. Con <= 1, la barra lateral se sustituye por el engranaje.
+// Number of visible (non-pinned) sections according to the injected
+// predicate. With <= 1, the sidebar is replaced by the gear.
 function visibleSectionCount() {
   return SECTIONS.filter((s) => !s.pinned && isSectionVisible(s.id)).length;
 }
 
-// Decide entre el toggle ☰ y el botón de Ajustes ⚙ de la cabecera.
+// Chooses between the ☰ toggle and the header's ⚙ Settings button.
 function updateHeaderNavButtons() {
   const count = visibleSectionCount();
   if (toggle) toggle.classList.toggle("hidden", count <= 1);
   if (headerSettings) headerSettings.classList.toggle("hidden", count > 1);
 }
 
-// Re-render de la barra lateral tras cambios de visibilidad de
-// secciones (issue #97). Lo llama app.js vía refreshNavigation.
+// Re-render of the sidebar after visibility changes of
+// sections (issue #97). Called by app.js via refreshNavigation.
 export function renderSidebar() {
   if (!nav || !footer) return;
 
-  // Si el drawer está abierto y va a quedar sin secciones que listar,
-  // cerrarlo primero (evita un drawer abierto y vacío).
+  // If the drawer is open and will end up with no sections to list,
+  // close it first (avoids an open, empty drawer).
   if (sidebar && sidebar.classList.contains("is-open") && visibleSectionCount() <= 1) {
     closeSidebar();
   }
 
-  // Render de las entradas a partir del array SECTIONS. Los ids son
-  // literales controlados por este módulo (sin datos de usuario).
-  // Solo se listan las secciones visibles; las pinned (p. ej.
-  // «Ajustes») van siempre al footer. La sección activa (marcada con
-  // .is-active) la decide setActiveSection desde app.js.
+  // Render of the entries from the SECTIONS array. The ids are
+  // literals controlled by this module (no user data).
+  // Only visible sections are listed; pinned ones (e.g.
+  // «Ajustes») always go to the footer. The active section (marked
+  // with .is-active) is decided by setActiveSection from app.js.
   nav.innerHTML = SECTIONS.filter((s) => !s.pinned && isSectionVisible(s.id))
     .map(
       (s) => `<button type="button" class="app-sidebar__link${s.id === activeSection ? " is-active" : ""}"
@@ -269,11 +270,11 @@ export function renderSidebar() {
     )
     .join("");
 
-  // Footer inferior: entradas pinned (p. ej. «Ajustes»), separadas
-  // visualmente del resto por una línea. Si el contenedor no existe
-  // (HTML antiguo), no hacemos nada: defensivo.
-  // (Sin filtro de visibilidad: son secciones de utilidad, no
-  // contenido ocultable.)
+  // Lower footer: pinned entries (e.g. «Ajustes»), visually separated
+  // from the rest by a line. If the container does not exist
+  // (old HTML), we do nothing: defensive.
+  // (No visibility filter: these are utility sections, not
+  // hideable content.)
   footer.innerHTML = SECTIONS.filter((s) => s.pinned)
     .map(
       (s) => `<button type="button" class="app-sidebar__link${s.id === activeSection ? " is-active" : ""}"
@@ -287,17 +288,17 @@ export function renderSidebar() {
   updateHeaderNavButtons();
 }
 
-// Marca la entrada de la sección activa en la barra lateral (issue
-// #206, iteración 2026-08-11): al cambiar de sección (Ocio, Recetas
-// o Ajustes vía el perfil), el marcado .is-active debe moverse y no
-// quedar anclado a «Ocio». Lo llama app.js en el onRoute del router.
-// Recibe el id de sección del array SECTIONS (ocio, recetas,
-// settings) o null para no marcar ninguna (p. ej. en el perfil fuera
-// de Ajustes, que no tiene entrada propia en la barra).
+// Highlights the active section's entry in the sidebar (issue
+// #206, iteration 2026-08-11): when switching sections (Ocio,
+// Recetas or Ajustes via the profile), the .is-active highlight must
+// move and not stay stuck at «Ocio». Called by app.js in the router
+// onRoute. It receives the section id from the SECTIONS array (ocio,
+// recetas, settings) or null to highlight none (e.g. in the profile
+// outside Ajustes, which has no own sidebar entry).
 export function setActiveSection(sectionId) {
   activeSection = sectionId || null;
-  // Aplicar el marcado sin re-renderizar: las entradas ya existentes
-  // conservan su estado; renderSidebar lo respeta al reconstruir.
+  // Apply the highlight without re-rendering: existing entries
+  // keep their state; renderSidebar respects it when rebuilding.
   [nav, footer].forEach((container) => {
     container?.querySelectorAll(".app-sidebar__link").forEach((el) => {
       el.classList.toggle("is-active", el.dataset.section === activeSection);

@@ -1,15 +1,15 @@
-# ADR-049: Filtros colecciones (issue #118)
+# ADR-049: Collection filters (issue #118)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-07
 
-## Contexto
+## Context
 
-La issue #118 (`type: style`) pide reorganizar la barra de controles de
-las tres colecciones (Series, Películas, Libros). Texto original:
+Issue #118 (`type: style`) asks to reorganize the controls bar of the
+three collections (Series, Movies, Books). Original text:
 
 > No debe aparecer el texto "Mis series", "Mis películas" o "Mi
 > biblioteca", ya que con el sistema de pestañas, se ve perfectamente
@@ -29,256 +29,253 @@ las tres colecciones (Series, Películas, Libros). Texto original:
 > entre las pestañas (o la barra de búsqueda en caso de móviles) y los
 > filtros.
 
-Estado previo del código:
+Previous state of the code:
 
-- Cada colección (`ocio/series.html`, `ocio/peliculas.html`,
-  `ocio/libros.html`) empezaba con un `<div class="library-head">` que
-  contenía un `<h2>` («Mis series», «Mis películas», «Mi biblioteca») y,
-  dentro, `.library-controls` con los chips de filtro (`.filter-chips` +
-  `.chip`), el selector de orden (`.sort-select`) y el alternador de
-  vista (`.view-toggle`).
-- `.library-head` tenía `margin-top: 2.2rem` (el «espacio entre pestañas
-  y filtros» que la issue pide eliminar).
-- `.filter-chips` usaba `flex-wrap: wrap`, por lo que los chips saltaban
-  de línea en móvil en vez de deslizarse.
-- El orden y la vista ya estaban en la misma línea, pero no se garantizaba
-  que compartieran línea con los filtros, y `.sort-select` tenía un
-  padding (`0.3rem 0.65rem`) distinto del de `.chip` (`0.3rem 0.75rem`).
-- El foco al cambiar de pestaña aterrizaba en el `h2` del panel
-  (`js/app.js`, guard `if (heading)`), y `css/styles.css` daba
-  `scroll-margin-top` a `#main-content` y a `.panel h2` (issue #79).
-- `font-size` mínimo de 16px en selects garantizado por el ADR-042
-  (issue #92): el `.sort-select` ya estaba en `1rem`.
+- Each collection (`ocio/series.html`, `ocio/peliculas.html`,
+  `ocio/libros.html`) started with a `<div class="library-head">` that
+  contained an `<h2>` («Mis series», «Mis películas», «Mi biblioteca») and,
+  inside, `.library-controls` with the filter chips (`.filter-chips` +
+  `.chip`), the sort selector (`.sort-select`) and the view toggle
+  (`.view-toggle`).
+- `.library-head` had `margin-top: 2.2rem` (the «space between tabs
+  and filters» the issue asks to remove).
+- `.filter-chips` used `flex-wrap: wrap`, so the chips jumped
+  to a new line on mobile instead of sliding.
+- Sort and view were already on the same line, but it was not guaranteed
+  that they shared a line with the filters, and `.sort-select` had a
+  padding (`0.3rem 0.65rem`) different from `.chip`'s (`0.3rem 0.75rem`).
+- The focus on tab change landed on the panel's `h2`
+  (`js/app.js`, guard `if (heading)`), and `css/styles.css` gave
+  `scroll-margin-top` to `#main-content` and to `.panel h2` (issue #79).
+- Minimum `font-size` of 16px in selects guaranteed by ADR-042
+  (issue #92): the `.sort-select` was already at `1rem`.
 
 Related issue: #118 — https://github.com/gonzalitojh/Registro-personal/issues/118
 
-## Decisión
+## Decision
 
-### 1. HTML: se eliminan los títulos de las tres colecciones
+### 1. HTML: the three collections' titles are removed
 
-`ocio/series.html`, `ocio/peliculas.html` y `ocio/libros.html`:
+`ocio/series.html`, `ocio/peliculas.html` and `ocio/libros.html`:
 
-- Se **elimina** el `<div class="library-head">` y su `<h2>` («Mis
-  series», «Mis películas», «Mi biblioteca») en cada fichero (precedente
-  ADR-046: eliminar por completo, no ocultar).
-- `.library-controls` pasa a ser el **elemento raíz** de cada fichero.
-- El bloque formado por `.sort-select` + `.view-toggle` se envuelve en un
-  nuevo contenedor `<div class="library-controls__aux">` (el orden y la
-  vista quedan como unidad).
+- The `<div class="library-head">` and its `<h2>` («Mis
+  series», «Mis películas», «Mi biblioteca») are **removed** in each file
+  (preset ADR-046: remove entirely, do not hide).
+- `.library-controls` becomes each file's **root element**.
+- The block made of `.sort-select` + `.view-toggle` is wrapped in a new
+  `<div class="library-controls__aux">` container (sort and view stay
+  as a unit).
 
-### 2. HTML: ARIA de los paneles (compensación por quitar los h2)
+### 2. HTML: panels' ARIA (compensation for removing the h2s)
 
 `index.html`:
 
-- Los tres paneles (`#panel-tv`, `#panel-movies`, `#panel-books`) ganan
-  `role="tabpanel"` y `aria-labelledby="tab-tv"` /
-  `aria-labelledby="tab-movies"` / `aria-labelledby="tab-books"` (patrón
-  APG de tabs: los botones de pestaña ya tenían `role="tab"`,
-  `aria-controls` y `aria-selected`).
-- Se conservan `aria-live="polite"` y `aria-atomic="true"` de cada panel.
+- The three panels (`#panel-tv`, `#panel-movies`, `#panel-books`) gain
+  `role="tabpanel"` and `aria-labelledby="tab-tv"` /
+  `aria-labelledby="tab-movies"` / `aria-labelledby="tab-books"` (APG
+  tabs pattern: the tab buttons already had `role="tab"`,
+  `aria-controls` and `aria-selected`).
+- Each panel's `aria-live="polite"` and `aria-atomic="true"` are kept.
 
-### 3. CSS: filtros en una sola línea con scroll horizontal confinado
+### 3. CSS: filters on a single line with confined horizontal scroll
 
 `ocio/ocio.css`, `.filter-chips`:
 
-- `flex-wrap: nowrap` (todos los chips en una línea).
-- `overflow-x: auto` + `-webkit-overflow-scrolling: touch` (si no
-  caben, la línea se desliza en horizontal).
+- `flex-wrap: nowrap` (all chips on one line).
+- `overflow-x: auto` + `-webkit-overflow-scrolling: touch` (if they do
+  not fit, the line slides horizontally).
 - `scrollbar-width: none` + `.filter-chips::-webkit-scrollbar {
-  display: none; }` — la barra de desplazamiento no se muestra
-  (comentario del usuario en la issue: «En el móvil, no debe aparecer
-  la barra de desplazamiento horizontal»), pero el deslizamiento
-  táctil sigue funcionando.
-- `flex: 1 1 auto` + `min-width: 0` (la línea de filtros ocupa el ancho
-  disponible y puede encogerse).
+  display: none; }` — the scrollbar is not shown
+  (user comment in the issue: «En el móvil, no debe aparecer
+  la barra de desplazamiento horizontal»), but touch sliding
+  still works.
+- `flex: 1 1 auto` + `min-width: 0` (the filter line takes the available
+  width and can shrink).
 
 `.chip`:
 
-- `flex: 0 0 auto` + `white-space: nowrap` (los chips no se comprimen ni
-  parten su texto al deslizar).
+- `flex: 0 0 auto` + `white-space: nowrap` (chips do not compress nor
+  split their text when sliding).
 
-El scroll horizontal queda **confinado al listado de filtros**, que es un
-contenedor diseñado para ello (permitido por la regla 2 de AGENTS.md; el
-scroll horizontal a nivel de página sigue prohibido).
+Horizontal scroll stays **confined to the filter list**, a container
+designed for it (allowed by AGENTS.md's rule 2; page-level
+horizontal scroll remains forbidden).
 
-### 4. CSS: orden y vista como unidad, en la misma línea que los filtros
+### 4. CSS: sort and view as a unit, on the same line as the filters
 
 `ocio/ocio.css`:
 
-- **Nuevo** `.library-controls__aux`: `display: flex; align-items:
-  center; gap: 0.7rem; flex-shrink: 0;` — envuelve `.sort-select` +
-  `.view-toggle` y no se encoge ni se separa.
-- `.library-controls` (flex con `flex-wrap: wrap`) coloca en la **misma
-  línea** los filtros y el bloque auxiliar cuando el ancho lo permite
+- **New** `.library-controls__aux`: `display: flex; align-items:
+  center; gap: 0.7rem; flex-shrink: 0;` — wraps `.sort-select` +
+  `.view-toggle` and neither shrinks nor splits.
+- `.library-controls` (flex with `flex-wrap: wrap`) places in the
+  **same line** the filters and the auxiliary block when the width allows
   (≥769 px).
 - `@media (max-width: 768px) { .library-controls__aux { flex-basis: 100%;
-  } }` → en móvil el bloque auxiliar salta a una **segunda línea**,
-  manteniendo orden y vista juntos (dos líneas en total: filtros, y
-  orden+vista), como pide la issue.
+  } }` → on mobile the auxiliary block jumps to a **second line**,
+  keeping sort and view together (two lines in total: filters, and
+  sort+view), as the issue asks.
 
-### 5. CSS: mismo tamaño y fuente para orden y filtros
-
-`ocio/ocio.css`:
-
-- `.sort-select`: `padding` pasa de `0.3rem 0.65rem` a `0.3rem 0.75rem`
-  (idéntico al de `.chip`); `font-size: 1rem` se conserva (ya lo
-  exigía el ADR-042: ningún select con `font-size` < 16px por el zoom
-  automático de iOS).
-- Los chips de la biblioteca se escalan **solo** con la regla scoped
-  `.library-controls .chip { font-size: 1rem; }`: el `.chip` base de
-  `ocio/ocio.css` se mantiene en `0.78rem` para no afectar al chip del
-  buscador global (`.global-search__item-status.chip` en
-  `css/styles.css`, que depende por cascada del `font-size` base).
-
-### 6. CSS: sin margen superior entre pestañas/búsqueda y filtros
+### 5. CSS: same size and font for sort and filters
 
 `ocio/ocio.css`:
 
-- Se **eliminan** las reglas `.library-head` y `.library-head h2`
-  (incluido su `margin-top: 2.2rem`, que era el espacio entre las
-  pestañas —o la barra de búsqueda en móvil— y los filtros).
-- El aire base de 1rem lo aporta el `padding` de `.app` (ADR-040,
-  intacto).
-- `.library-controls` conserva `margin-bottom: 0.8rem` y añade
+- `.sort-select`: `padding` goes from `0.3rem 0.65rem` to `0.3rem 0.75rem`
+  (identical to `.chip`'s); `font-size: 1rem` is kept (already required
+  by ADR-042: no select with `font-size` < 16px due to iOS's automatic
+  zoom).
+- The library's chips are scaled **only** by the scoped rule
+  `.library-controls .chip { font-size: 1rem; }`: the base `.chip` of
+  `ocio/ocio.css` stays at `0.78rem` to not affect the global searcher's
+  chip (`.global-search__item-status.chip` in
+  `css/styles.css`, which depends via cascade on the base `font-size`).
+
+### 6. CSS: no top margin between tabs/search and filters
+
+`ocio/ocio.css`:
+
+- The `.library-head` and `.library-head h2` rules are **removed**
+  (including their `margin-top: 2.2rem`, which was the space between the
+  tabs —or the search bar on mobile— and the filters).
+- The base 1rem air comes from `.app`'s `padding` (ADR-040,
+  untouched).
+- `.library-controls` keeps `margin-bottom: 0.8rem` and adds
   `max-width: 100%`.
 
-### 7. CSS: limpieza de reglas huérfanas
+### 7. CSS: cleanup of orphaned rules
 
 `css/styles.css`:
 
-- Se **elimina** `.panel h2` de las reglas `scroll-margin-top` (base y
-  `@media (min-width: 768px)`); queda solo `#main-content`, destino del
-  enlace «Saltar al contenido» y del foco al cambiar de pestaña (issue
+- `.panel h2` is **removed** from the `scroll-margin-top` rules (base and
+  `@media (min-width: 768px)`); only `#main-content` remains, the target of
+  the "Skip to content" link and of the focus on tab change (issue
   #79).
-- Se **actualiza** el comentario que explicaba esas reglas (ya no hay
-  `h2` en los paneles).
+- The comment explaining those rules is **updated** (there is no more
+  `h2` in the panels).
 
-### 8. Manual de usuario actualizado
+### 8. User manual updated
 
-`docs/manual-de-usuario.md` (obligación de AGENTS.md: cambio visible
-para el usuario):
+`docs/manual-de-usuario.md` (AGENTS.md obligation: change visible
+to the user):
 
-- Sección 3: la pestaña activa indica siempre en qué colección estás;
-  cada colección no repite un título como «Mis series» y nada más entrar
-  se ve directamente su barra de herramientas.
-- Sección 8: los chips de filtro están todos en una línea y, si no caben
-  (móvil), la línea se desliza en horizontal (sin barra de desplazamiento
-  visible; se desliza con el dedo); el selector de orden y el de vista
-  van siempre juntos (misma línea que los filtros en pantallas anchas,
-  segunda línea en móvil); el selector de orden tiene el mismo tamaño y
-  la misma fuente que los chips.
+- Section 3: the active tab always indicates which collection you are
+  in; each collection does not repeat a title like «Mis series» and on
+  entering its toolbar is seen directly.
+- Section 8: the filter chips are all on one line and, if they do not fit
+  (mobile), the line slides horizontally (with no visible scrollbar; it
+  slides with a finger); the sort selector and the view toggle always go
+  together (same line as the filters on wide screens, second line on
+  mobile); the sort selector has the same size and the same font as the
+  chips.
 
-### 9. Bump de versión PWA
+### 9. PWA version bump
 
-`index.html` (`?v=` en `css/styles.css`, `ocio/ocio.css` y `js/app.js`,
-×3), `js/config.js` (`APP_VERSION`) y `service-worker.js`
-(`STATIC_ASSETS`, ×6): `20260817` → `20260818`, para invalidar las
-cachés del service worker y del navegador con los nuevos estilos y
-marcado.
+`index.html` (`?v=` in `css/styles.css`, `ocio/ocio.css` and `js/app.js`,
+×3), `js/config.js` (`APP_VERSION`) and `service-worker.js`
+(`STATIC_ASSETS`, ×6): `20260817` → `20260818`, to invalidate the service
+worker's and browser's caches with the new styles and
+markup.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Bajar `.sort-select` a `font-size: 0.78rem`** para igualarlo a los
-  chips: descartado — viola el ADR-042 (issue #92): un select con
-  `font-size` calculado < 16px provoca el zoom automático de iOS al
-  enfocarlo. Se sube el chip de la biblioteca a `1rem` en su lugar.
-- **Subir el `.chip` base de `ocio/ocio.css` a `1rem`** (afectar a todos
-  los chips a la vez): descartado — inflaría la etiqueta de estado del
-  buscador global (`.global-search__item-status.chip` en
-  `css/styles.css`), que comparte la clase `.chip` y depende por cascada
-  de su `font-size` base de `0.78rem`. Por eso el escalado es scoped:
-  `.library-controls .chip`.
-- **Ocultar los `h2` con `display: none`** manteniendo el marcado:
-  descartado — precedente ADR-046: eliminar por completo, no ocultar; un
-  `h2` que no se renderiza no aporta nada al DOM y obliga a conservar
-  CSS y texto inútil.
-- **`overflow-x: hidden` en `body`/`html`** para contener el desborde de
-  los chips: descartado — prohibido por la regla 2 de AGENTS.md
-  (enmascara desbordamientos y puede cortar contenido). El scroll
-  horizontal se confina a `.filter-chips`, contenedor diseñado para ello.
-- **Mantener `scrollbar-width: thin`** (barra visible): descartado tras
-  el comentario del usuario — en móvil no debe aparecer la barra de
-  desplazamiento horizontal. Se opta por ocultarla (`scrollbar-width:
-  none` + `::-webkit-scrollbar { display: none }`) conservando el
-  desplazamiento táctil.
+- **Lowering `.sort-select` to `font-size: 0.78rem`** to match the chips:
+  rejected — it violates ADR-042 (issue #92): a select with a computed
+  `font-size` < 16px triggers iOS's automatic zoom when focused. The
+  library's chip is raised to `1rem` instead.
+- **Raising `ocio/ocio.css`'s base `.chip` to `1rem`** (affecting all
+  chips at once): rejected — it would inflate the global searcher's
+  status label (`.global-search__item-status.chip` in
+  `css/styles.css`), which shares the `.chip` class and depends via
+  cascade on its `0.78rem` base `font-size`. That is why the scaling is
+  scoped: `.library-controls .chip`.
+- **Hiding the `h2`s with `display: none`** keeping the markup:
+  rejected — ADR-046 precedent: remove entirely, do not hide; an
+  `h2` that does not render contributes nothing to the DOM and forces
+  keeping useless CSS and text.
+- **`overflow-x: hidden` on `body`/`html`** to contain the chips'
+  overflow: rejected — forbidden by AGENTS.md's rule 2
+  (it masks overflows and can cut content). Horizontal scroll is
+  confined to `.filter-chips`, a container designed for it.
+- **Keeping `scrollbar-width: thin`** (visible bar): rejected after the
+  user's comment — on mobile the horizontal scrollbar must not appear.
+  Hiding it is chosen (`scrollbar-width: none` +
+  `::-webkit-scrollbar { display: none }`) while keeping touch
+  scrolling.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- La pestaña activa es la única indicación de colección; cada vista
-  aterriza directamente en su barra de herramientas, sin título
-  redundante.
-- Los filtros se deslizan en horizontal en móvil sin ocupar más espacio
-  ni desbordar la página (`document.documentElement.scrollWidth <=
-  window.innerWidth` verificado por QA en 360/768/1280 px), y sin
-  mostrar la barra de desplazamiento (comentario del usuario en la
-  issue).
-- Orden y vista quedan siempre juntos y comparten línea con los filtros
-  en pantallas anchas; dos líneas en móvil, tal y como pide la issue.
-- Selector de orden y chips con el mismo padding y la misma fuente
-  (1rem), respetando el ADR-042.
-- Sin espacio extra entre pestañas (o barra de búsqueda en móvil) y los
-  filtros; el aire base lo aporta el `padding` de `.app` (ADR-040).
-- ARIA completo: paneles con `role="tabpanel"` + `aria-labelledby`
-  (patrón APG) sin tocar `aria-live`/`aria-atomic` ni los atributos de
-  las pestañas.
-- CSS huérfano eliminado (`.panel h2` en `scroll-margin-top`) y
-  comentario de `ocio/ocio.css` documentando la dependencia scoped del
-  chip del buscador global.
-- Bump PWA coherente (3 referencias `?v=` en `index.html` + `APP_VERSION`
-  + 6 en `STATIC_ASSETS`).
-- `js/app.js` sin cambios (selectores `.filter-chips`, `.sort-select` y
-  `.view-toggle` intactos) y vista de amigos (`.friend-filters` /
-  `.friend-chip`) sin tocar (fuera de alcance de la issue).
+- The active tab is the only collection indication; each view lands
+  directly on its toolbar, with no redundant title.
+- The filters slide horizontally on mobile without taking more space nor
+  overflowing the page (`document.documentElement.scrollWidth <=
+  window.innerWidth` verified by QA at 360/768/1280 px), and without
+  showing the scrollbar (user comment in the issue).
+- Sort and view always stay together and share a line with the filters
+  on wide screens; two lines on mobile, as the issue asks.
+- Sort selector and chips with the same padding and the same font
+  (1rem), respecting ADR-042.
+- No extra space between the tabs (or the search bar on mobile) and the
+  filters; the base air comes from `.app`'s `padding` (ADR-040).
+- Full ARIA: panels with `role="tabpanel"` + `aria-labelledby`
+  (APG pattern) without touching `aria-live`/`aria-atomic` nor the tab
+  attributes.
+- Orphaned CSS removed (`.panel h2` in `scroll-margin-top`) and
+  `ocio/ocio.css`'s comment documenting the global searcher's chip's
+  scoped dependency.
+- Coherent PWA bump (3 `?v=` refs in `index.html` + `APP_VERSION`
+  + 6 in `STATIC_ASSETS`).
+- `js/app.js` unchanged (`.filter-chips`, `.sort-select` and
+  `.view-toggle` selectors intact) and the friends view (`.friend-filters`
+  / `.friend-chip`) untouched (out of the issue's scope).
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Residuo aceptado en `js/app.js`**: el guard `if (heading)` que movía
-  el foco al cambiar de pestaña queda inofensivo (nunca hay `h2` en los
-  paneles). Se conserva por no tocar JS fuera de alcance; limpiable en un
-  refactor futuro.
-- **A 768 px exactos** la media query `max-width: 768px` fuerza la
-  segunda línea también para películas (3 chips), donde quizá cabría todo
-  en una línea: comportamiento aceptado — punto de corte único y
-  coherente con el resto de la app.
-- **Sin `h2`, el foco al cambiar de pestaña no aterriza en un
-  encabezado**: se compensa con `role="tabpanel"` + `aria-labelledby`
-  (los paneles quedan correctamente etiquetados por su pestaña).
-- **Dependencia frágil por cascada** del chip del buscador global con el
-  `.chip` base: un cambio futuro en `0.78rem` lo afectaría; mitigado con
-  la regla scoped `.library-controls .chip` y su comentario.
+- **Accepted residue in `js/app.js`**: the `if (heading)` guard that
+  moved the focus on tab change stays harmless (there is never an `h2`
+  in the panels). It is kept to not touch JS out of scope; removable in a
+  future refactor.
+- **At exactly 768 px** the `max-width: 768px` media query forces the
+  second line also for movies (3 chips), where everything might have fit
+  on one line: accepted behavior — a single, coherent breakpoint with the
+  rest of the app.
+- **Without an `h2`, the focus on tab change does not land on a
+  heading**: compensated with `role="tabpanel"` + `aria-labelledby`
+  (the panels are properly labeled by their tab).
+- **Fragile cascade dependency** of the global searcher's chip with the
+  base `.chip`: a future change to `0.78rem` would affect it; mitigated
+  with the scoped `.library-controls .chip` rule and its comment.
 
-### Neutras
+### Neutral
 
-- **Sin tests automatizados**: el cambio es CSS/HTML puro; la verificación
-  se hace por análisis de cascada (specificity y orden de carga) y
-  revisión manual en tres anchos (QA: 7/7 criterios de aceptación
-  cumplidos; seguridad: 0 hallazgos HIGH). La iteración (barra de
-  desplazamiento oculta) se verificó con Chromium headless en
-  320/360/768/1280 px: `scrollbar-width: none`, scroll funcional a
-  360 px y sin scroll horizontal de página.
-- **`docs/manual-de-usuario.md` actualizado** (regla 3 de AGENTS.md):
-  secciones 3 y 8 reflejan la nueva disposición de la barra de
-  herramientas.
-- **Bump PWA aplicado en la misma tarea** (a diferencia de ADR-046, que
-  lo dejaba para el release): cada PR que toca assets versiona sus URLs
-  para invalidar cachés.
+- **No automated tests**: the change is pure CSS/HTML; verification is
+  done by cascade analysis (specificity and load order) and
+  manual review at three widths (QA: 7/7 acceptance criteria met;
+  security: 0 HIGH findings). The iteration (hidden scrollbar) was
+  verified with Chromium headless at
+  320/360/768/1280 px: `scrollbar-width: none`, working scroll at
+  360 px and no page-level horizontal scroll.
+- **`docs/manual-de-usuario.md` updated** (AGENTS.md's rule 3):
+  sections 3 and 8 reflect the toolbar's new layout.
+- **PWA bump applied in the same task** (unlike ADR-046, which left it
+  for the release): each PR touching assets versions its URLs
+  to invalidate caches.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `ocio/series.html` | **Modificado**: eliminado `<div class="library-head">` con `<h2>Mis series</h2>`; `.library-controls` pasa a ser el elemento raíz; el bloque `.sort-select` + `.view-toggle` se envuelve en `<div class="library-controls__aux">` |
-| `ocio/peliculas.html` | **Modificado**: eliminado `<div class="library-head">` con `<h2>Mis películas</h2>`; misma reestructuración que series (`.library-controls` raíz + `.library-controls__aux`) |
-| `ocio/libros.html` | **Modificado**: eliminado `<div class="library-head">` con `<h2>Mi biblioteca</h2>`; misma reestructuración que series (`.library-controls` raíz + `.library-controls__aux`) |
-| `ocio/ocio.css` | **Modificado**: eliminadas `.library-head`/`.library-head h2` (incluido `margin-top: 2.2rem`); `.filter-chips` → `flex-wrap: nowrap; overflow-x: auto; flex: 1 1 auto; min-width: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none` + `.filter-chips::-webkit-scrollbar { display: none; }` (iteración: barra oculta en móvil); `.chip` → `flex: 0 0 auto; white-space: nowrap`; nueva regla scoped `.library-controls .chip { font-size: 1rem; }` con comentario; `.library-controls` conserva `margin-bottom: 0.8rem` y añade `max-width: 100%`; nueva `.library-controls__aux`; `.sort-select` padding → `0.3rem 0.75rem`; `@media (max-width: 768px)` añade `.library-controls__aux { flex-basis: 100%; }` |
-| `index.html` | **Modificado**: los 3 paneles (`#panel-tv`, `#panel-movies`, `#panel-books`) ganan `role="tabpanel"` + `aria-labelledby="tab-tv"/"tab-movies"/"tab-books"` (se conservan `aria-live`/`aria-atomic`); bump `?v=20260818` (×3: `css/styles.css`, `ocio/ocio.css`, `js/app.js`) |
-| `css/styles.css` | **Modificado**: eliminado `.panel h2` de las reglas `scroll-margin-top` (base y media query 768px; queda solo `#main-content`) y comentario actualizado |
-| `js/config.js` | **Modificado**: `APP_VERSION` `20260817` → `20260818` |
-| `service-worker.js` | **Modificado**: `STATIC_ASSETS` — 6 URLs con `?v=` pasan de `20260817` a `20260818` |
-| `docs/manual-de-usuario.md` | **Modificado**: sección 3 (la pestaña activa indica la colección; no se repite título) y sección 8 (chips en una línea que se deslizan en horizontal en móvil; orden+vista juntos — segunda línea en móvil; mismo tamaño de fuente) |
-| `js/app.js` | **Sin cambios**: selectores `.filter-chips`/`.sort-select`/`.view-toggle` intactos; el guard `if (heading)` del foco al cambiar de pestaña queda inofensivo sin `h2` (residuo aceptado) |
-| `docs/adr-049-filtros-colecciones.md` | **Nuevo**: este documento |
+| `ocio/series.html` | **Modified**: `<div class="library-head">` with `<h2>Mis series</h2>` removed; `.library-controls` becomes the root element; the `.sort-select` + `.view-toggle` block is wrapped in `<div class="library-controls__aux">` |
+| `ocio/peliculas.html` | **Modified**: `<div class="library-head">` with `<h2>Mis películas</h2>` removed; same restructuring as series (`.library-controls` root + `.library-controls__aux`) |
+| `ocio/libros.html` | **Modified**: `<div class="library-head">` with `<h2>Mi biblioteca</h2>` removed; same restructuring as series (`.library-controls` root + `.library-controls__aux`) |
+| `ocio/ocio.css` | **Modified**: `.library-head`/`.library-head h2` removed (including `margin-top: 2.2rem`); `.filter-chips` → `flex-wrap: nowrap; overflow-x: auto; flex: 1 1 auto; min-width: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none` + `.filter-chips::-webkit-scrollbar { display: none; }` (iteration: bar hidden on mobile); `.chip` → `flex: 0 0 auto; white-space: nowrap`; new scoped rule `.library-controls .chip { font-size: 1rem; }` with a comment; `.library-controls` keeps `margin-bottom: 0.8rem` and adds `max-width: 100%`; new `.library-controls__aux`; `.sort-select` padding → `0.3rem 0.75rem`; `@media (max-width: 768px)` adds `.library-controls__aux { flex-basis: 100%; }` |
+| `index.html` | **Modified**: the 3 panels (`#panel-tv`, `#panel-movies`, `#panel-books`) gain `role="tabpanel"` + `aria-labelledby="tab-tv"/"tab-movies"/"tab-books"` (`aria-live`/`aria-atomic` kept); bump `?v=20260818` (×3: `css/styles.css`, `ocio/ocio.css`, `js/app.js`) |
+| `css/styles.css` | **Modified**: `.panel h2` removed from the `scroll-margin-top` rules (base and 768px media query; only `#main-content` remains) and comment updated |
+| `js/config.js` | **Modified**: `APP_VERSION` `20260817` → `20260818` |
+| `service-worker.js` | **Modified**: `STATIC_ASSETS` — 6 URLs with `?v=` move from `20260817` to `20260818` |
+| `docs/manual-de-usuario.md` | **Modified**: section 3 (the active tab indicates the collection; no repeated title) and section 8 (chips on one line sliding horizontally on mobile; sort+view together — second line on mobile; same font size) |
+| `js/app.js` | **Unchanged**: `.filter-chips`/`.sort-select`/`.view-toggle` selectors intact; the tab-change focus guard `if (heading)` is harmless without an `h2` (accepted residue) |
+| `docs/adr-049-filtros-colecciones.md` | **New**: this document |
 
 Related issue: #118 — https://github.com/gonzalitojh/Registro-personal/issues/118

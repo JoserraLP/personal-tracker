@@ -1,139 +1,398 @@
-# ADR-088: Ventana de ingrediente — solo lectura con ✏️ Editar, nombre y foto editables, sin botón «Cerrar» (issue #232)
+# ADR-088: The ingredient window — read-only with ✏️ Editar, editable name and photo, no lower "Cerrar" button (issue #232)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #232 pide convertir la **ventana de ingrediente** (la que se
-abre al pulsar la tarjeta de un ingrediente en la pestaña «Ingredientes»
-de la sección de Recetas, issue #64) en una **versión solo lectura con
-edición explícita**:
+Issue #232 asks to turn the **ingredient window** (the one
+that opens when pressing an ingredient's card on the Recetas
+section's «Ingredientes» tab, issue #64) into a
+**read-only version with explicit editing**:
 
-1. **Solo lectura por defecto**, con un botón de **lápiz** para pasar a
-   edición.
-2. En edición, poder cambiar **también el nombre** y añadir una **foto**.
-3. **Sin imagen vacía / placeholder** cuando el ingrediente no tiene
-   foto.
-4. **Eliminar el botón «Cerrar» inferior** (la ✕ superior cumple esa
-   función, mismo criterio que ADR-087 para las recetas).
-5. **Eliminar el texto «Categoría actual: X. La lista de la compra se
-   agrupa por esta categoría.»** que aparecía al final del detalle.
+1. **Read-only by default**, with a **pencil**
+  button to switch to edition.
+2. In edition, being able to change **the name too** and
+   add a **photo**.
+3. **No empty image / placeholder** when the ingredient has no
+   photo.
+4. **Removing the lower "Close"
+   button** (the top ✕ serves
+   that purpose, the same criterion as ADR-087 for recipes).
+5. **Removing the text «Categoría actual: X. La lista de la compra se
+   agrupa por esta categoría.»** that showed at the end of the detail.
 
-Estado previo: al pulsar la tarjeta de un ingrediente se abría un modal
-con **campos editables directamente** — select de categoría, chips de
-supermercados y cantidad del paquete — con **guardado inmediato** al
-cambiar cada campo («Categoría actualizada.», «Supermercados
-actualizados.», etc.), un botón **«Cerrar» inferior** y el texto
-«Categoría actual: …» al final. El nombre no se podía editar desde el
-detalle (solo en el alta manual, ADR-085) y no existía la foto de
-ingrediente.
+Previous state: pressing an ingredient's
+card opened a modal with directly
+ editable fields — a category select,
+  supermarket
+  chips and the package's quantity — with an
+  immediate
+  save on every field's change («Categoría actualizada.»,
+  «Supermercados
+  actualizados.», etc.), a lower
+  **«Cerrar»**
+  button and the text «Categoría
+  actual: …» at the
+  end. The
+  name could not be edited from the
+  detail
+  (only in manual creation, ADR-085) and no ingredient
+  photo existed.
 
-Nota del flujo (misma excepción que ADR-083, ADR-085 y ADR-087): la
-base de trabajo es la rama `content/issue-64-seccion-recetas`; la rama
-`content/issue-232-ventana-ingrediente` se crea desde ahí y la PR va
-**también a esa rama, no a `dev`**. El ADR se numera **088** (el 087 ya
-lo ocupa la pestaña de Recetas, issue #234).
+Flow note (the same exception as
+ ADR-083, ADR-085
+  and ADR-087): the
+  work's base
+  is the
+  `content/issue-64-seccion-recetas` branch; the
+  `content/issue-232-ventana-ingrediente` branch is
+  created from there and the
+  PR goes **also to that branch, not to
+  `dev`**. The
+  ADR is numbered **088** (087 is already
+  taken by the Recipes
+  tab, issue #234).
 
-## Decisión
+## Decision
 
-1. **Vista lectura** (`ingredientDetailHtml`): el **nombre como
-   título** (`ingredient-modal__title`); la **foto solo si existe**
-   (`ing.fotoUrl` → `<img class="ingredient-modal__photo">`, sin
-   placeholder ni «sin imagen» cuando no hay); **categoría** y
-   **cantidad del paquete** como texto plano
-   (`ingredient-modal__text` con `--ink-soft`); **supermercados** como
-   etiquetas **no interactivas** (`supermarket-tag--{id}`, ya existentes
-   desde ADR-085 con colores de marca hardcodeados documentados);
-   «Usada en N recetas» **sin cambios** (links que abren la receta en
-   lectura). **Sin botón «Cerrar» inferior** (solo ✕ superior y
-   «Eliminar»/«✏️ Editar» en `.ingredient-modal__actions`) y **sin el
-   texto «Categoría actual: …»**, que desaparece de la UI.
-2. **Botón «✏️ Editar»** (`data-ing-edit`): re-render **en caliente**
-   del mismo modal a modo edición mediante
-   `openIngredientModal(id, { edit: true })`, con el patrón de
-   `openRecipeModal` de la issue #234: libera el trap de foco previo
-   (`ingredientModalCleanup()`), **no vuelve a guardar**
-   `_previousActiveElement` si el modal ya estaba visible (`wasHidden`),
-   y enfoca el campo nombre en un segundo `requestAnimationFrame`
-   (tras el `trapFocus`, que enfoca la ✕) sin romper el trap.
-3. **Vista edición** (`#ingredient-edit-form`, `ingredientEditHtml`):
-   **nombre** (requerido, `maxlength="200"`), **foto (URL)** (`type="url"`),
-   **categoría** (select), **supermercados** (chips con marca visual
-   inmediata, sin guardado al momento) y **cantidad del paquete**
-   (número + unidad, con la validación `>= 0` / vacío → `null` de
-   ADR-085). **«Guardar»** persiste en bloque vía
-   `ctx.updateIngredient(currentUser, id, { nombre, fotoUrl, categoriaId,
-   supermercados, paqueteCantidad, paqueteUnidad })`, **refresca el
-   array local `ingredients`** para que la vista de lectura muestre los
-   datos al instante (el snapshot de Firestore llega después) y vuelve a
-   lectura con toast «Ingrediente actualizado.». **«Cancelar»**
-   (`data-ing-cancel`) vuelve a lectura sin guardar.
-4. **El guardado inmediato por campo del detalle se elimina**: en el
-   detalle ya no se persiste al cambiar categoría, supermercados o
-   cantidad; todo se guarda en bloque con «Guardar» (el alta manual
-   «Nuevo ingrediente» conserva su submit único de siempre). El alta no
-   cambia salvo que `addIngredient` acepta ahora **`fotoUrl` opcional**
-   (se persiste solo si viene definido; **no se expone en el alta**,
-   solo en la edición del detalle).
-5. **Backdrop y Escape solo cierran en modo lectura**: guard
-   `!ingredientEditMode` en ambos listeners; en edición se **bloquean**
-   para no perder el progreso del formulario (mismo patrón que la
-   ventana de receta, issue #234). En edición las vías de salida son la
-   ✕ superior, «Cancelar» y «Guardar».
-6. **Estado global `ingredientEditMode`** (bool): se pone a `true` al
-   abrir en edición y a `false` al abrir en lectura o al cerrar el
-   modal (`closeIngredientModal` lo resetea siempre).
-7. **Responsividad** (AGENTS.md §2): los textos nuevos usan
-   `overflow-wrap: break-word` + `min-width: 0` (título, texto de
-   campos); la foto `width: 100%; max-height: 180px; object-fit: cover`
-   (patrón de `.recipe-card__photo`).
-8. **Temas** (AGENTS.md §4): los textos de lectura usan `--ink-soft`
-   con el override añadido al bloque agrupado `[data-theme="black"]`;
-   los supermercados reutilizan los colores de marca hardcodeados
-   (documentados con comentario desde ADR-085, idénticos en los 4
-   modos).
-9. **Manual de usuario**: §8.5 actualizada (ventana en modo lectura con
-   ✏️ Editar — nombre y foto incluidos —, «Cancelar»/«Guardar», sin
-   «Cerrar» inferior). **PWA**: bump `20260915 → 20260916` en
-   `js/config.js` (`APP_VERSION`), `index.html` (`?v=` de estilos y
-   `app.js`) y `service-worker.js` (`STATIC_ASSETS`).
-10. **Seguridad**: `escapeHtml` en todos los puntos de interpolación
-    (incluidos `src` y `value` de la foto); el campo `fotoUrl` se guarda
-    tal cual — patrón consistente con las recetas (ADR-087); el
-    escaneo de seguridad dejó un **hallazgo MEDIUM informativo** sobre
-    unificar a futuro con `safeCoverUrl` (que ya sanitiza la foto de las
-    recetas en la búsqueda global).
+1. **The reading view**
+   (`ingredientDetailHtml`): the
+   **name as a
+   title**
+   (`ingredient-modal__title`); the
+   **photo only if it exists**
+   (`ing.fotoUrl` →
+   `<img class="ingredient-modal__photo">`, with
+   no
+   placeholder nor
+   "sin imagen" when there is none); the
+   **category** and
+   the
+   **package's quantity** as plain
+  text
+   (`ingredient-modal__text` with
+   `--ink-soft`); the
+   **supermarkets** as
+   **non-interactive**
+   labels (`supermarket-tag--{id}`, already existing
+   since ADR-085 with documented
+  hardcoded
+   brand
+   colors);
+   "Used in N
+   recipes" **unchanged**
+   (links opening the recipe in reading
+   mode). **No lower "Cerrar"
+   button** (only the
+   top
+   ✕ and
+   "Delete"/«✏️ Editar» on
+   `.ingredient-modal__actions`)
+   and **without
+   the
+   text "Categoría actual: …"**, which disappears from
+   the
+   UI.
+2. **The «✏️ Editar» button** (`data-ing-edit`): a
+   **hot
+   re-render**
+   of the
+   same modal to edit mode via the
+   `openIngredientModal(id, { edit: true })`,
+   with
+   the
+   `openRecipeModal` pattern
+   of issue #234: it
+   releases
+   the
+   previous
+   focus
+   trap
+   (an
+   `ingredientModalCleanup()`), **it does not re-store**
+   `_previousActiveElement` if the
+   modal was already visible (the
+   `wasHidden`),
+   and
+   focuses
+   the
+   name
+   field on a
+   second
+   `requestAnimationFrame` (after
+   the
+   `trapFocus`, which
+   focuses
+   the
+   ✕) without
+   breaking
+   the
+   trap.
+3. **The edit view** (`#ingredient-edit-form`,
+   `ingredientEditHtml`):
+   a
+   **name**
+   (required,
+   `maxlength="200"`),
+   a
+   **photo
+   (the
+   URL)**
+   (a
+   `type="url"`), a
+   **category** (a
+   select), the
+   **supermarkets**
+   (chips with
+   an
+   immediate visual mark, without saving
+  at
+   that
+   moment)
+   and
+   the
+   **package's
+   quantity**
+   (a
+   number
+   + unit, with
+   ADR-085's
+   `>= 0` / empty →
+   `null` validation). **"Guardar"**
+   persists
+   in
+   bulk via the
+   `ctx.updateIngredient(currentUser, id, { nombre, fotoUrl,
+   categoriaId, supermercados, paqueteCantidad, paqueteUnidad })`,
+   **refreshes the local**
+  `ingredients` **array** so the
+   reading view shows
+   the
+   data instantly
+   (the Firestore snapshot arrives later)
+   and
+   returns to
+   reading with
+   the
+   toast "Ingrediente
+   actualizado.". **"Cancelar"**
+   (`data-ing-cancel`) returns to
+   reading without
+   saving.
+4. **The detail's immediate per-field saving is removed**: in the
+   detail the category, supermarkets
+  or
+  quantity are
+   no longer persisted on
+   change;
+   everything saves in
+   bulk with
+  "Guardar" (the
+   manual-creation
+   "Nuevo ingrediente" keeps
+   its usual single submit). The
+   creation does not change except that
+   `addIngredient` now accepts an
+   **optional
+   `fotoUrl`**
+   (it is only
+   persisted when defined; **it is not exposed
+   in
+   creation**, only in the
+   detail's
+   edition).
+5. **The backdrop and Escape only close in read mode**: the
+   `!ingredientEditMode` guard on both
+   listeners; in edition they are
+   **blocked**
+   to not lose the form's
+   progress (the
+   recipe window's
+   pattern,
+   issue #234). In edition the
+   exit
+   paths
+   are
+   the
+   top
+   ✕,
+  "Cancelar" and
+   "Guardar".
+6. **The global
+   `ingredientEditMode`
+   state** (a
+   bool): it sets to
+   `true` when opening
+   in edition and
+   to
+   `false` when opening
+   in reading or closing the
+   modal (the
+   `closeIngredientModal` always resets it).
+7. **Responsiveness**
+   (AGENTS.md §2): the new texts use
+   an
+   `overflow-wrap: break-word` + a
+   `min-width: 0` (the
+   title, the fields' textes); the photo
+   `width: 100%; max-height: 180px; object-fit: cover` (the
+   `.recipe-card__photo` pattern).
+8. **Themes**
+   (AGENTS.md §4): the
+   reading voices use
+   `--ink-soft` with
+   the
+   override added to the
+   grouped
+   `[data-theme="black"]` block; supermarkets
+   reuse the
+   hardcoded
+  brand
+  colors
+   (documented
+   with a comment
+  since
+   ADR-085, identical in the 4
+   modes).
+9. **User manual**: §8.5 updated (the window in read
+   mode
+   with
+   ✏️ Editar — name
+   and
+   photo included —,
+   "Cancelar"/"Guardar",
+   without
+   a
+   lower
+   "Cerrar"). **PWA**: the bump
+  `20260915 → 20260916`
+   in `js/config.js` (`APP_VERSION`),
+   `index.html` (the
+   `?v=` of
+   styles and
+   `app.js`) and
+   `service-worker.js` (`STATIC_ASSETS`).
+10. **Security**: `escapeHtml` at all the interpolation points
+   (including the photo's
+   `src` and
+   `value`); the
+   `fotoUrl`
+   field is
+   stored
+   as-is
+   — a
+   pattern consistent with
+   recipes (ADR-087); the
+   security
+   scan left
+   a
+   **MEDIUM
+   informative
+   finding** about
+   unifying in the
+   future
+   with
+  `safeCoverUrl` (which already sanitizes
+   the global
+  search's
+   recipes'
+  photos).
 
-## Consecuencias
+## Consequences
 
-- **Positivas**: la ventana de ingrediente sigue el mismo modelo mental
-  que la de recetas (issue #234): lectura limpia, edición explícita con
-  lápiz y formulario protegido del cierre accidental; el nombre por fin
-  se puede corregir desde el detalle; la foto (opcional, por URL, sin
-  infraestructura de subida) enriquece la ficha y el catálogo futuro;
-  sin placeholder se evita el ruido visual en ingredientes sin foto; el
-  guardado en bloque reduce llamadas a Firestore y toasts frente al
-  guardado inmediato por campo; «Cancelar» permite descartar cambios con
-  un gesto.
-- **Neutras**: la foto se guarda como URL y se muestra tal cual, con
-  `escapeHtml` pero sin sanitización de dominios (mismo criterio que las
-  recetas; el hallazgo MEDIUM informativo queda anotado para unificar
-  con `safeCoverUrl` a futuro); el alta manual sigue sin ofrecer foto
-  (solo la edición); bump PWA `20260915 → 20260916` (invalida la caché
-  anterior); el ADR se numera 088 porque el 087 ya lo ocupa la pestaña
-  de Recetas.
-- **Negativas**: en modo edición, pulsar fuera o Escape ya no cierra la
-  ventana (comportamiento deliberado para no perder el formulario; la
-  salida es ✕ / Cancelar / Guardar); ninguna otra conocida. QA validó
-  los criterios de la issue (lectura por defecto, lápiz, nombre y foto
-  editables, sin placeholder, sin «Cerrar» inferior, sin «Categoría
-  actual»), responsividad en 360 / 768 / 1280 px sin scroll horizontal y
-  los cuatro modos de tema sin puntos muertos ni contrastes insuficientes
-  (`--ink-soft` AA en todas las familias); el escaneo de seguridad no
-  encontró hallazgos nuevos (todo dato de usuario pasa por `escapeHtml`).
+- **Positive**: the ingredient window follows the recipe
+  window's (issue #234) same mental model: a
+  clean
+  reading,
+  an
+  explicit
+  edition with
+   the
+  pencil
+  and
+  a
+  form protected from
+  accidental
+  closure; the
+  name can finally be corrected from the
+   detail; the
+  photo (optional, by
+   URL, with
+  no
+  upload infrastructure) enriches the
+  profile
+  and the future catalog;
+  without
+   a
+  placeholder the visual noise is avoided
+  in photo-less
+   ingredients;
+  the bulk save reduces Firestore
+  calls
+  and toasts versus the per-field
+  immediate save;
+  "Cancelar" allows discarding
+  changes with
+  one
+  gesture.
+- **Neutral**: the
+  photo is
+  stored
+  as a
+  URL
+  and
+  shown as-is, with
+  `escapeHtml` but without
+  domain
+  sanitization (the
+  recipes' same criterion; the
+  MEDIUM
+  informative finding is noted
+  for
+  unifying with
+  `safeCoverUrl` in the
+  future); the
+  manual
+  creation still
+  offers no photo
+  (only
+  the
+  edition); the PWA bumps
+  `20260915 → 20260916` (it invalidates the previous
+  cache); the
+  ADR is numbered 088 because 087 is
+  already taken by the Recipes
+  tab.
+- **Negative**: in edit
+   mode, pressing outside or Escape no longer
+   closes the
+  window (a deliberate
+   behavior to not lose the form; the
+  exit means
+  are
+  ✕ / Cancel / Save); no
+  other one
+  known. QA validated the issue's
+  criteria
+  (a
+  reading by default, the
+  pencil, an
+  editable name and
+  photo, without
+  a
+  placeholder, without
+  a
+  lower
+  "Cerrar", without
+  "Categoría actual"), responsiveness at
+  360 / 768 / 1280 px with no horizontal scroll and the
+  four theme modes without dead points or insufficient contrasts
+  (`--ink-soft` AA on every family); the security scan found
+  no
+  new findings (all the user data go through `escapeHtml`).
 
 Related issue: #232
