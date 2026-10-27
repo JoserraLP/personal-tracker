@@ -16,6 +16,7 @@ import {
   upsertUserProfile,
   getUserProfile,
   getItemsOnce,
+  subscribeToExperiences,
   subscribeToNotifications,
   addNotification,
   deleteNotification,
@@ -61,6 +62,7 @@ import { setupNotifications } from "./notifications-setup.js";
 import { setupProfile } from "./profile.js";
 import { initializeI18n } from "./i18n.js";
 import { setupWishlist } from "./wishlist.js";
+import { setupExperiences, resetExperiencesData } from "./experiences.js";
 import { setupSettings, syncThemeToSettings, cleanupSettings, SECTION_REGISTRY, isSectionVisible, isTabVisible, getFirstVisibleTabKey, getFirstVisibleTabPanel, normalizeTabKey, applySteamCallback, loadSettings } from "./settings.js";
 import { parseSteamCallbackHash } from "./api-steam.js";
 import { setupGlobalSearch, refreshExternalResults } from "./global-search.js";
@@ -76,12 +78,12 @@ import { setupGym, subscribeGymData, resetGymData } from "./gym.js";
 // ---------- State ----------
 
 let currentUser = null;
-let unsubscribeItems = { movies: null, tv: null, books: null, games: null, wishlist: null };
+let unsubscribeItems = { movies: null, tv: null, books: null, games: null, wishlist: null, experiences: null };
 let unsubscribeNotifications = null;
 let unsubscribeRecipes = null; // recipes (recipes.js)
 let unsubscribeMenuData = null; // menus (menu.js)
 let unsubscribeGymData = null; // gym (gym.js)
-const allItems = { movies: [], tv: [], books: [], games: [], wishlist: [] };
+const allItems = { movies: [], tv: [], books: [], games: [], wishlist: [], experiences: [] };
 let notifications = [];
 
 const activeFilters = { movies: "todos", tv: "en_curso", books: "todos", games: "todos" };
@@ -91,7 +93,7 @@ const viewMode = { movies: "grid", tv: "list", books: "grid", games: "grid" };
 // Snapshot-received flags per group (lazy loading, issue #178):
 // they no longer condition the daily check (it reads from Firestore with
 // getItemsOnce), only the repainting when a partial arrives late.
-const groupReady = { movies: false, tv: false, books: false, games: false, wishlist: false };
+const groupReady = { movies: false, tv: false, books: false, games: false, wishlist: false, experiences: false };
 let checksTriggered = false;
 
 // ---------- Context for modules ----------
@@ -240,7 +242,26 @@ const GROUP_CONFIG = {
     custom: true,
     error: "No se pudo cargar tu lista de compras.",
   },
+  // Experiences (done or to do): private list, the same as the
+  // wishlist: subscription by subscribeToExperiences.
+  experiences: {
+    custom: true,
+    error: "No se pudo cargar tu lista de experiencias.",
+  },
 };
+
+// Reference of the subscribeFn of the wishlist: each custom group
+// pulls its own subscription (wishlist vs experiences).
+function customSubscribeFn(groupKey) {
+  return ({ onChange, onError }) =>
+    groupKey === "wishlist"
+      ? subscribeToWishlist(uidForCustom(), onChange, onError)
+      : subscribeToExperiences(uidForCustom(), onChange, onError);
+}
+let _customUid = null;
+function uidForCustom() {
+  return _customUid;
+}
 
 // Generic subscription of a group. It is wrapped with subscribeWithRetry
 // (issue #147): if on entering a subscription fails due to a transient error,
@@ -250,7 +271,7 @@ function subscribeGroup(uid, groupKey) {
   const cfg = GROUP_CONFIG[groupKey];
   if (!cfg || unsubscribeItems[groupKey]) return;
   const subscribeFn = cfg.custom
-    ? ({ onChange, onError }) => subscribeToWishlist(uid, onChange, onError)
+    ? (() => { _customUid = uid; return customSubscribeFn(groupKey); })()
     : ({ onChange, onError }) => subscribeToItems(uid, cfg.type, onChange, onError);
   unsubscribeItems[groupKey] = subscribeWithRetry({
     subscribe: subscribeFn,
@@ -259,6 +280,8 @@ function subscribeGroup(uid, groupKey) {
       groupReady[groupKey] = true;
       if (groupKey === "wishlist" && wishlistApi) {
         wishlistApi.setWishlistItems(items);
+      } else if (groupKey === "experiences" && experiencesApi) {
+        experiencesApi.setExperienceItems(items);
       } else {
         renderLibraryFor(groupKey);
         refreshExternalResults(createCtx());
@@ -290,6 +313,7 @@ const PANEL_TO_GROUP = {
   "panel-books": "books",
   "panel-games": "games",
   "panel-wishlist": "wishlist",
+  "panel-experiences": "experiences",
 };
 
 // Inverse of PANEL_TO_GROUP: showPanelLoadError/retryPanelLoad use it
@@ -300,6 +324,7 @@ const GROUP_TO_PANEL = {
   books: "panel-books",
   games: "panel-games",
   wishlist: "panel-wishlist",
+  experiences: "panel-experiences",
 };
 
 // Partial already injected per panel: each tab loads its HTML only the
@@ -436,6 +461,10 @@ async function loadOcioPartial(panelEl) {
     // The Shopping tab (wishlist): its «Añadir» button and chips
     // live in the partial; they are wired here (the setup can't do it
     // at boot: the markup doesn't exist yet).
+    if (panelEl.id === "panel-experiences" && experiencesApi) {
+      experiencesApi.wireControls();
+      if (groupReady.experiences) experiencesApi.setExperienceItems(allItems.experiences);
+    }
     if (panelEl.id === "panel-wishlist" && wishlistApi) {
       wishlistApi.wireControls();
       if (groupReady.wishlist) wishlistApi.setWishlistItems(allItems.wishlist);
@@ -531,6 +560,7 @@ async function init() {
     "panel-books": document.getElementById("panel-books"),
     "panel-games": document.getElementById("panel-games"),
     "panel-wishlist": document.getElementById("panel-wishlist"),
+    "panel-experiences": document.getElementById("panel-experiences"),
   };
   // Currently active Leisure panel (watchAuthState uses it after the
   // login to know which tab must load partial and subscription).
@@ -654,6 +684,7 @@ async function init() {
   let recipesApi = null;
   let gymApi = null;
   let wishlistApi = null;
+  let experiencesApi = null;
   const router = initRouter({
     onRoute: (route) => {
       // Top search scoped to the section (issue #206): the
@@ -772,6 +803,7 @@ async function init() {
   // Wishlist (Shopping): wiring of the «Añadir» button and chips;
   // the subscription goes through the lazy panels flow (subscribeGroup).
   wishlistApi = setupWishlist(ctx);
+  experiencesApi = setupExperiences(ctx);
   // Recipes section (issue #64): opening API for the router and
   // menu cleanup when deleting a recipe.
   recipesApi = setupRecipes({
@@ -825,6 +857,7 @@ async function init() {
       resetRecipesData();
       resetMenuData();
       resetShoppingListState();
+      resetExperiencesData();
       // Gym (issue #62): same pattern, and it also hides the
       // view if the session was closed from it (it would stay over the
       // login screen).

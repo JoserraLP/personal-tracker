@@ -19,8 +19,8 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=20261030" />
-  <link rel="stylesheet" href="ocio/ocio.css?v=20261030" />
+  <link rel="stylesheet" href="css/styles.css?v=20261031" />
+  <link rel="stylesheet" href="ocio/ocio.css?v=20261031" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
@@ -198,6 +198,19 @@
           <span>Cargando…</span>
         </div>
       </section>
+
+      <!-- Experiences tab: experiences done or to do some day,
+           with title, description, date (optional) and whether
+           they are done. Private list too (firestore.rules), the
+           same as the wishlist. The skeleton lives in
+           ocio/experiences.html; content is rendered by
+           js/experiences.js. -->
+      <section id="panel-experiences" class="panel hidden" role="tabpanel" aria-labelledby="tab-experiences" data-type-group="experiences" data-ocio-src="ocio/experiences.html" aria-live="polite" aria-atomic="true">
+        <div class="panel-loading" role="status" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Cargando…</span>
+        </div>
+      </section>
     </main>
 
     <!-- Fixed tabs bar (issue #79): Series, Movies, Books and Videogames.
@@ -245,6 +258,13 @@
             <path d="M16 10a4 4 0 0 1-8 0" />
           </svg>
           <span>Compras</span>
+        </button>
+        <button class="tab tab--experiences" id="tab-experiences" role="tab" aria-selected="false" data-panel="panel-experiences" aria-controls="panel-experiences">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+          </svg>
+          <span>Experiencias</span>
         </button>
       </div>
     </nav>
@@ -808,7 +828,7 @@
        js/auto-hide-nav.js. -->
   <button type="button" id="btn-back-to-top" class="back-to-top" aria-label="Volver arriba">↑ <span>Volver arriba</span></button>
 
-  <script type="module" src="js/app.js?v=20261030"></script>
+  <script type="module" src="js/app.js?v=20261031"></script>
   <script type="module">
     import { registerSW } from './js/sw-register.js';
     if ('serviceWorker' in navigator) registerSW();

@@ -6507,3 +6507,7 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="black"] .ing-combo__list {
   border-color: var(--paper-alpha-20);
 }
+
+/* Experiences tab (ADR-113): accent ochre (the tab--wishlist accent
+   is defined earlier with the tab family). */
+.tab--experiences { --tab-accent: var(--ochre-spine); }

@@ -37,6 +37,7 @@ export const KEY_TO_PANEL = {
   libros: "panel-books",
   videojuegos: "panel-games",
   compras: "panel-wishlist",
+  experiencias: "panel-experiences",
 };
 
 // Default Ocio route: the first tab (Series).
