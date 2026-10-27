@@ -84,8 +84,7 @@ const STATIC_ASSETS = [
   './js/shopping-list.js',
   // Gym section (issue #62)
   './js/gym.js',
-  './js/wishlist.js',
-  './js/experiences.js',
+  './js/section-lists.js',
   './js/api-steam.js',
   './js/counter.js',
   './resources/icon.png',
@@ -94,7 +93,7 @@ const STATIC_ASSETS = [
   './ocio/libros.html?v=20261030',
   './ocio/videojuegos.html?v=20261030',
   './ocio/compras.html?v=20261030',
-  './ocio/experiences.html?v=20261104',
+  './ocio/experiences.html?v=20261105',
 ];
 
 // -------------------------------------------------------------

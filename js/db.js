@@ -424,7 +424,7 @@ function wishlistRef(uid) {
 }
 
 export function subscribeToWishlist(uid, onChange, onError) {
-  const q = query(wishlistRef(uid), orderBy("createdAt", "desc"));
+  const q = query(wishlistRef(uid), orderBy("addedAt", "desc"));
   return onSnapshot(
     q,
     (snapshot) => {
@@ -468,7 +468,7 @@ function experienceRef(uid) {
 }
 
 export function subscribeToExperiences(uid, onChange, onError) {
-  const q = query(experienceRef(uid), orderBy("createdAt", "desc"));
+  const q = query(experienceRef(uid), orderBy("addedAt", "desc"));
   return onSnapshot(
     q,
     (snapshot) => {

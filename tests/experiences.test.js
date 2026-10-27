@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateExperienceDraft } from "../js/experiences.js";
+import { validateExperienceDraft } from "../js/section-lists.js";
 
 describe("experiences.js — validateExperienceDraft (ADR-113)", () => {
   it("el título es obligatorio y se trimea", () => {

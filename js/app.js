@@ -20,6 +20,12 @@ import {
   subscribeToNotifications,
   addNotification,
   deleteNotification,
+  addWishlistItem,
+  updateWishlistItem,
+  deleteWishlistItem,
+  addExperience,
+  updateExperience,
+  deleteExperience,
   markNotificationRead,
   subscribeToRecipes,
   addRecipe,
@@ -61,8 +67,7 @@ import { runStorageMigration } from "./migration.js";
 import { setupNotifications } from "./notifications-setup.js";
 import { setupProfile } from "./profile.js";
 import { initializeI18n } from "./i18n.js";
-import { setupWishlist } from "./wishlist.js";
-import { setupExperiences, resetExperiencesData } from "./experiences.js";
+import { setupWishlist, setupExperiences, resetSectionLists } from "./section-lists.js";
 import { setupSettings, syncThemeToSettings, cleanupSettings, SECTION_REGISTRY, isSectionVisible, isTabVisible, getFirstVisibleTabKey, getFirstVisibleTabPanel, normalizeTabKey, applySteamCallback, loadSettings } from "./settings.js";
 import { parseSteamCallbackHash } from "./api-steam.js";
 import { setupGlobalSearch, refreshExternalResults } from "./global-search.js";
@@ -132,6 +137,12 @@ function createCtx() {
     upsertUserProfile,
     getUserProfile,
     getItemsOnce,
+    addWishlistItem,
+    updateWishlistItem,
+    deleteWishlistItem,
+    addExperience,
+    updateExperience,
+    deleteExperience,
     getMovieDetails,
     getTvExtraDetails,
     getTvSeasonsMeta,
@@ -474,7 +485,9 @@ async function loadOcioPartial(panelEl) {
     const group = panelEl.dataset.typeGroup;
     // "wishlist" is painted with its own API (setWishlistItems), not
     // by renderLibraryFor (GRID_IDS doesn't cover it).
-    if (group && group !== "wishlist" && groupReady[group]) renderLibraryFor(group);
+    if (group && group !== "wishlist" && group !== "experiences" && groupReady[group]) {
+      renderLibraryFor(group);
+    }
   } catch (err) {
     // It is removed from the loaded set to retry on the next
     // activation (e.g. after fixing the failure's source) or with the
@@ -845,6 +858,8 @@ async function init() {
     groupReady.tv = false;
     groupReady.books = false;
     groupReady.games = false;
+    groupReady.wishlist = false;
+    groupReady.experiences = false;
     checksTriggered = false;
 
     if (!user) {
@@ -859,7 +874,7 @@ async function init() {
       resetRecipesData();
       resetMenuData();
       resetShoppingListState();
-      resetExperiencesData();
+      resetSectionLists();
       // Gym (issue #62): same pattern, and it also hides the
       // view if the session was closed from it (it would stay over the
       // login screen).
