@@ -2503,17 +2503,43 @@ button, a, input, select, textarea { touch-action: manipulation; }
 }
 
 /* =========================================================
-   ADR-112 — Ocio: flat IMDb poster-forward cards
+   ADR-118 — Ocio: tarjetas estilo Trakt
    =========================================================
-   The tokens live in css/styles.css (always loaded).
-   SOLID surface per family (no backdrop-filter: the ADR-109   glass is retired); the card's text goes from its family's   ink to its family's ink. States reaffirmed at the end.
+   Poster-forward con barra de estado color arriba (como los
+   bordes de color de las tarjetas de app.trakt.tv) y escudo de
+   nota auto-colored en rojo de marca. Los tokens viven en
+   css/styles.css, que se carga siempre junto a este archivo.
    ========================================================= */
 
+/* Barra de color por estado en la parte superior de la tarjeta:
+   semántica equivalente a los indicadores de color de Trakt */
+.item-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--paper-line);
+  z-index: 2;
+}
+.item-card--en_curso::before { background: var(--teal-reel); }
+.item-card--completado::before { background: var(--brand-red); }
+.item-card--standby::before { background: var(--ink-soft); }
+.item-card--abandonado::before { background: var(--stamp); }
+[data-theme="black"] .item-card--en_curso::before { background: var(--teal-reel-dark); }
+[data-theme="black"] .item-card--completado::before { background: var(--brand-red); }
+[data-theme="black"] .item-card--abandonado::before { background: var(--stamp-dark); }
+
+.item-card,
+.item-card .item-card__perforation {
+  border-radius: var(--radius-card);
+}
 .item-card {
+  position: relative;
   background: var(--ink-raised);
   color: var(--paper);
   border: 1px solid var(--paper-alpha-20);
-  border-radius: var(--radius-card);
   box-shadow: none;
 }
 [data-theme="light"] .item-card,
@@ -2540,11 +2566,12 @@ button, a, input, select, textarea { touch-action: manipulation; }
   color: var(--ink-soft);
 }
 
-/* Status chip (stamp): flat, currentColor border, no background */
+/* Estado: chip transparente con borde a currentColor */
 .item-card__stamp {
   background: transparent;
   transform: none;
 }
+/* Estados de tarjeta: re-afirmados con --bg-state-* (por familia) */
 .item-card--pendiente { background: var(--ink-raised); color: var(--paper); }
 .item-card--en_curso { background: var(--bg-state-en_curso); color: var(--ink); }
 .item-card--completado { background: var(--bg-state-completado); color: var(--ink); }
@@ -2553,20 +2580,11 @@ button, a, input, select, textarea { touch-action: manipulation; }
 [data-theme="black"] .item-card--en_curso,
 [data-theme="black"] .item-card--completado,
 [data-theme="black"] .item-card--standby,
-[data-theme="black"] .item-card--abandonado 
-/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
-
-[data-theme="dark"], [data-theme="black"] .item-card--en_curso,
-[data-theme="dark"], [data-theme="black"] .item-card--completado,
-[data-theme="dark"], [data-theme="black"] .item-card--standby,
-[data-theme="dark"], [data-theme="black"] .item-card--abandonado {
-  color: var(--paper);
-}
-{
+[data-theme="black"] .item-card--abandonado {
   color: var(--paper);
 }
 
-/* IMDb-style rating shield (auto-colored, 10:1) */
+/* Escudo de nota (sobre 10) en rojo de marca, auto-colored (4.9:1) */
 .item-card__rating {
   margin-top: auto;
 }
@@ -2575,8 +2593,8 @@ button, a, input, select, textarea { touch-action: manipulation; }
   align-items: center;
   gap: 0.3rem;
   align-self: flex-start;
-  background: var(--brand-gold);
-  color: var(--brand-gold-ink);
+  background: var(--brand-red);
+  color: var(--brand-ink);
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 0.72rem;
@@ -2585,7 +2603,7 @@ button, a, input, select, textarea { touch-action: manipulation; }
   padding: 0.18rem 0.45rem;
 }
 
-/* ×N counter chip: flat pill with hairline */
+/* Chip contador ×N: píldora plana con hairline */
 .item-card__counter {
   background: var(--ink-raised);
   border: 1px solid var(--paper-alpha-30);
@@ -2597,7 +2615,7 @@ button, a, input, select, textarea { touch-action: manipulation; }
   border-color: var(--ink-alpha-15);
 }
 
-/* Rows and blocks: flat with hairline, catalog radius */
+/* Filas y bloques planos */
 .list-row { border-radius: var(--radius-card); }
 .episode-row,
 .log-row {
@@ -2609,22 +2627,9 @@ button, a, input, select, textarea { touch-action: manipulation; }
   background: var(--paper-dim);
 }
 [data-theme="black"] .progress-banner,
-[data-theme="black"] .season-header 
-/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
-
-[data-theme="dark"], [data-theme="black"] .progress-banner,
-[data-theme="dark"], [data-theme="black"] .season-header {
+[data-theme="black"] .season-header {
   background: var(--ink-raised);
 }
-{
-  background: var(--ink-raised);
-}
-
-/* =========================================================
-   ADR-113 — Ocio: superficies heredan el radio/borde catálogo.
-   La perforación del ticket sigue oculta (ADR-112) y las listas
-   (temporadas, episodios, historial) pasan a bloques planos.
-   ========================================================= */
 .log-row {
   background: var(--paper-dim);
   border: 1px solid var(--paper-line);
@@ -2638,17 +2643,8 @@ button, a, input, select, textarea { touch-action: manipulation; }
   background: var(--ink-raised);
   border-color: var(--paper-alpha-20);
 }
-.view-toggle .view-toggle__btn,
-.sort-select {
-  border-radius: 999px;
-}
 
-/* =========================================================
-   Experiences (tab "Experiencias", ADR-113): flat list of cards
-   under the IMDb language: solid surface of the family, hairline,
-   radio var(--radius-card). Reuses .chip for the filters.
-   ========================================================= */
-
+/* Experiences (tab "Experiencias", ADR-113): lista plana */
 .experience-controls {
   display: flex;
   flex-wrap: wrap;
@@ -2691,10 +2687,6 @@ button, a, input, select, textarea { touch-action: manipulation; }
   background: var(--bg-state-completado);
   color: var(--ink);
 }
-[data-theme="black"] .experience-card--hecha {
-  background: var(--bg-state-completado);
-  color: var(--paper);
-}
 .experience-card__open {
   flex: 1 1 auto;
   min-width: 0;
@@ -2705,29 +2697,20 @@ button, a, input, select, textarea { touch-action: manipulation; }
   padding: 0;
   cursor: pointer;
 }
-.experience-card__body {
-  min-width: 0;
-}
+.experience-card__body { min-width: 0; }
 .experience-card__title {
   font-weight: 700;
   overflow-wrap: break-word;
-  min-width: 0;
 }
 .experience-card__date {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--ink-soft);
 }
-[data-theme="black"] .experience-card__date {
-  color: var(--ink-soft);
-}
 .experience-card__desc {
   font-size: 0.85rem;
   color: var(--ink-soft);
   overflow-wrap: break-word;
-}
-[data-theme="black"] .experience-card__desc {
-  color: var(--ink-soft);
 }
 .experience-card__actions {
   display: flex;
@@ -2759,7 +2742,7 @@ button, a, input, select, textarea { touch-action: manipulation; }
   color: var(--stamp-dark);
 }
 
-/* Note over 10 (ADR-116): 10 numeric pills; they wrap on narrow screens */
+/* Note over 10 (ADR-116): 10 numeric pills, wrap on narrow screens */
 .rating-picker {
   flex-wrap: wrap;
 }
@@ -2767,8 +2750,11 @@ button, a, input, select, textarea { touch-action: manipulation; }
 .rating-picker--small button {
   min-width: 30px;
   padding: 0 6px;
-  aspect-ratio: auto;
 }
 .rating-picker button.is-half {
   display: none;
+}
+.view-toggle .view-toggle__btn,
+.sort-select {
+  border-radius: 999px;
 }
