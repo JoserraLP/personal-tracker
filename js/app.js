@@ -80,6 +80,8 @@ import { setupGym, subscribeGymData, resetGymData } from "./gym.js";
 let currentUser = null;
 let unsubscribeItems = { movies: null, tv: null, books: null, games: null, wishlist: null, experiences: null };
 let unsubscribeNotifications = null;
+let wishlistApi = null;
+let experiencesApi = null;
 let unsubscribeRecipes = null; // recipes (recipes.js)
 let unsubscribeMenuData = null; // menus (menu.js)
 let unsubscribeGymData = null; // gym (gym.js)
