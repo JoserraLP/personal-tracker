@@ -457,7 +457,30 @@ const EN_TEXT_EXTRA = {
   "Gimnasio": "Gym",
 };
 
-Object.assign(EN_TEXT, EN_TEXT_EXTRA);;
+Object.assign(EN_TEXT, EN_TEXT_EXTRA);
+/* Experiences tab (ADR-113) */
+Object.assign(EN_TEXT, {
+  "Experiencias": "Experiences",
+  "Filtrar la lista de experiencias": "Filter the experience list",
+  "Todas": "All",
+  "Por hacer": "To do",
+  "Hechas": "Done",
+  "Añadir experiencia": "Add experience",
+  "Tu lista de experiencias está vacía. Pulsa «Añadir experiencia» para registrar la primera.":
+    "Your experience list is empty. Press «Add experience» to register the first one.",
+  "No hay ninguna experiencia con ese filtro.": "No experiences match this filter.",
+  "Editar experiencia": "Edit experience",
+  "Añadir a la lista de experiencias": "Add to the experience list",
+  "¿Hecha?": "Done?",
+  "Pendiente": "Pending",
+  "Hecha": "Done",
+  "La fecha no es válida (formato yyyy-mm-dd).": "The date is not valid (yyyy-mm-dd format).",
+  "No se pudo actualizar la experiencia.": "Could not update the experience.",
+  "No se pudo guardar la experiencia:": "Could not save the experience:",
+  "¿Borrar «": "Delete «",
+  "» de la lista de experiencias?": "» from the experience list?",
+});
+;
 const ATTR_PREFIX_RE = /^([@#%])([\s\S]+)$/;
 
 // Attribute dictionary (@placeholder, #aria-label, %title).

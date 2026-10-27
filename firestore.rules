@@ -106,6 +106,13 @@ service cloud.firestore {
         allow read, write: if isAllowedUser() && isOwner(userId);
       }
 
+      // Experiences (Experiences tab): exper done or to do some day
+      // with title, description, date and done mark. Private list
+      // like the wishlist: only the owner reads or writes it.
+      match /experiences/{itemId} {
+        allow read, write: if isAllowedUser() && isOwner(userId);
+      }
+
       // Las notificaciones son privadas: nadie más puede leerlas.
       match /notifications/{notifId} {
         allow read, write: if isAllowedUser() && isOwner(userId);

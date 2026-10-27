@@ -34,8 +34,8 @@ const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './css/styles.css?v=20261004',
-  './css/ocio.css?v=20261004',
+  './css/styles.css?v=20261030',
+  './ocio/ocio.css?v=20261030',
   './js/app.js?v=20261030',
   './js/router.js',
   './js/i18n.js',
@@ -84,12 +84,17 @@ const STATIC_ASSETS = [
   './js/shopping-list.js',
   // Gym section (issue #62)
   './js/gym.js',
+  './js/wishlist.js',
+  './js/experiences.js',
+  './js/api-steam.js',
+  './js/counter.js',
   './resources/icon.png',
   './ocio/series.html?v=20261030',
   './ocio/peliculas.html?v=20261030',
   './ocio/libros.html?v=20261030',
   './ocio/videojuegos.html?v=20261030',
   './ocio/compras.html?v=20261030',
+  './ocio/experiences.html?v=20261031',
 ];
 
 // -------------------------------------------------------------

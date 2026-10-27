@@ -2642,3 +2642,119 @@ button, a, input, select, textarea { touch-action: manipulation; }
 .sort-select {
   border-radius: 999px;
 }
+
+/* =========================================================
+   Experiences (tab "Experiencias", ADR-113): flat list of cards
+   under the IMDb language: solid surface of the family, hairline,
+   radio var(--radius-card). Reuses .chip for the filters.
+   ========================================================= */
+
+.experience-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+.experience-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.experiences-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.experience-card {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.5rem;
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+  border-radius: var(--radius-card);
+  padding: 0.65rem 0.75rem;
+  min-width: 0;
+}
+[data-theme="light"] .experience-card,
+[data-theme="white"] .experience-card {
+  background: var(--white);
+  color: var(--ink);
+  border-color: var(--ink-alpha-15);
+}
+.experience-card--hecha {
+  background: var(--bg-state-completado);
+  color: var(--ink);
+}
+[data-theme="black"] .experience-card--hecha {
+  background: var(--bg-state-completado);
+  color: var(--paper);
+}
+.experience-card__open {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+.experience-card__body {
+  min-width: 0;
+}
+.experience-card__title {
+  font-weight: 700;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+.experience-card__date {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+[data-theme="black"] .experience-card__date {
+  color: var(--ink-soft);
+}
+.experience-card__desc {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  overflow-wrap: break-word;
+}
+[data-theme="black"] .experience-card__desc {
+  color: var(--ink-soft);
+}
+.experience-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.experience-card__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.experience-card__delete {
+  background: transparent;
+  border: none;
+  color: var(--stamp);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.2rem;
+  border-radius: var(--radius);
+}
+.experience-card__delete:hover {
+  background: var(--ink-alpha-10);
+}
+[data-theme="black"] .experience-card__delete {
+  color: var(--stamp-dark);
+}

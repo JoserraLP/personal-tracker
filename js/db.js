@@ -456,3 +456,47 @@ export async function updateWishlistItem(uid, itemId, changes) {
 export async function deleteWishlistItem(uid, itemId) {
   return deleteDoc(doc(db, "users", uid, "wishlist", itemId));
 }
+
+/* ---------- Experiences (Ocio tab) ---------- */
+
+// Experiences done or to do some day: private list (same pattern as
+// the wishlist) with title, description, date (optional) and done
+// mark. Live subscription listing without order criteria (the client
+// keeps the order they come in: creation).
+function experienceRef(uid) {
+  return collection(db, "users", uid, "experiences");
+}
+
+export function subscribeToExperiences(uid, onChange, onError) {
+  const q = query(experienceRef(uid), orderBy("createdAt", "desc"));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items = [];
+      snapshot.forEach((docSnap) => items.push({ id: docSnap.id, ...docSnap.data() }));
+      onChange(items);
+    },
+    (error) => {
+      if (onError) onError(error);
+    }
+  );
+}
+
+export async function addExperience(uid, item) {
+  return addDoc(experienceRef(uid), {
+    ...item,
+    addedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateExperience(uid, itemId, changes) {
+  return updateDoc(doc(db, "users", uid, "experiences", itemId), {
+    ...changes,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteExperience(uid, itemId) {
+  return deleteDoc(doc(db, "users", uid, "experiences", itemId));
+}

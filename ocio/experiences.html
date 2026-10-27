@@ -1,0 +1,27 @@
+<!--
+  Content of the "Experiencias" tab (Ocio). Injected within
+  <section id="panel-experiences"> (the same partial system). Each list
+  card shows title, description (optional), date (optional) and if it
+  has been done.
+
+  IMPORTANT: the filter bar uses .experience-filters (NOT .filter-chips)
+  so it doesn't collide with the generic wiring of app.js
+  (wirePanelControls), which expects data-scope; privately
+  js/experiences.js wires them. The chips reuse the base class .chip
+  of the web.
+-->
+<div class="experience-controls">
+  <div class="experience-filters" data-experience-scope="experiencias" role="group" aria-label="Filtrar la lista de experiencias">
+    <button class="chip experience-chip is-active" data-experience-filter="todos" aria-pressed="true">Todas</button>
+    <button class="chip experience-chip" data-experience-filter="pendiente" aria-pressed="false">Por hacer</button>
+    <button class="chip experience-chip" data-experience-filter="hecha" aria-pressed="false">Hechas</button>
+  </div>
+  <div class="library-controls__aux">
+    <button type="button" class="btn btn--accent-books" id="btn-experience-add">Añadir experiencia</button>
+  </div>
+</div>
+<div id="experiences-list" class="experiences-list"></div>
+<p id="experiences-empty" class="empty-state hidden">
+  Tu lista de experiencias está vacía. Pulsa «Añadir experiencia» para
+  registrar la primera.
+</p>

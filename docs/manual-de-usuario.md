@@ -541,6 +541,36 @@ at the top you can filter: **Todas** [All], **Por comprar** [To buy] or
 - A purchased thing stays on the list: delete it when you no
   longer want to keep it.
 
+
+## Experiences (things done or that you want to do)
+
+The **Experiencias** tab (in Ocio, next to **Compras**) is a private
+list for experiences you have already lived or you want to do some
+day: a trip, a concert, a dish you want to try...
+
+### Add an experience
+
+With the **«Añadir experiencia»** button:
+
+- **Título** (required).
+- **Fecha** (optional): the moment you lived it — or the one you have
+  planned.
+- **¿Hecha?**: check it if you already did it. From the form it saves
+  as done directly; from the list card, the check marks it.
+- **Descripción** (optional): whatever you want to remember.
+
+### The list
+
+- The filters show **Todas**, **Por hacer** (not done yet) or
+  **Hechas**.
+- Tapping a card opens the editing window: change title, date,
+  **¿Hecha?** check and description.
+- The check **Por hacer / Hecha** on the card updates it right away;
+  when done for the first time, the date it was checked is kept.
+- Deleting with the trash icon asks for confirmation.
+
+Your list is private: only your account sees it.
+
 ## 8. Recipes
 
 The **Recetas** section (in the sidebar, next to «Ocio») lets you
