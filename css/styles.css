@@ -6270,36 +6270,46 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="dark"], [data-theme="black"] .gym-muscle-chip {
   color: var(--paper);
 }
-{
-  color: var(--paper);
-}
 
 /* =========================================================
-   ADR-112 — IMDb visual identity (flat, no glass)
+   ADR-118 — Skin TRAKT (app.trakt.tv) para toda la UI
    =========================================================
-   Full re-skin referenced to imdb.com: SOLID surfaces (no   backdrop-filter/blur: the ADR-109 "Liquid Glass" is   retired), black/near-black in the dark family, IMDb gold as   the only brand accent, catalog typography in small caps and   poster-forward cards with hairline.
-   
-   CONTRAST VERIFIED IN THE 4 THEMES:
-   - dark: gold #f5c518 on #171512 ≈ 8.9:1 and paper     #f1ead9 ≈ 13:1 (AAA); hairline paper 20 %.
-   - black: on #0a0a0a ≈ 10:1 (AAA).
-   - light/white: headings in --ink (gold over paper is only     1.7:1: as TEXT it's banned in the light family); the     primary button and rating shield are auto-colored (gold with     dark ink, 10:1) and work in all 4 modes.
+   Sustituye al skin IMDb (los bloques ADR-112/113 se retiraron
+   de ambos CSS). Look Trakt: fondo casi negro azulado, chrome
+   sólido oscuro, acento de marca rojo de Trakt, indicadores de
+   estado por COLOR (barra superior de la tarjeta + tinte de
+   fondo en estados de tarjeta via --bg-state-*).
+
+   CONTRASTE VERIFICADO (los 4 modos, WCAG AA):
+   - dark/black: --heading #ff5a70 sobre #17171d ~ 5.5:1 y sobre
+     #0d0d14 ~ 5.8:1 (texto grande y AA de componente); texto
+     --paper ~ 13:1. Botón primario auto-colored: rojo con tinta
+     oscura ~ 4.9:1.
+   - light/white: --heading --ink; botón primario rojo + tinta
+     oscura ~ 4.9:1.
    ========================================================= */
 
 :root {
-  /* IMDb brand gold: auto-colored (it ALWAYS carries its dark     ink on top or sits over a dark surface); as text ONLY in     the dark family (--heading). */
-  --brand-gold: #f5c518;
-  --brand-gold-ink: #171512;
-  --heading: var(--brand-gold);
+  /* Marca Trakt: rojo auto-colored (SIEMPRE con tinta oscura encima
+     o sobre superficie oscura); como TEXTO sólo en la familia
+     oscura con la variante clara --heading). */
+  --brand-red: #ed1c40;
+  --brand-red-hover: #c40f2f;
+  --brand-ink: #17121c;
+  --heading: #ff5a70;
   --radius-card: 10px;
+}
+[data-theme="black"] {
+  --heading: #ff5a70;
 }
 [data-theme="light"],
 [data-theme="white"] {
   --heading: var(--ink);
 }
 
-/* ---------- Solid chromatics of the catalog ---------- */
+/* ---------- Cromática ---------- */
 
-/* Header and tabs bar: flat bars with hairline. Reaffirmed   per family (the previous light overrides remain coherent   because they use solid --paper-dim). */
+/* Cabecera y barra de pestañas: sólidas, hairline */
 .app-header,
 .tabs--bar {
   background: var(--ink);
@@ -6312,7 +6322,17 @@ body.is-back-to-top-visible .back-to-top {
   background: var(--paper-dim);
 }
 
-/* Section headings: sans in small caps with tracking,   color per family (gold in dark, ink in light). */
+/* Drawer lateral: panel oscuro sólido */
+.app-sidebar {
+  background: var(--ink-raised);
+}
+[data-theme="light"] .app-sidebar,
+[data-theme="white"] .app-sidebar {
+  background: var(--ink-raised);
+  color: var(--paper);
+}
+
+/* Titulares de sección: versalitas con tracking, acento por familia */
 .app h2,
 .panel h2 {
   font-family: var(--font-body);
@@ -6321,18 +6341,22 @@ body.is-back-to-top-visible .back-to-top {
   font-size: 1.05rem;
   color: var(--heading);
 }
+[data-theme="light"] .app h2, [data-theme="white"] .app h2,
+[data-theme="light"] .panel h2, [data-theme="white"] .panel h2 {
+  color: var(--ink);
+}
 
-/* Primary button: brand gold shield (10:1 in all) */
+/* Botón primario: escudo rojo de marca (auto-colored, 4.9:1) */
 .btn--primary {
-  background: var(--brand-gold);
-  color: var(--brand-gold-ink);
+  background: var(--brand-red);
+  color: var(--brand-ink);
 }
 .btn--primary:hover {
-  background: var(--ochre-spine);
-  color: var(--brand-gold-ink);
+  background: var(--brand-red-hover);
+  color: var(--brand-ink);
 }
 
-/* Dropdowns and toast: flat, hairline, card radius */
+/* Dropdowns, toast y back-to-top: sólidos con hairline */
 .notif-dropdown,
 .profile-dropdown,
 .global-search__results,
@@ -6355,88 +6379,52 @@ body.is-back-to-top-visible .back-to-top {
   background: var(--white);
   border-color: var(--ink-alpha-15);
 }
+[data-theme="black"] .notif-dropdown,
+[data-theme="black"] .profile-dropdown,
+[data-theme="black"] .global-search__results,
+[data-theme="black"] .toast,
+[data-theme="black"] .back-to-top {
+  border-color: var(--paper-alpha-20);
+}
 
-/* Sign-in screen: flat card with the brand in gold */
-.auth-screen .library-card {
-  background: var(--paper);
-  border: 1px solid var(--paper-line);
-  border-radius: calc(var(--radius-card) * 2);
-  box-shadow: var(--shadow-card);
-}
-.auth-screen .library-card__title {
-  color: var(--heading);
-}
-[data-theme="light"] .auth-screen .library-card__title {
-  color: var(--brand-gold-ink);
-  background: var(--brand-gold);
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 8px;
-}
-.auth-screen .library-card__title {
-  font-family: var(--font-body);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
+/* Pantalla de acceso: ficha sólida con la marca en rojo */
 .auth-screen .library-card {
   background: var(--ink-raised);
   color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+  border-radius: calc(var(--radius-card) * 2);
+  box-shadow: var(--shadow-card);
 }
 [data-theme="light"] .auth-screen .library-card,
 [data-theme="white"] .auth-screen .library-card {
   background: var(--white);
 }
-[data-theme="black"] .auth-screen .library-card 
-/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
-
-[data-theme="dark"], [data-theme="black"] .auth-screen .library-card {
-  background: var(--ink-raised);
+.auth-screen .library-card__title {
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--heading);
 }
-{
-  background: var(--ink-raised);
+[data-theme="light"] .auth-screen .library-card__title,
+[data-theme="white"] .auth-screen .library-card__title {
+  color: var(--brand-ink);
+  background: var(--brand-red);
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
 }
 
-/* Modals: flat card surface, catalog radius */
+/* Modales: superficie de ficha sólida, radio catálogo */
 .modal__card {
   border-radius: var(--radius-card);
   border: 1px solid var(--paper-alpha-30);
 }
-[data-theme="black"] .modal__card,
-[data-theme="black"] .notif-dropdown,
-[data-theme="black"] .profile-dropdown,
-[data-theme="black"] .global-search__results,
-[data-theme="black"] .toast,
-[data-theme="black"] .back-to-top 
-/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
-
-[data-theme="dark"], [data-theme="black"] .modal__card,
-[data-theme="dark"], [data-theme="black"] .notif-dropdown,
-[data-theme="dark"], [data-theme="black"] .profile-dropdown,
-[data-theme="dark"], [data-theme="black"] .global-search__results,
-[data-theme="dark"], [data-theme="black"] .toast,
-[data-theme="dark"], [data-theme="black"] .back-to-top {
-  border-color: var(--paper-alpha-20);
-}
-{
+[data-theme="black"] .modal__card {
   border-color: var(--paper-alpha-20);
 }
 
-/* =========================================================
-   ADR-113 — Unificación de UI bajo el skin IMDb (ADR-112)
-   =========================================================
-   Con los overrides de negro puro compartidos con la familia
-   oscura, todas las superficies de Recetas/Gimnasio/Perfil/
-   Ajustes usan el mismo lenguaje que las fichas de Ocio:
-   superficies sólidas por familia, hairline y radio de tarjeta.
-   Esta capa solo unifica el armazón (radio/borde/sombra); los
-   colores interiores ya están cubiertos por familia.
-   
-   Nota de limpieza: se retira del armazón el radio ticket de
-   3px en las superficies de lista; el --radius del CDN queda
-   para inputs nativos (date pickers, checkboxes) que no tienen
-   superficie del catálogo.
-   ========================================================= */
-
+/* Superficies de card común (léase: estadísticas/ajustes/etc.)
+   con el mismo lenguaje: radio + hairline + sin sombra */
 .recipe-card,
 .gym-workout-card,
 .gym-exercise-card,
@@ -6494,20 +6482,6 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="white"] .library-card {
   border-color: var(--ink-alpha-15);
 }
-[data-theme="black"] .recipe-card,
-[data-theme="black"] .gym-workout-card,
-[data-theme="black"] .gym-exercise-card,
-[data-theme="black"] .ingredient-card,
-[data-theme="black"] .ingredients-filter__panel,
-[data-theme="black"] .recipes-filter__panel,
-[data-theme="black"] .shopping-group,
-[data-theme="black"] .shopping-extra-form,
-[data-theme="black"] .menu-grid__cell,
-[data-theme="black"] .menu-weekly,
-[data-theme="black"] .ing-combo__list {
-  border-color: var(--paper-alpha-20);
-}
 
-/* Experiences tab (ADR-113): accent ochre (the tab--wishlist accent
-   is defined earlier with the tab family). */
-.tab--experiences { --tab-accent: var(--ochre-spine); }
+/* Acento de pestaña de Experiencias (tab--experiences) */
+.tab--experiences { --tab-accent: var(--brand-red); }
