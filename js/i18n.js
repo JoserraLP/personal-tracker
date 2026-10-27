@@ -199,8 +199,265 @@ const EN_TEXT = {
   "+ Nuevo entreno": "+ New workout",
   "+ Nuevo ejercicio": "+ New exercise",
   "Volver arriba": "Back to top",
+
+
 };
 
+/* Dynamic UI strings — v2 (ADR-113): detail modals, toasts, gym,
+   recipes and menu. Same rule: never translate the string literals
+   of the app (source of truth), only extend this dictionary. */
+const EN_TEXT_EXTRA = {
+  "Vista ✓": "Watched ✓",
+  "Completa ✓": "Completed ✓",
+  "Terminar ✓": "Finish ✓",
+  "Rejugar ↺": "Replay ↺",
+  "Empezar ✓": "Start ✓",
+  "Añadido ✓": "Added ✓",
+  "Releer ↺": "Re-read ↺",
+  "Película": "Movie",
+  "Serie": "TV Show",
+  "Videojuego": "Video game",
+  "Libro": "Book",
+  "Ver tráiler en YouTube": "Watch trailer on YouTube",
+  "Ya añadido": "Already added",
+  "En pausa": "On pause",
+  "Impresiones...": "Thoughts...",
+  "Streaming": "Streaming",
+  "Alquiler": "Rental",
+  "Marcar como vista": "Mark as watched",
+  "¿Quitar este visionado del historial?": "Remove this watch from the history?",
+  "Selecciona al menos una película.": "Select at least one movie.",
+  "Horas": "Hours",
+  "Horas jugadas": "Hours played",
+  "Terminar de leer": "Finish reading",
+  "Empezar a leer": "Start reading",
+  "¿Quitar esta lectura del historial?": "Remove this reading from the history?",
+  "Terminar partida": "Finish play session",
+  "Empezar partida": "Start play session",
+  "¿Quitar esta sesión del historial?": "Remove this session from the history?",
+  "Desmarcar todo": "Uncheck all",
+  "Marcar todo": "Check all",
+  "¡Serie completada!": "Show completed!",
+  "¡Película completada!": "Movie completed!",
+  "¡Libro completado!": "Book completed!",
+  "Borrar": "Delete",
+  "Deshacer": "Undo",
+  "Sin puntuaciones": "No ratings yet",
+  "Vincula tu cuenta de Steam para traer tus juegos con las horas jugadas.": "Link your Steam account to bring your games with their playtime.",
+  "Re-vincular con Steam": "Re-link with Steam",
+  "Falta la URL del proxy de Steam (despliegue).": "Steam proxy URL missing (deployment).",
+  "Añadir": "Add",
+  "El SteamID debe tener 17 dígitos (SteamID64).": "SteamID must have 17 digits (SteamID64).",
+  "Buscando…": "Searching…",
+  "Steam no devolvió ningún juego.": "Steam returned no games.",
+  "Añadiendo…": "Adding…",
+  "Comprobando…": "Checking…",
+  "Estrenos comprobados.": "Releases checked.",
+  "Comprobación reciente, inténtalo en un rato.": "Checked recently, try again in a while.",
+  "Ya hay una comprobación en curso.": "A check is already running.",
+  "Permiso denegado. Actívalo en los ajustes del navegador.": "Permission denied. Enable it in your browser settings.",
+  "No se pudo activar: permiso no concedido.": "Could not enable: permission not granted.",
+  "No se pudo completar el inicio de sesión de Steam.": "Could not complete Steam sign-in.",
+  "El título es obligatorio.": "Title is required.",
+  "El precio debe ser un número mayor o igual que 0.": "Price must be a number greater than or equal to 0.",
+  "La URL del producto no es válida.": "Product URL is not valid.",
+  "La URL de la foto no es válida.": "Photo URL is not valid.",
+  "No hay ninguna cosa con ese filtro.": "No items match this filter.",
+  "Editar compra": "Edit item",
+  "Añadir a la lista de compras": "Add to shopping list",
+  "Actividad": "Activity",
+  "Juegos": "Games",
+  "Pecho": "Chest",
+  "Espalda": "Back",
+  "Hombros": "Shoulders",
+  "Bíceps": "Biceps",
+  "Tríceps": "Triceps",
+  "Antebrazos": "Forearms",
+  "Piernas": "Legs",
+  "Glúteos": "Glutes",
+  "Core": "Core",
+  "Tráiler": "Trailer",
+  "Sin imagen": "No image",
+  "Cargando detalles…": "Loading details…",
+  "Valoración": "Rating",
+  "Media episodios: ": "Episode average: ",
+  "Notas": "Notes",
+  "Abandonar": "Abandon",
+  "Retomar": "Resume",
+  "Director:": "Director:",
+  "Reparto:": "Cast:",
+  "Metacritic:": "Metacritic:",
+  "Duración media:": "Average length:",
+  "Clasificación:": "Rated:",
+  "Temporadas": "Seasons",
+  "Secciones": "Sections",
+  "Páginas:": "Pages:",
+  "Título *": "Title *",
+  "Autor": "Author",
+  "Año": "Year",
+  "Páginas": "Pages",
+  "URL de portada (opcional)": "Cover URL (optional)",
+  "Editar información": "Edit details",
+  "Cancelar": "Cancel",
+  "Guardar cambios": "Save changes",
+  "Guardar": "Save",
+  "Número de episodios": "Number of episodes",
+  "Sin info. de streaming para este país": "No streaming info for this country",
+  "Disponible en:": "Available on:",
+  "Ver opciones en TMDB": "Watch options on TMDB",
+  "Plataformas:": "Platforms:",
+  "Ver información": "View details",
+  "Si te gustó esto, quizá te guste...": "If you liked this, you might also like...",
+  "Otras películas de la saga": "Other movies of the saga",
+  "Aún no la has visto.": "You haven't watched it yet.",
+  "Quitar": "Remove",
+  "Saga:": "Saga:",
+  "Visionados": "Watches",
+  "Eliminar": "Delete",
+  "Sesiones de juego": "Play sessions",
+  "Historial de lecturas": "Reading history",
+  "Historial de visionados": "Watch history",
+  "Sesiones": "Sessions",
+  "Nombre *": "Name *",
+  "Categoría *": "Category *",
+  "Porciones *": "Servings *",
+  "Descripción": "Description",
+  "Ingredientes de la receta": "Recipe ingredients",
+  "Paso": "Step",
+  "Pasos de la receta": "Recipe steps",
+  "Ingredientes y pasos": "Ingredients and steps",
+  "Leer más": "Read more",
+  "Sinopsis": "Plot",
+  "Notas y edición": "Notes and editing",
+  "Etiquetas": "Tags",
+  "Categoría": "Category",
+  "Alérgenos": "Allergens",
+  "Ver receta": "View recipe",
+  "También está en el menú": "Also on the menu",
+
+  "Cardio": "Cardio",
+  "Cuerpo completo": "Full body",
+  "Otro": "Other",
+  "Entreno": "Workout",
+  "Sin nombre": "Unnamed",
+  "Nuevo entreno": "New workout",
+  "Ejercicio": "Exercise",
+  "Sin fecha": "No date",
+  "Entreno eliminado.": "Workout deleted.",
+  "Editar entreno": "Edit workout",
+  "P. ej. Push day": "e.g. Push day",
+  "Cómo fue el entreno, sensaciones, progreso…": "How the workout went, sensations, progress…",
+  "Unidad de peso del entreno": "Workout weight unit",
+  "Elige un ejercicio…": "Choose an exercise…",
+  "Añade al menos un ejercicio con una serie (reps ≥ 1).": "Add at least one exercise with a set (reps ≥ 1).",
+  "No hay ninguna serie que duplicar.": "There is no set to duplicate.",
+  "Entreno actualizado.": "Workout updated.",
+  "Entreno guardado.": "Workout saved.",
+  "Nuevo ejercicio": "New exercise",
+  "Sin notas.": "No notes.",
+  "Ejercicio eliminado (los entrenos guardados conservan su nombre).": "Exercise deleted (saved workouts keep its name).",
+  "Editar ejercicio": "Edit exercise",
+  "P. ej. press banca": "e.g. bench press",
+  "Grupo muscular del ejercicio": "Exercise muscle group",
+  "Técnica, anotaciones, variantes…": "Technique, notes, variations…",
+  "Ejercicio actualizado.": "Exercise updated.",
+  "Ejercicio añadido al catálogo.": "Exercise added to the catalog.",
+  "Importada desde una URL, pendiente de revisar": "Imported from a URL, pending review",
+  "Receta eliminada.": "Recipe deleted.",
+  "Cantidad": "Amount",
+  "Unidad de la cantidad del paquete": "Package amount unit",
+  "Nuevo ingrediente": "New ingredient",
+  "Sin indicar": "Not specified",
+  "Sin categoría": "No category",
+  "P. ej. azúcar moreno": "e.g. brown sugar",
+  "Categoría del nuevo ingrediente": "New ingredient category",
+  "P. ej. 250": "e.g. 250",
+  "Añadido a la lista de la compra.": "Added to the shopping list.",
+  "Ingrediente eliminado del catálogo.": "Ingredient removed from the catalog.",
+  "Ingrediente actualizado.": "Ingredient updated.",
+  "Ese ingrediente ya existe en el catálogo.": "That ingredient already exists in the catalog.",
+  "Ingrediente añadido al catálogo.": "Ingredient added to the catalog.",
+  "Receta": "Recipe",
+  "Editar receta": "Edit recipe",
+  "Nueva receta": "New recipe",
+  "Nueva etiqueta propia…": "New custom tag…",
+  "Nueva etiqueta": "New tag",
+  "Buscar ingrediente…": "Search ingredient…",
+  "Cant.": "Amt.",
+  "Unidad de medida": "Unit of measure",
+  "Quitar ingrediente": "Remove ingredient",
+  "Sin coincidencias. Crea el ingrediente con «Nuevo ingrediente».": "No matches. Create the ingredient with «New ingredient».",
+  "Quitar paso": "Remove step",
+  "Etiqueta añadida.": "Tag added.",
+  "El nombre es obligatorio.": "Name is required.",
+  "Las porciones son obligatorias.": "Servings are required.",
+  "Receta actualizada.": "Recipe updated.",
+  "Receta guardada (pendiente de revisar).": "Recipe saved (pending review).",
+  "Receta guardada.": "Recipe saved.",
+  "Pega una URL de la receta.": "Paste the recipe URL.",
+  "La URL debe empezar por http:// o https://.": "URL must start with http:// or https://.",
+  "Importando…": "Importing…",
+  "Datos extraídos. Repasa los campos y guarda (quedará marcada como «Revisar»).": "Data extracted. Review the fields and save (it will be marked as «Review»).",
+  "No se pudo extraer la receta de esa web; se guardará la URL y la revisarás después.": "Could not extract the recipe from that site; the URL will be saved for later review.",
+  "Importar": "Import",
+  "El menú de esta semana todavía no tiene datos guardados.": "This week's menu has no saved data yet.",
+  "Menú de la semana borrado.": "Weekly menu cleared.",
+  "Día": "Day",
+  "Buscar receta…": "Search recipe…",
+  "Buscar receta": "Search recipe",
+  "Ya están todas tus recetas en la semana.": "All your recipes are already in this week.",
+  "Ya están todas tus recetas en esta comida.": "All your recipes are already in this meal.",
+  "Aún no hay recetas. Crea la primera en la pestaña Recetas.": "No recipes yet. Create the first one in the Recipes tab.",
+  "Ninguna receta coincide con la búsqueda o los filtros.": "No recipe matches the search or filters.",
+  "Esa receta ya está en la semana.": "That recipe is already in this week.",
+  "Receta añadida a la semana.": "Recipe added to the week.",
+  "Esa receta ya está en esa comida.": "That recipe is already in that meal.",
+  "Receta añadida al menú.": "Recipe added to the menu.",
+  "Ítem de vuelta en la lista.": "Item back on the list.",
+  "Receta de vuelta en la lista.": "Recipe back on the list.",
+  "Sin coincidencias. Crea el ingrediente en la pestaña Ingredientes.": "No matches. Create the ingredient in the Ingredients tab.",
+  "Elige el ingrediente del desplegable (o créalo en la pestaña Ingredientes).": "Choose the ingredient from the dropdown (or create it in the Ingredients tab).",
+  "Ítem añadido a la lista.": "Item added to the list.",
+  "Ahora no": "Not now",
+  "Elige una valoración (de 1 a 5 estrellas, con medias).": "Choose a rating (1 to 5 stars, with halves).",
+  "No se pudo abrir la valoración:": "Could not open the rating:",
+  "Marcado deshecho.": "Mark undone.",
+  "Desmarcado.": "Unmarked.",
+  "Está en pausa/abandonada. Ábrela para retomarla.": "It is on pause/abandoned. Open it to resume.",
+  "Esta serie ya está completa.": "This show is already complete.",
+  "No has iniciado sesión.": "You are not signed in.",
+  "En el fichero no hay ninguna serie importable.": "The file has no importable shows.",
+  "No se pudo comprobar/actualizar": "Could not check/update",
+  "No se pudo pausar automáticamente": "Could not pause automatically",
+  "Steam: no se pudo actualizar la biblioteca:": "Steam: could not update the library:",
+  "Sesión no iniciada.": "No active session.",
+  "La sincronización se abortó. Revisa tu conexión e inténtalo de nuevo.": "The sync was aborted. Check your connection and try again.",
+  "Preparando copia de seguridad…": "Preparing backup…",
+  "Copia de seguridad descargada.": "Backup downloaded.",
+  "El archivo no tiene el formato de copia de seguridad de Mi Registro.": "The file does not have the Mi Registro backup format.",
+  "Restaurando datos…": "Restoring data…",
+  "Preparando calendario…": "Preparing calendar…",
+  "No hay estrenos próximos que exportar.": "There are no upcoming releases to export.",
+  "¿No la encuentras? Añadir manualmente una serie": "Can't find it? Add a show manually",
+  "¿No la encuentras? Añadir manualmente una película": "Can't find it? Add a movie manually",
+  "¿No lo encuentras? Añadir manualmente un libro": "Can't find it? Add a book manually",
+  "¿No lo encuentras? Añadir manualmente un videojuego": "Can't find it? Add a video game manually",
+  "Abrir menú de navegación": "Open navigation menu",
+  "Escribe al menos 2 caracteres para buscar en tus recetas.": "Type at least 2 characters to search your recipes.",
+  "Escribe al menos 2 caracteres para buscar en tu gimnasio.": "Type at least 2 characters to search your gym.",
+  "Escribe al menos 2 caracteres para buscar en tus películas, series, libros y videojuegos.": "Type at least 2 characters to search your movies, shows, books and video games.",
+  "Añadido": "Added",
+  "Sin título": "Untitled",
+  "Marcando…": "Marking…",
+  "Error: contexto no disponible.": "Error: context unavailable.",
+  "Cerrar búsqueda": "Close search",
+  "Selección": "Selection",
+  "Media de": "Average of",
+  "Ocio": "Entertainment",
+  "Gimnasio": "Gym",
+};
+
+Object.assign(EN_TEXT, EN_TEXT_EXTRA);;
 const ATTR_PREFIX_RE = /^([@#%])([\s\S]+)$/;
 
 // Attribute dictionary (@placeholder, #aria-label, %title).
@@ -353,32 +610,29 @@ export function setLang(lang, root = document) {
 
 let observer = null;
 
-/**
- * Boots i18n: applies the saved language and watches mutations so
- * dynamic renders (Spanish, source of truth) are translated
- * on the spot if the user chose English.
- */
-export function initializeI18n() {
-  if (typeof document === "undefined") return;
-  applyI18n(document, getLang());
-  if (getLang() !== "en" || observer) return;
-  observer = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      // Added nodes (subtree) and rewritten text nodes.
-      if (m.type === "childList") {
-        m.addedNodes.forEach((n) => {
-          if (n.nodeType === Node.ELEMENT_NODE) applyI18n(n, "en");
-          else if (n.nodeType === Node.TEXT_NODE) {
-            const t = translateText(n.nodeValue, "en");
-            if (t) n.nodeValue = t;
-          }
-        });
-      } else if (m.type === "characterData") {
-        const t = translateText(m.target.nodeValue, "en");
-        if (t) m.target.nodeValue = t;
-      }
+const observerCallback = (mutations) => {
+  if (getLang() !== "en") return;
+  for (const m of mutations) {
+    // Added nodes (subtree) and rewritten text nodes.
+    if (m.type === "childList") {
+      m.addedNodes.forEach((n) => {
+        if (n.nodeType === Node.ELEMENT_NODE) applyI18n(n, "en");
+        else if (n.nodeType === Node.TEXT_NODE) {
+          const t = translateText(n.nodeValue, "en");
+          if (t) n.nodeValue = t;
+        }
+      });
+    } else if (m.type === "characterData") {
+      const t = translateText(m.target.nodeValue, "en");
+      if (t) m.target.nodeValue = t;
     }
-  });
+  }
+};
+
+/** Watch mutations so dynamic renders are translated on the spot. */
+function ensureObserver() {
+  if (observer || typeof document === "undefined") return;
+  observer = new MutationObserver(observerCallback);
   observer.observe(document.body, {
     childList: true,
     subtree: true,
@@ -386,7 +640,20 @@ export function initializeI18n() {
   });
 }
 
-/** Like vite: stops the observer (tests / logout). */
+/**
+ * Boots i18n: applies the saved language and watches mutations so
+ * dynamic renders (Spanish, source of truth) are translated on the
+ * spot if the user chose English — also when they switch later from
+ * Settings (the observer lives forever and checks the active
+ * language on every callback).
+ */
+export function initializeI18n() {
+  if (typeof document === "undefined") return;
+  applyI18n(document, getLang());
+  ensureObserver();
+}
+
+/** Stops the observer (tests / logout). */
 export function stopI18n() {
   if (observer) {
     observer.disconnect();

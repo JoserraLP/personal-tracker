@@ -1960,19 +1960,57 @@ button, a, input, select, textarea { touch-action: manipulation; }
 [data-theme="black"] .list-row__content,
 [data-theme="black"] .saga-list,
 [data-theme="black"] .watch-provider,
-[data-theme="black"] .game-platform {
+[data-theme="black"] .game-platform 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+
+
+[data-theme="dark"], [data-theme="black"] .chip.is-active,
+[data-theme="dark"], [data-theme="black"] .item-card,
+[data-theme="dark"], [data-theme="black"] .season-episodes,
+[data-theme="dark"], [data-theme="black"] .view-toggle__btn.is-active,
+[data-theme="dark"], [data-theme="black"] .list-row__content,
+[data-theme="dark"], [data-theme="black"] .saga-list,
+[data-theme="dark"], [data-theme="black"] .watch-provider,
+[data-theme="dark"], [data-theme="black"] .game-platform {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
   border: 1px solid var(--paper-alpha-20);
 }
 
 /* Streaming provider logo: the white background became a dark   surface like the chip containing it */
-[data-theme="black"] .watch-provider__logo {
+[data-theme="black"] .watch-provider__logo 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .watch-provider__logo {
+  background: var(--ink-raised);
+}
+{
   background: var(--ink-raised);
 }
 
 /* "Cinema ticket" perforation: holes with the page's dark   background (--ink), not paper */
-[data-theme="black"] .item-card__perforation {
+[data-theme="black"] .item-card__perforation 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .item-card__perforation {
+  background:
+    radial-gradient(circle 6px at 0 50%, var(--ink) 99%, transparent 100%),
+    radial-gradient(circle 6px at 100% 50%, var(--ink) 99%, transparent 100%);
+  background-color: var(--ink-raised);
+}
+{
   background:
     radial-gradient(circle 6px at 0 50%, var(--ink) 99%, transparent 100%),
     radial-gradient(circle 6px at 100% 50%, var(--ink) 99%, transparent 100%);
@@ -1980,11 +2018,41 @@ button, a, input, select, textarea { touch-action: manipulation; }
 }
 
 /* Card states: dark variants (same semantic shade, paper text   over dark background) */
-[data-theme="black"] .item-card--en_curso { background: var(--bg-state-en_curso); }
-[data-theme="black"] .item-card--completado { background: var(--bg-state-completado); }
-[data-theme="black"] .item-card--standby { background: var(--bg-state-standby); }
-[data-theme="black"] .item-card--abandonado { background: var(--bg-state-abandonado); }
-[data-theme="black"] .item-card--unreleased {
+[data-theme="black"] .item-card--en_curso 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .item-card--en_curso { background: var(--bg-state-en_curso); }
+{ background: var(--bg-state-en_curso); }
+[data-theme="black"] .item-card--completado 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .item-card--completado { background: var(--bg-state-completado); }
+{ background: var(--bg-state-completado); }
+[data-theme="black"] .item-card--standby 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .item-card--standby { background: var(--bg-state-standby); }
+{ background: var(--bg-state-standby); }
+[data-theme="black"] .item-card--abandonado 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .item-card--abandonado { background: var(--bg-state-abandonado); }
+{ background: var(--bg-state-abandonado); }
+[data-theme="black"] .item-card--unreleased 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .item-card--unreleased {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bg-state-en_curso) 0px,
+    var(--bg-state-en_curso) 14px,
+    var(--bg-state-abandonado) 14px,
+    var(--bg-state-abandonado) 28px
+  );
+}
+{
   background: repeating-linear-gradient(
     135deg,
     var(--bg-state-en_curso) 0px,
@@ -1995,11 +2063,41 @@ button, a, input, select, textarea { touch-action: manipulation; }
 }
 
 /* List view rows: the same dark states (same specificity as the   base row, which is why they are redeclared here) */
-[data-theme="black"] .list-row--en_curso .list-row__content { background: var(--bg-state-en_curso); }
-[data-theme="black"] .list-row--completado .list-row__content { background: var(--bg-state-completado); }
-[data-theme="black"] .list-row--standby .list-row__content { background: var(--bg-state-standby); }
-[data-theme="black"] .list-row--abandonado .list-row__content { background: var(--bg-state-abandonado); }
-[data-theme="black"] .list-row--unreleased .list-row__content {
+[data-theme="black"] .list-row--en_curso .list-row__content 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .list-row--en_curso .list-row__content { background: var(--bg-state-en_curso); }
+{ background: var(--bg-state-en_curso); }
+[data-theme="black"] .list-row--completado .list-row__content 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .list-row--completado .list-row__content { background: var(--bg-state-completado); }
+{ background: var(--bg-state-completado); }
+[data-theme="black"] .list-row--standby .list-row__content 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .list-row--standby .list-row__content { background: var(--bg-state-standby); }
+{ background: var(--bg-state-standby); }
+[data-theme="black"] .list-row--abandonado .list-row__content 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .list-row--abandonado .list-row__content { background: var(--bg-state-abandonado); }
+{ background: var(--bg-state-abandonado); }
+[data-theme="black"] .list-row--unreleased .list-row__content 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .list-row--unreleased .list-row__content {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bg-state-en_curso) 0px,
+    var(--bg-state-en_curso) 14px,
+    var(--bg-state-abandonado) 14px,
+    var(--bg-state-abandonado) 28px
+  );
+}
+{
   background: repeating-linear-gradient(
     135deg,
     var(--bg-state-en_curso) 0px,
@@ -2018,7 +2116,23 @@ button, a, input, select, textarea { touch-action: manipulation; }
 [data-theme="black"] .desc-picker__text,
 [data-theme="black"] .extra-info__line,
 [data-theme="black"] .extra-info__loading,
-[data-theme="black"] .watch-provider__name {
+[data-theme="black"] .watch-provider__name 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .list-row__open,
+[data-theme="dark"], [data-theme="black"] .season-toggle,
+[data-theme="dark"], [data-theme="black"] .episode-average strong,
+[data-theme="dark"], [data-theme="black"] .rewatch-history summary,
+[data-theme="dark"], [data-theme="black"] .saga-banner__label,
+[data-theme="dark"], [data-theme="black"] .desc-picker__text,
+[data-theme="dark"], [data-theme="black"] .extra-info__line,
+[data-theme="dark"], [data-theme="black"] .extra-info__loading,
+[data-theme="dark"], [data-theme="black"] .watch-provider__name {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
@@ -2033,56 +2147,153 @@ button, a, input, select, textarea { touch-action: manipulation; }
 [data-theme="black"] .log-row input[type="date"],
 [data-theme="black"] .log-row input[type="number"],
 [data-theme="black"] .episode-row input.episode-date,
-[data-theme="black"] .manual-form .field-group input {
+[data-theme="black"] .manual-form .field-group input 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .field-group select,
+[data-theme="dark"], [data-theme="black"] .field-group textarea,
+[data-theme="dark"], [data-theme="black"] .field-group input[type="text"],
+[data-theme="dark"], [data-theme="black"] .field-group input[type="number"],
+[data-theme="dark"], [data-theme="black"] .field-group input[type="url"],
+[data-theme="dark"], [data-theme="black"] .log-add-row input[type="date"],
+[data-theme="dark"], [data-theme="black"] .log-add-row input[type="text"],
+[data-theme="dark"], [data-theme="black"] .log-row input[type="date"],
+[data-theme="dark"], [data-theme="black"] .log-row input[type="number"],
+[data-theme="dark"], [data-theme="black"] .episode-row input.episode-date,
+[data-theme="dark"], [data-theme="black"] .manual-form .field-group input {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
 /* Dark family accents over dark surfaces: light variants   (the card stamps stay light and use the original hex values,   next rule) */
 [data-theme="black"] .item-card__rating,
 [data-theme="black"] .episode-rating__star.is-active,
-[data-theme="black"] .episode-rating__star.is-half {
+[data-theme="black"] .episode-rating__star.is-half 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .item-card__rating,
+[data-theme="dark"], [data-theme="black"] .episode-rating__star.is-active,
+[data-theme="dark"], [data-theme="black"] .episode-rating__star.is-half {
+  color: var(--ochre-spine-dark);
+}
+{
   color: var(--ochre-spine-dark);
 }
 [data-theme="black"] .item-card__upcoming,
-[data-theme="black"] .episode-row__future {
+[data-theme="black"] .episode-row__future 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .item-card__upcoming,
+[data-theme="dark"], [data-theme="black"] .episode-row__future {
+  color: var(--stamp-dark);
+}
+{
   color: var(--stamp-dark);
 }
 [data-theme="black"] .item-card__progress,
 [data-theme="black"] .list-row__progress,
 [data-theme="black"] .community-rating__value,
 [data-theme="black"] .watch-providers__link,
-[data-theme="black"] .watch-providers__link:hover {
+[data-theme="black"] .watch-providers__link:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .item-card__progress,
+[data-theme="dark"], [data-theme="black"] .list-row__progress,
+[data-theme="dark"], [data-theme="black"] .community-rating__value,
+[data-theme="dark"], [data-theme="black"] .watch-providers__link,
+[data-theme="dark"], [data-theme="black"] .watch-providers__link:hover {
+  color: var(--teal-reel-dark);
+}
+{
   color: var(--teal-reel-dark);
 }
 
 /* Hover of accent buttons (light background + dark ink):   the light variants of the accents as background keep AA   contrast with the black ink (QA issue #165) */
 [data-theme="black"] .btn--accent-media:hover,
 [data-theme="black"] .trailer-btn:hover,
-[data-theme="black"] .list-row__action:hover {
+[data-theme="black"] .list-row__action:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .btn--accent-media:hover,
+[data-theme="dark"], [data-theme="black"] .trailer-btn:hover,
+[data-theme="dark"], [data-theme="black"] .list-row__action:hover {
   background: var(--teal-reel-dark);
   color: var(--ink);
 }
-[data-theme="black"] .btn--accent-books:hover {
+{
+  background: var(--teal-reel-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .btn--accent-books:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .btn--accent-books:hover {
   background: var(--ochre-spine-dark);
   color: var(--ink);
 }
-[data-theme="black"] .btn--accent-games:hover {
+{
+  background: var(--ochre-spine-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .btn--accent-games:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .btn--accent-games:hover {
+  background: var(--games-dark);
+  color: var(--ink);
+}
+{
   background: var(--games-dark);
   color: var(--ink);
 }
 
 /* Checked episode checkbox: light variant of the accent for the   3:1 graphic threshold over the dark surface */
-[data-theme="black"] .episode-checkbox:checked ~ .episode-checkbox-visual {
+[data-theme="black"] .episode-checkbox:checked ~ .episode-checkbox-visual 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .episode-checkbox:checked ~ .episode-checkbox-visual {
+  background: var(--teal-reel-dark);
+  border-color: var(--teal-reel-dark);
+}
+{
   background: var(--teal-reel-dark);
   border-color: var(--teal-reel-dark);
 }
 
 /* Card stamps: they stay over light paper; keep the original
    hex values of dark mode for the dark-over-light contrast */
-[data-theme="black"] .item-card__stamp--pendiente { color: #7e2c22; }
-[data-theme="black"] .item-card__stamp--en_curso { color: #1c4a41; }
-[data-theme="black"] .item-card__stamp--completado { color: #8f6522; }
-[data-theme="black"] .item-card__stamp--abandonado { color: #7e2c22; }
+[data-theme="black"] .item-card__stamp--pendiente 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .item-card__stamp--pendiente { color: #7e2c22; }
+{ color: #7e2c22; }
+[data-theme="black"] .item-card__stamp--en_curso 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .item-card__stamp--en_curso { color: #1c4a41; }
+{ color: #1c4a41; }
+[data-theme="black"] .item-card__stamp--completado 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .item-card__stamp--completado { color: #8f6522; }
+{ color: #8f6522; }
+[data-theme="black"] .item-card__stamp--abandonado 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .item-card__stamp--abandonado { color: #7e2c22; }
+{ color: #7e2c22; }
 
 /* =========================================================
    Wishlist ("Shopping" tab, ADR-105). Same look as the Ocio
@@ -2342,7 +2553,16 @@ button, a, input, select, textarea { touch-action: manipulation; }
 [data-theme="black"] .item-card--en_curso,
 [data-theme="black"] .item-card--completado,
 [data-theme="black"] .item-card--standby,
-[data-theme="black"] .item-card--abandonado {
+[data-theme="black"] .item-card--abandonado 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .item-card--en_curso,
+[data-theme="dark"], [data-theme="black"] .item-card--completado,
+[data-theme="dark"], [data-theme="black"] .item-card--standby,
+[data-theme="dark"], [data-theme="black"] .item-card--abandonado {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
@@ -2389,6 +2609,36 @@ button, a, input, select, textarea { touch-action: manipulation; }
   background: var(--paper-dim);
 }
 [data-theme="black"] .progress-banner,
-[data-theme="black"] .season-header {
+[data-theme="black"] .season-header 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .progress-banner,
+[data-theme="dark"], [data-theme="black"] .season-header {
   background: var(--ink-raised);
+}
+{
+  background: var(--ink-raised);
+}
+
+/* =========================================================
+   ADR-113 — Ocio: superficies heredan el radio/borde catálogo.
+   La perforación del ticket sigue oculta (ADR-112) y las listas
+   (temporadas, episodios, historial) pasan a bloques planos.
+   ========================================================= */
+.log-row {
+  background: var(--paper-dim);
+  border: 1px solid var(--paper-line);
+}
+[data-theme="light"] .log-row,
+[data-theme="white"] .log-row {
+  background: var(--ink-alpha-06);
+  border-color: var(--ink-alpha-15);
+}
+[data-theme="black"] .log-row {
+  background: var(--ink-raised);
+  border-color: var(--paper-alpha-20);
+}
+.view-toggle .view-toggle__btn,
+.sort-select {
+  border-radius: 999px;
 }
