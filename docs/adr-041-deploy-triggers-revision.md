@@ -45,7 +45,7 @@ Issue #98 reported that the workflow **took too long**, that the log
   for that API. The official path is `actions/configure-pages@v5`, which
   is also `deploy-pages`' documented prerequisite.
 
-Related issue: #98 — https://github.com/gonzalitojh/Registro-personal/issues/98
+Related issue: #98 — https://github.com/gonzalitojh/personal-tracker/issues/98
 
 ## Decision
 
@@ -264,4 +264,4 @@ dependencies)**:
 | `docs/manual-de-usuario.md` | **Unchanged** (internal infrastructure change, not visible to the end user — same decision as ADR-036) |
 | `scripts/build-pages-site.sh` | **Unchanged** (the script already deploys all branches on every run) |
 
-Related issue: #98 — https://github.com/gonzalitojh/Registro-personal/issues/98
+Related issue: #98 — https://github.com/gonzalitojh/personal-tracker/issues/98

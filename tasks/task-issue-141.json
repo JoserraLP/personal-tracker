@@ -28,12 +28,12 @@
   ],
   "issue": {
     "number": 141,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/141",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/141",
     "title": "GitHub Actions no puede modificar workflows"
   },
   "pr": {
     "number": 144,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/144",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/144",
     "title": "fix: permiso workflows para auto-resolve-issues (issue #141)",
     "branch": "fix/issue-141-workflows-permission",
     "commit": "4baa8ef",

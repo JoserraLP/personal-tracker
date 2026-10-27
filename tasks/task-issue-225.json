@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 225,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/225",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/225",
     "title": "Mejoras en lista de la compra"
   },
   "pr": {
     "number": 233,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/233",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/233",
     "title": "[content] Refinamientos de paquetes y eliminación en la lista de la compra (issue #225)",
     "branch": "content/issue-225-iteracion-refinamientos",
     "commit": "ddb93b3",

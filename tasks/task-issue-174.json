@@ -25,12 +25,12 @@
   ],
   "issue": {
     "number": 174,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/174",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/174",
     "title": "Estadísticas de videojuegos"
   },
   "pr": {
     "number": 186,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/186",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/186",
     "title": "feat: estadísticas de videojuegos en el perfil (issue #174)",
     "branch": "feat/issue-174-estadisticas-videojuegos",
     "commit": "6c3e9f1",

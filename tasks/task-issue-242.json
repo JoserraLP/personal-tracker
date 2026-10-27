@@ -25,12 +25,12 @@
   ],
   "issue": {
     "number": 242,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/242",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/242",
     "title": "Pestaña menú"
   },
   "pr": {
     "number": 246,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/246",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/246",
     "title": "[content] Pestaña menú: buscador con tarjetas, comensales por receta, botón único y tarjetas en recetas a la semana con hover en la ✕",
     "branch": "content/issue-242-pestana-menu",
     "base": "content/issue-64-seccion-recetas",

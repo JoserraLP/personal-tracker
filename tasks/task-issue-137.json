@@ -25,7 +25,7 @@
   ],
   "issue": {
     "number": 137,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/137",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/137",
     "title": "Ocultar navegación en desplazamiento"
   },
   "notes": {
@@ -38,7 +38,7 @@
   },
   "pr": {
     "number": 158,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/158",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/158",
     "title": "[style] Ocultar navegación al desplazar y botón flotante Volver arriba",
     "branch": "feat/issue-137-auto-hide-nav",
     "commit": "c206c13",

@@ -33,7 +33,7 @@ books); the user manual was updated in the same task
 documents the decision retrospectively, like the recent ones
 (ADR-059, ADR-060, ADR-061).
 
-Related issue: #115 — https://github.com/gonzalitojh/Registro-personal/issues/115
+Related issue: #115 — https://github.com/gonzalitojh/personal-tracker/issues/115
 
 ## Decision
 
@@ -283,7 +283,7 @@ applied (ADR-049/059/061) via `scripts/bump-version.sh`:
 | `service-worker.js` | **Modified**: bump `?v=20260834` → `?v=20260835` on the 6 versioned assets of `STATIC_ASSETS` (via `scripts/bump-version.sh`) |
 | `docs/adr-062-marcar-visto-al-buscar.md` | **New**: this document |
 
-Related issue: #115 — https://github.com/gonzalitojh/Registro-personal/issues/115
+Related issue: #115 — https://github.com/gonzalitojh/personal-tracker/issues/115
 
 ## Revisión: per-type texts (issue #177)
 
@@ -310,4 +310,4 @@ jugado», «añadida y marcada como vista», «añadido y marcado como
 leído») and are untouched. The collection's statuses (`STATUS_LABELS`)
 already distinguished per type and are not affected either.
 
-Related issue: #177 — https://github.com/gonzalitojh/Registro-personal/issues/177
+Related issue: #177 — https://github.com/gonzalitojh/personal-tracker/issues/177

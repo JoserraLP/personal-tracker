@@ -42,7 +42,7 @@ work was lost unpublished (the bot lacked the `workflows` permission). The user
 granted the permissions and the task is reimplemented with the same
 specification.
 
-Related issue: #124 — https://github.com/gonzalitojh/Registro-personal/issues/124
+Related issue: #124 — https://github.com/gonzalitojh/personal-tracker/issues/124
 
 ## Decision
 
@@ -123,4 +123,4 @@ the run.
 | `docs/adr-052-remove-label-vs-delete-label.md` | **New**: this document |
 | `docs/manual-de-usuario.md` | **Unchanged** (internal CI change, not visible to the user) |
 
-Related issue: #124 — https://github.com/gonzalitojh/Registro-personal/issues/124
+Related issue: #124 — https://github.com/gonzalitojh/personal-tracker/issues/124

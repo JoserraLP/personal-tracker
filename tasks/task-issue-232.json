@@ -24,12 +24,12 @@
   ],
   "issue": {
     "number": 232,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/232",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/232",
     "title": "Ventana de ingrediente"
   },
   "pr": {
     "number": 238,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/238",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/238",
     "title": "[content] Ventana de ingrediente solo lectura + edición (issue #232)",
     "branch": "content/issue-232-ventana-ingrediente",
     "commit": "51c3655",

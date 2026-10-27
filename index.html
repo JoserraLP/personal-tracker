@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Mi Registro — pelis, series, libros, videojuegos, recetas y gimnasio</title>
-  <meta name="description" content="Registro personal de películas, series, libros, videojuegos, recetas y gimnasio." />
+  <title>Personal Tracker — pelis, series, libros, videojuegos, recetas y gimnasio</title>
+  <meta name="description" content="Personal Tracker de películas, series, libros, videojuegos, recetas y gimnasio." />
 
   <link rel="icon" type="image/png" sizes="32x32" href="resources/icon.png">
   <link rel="apple-touch-icon" href="resources/icon.png">
@@ -19,8 +19,8 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=20261031" />
-  <link rel="stylesheet" href="ocio/ocio.css?v=20261031" />
+  <link rel="stylesheet" href="css/styles.css?v=20261031b" />
+  <link rel="stylesheet" href="ocio/ocio.css?v=20261031b" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
@@ -32,7 +32,7 @@
   <section id="auth-screen" class="auth-screen">
     <div class="library-card">
       <p class="library-card__eyebrow">Ficha de socio</p>
-      <h1 class="library-card__title">Mi Registro</h1>
+      <h1 class="library-card__title">Personal Tracker</h1>
       <p class="library-card__subtitle">
         Un cuaderno privado para lo que ves y lo que lees.
       </p>
@@ -51,7 +51,7 @@
        sidebar.js. -->
   <aside id="app-sidebar" class="app-sidebar" aria-label="Menú de navegación" aria-hidden="true">
     <div class="app-sidebar__header">
-      <span class="app-sidebar__title">Mi Registro</span>
+      <span class="app-sidebar__title">Personal Tracker</span>
       <button type="button" class="app-sidebar__close" id="btn-sidebar-close" aria-label="Cerrar menú">✕</button>
     </div>
     <nav class="app-sidebar__nav" id="app-sidebar-nav" aria-label="Secciones"></nav>
@@ -828,7 +828,7 @@
        js/auto-hide-nav.js. -->
   <button type="button" id="btn-back-to-top" class="back-to-top" aria-label="Volver arriba">↑ <span>Volver arriba</span></button>
 
-  <script type="module" src="js/app.js?v=20261031"></script>
+  <script type="module" src="js/app.js?v=20261031b"></script>
   <script type="module">
     import { registerSW } from './js/sw-register.js';
     if ('serviceWorker' in navigator) registerSW();

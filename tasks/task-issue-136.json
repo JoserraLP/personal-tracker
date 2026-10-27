@@ -25,7 +25,7 @@
   ],
   "issue": {
     "number": 136,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/136",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/136",
     "title": "Deshacer visualización"
   },
   "plan": {
@@ -58,7 +58,7 @@
   },
   "pr": {
     "number": 140,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/140",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/140",
     "title": "[feat] Botón «Deshacer» en la ventana de valoración (issue #136)",
     "branch": "feature/issue-136-undo-rating-window",
     "commit": "d93bb44",

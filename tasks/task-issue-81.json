@@ -26,7 +26,7 @@
   ],
   "issue": {
     "number": 81,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/81",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/81",
     "title": "Resolución automática de Issues"
   },
   "plan": {
@@ -70,7 +70,7 @@
   },
   "pr": {
     "number": 117,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/117",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/117",
     "title": "Fix: permisos de ejecución de scripts en auto-resolve (issue #81)",
     "branch": "fix/issue-81-workflow-permissions",
     "commit": "8d39c3c",
@@ -89,7 +89,7 @@
   },
   "previousPr": {
     "number": 114,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/114",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/114",
     "title": "Resolución automática de Issues (issue #81)",
     "branch": "refactor/issue-81-auto-resolve-issues",
     "commit": "011e62b",

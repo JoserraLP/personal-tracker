@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 147,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/147",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/147",
     "title": "Recarga de ítems"
   },
   "pr": {
     "number": 153,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/153",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/153",
     "title": "[fix] Reintento automático en la carga inicial de datos (issue #147)",
     "branch": "fix/issue-147-retry-carga-inicial",
     "commit": "34c27f1",

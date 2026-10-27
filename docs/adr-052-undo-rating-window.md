@@ -33,7 +33,7 @@ Behavioral requirements:
 - If the undo fails (e.g. no network), the web warns with an error
   toast and the window stays open.
 
-Related issue: #136 — https://github.com/gonzalitojh/Registro-personal/issues/136
+Related issue: #136 — https://github.com/gonzalitojh/personal-tracker/issues/136
 
 ## Decision
 
@@ -238,4 +238,4 @@ valoración). In `ocio/ocio.css`, `.rating-modal__actions` adds
 | `docs/adr-052-undo-rating-window.md` | **New**: this document |
 | `tasks/task-issue-136.json` | Task file of the task (plan, QA validation, security scan LOW, acceptance criteria and the `issue` block with issue #136) |
 
-Related issue: #136 — https://github.com/gonzalitojh/Registro-personal/issues/136
+Related issue: #136 — https://github.com/gonzalitojh/personal-tracker/issues/136

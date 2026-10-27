@@ -134,7 +134,7 @@ requests, incorporated on the same PR:
   lose
   mid-writing values.
 
-Related issue: #265 — https://github.com/gonzalitojh/Registro-personal/issues/265
+Related issue: #265 — https://github.com/gonzalitojh/personal-tracker/issues/265
 
 ## Decision
 
@@ -536,4 +536,4 @@ adjusting. The implementation's rules:
   modal's unit selector synchronized with the section's one |
 | `docs/adr-097-ejercicios-entrenos.md` | **New**: this document |
 
-Related issue: #265 — https://github.com/gonzalitojh/Registro-personal/issues/265
+Related issue: #265 — https://github.com/gonzalitojh/personal-tracker/issues/265

@@ -8,7 +8,7 @@
   "plan": "CSS puro en css/styles.css: .modal__close pasa de position:absolute a position:sticky (top:0.7rem) con display:block; width:fit-content; margin-left:auto para anclarlo a la derecha, fondo var(--paper) como chip para tapar el contenido al scrollear y border-radius var(--radius). El padre .modal__card es el scroll container, así el botón queda visible siempre. Aplica también a #rating-modal (comparte .modal__close). Sin cambios en HTML/JS.",
   "issue": {
     "number": 26,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/26",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/26",
     "title": "Botón de cerrar en la información"
   },
   "acceptance criteria": [

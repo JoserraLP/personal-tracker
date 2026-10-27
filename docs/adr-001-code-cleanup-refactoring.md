@@ -6,7 +6,7 @@
 
 ## Context
 
-The project "Mi Registro" is a static web application (HTML + CSS + JS with native ES modules, no build tooling) for tracking movies, series and books. It uses Firebase as its database and external APIs (TMDB, Open Library, Google Books). It is hosted on GitHub Pages.
+The project "Personal Tracker" is a static web application (HTML + CSS + JS with native ES modules, no build tooling) for tracking movies, series and books. It uses Firebase as its database and external APIs (TMDB, Open Library, Google Books). It is hosted on GitHub Pages.
 
 The main file `app.js` had grown to 1338 lines, with all the business logic concentrated in a single `init()` function of more than 1200 lines. `ui.js` had 1323 lines of DOM rendering. There was duplicated code across modules:
 

@@ -29,12 +29,12 @@
   ],
   "issue": {
     "number": 124,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/124",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/124",
     "title": "Etiqueta status: needs-review eliminada"
   },
   "pr": {
     "number": 142,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/142",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/142",
     "title": "fix: no eliminar etiquetas del repositorio en issues-done-on-dev (issue #124)",
     "branch": "fix/issue-124-etiqueta-needs-review",
     "commit": "63c73f5",

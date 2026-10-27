@@ -38,7 +38,7 @@ Issue #195 asks to
 possible, **remove it**, keeping the emails only in
 the Firebase rule the user updates manually.
 
-Related issue: #195 — https://github.com/gonzalitojh/Registro-personal/issues/195
+Related issue: #195 — https://github.com/gonzalitojh/personal-tracker/issues/195
 
 ## Decision
 

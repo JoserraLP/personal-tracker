@@ -6,7 +6,7 @@
 
 ## Context
 
-The application "Mi Registro" was originally designed with a single dark theme
+The application "Personal Tracker" was originally designed with a single dark theme
 (default), inspired by a "reading table" or "library notebook" with a dark
 brown background (`--ink: #171512`) and parchment-toned text
 (`--paper: #f1ead9`). All colors were hardcoded in CSS with no

@@ -22,13 +22,13 @@
   ],
   "issue": {
     "number": 82,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/82",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/82",
     "title": "Unificar barras de búsqueda"
   },
   "plan": "Task-architect: unificar búsquedas en la barra superior. Fila colección (estado+detalle) y fila catálogo (botón Añadir+preview). Botones de tipo Serie/Película/Libro encima de resultados. Cap 5/grupo, sin paginación, searchSeq anti-race. search.js conserva lógica (handleAdd, preview, manual add, searchExternal); se eliminan setupSearch, library-search, search-slip, btn-manual-*. BOOKS_SPANISH_ONLY=true.",
   "pr": {
     "number": 106,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/106",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/106",
     "title": "feat: unificar barras de búsqueda en la barra superior (issue #82)",
     "branch": "fix/issue-82-unificar-buscadores",
     "commit": "8279b4b",

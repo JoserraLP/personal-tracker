@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-Users of "Mi Registro" follow on-air series and have movies pending
+Users of "Personal Tracker" follow on-air series and have movies pending
 release, but they have no simple way to track the dates of their upcoming
 episodes and releases from their personal calendar (Google Calendar,
 Apple Calendar, etc.).
@@ -26,7 +26,7 @@ following structure:
 ```
 BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Mi Registro//ES
+PRODID:-//Personal Tracker//ES
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 BEGIN:VEVENT

@@ -26,7 +26,7 @@ Issue #172 asks to include the video games tab in the friends
 view, with its per-status filter chips coherent with
 `ocio/videojuegos.html`.
 
-Related issue: #172 — https://github.com/gonzalitojh/Registro-personal/issues/172
+Related issue: #172 — https://github.com/gonzalitojh/personal-tracker/issues/172
 
 ## Decision
 
@@ -131,4 +131,4 @@ already covers the fourth tab on mobile.
   wrap` and ≤480px compaction already existed; the fourth tab wraps on
   mobile without overflowing.
 
-Related issue: #172 — https://github.com/gonzalitojh/Registro-personal/issues/172
+Related issue: #172 — https://github.com/gonzalitojh/personal-tracker/issues/172

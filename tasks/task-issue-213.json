@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 213,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/213",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/213",
     "title": "Botón volver del perfil"
   },
   "pr": {
     "number": 214,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/214",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/214",
     "title": "[fix] Botón volver del perfil regresa a la sección previa (Ocio o Recetas)",
     "branch": "fix/issue-213-boton-volver-perfil-seccion",
     "commit": "48fd6bd",

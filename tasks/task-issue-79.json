@@ -25,12 +25,12 @@
   ],
   "issue": {
     "number": 79,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/79",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/79",
     "title": "Ajuste de pestañas"
   },
   "pr": {
     "number": 101,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/101",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/101",
     "title": "[style] Cabecera y pestañas integradas con el fondo de la web y altura unificada (issue #79)",
     "branch": "style/issue-79-fondo-integrado",
     "commit": "79f5e59",
@@ -39,7 +39,7 @@
   "iteration note": "Feedback del usuario (comentario en la issue, 2026-08-06): en moviles esta perfecto, pero para PC y Tablet las pestanas deben estar bajo la barra de busqueda superior (y el boton del menu lateral y el perfil), ocupando el mismo ancho que esta. Ademas, la barra superior de busqueda tambien debe ser fija (siempre visible al hacer scroll) en todos los dispositivos. | Iteracion 3 (feedback 2026-08-06 12:21): (a) el color de la barra superior debe ser el mismo que el de la barra de pestanas (--ink-raised); (b) en tablet/PC las pestanas tienen una altura algo superior a las pestanas en si: eliminar el margen para que la barra tenga exactamente la altura de las pestanas. | Iteracion 4 (feedback 2026-08-06 14:27): (a) el fondo de la barra de busqueda (cabecera) y de las pestanas debe ser el mismo que el fondo de la web, sin ninguna linea separadora; (b) la altura de las pestanas en PC/tablet debe ser la misma que la barra de busqueda (3.5rem); (c) en iPad aparece un espacio bajo las pestanas (margen seguro inferior de la barra): eliminar ese espacio para que se vea igual que en PC.",
   "previousPr": {
     "number": 93,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/93",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/93",
     "title": "[style] Barra de pestañas fija con iconos y colores diferenciados y cabecera fija (issue #79)",
     "branch": "style/issue-79-pestanas-barra-inferior",
     "commit": "83f1945",

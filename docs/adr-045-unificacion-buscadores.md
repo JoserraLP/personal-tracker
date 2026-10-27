@@ -43,7 +43,7 @@ both the collection's search bar and all the add-search UI are
 **removed**. The issue also asks to **study how to distinguish** "search
 the collection" from "search something new".
 
-Related issue: #82 — https://github.com/gonzalitojh/Registro-personal/issues/82
+Related issue: #82 — https://github.com/gonzalitojh/personal-tracker/issues/82
 
 ## Decision
 
@@ -368,4 +368,4 @@ and covers this issue's UI changes when deploying together with them.
 | `docs/manual-de-usuario.md` | Sections 3, 4.2, 5.2, 6.2 and 7 (7.1 catalog with type buttons and manual row; 7.2 your log; 7.3 add manually) and TOC updated to the unified flow: books always in Spanish, no «Buscar en mi lista…» nor searchers inside the tabs |
 | `docs/adr-045-unificacion-buscadores.md` | **New**: this document |
 
-Related issue: #82 — https://github.com/gonzalitojh/Registro-personal/issues/82
+Related issue: #82 — https://github.com/gonzalitojh/personal-tracker/issues/82

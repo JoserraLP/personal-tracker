@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-The web «Mi Registro» stores series in Firestore with a `status` field that can be `pendiente`, `en_curso`, `completado`, `standby` or `abandonado`. Until now, **all status changes were manual**: pausing (standby), abandoning or resuming a series always required the user's explicit action. The daily check (`js/daily-check.js`, function `checkForUpdates`) was limited to refreshing TMDB metadata once a day (missing data, `nextEpisodeToAir`, `seasonAirDates`, backfill of `nextEpisodeAirDate`, release alerts) without ever modifying any item's status. It was verified before implementing that no automatic status change existed in the code.
+The web «Personal Tracker» stores series in Firestore with a `status` field that can be `pendiente`, `en_curso`, `completado`, `standby` or `abandonado`. Until now, **all status changes were manual**: pausing (standby), abandoning or resuming a series always required the user's explicit action. The daily check (`js/daily-check.js`, function `checkForUpdates`) was limited to refreshing TMDB metadata once a day (missing data, `nextEpisodeToAir`, `seasonAirDates`, backfill of `nextEpisodeAirDate`, release alerts) without ever modifying any item's status. It was verified before implementing that no automatic status change existed in the code.
 
 Issue #48 asks that series that were started watching and then left aside automatically move to *Standby* when there has been no activity in the last year, with two explicit rules:
 
@@ -16,7 +16,7 @@ Issue #48 asks that series that were started watching and then left aside automa
 2. If new episodes have already been released, but they were released **less than a year ago**, it must NOT be moved.
 3. Activity criterion: take the **most recent** date between the last episode's air date and the last watch date to check for activity in the last year.
 
-Related issue: #48 — https://github.com/gonzalitojh/Registro-personal/issues/48
+Related issue: #48 — https://github.com/gonzalitojh/personal-tracker/issues/48
 
 ## Decision
 
@@ -81,4 +81,4 @@ A series without `nextEpisodeToAir`, without `seasonAirDates` and without `nextE
 | `js/dates.js` | New exported function `subtractDays(iso, days)` with UTC arithmetic and result in the canonical `YYYY-MM-DD` format |
 | `docs/adr-033-auto-standby.md` | **New**: this document |
 
-Related issue: #48 — https://github.com/gonzalitojh/Registro-personal/issues/48
+Related issue: #48 — https://github.com/gonzalitojh/personal-tracker/issues/48

@@ -4,7 +4,7 @@
   "status": "review",
   "issue": {
     "number": 27,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/27",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/27",
     "title": "Asegurar que un episodio/película ha sido estrenado"
   },
   "acceptance criteria": [
@@ -35,12 +35,12 @@
   "plan": "Fix previo (PR #33): helper js/release.js (isUnreleasedDate + unreleasedConfirmMessage); flag awaitingRelease en alta; confirm unificado en marcado; isNextEpisodeUnreleased sin Boolean(airDate) en sorting.js; backfill en daily-check.js. PENDIENTE: extender la lógica para el caso next_episode_to_air = null consultando el airDate del episodio concreto (getSeasonEpisodes) en quick-actions y modal, y proteger el checkbox individual y \"Marcar todo\" en ui.js.",
   "pr": {
     "number": 36,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/36",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/36",
     "title": "fix: episodios sin fecha de estreno no se marcan como vistos sin confirmación (issue #27)"
   },
   "previousPr": {
     "number": 33,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/33",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/33",
     "title": "fix: ítems sin fecha de estreno se tratan como no estrenados (issue #27)"
   }
 }

@@ -31,7 +31,7 @@ were part of the same page. Starting constraints:
   (ADR-007): any new module must enter `STATIC_ASSETS` and
   touched assets must raise their PWA version.
 
-Related issue: #59 — https://github.com/gonzalitojh/Registro-personal/issues/59
+Related issue: #59 — https://github.com/gonzalitojh/personal-tracker/issues/59
 
 ## Decision
 
@@ -270,4 +270,4 @@ prefixes):
 | `tasks/task-issue-59.json` | Task file of the task (title/description, change plan, acceptance criteria and the `issue` block with issue #59) |
 | `docs/adr-051-enrutamiento-hash.md` | **New**: this document (section 6 covers the Profile expansion) |
 
-Related issue: #59 — https://github.com/gonzalitojh/Registro-personal/issues/59
+Related issue: #59 — https://github.com/gonzalitojh/personal-tracker/issues/59

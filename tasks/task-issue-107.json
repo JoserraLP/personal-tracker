@@ -26,12 +26,12 @@
   ],
   "issue": {
     "number": 107,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/107",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/107",
     "title": "Eliminar nombre de usuario"
   },
   "pr": {
     "number": 108,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/108",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/108",
     "title": "[fix] Eliminar nombre de usuario del botón de acceso al perfil (issue #107)",
     "branch": "fix/issue-107-eliminar-nombre-usuario",
     "commit": "178fe9e",

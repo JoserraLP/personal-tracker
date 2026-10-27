@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 98,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/98",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/98",
     "title": "Revisar el workflow deploy-all-branches"
   },
   "pr": {
     "number": 100,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/100",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/100",
     "title": "[fix] Reintentos automáticos del deploy de Pages (issue #98, iteración 2)",
     "branch": "fix/issue-98-deploy-retry",
     "commit": "a360515",
@@ -41,7 +41,7 @@
   ],
   "previous_pr": {
     "number": 99,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/99",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/99",
     "title": "[fix] Revisar el workflow deploy-all-branches (issue #98)",
     "branch": "fix/issue-98-deploy-all-branches",
     "commit": "95fa3c6",

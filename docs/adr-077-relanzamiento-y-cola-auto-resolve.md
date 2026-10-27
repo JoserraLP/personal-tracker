@@ -289,4 +289,4 @@ this ADR.
 | `docs/adr-077-relanzamiento-y-cola-auto-resolve.md` | **New**: this document |
 | `tasks/task-issue-226.json` | Task file of the task (title/description, acceptance criteria AC1–AC8, DoD and the `issue` block with issue #226) |
 
-Related issue: #226 — https://github.com/gonzalitojh/Registro-personal/issues/226
+Related issue: #226 — https://github.com/gonzalitojh/personal-tracker/issues/226

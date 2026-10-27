@@ -109,7 +109,7 @@ retrospectively, like the recent ones
 (the
 ADR-093, ADR-094, ADR-095, ADR-096).
 
-Related issue: #268 — https://github.com/gonzalitojh/Registro-personal/issues/268
+Related issue: #268 — https://github.com/gonzalitojh/personal-tracker/issues/268
 
 ## Decision
 
@@ -364,4 +364,4 @@ add or correct**.
   AGENTS.md's rule 3) |
 | `docs/adr-097-salir-perfil-gimnasio.md` | **New**: this document |
 
-Related issue: #268 — https://github.com/gonzalitojh/Registro-personal/issues/268
+Related issue: #268 — https://github.com/gonzalitojh/personal-tracker/issues/268

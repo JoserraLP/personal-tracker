@@ -4,7 +4,7 @@
   "status": "review",
   "issue": {
     "number": 41,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/41",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/41",
     "title": "Revisión responsividad"
   },
   "acceptance criteria": [
@@ -32,7 +32,7 @@
     "fix": ".user-badge margin-left:auto + .notif-dropdown position:fixed (left/right 1rem) en <=600px",
     "pr": {
       "number": 53,
-      "url": "https://github.com/gonzalitojh/Registro-personal/pull/53",
+      "url": "https://github.com/gonzalitojh/personal-tracker/pull/53",
       "title": "fix: dropdown de notificaciones anclado al viewport en móvil (issue #41)"
     },
     "qa": "VALIDADO (360/320/768/1280, sin regresiones)"

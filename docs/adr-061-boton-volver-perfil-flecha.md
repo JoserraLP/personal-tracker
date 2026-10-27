@@ -39,7 +39,7 @@ updated in the same task (`docs/manual-de-usuario.md` §13, rule 3 of
 AGENTS.md). This ADR documents the decision retrospectively, like the
 recent ones (ADR-059, ADR-060).
 
-Related issue: #157 — https://github.com/gonzalitojh/Registro-personal/issues/157
+Related issue: #157 — https://github.com/gonzalitojh/personal-tracker/issues/157
 
 ## Decision
 
@@ -187,4 +187,4 @@ security scan).
 | `.gitignore` | **Modified**: `candidate.json` and `sdd_prompt.md` added (untracked artifacts of the CI session, LOW finding of the security scan) |
 | `docs/adr-061-boton-volver-perfil-flecha.md` | **New**: this document |
 
-Related issue: #157 — https://github.com/gonzalitojh/Registro-personal/issues/157
+Related issue: #157 — https://github.com/gonzalitojh/personal-tracker/issues/157

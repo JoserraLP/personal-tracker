@@ -13,7 +13,7 @@
   "definition_of_done": "Planificación realizada, implementación completada, validación QA superada, escaneo de seguridad sin hallazgos HIGH, ADR documentado, PR creada contra dev sin keyword de cierre, issue #178 con label actualizado a su estado final.",
   "issue": {
     "number": 178,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/178",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/178",
     "title": "Carga de página"
   },
   "plan": {
@@ -37,7 +37,7 @@
   },
   "pr": {
     "number": 193,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/193",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/193",
     "title": "fix: carga perezosa por pestaña, indicador de carga y corrección del flash en login (issue #178)"
   }
 }

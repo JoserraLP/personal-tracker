@@ -37,7 +37,7 @@ Root causes identified:
    timeout either: a hung network left the panel without content
    («nothing appears»).
 
-Related issue: #286 — https://github.com/gonzalitojh/Registro-personal/issues/286
+Related issue: #286 — https://github.com/gonzalitojh/personal-tracker/issues/286
 
 ## Decision
 
@@ -214,4 +214,4 @@ hung case.
 | `index.html` | **Modified**: `?v=20260929` → `?v=20261001` in `css/styles.css`, `ocio/ocio.css` and `js/app.js` |
 | `docs/manual-de-usuario.md` | **Modified**: sections 3, 18 and 21 — if the data does not arrive within a few seconds the app has already tried several times and shows a notice with a «Reintentar» button; it also retries if the connection hangs (AGENTS.md rule 3) |
 
-Related issue: #286 — https://github.com/gonzalitojh/Registro-personal/issues/286
+Related issue: #286 — https://github.com/gonzalitojh/personal-tracker/issues/286

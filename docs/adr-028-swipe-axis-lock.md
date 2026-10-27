@@ -12,7 +12,7 @@ Issue #42 reports a problem in the library's **list view**: the horizontal swipe
 
 The gesture is implemented in `attachSwipe(row, content, onTrigger)` in `js/ui.js`: `touchstart` enabled the drag unconditionally and `touchmove` translated the card with `translateX(clamped)` on every event. **There was no axis lock**: there was no way to distinguish a vertical scroll gesture from a horizontal swipe until the gesture ended. The CSS already defined `touch-action: pan-y` on `.list-row`, so native vertical scroll worked; **the direction lock in JS was missing**.
 
-Related issue: #42 — https://github.com/gonzalitojh/Registro-personal/issues/42
+Related issue: #42 — https://github.com/gonzalitojh/personal-tracker/issues/42
 
 ## Decision
 
@@ -87,4 +87,4 @@ A `touchcancel` handler is added that shares the same reset as `touchend` (`rese
 | `js/ui.js` | `attachSwipe` (lines 262-332): axis lock with 10 px slop (`lockThreshold`), immutable `lock` `'vertical'`/`'horizontal'` (ties → vertical), finger tracking by `identifier` (`changedTouches[0]` in `touchstart`, `e.touches.find(...)` in `touchmove`), early return if `lock === 'vertical'`, documented horizontal/touchend/touchcancel behaviors, shared `resetGesture`; `passive: true` listeners |
 | `docs/adr-028-swipe-axis-lock.md` | **New**: this document |
 
-Related issue: #42 — https://github.com/gonzalitojh/Registro-personal/issues/42
+Related issue: #42 — https://github.com/gonzalitojh/personal-tracker/issues/42

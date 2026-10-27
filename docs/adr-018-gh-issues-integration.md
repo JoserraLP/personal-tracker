@@ -19,7 +19,7 @@ Until now, the AI agents in the SDD flow received their tasks exclusively throug
 
 The goal was to make GitHub Issues the **task source** of the SDD flow: agents only process issues labeled with `ai-*` (the rest are user issues), the user can consult them and choose which one to tackle, the local task is created upon adoption, and the issue's labels stay in sync with the SDD state on every transition.
 
-Related issue: #18 — https://github.com/gonzalitojh/Registro-personal/issues/18
+Related issue: #18 — https://github.com/gonzalitojh/personal-tracker/issues/18
 
 ## Decision
 

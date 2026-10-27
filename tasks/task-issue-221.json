@@ -25,7 +25,7 @@
   ],
   "issue": {
     "number": 221,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/221",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/221",
     "title": "Estética de la pestaña de lista de la compra"
   },
   "implementation": {
@@ -57,7 +57,7 @@
   },
   "pr": {
     "number": 223,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/223",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/223",
     "title": "style: estética píldora de la lista de la compra (issue #221)",
     "branch": "style/issue-221-pestana-lista-compra",
     "commit": "767b21f",

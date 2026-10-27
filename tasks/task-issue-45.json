@@ -19,7 +19,7 @@
   ],
   "issue": {
     "number": 45,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/45",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/45",
     "title": "Puntuación de la comunidad por episodios"
   },
   "plan": "Badge .community-rating--sm tras el nombre del episodio en renderEpisodeRows (js/ui.js), condición !manual && episodeRating != null; variante CSS compacta en ocio/ocio.css; helper communityRatingValueHtml extraído de communityRatingHtml; verificación 360/768/1280px.",

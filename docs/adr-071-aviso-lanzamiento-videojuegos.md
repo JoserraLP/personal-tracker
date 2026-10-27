@@ -31,7 +31,7 @@ Cloudflare Worker proxy with a **4 req/s rate limit** (ADR-067);
 refreshing all the saved games' metadata daily is not viable due to the
 proxy's cost and the requests limit.
 
-Related issue: #175 — https://github.com/gonzalitojh/Registro-personal/issues/175
+Related issue: #175 — https://github.com/gonzalitojh/personal-tracker/issues/175
 
 ## Decision
 
@@ -186,4 +186,4 @@ games are reviewed, with two phases per game:
 - Security scan: PASS with no findings (only reading prefs and
   writing to the game itself, no secrets nor PII).
 
-Related issue: #175 — https://github.com/gonzalitojh/Registro-personal/issues/175
+Related issue: #175 — https://github.com/gonzalitojh/personal-tracker/issues/175

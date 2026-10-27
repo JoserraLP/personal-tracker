@@ -391,4 +391,4 @@ A summary of the study's section 10
 | `docs/manual-de-usuario.md` | §§16-17 rewritten |
 | `docs/adr-021-db-data-sync.md` | Noted as partially replaced |
 
-Related issue: #200 — https://github.com/gonzalitojh/Registro-personal/issues/200
+Related issue: #200 — https://github.com/gonzalitojh/personal-tracker/issues/200

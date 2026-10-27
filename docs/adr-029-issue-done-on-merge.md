@@ -20,7 +20,7 @@ Issue #44 reports three problems in the management of SDD task state transitions
 
 **Key finding (root cause of problem 3)**: the repository's default branch is `main`, but ALL PRs are merged against `dev`. GitHub only auto-closes issues with closing keywords ("Closes #N") when the PR is merged into the DEFAULT branch. That is why PR #55 (merged, with "Closes #42" as the first body line) left issue #42 **OPEN** with `ai-needs-review`. GitHub's auto-close mechanism never worked in this repository; this decision's workflow becomes the reliable closure + label mechanism.
 
-Related issue: #44 — https://github.com/gonzalitojh/Registro-personal/issues/44
+Related issue: #44 — https://github.com/gonzalitojh/personal-tracker/issues/44
 
 ## Decision
 
@@ -104,4 +104,4 @@ PR #55 is already merged and **does not re-trigger the workflow** (the `closed` 
 | `tasks/task-issue-44.json` | Task file of this task |
 | `docs/adr-029-issue-done-on-merge.md` | **New**: this document |
 
-Related issue: #44 — https://github.com/gonzalitojh/Registro-personal/issues/44
+Related issue: #44 — https://github.com/gonzalitojh/personal-tracker/issues/44

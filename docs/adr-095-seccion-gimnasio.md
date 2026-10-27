@@ -149,7 +149,7 @@ The implementation is validated
   (the
   ADR-093, ADR-094).
 
-Related issue: #62 — https://github.com/gonzalitojh/Registro-personal/issues/62
+Related issue: #62 — https://github.com/gonzalitojh/personal-tracker/issues/62
 
 ## Decision
 
@@ -766,4 +766,4 @@ The total
   §16 Settings with the new section) |
 | `docs/adr-095-seccion-gimnasio.md` | **New**: this document |
 
-Related issue: #62 — https://github.com/gonzalitojh/Registro-personal/issues/62
+Related issue: #62 — https://github.com/gonzalitojh/personal-tracker/issues/62

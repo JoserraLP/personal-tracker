@@ -31,7 +31,7 @@ The decision was taken following the task-architect's plan; QA approved
 all the criteria and the security review came out clean. It is a
 CSS-only change: HTML and JS untouched.
 
-Related issue: #215 — https://github.com/gonzalitojh/Registro-personal/issues/215
+Related issue: #215 — https://github.com/gonzalitojh/personal-tracker/issues/215
 
 ## Decision
 

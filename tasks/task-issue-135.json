@@ -24,7 +24,7 @@
   ],
   "issue": {
     "number": 135,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/135",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/135",
     "title": "Unificar pestaña de datos del perfil en ajustes"
   },
   "plan": {
@@ -54,7 +54,7 @@
   },
   "pr": {
     "number": 154,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/154",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/154",
     "title": "[feature] Unificar pestaña de datos del perfil en ajustes",
     "branch": "feature/issue-135-unificar-datos-ajustes",
     "commit": "a0dafe4",

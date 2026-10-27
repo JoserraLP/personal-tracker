@@ -8,7 +8,7 @@ July 2026
 
 ## Context
 
-The application "Mi Registro" had grown significantly in functionality (global search, activity feed, settings, export, etc.) without a dedicated accessibility review. This created several barriers for users with visual disabilities or those who navigate exclusively by keyboard:
+The application "Personal Tracker" had grown significantly in functionality (global search, activity feed, settings, export, etc.) without a dedicated accessibility review. This created several barriers for users with visual disabilities or those who navigate exclusively by keyboard:
 
 1. **Lack of skip link**: There was no link to jump directly to the main content, forcing keyboard users to tab through the entire header navigation on every page load.
 2. **Missing focus management in modals**: When opening a modal, focus remained on the element that triggered it, and it was not restored when closing. There was no focus trapping (_focus trapping_), so Tab could move the focus behind the modal.

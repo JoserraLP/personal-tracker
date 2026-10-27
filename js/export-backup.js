@@ -56,7 +56,7 @@ export async function exportBackup(ctx) {
     const backup = {
       exportDate: new Date().toISOString(),
       version: BACKUP_VERSION,
-      source: "Mi Registro",
+      source: "Personal Tracker",
       user: {
         uid: uid,
         email: user.email,
@@ -128,7 +128,7 @@ export function importBackup(ctx) {
       const backupMajor = parseInt(backup && backup.version, 10);
       if (!backup || !backup.data || Number.isNaN(backupMajor) || backupMajor < BACKUP_MAJOR_VERSION) {
         ui.showToast(
-          "El archivo no tiene el formato de copia de seguridad de Mi Registro."
+          "El archivo no tiene el formato de copia de seguridad de Personal Tracker."
         );
         return;
       }

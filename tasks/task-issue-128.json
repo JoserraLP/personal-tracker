@@ -25,7 +25,7 @@
   ],
   "issue": {
     "number": 128,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/128",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/128",
     "title": "Problema de pérdida de tokens en mitad de ejecución"
   },
   "implemented_files": [
@@ -59,7 +59,7 @@
   },
   "pr": {
     "number": 129,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/129",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/129",
     "title": "[fix] Protección de progreso WIP en auto-resolve ante fallos de tokens (issue #128)",
     "branch": "fix/issue-128-wip-progresso",
     "closes": "Closes #128"

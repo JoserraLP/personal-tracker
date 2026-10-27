@@ -12,7 +12,7 @@ Issue #22 reports that when searching for a new series, movie or book to add (pa
 
 The collection's detail modals (`openMovieModal`/`openTvModal`/`openBookModal` in `js/ui.js`) already had all the necessary render helpers (`extraInfoHtml`, `communityRatingDisplay`, `trailerButtonHtml`, `modal-detail__*` classes), but they were coupled to the flow of an already-added item: they include editing, progress, logs and persistence callbacks that do not apply to a non-added item. `js/search.js` already knew the collection's state (`existingIdsFor`) and the creation paths (`handleAdd`/`doAddBook`), including the multi-cover book path (`openBookConfirmModal`).
 
-Related issue: #22 — https://github.com/gonzalitojh/Registro-personal/issues/22
+Related issue: #22 — https://github.com/gonzalitojh/personal-tracker/issues/22
 
 ## Decision
 
@@ -103,4 +103,4 @@ The user requested more information in the preview: **seasons and episodes in se
 | `ocio/ocio.css` | `.result-card`: `cursor: pointer`; `.result-card:hover`: `box-shadow: var(--shadow-pop)`; `.result-card:focus-visible`: `outline: 2px solid var(--teal-reel)`. V2 expansion: `.preview-seasons*` styles (title, list, rows with `overflow-wrap: anywhere`/`min-width: 0`, total) |
 | `docs/adr-030-search-preview.md` | **New**: this document |
 
-Related issue: #22 — https://github.com/gonzalitojh/Registro-personal/issues/22
+Related issue: #22 — https://github.com/gonzalitojh/personal-tracker/issues/22

@@ -44,12 +44,12 @@
   ],
   "issue": {
     "number": 116,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/116",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/116",
     "title": "Arreglo en pestañas en móvil"
   },
   "pr": {
     "number": 122,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/122",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/122",
     "title": "Espacio bajo las pestañas en iPhone (viewport-fit=cover) (issue #116)",
     "branch": "style/issue-116-viewport-fit-home-indicator",
     "closes": "Closes #116"

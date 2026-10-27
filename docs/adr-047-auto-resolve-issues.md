@@ -28,9 +28,9 @@ Technical findings from the implementation:
 - The free model needs no API key.
 - `--format json` emits JSONL events (suitable for CI logs).
 
-Related issue: #81 — https://github.com/gonzalitojh/Registro-personal/issues/81
+Related issue: #81 — https://github.com/gonzalitojh/personal-tracker/issues/81
 
-Related issue: #120 — https://github.com/gonzalitojh/Registro-personal/issues/120 (fix for resuming blocked issues)
+Related issue: #120 — https://github.com/gonzalitojh/personal-tracker/issues/120 (fix for resuming blocked issues)
 
 ## Decision
 
@@ -162,7 +162,7 @@ Lesson for future iterations: **always set the execute bit with `git update-inde
 
 Lesson: on ephemeral runners, the local working tree is NOT durable state — any intermediate progress must be persisted in git (a branch) before the runner dies; the WIP save + micro-commits make a token failure recoverable on the next attempt.
 
-Related issue: #128 — https://github.com/gonzalitojh/Registro-personal/issues/128
+Related issue: #128 — https://github.com/gonzalitojh/personal-tracker/issues/128
 
 ### 8. Associated documentation
 
@@ -218,7 +218,7 @@ Related issue: #128 — https://github.com/gonzalitojh/Registro-personal/issues/
 | `docs/adr-047-auto-resolve-issues.md` | **Modified**: subsection 7-d (progress protection on failures from the free model's tokens) |
 | `README.md` | **Modified**: section 6, point 6 — note on the WIP protection (if the session fails due to tokens, the progress is saved to `wip/issue-N` and restored on the next attempt) |
 
-Related issue: #81 — https://github.com/gonzalitojh/Registro-personal/issues/81
+Related issue: #81 — https://github.com/gonzalitojh/personal-tracker/issues/81
 
 ### 9. Later note — issue closure on PR merge (ADR-053, issue #143)
 

@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 49,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/49",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/49",
     "title": "Visualización de amigos"
   },
   "pr": {
     "number": 119,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/119",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/119",
     "title": "[style] Visualización de amigos por pestañas y filtros de estado",
     "branch": "style/issue-49-friends-view-tabs-filters",
     "commit": "a9ba8aa",

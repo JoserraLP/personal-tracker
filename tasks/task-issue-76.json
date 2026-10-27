@@ -27,12 +27,12 @@
   ],
   "issue": {
     "number": 76,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/76",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/76",
     "title": "Botón de salir en perfil"
   },
   "pr": {
     "number": 85,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/85",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/85",
     "title": "feat: menú desplegable de perfil con acceso a secciones del perfil y cerrar sesión (issue #76)",
     "branch": "feature/issue-76-profile-dropdown",
     "commit": "180db08",

@@ -4,7 +4,7 @@
   "status": "published",
   "pr": {
     "number": 55,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/55",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/55",
     "title": "fix: axis lock en swipe de la vista de lista para no desplazar tarjetas con el scroll vertical (issue #42)",
     "branch": "fix/issue-42-swipe-axis-lock",
     "commit": "56e1528",
@@ -17,7 +17,7 @@
   "plan": "Axis lock en attachSwipe (js/ui.js): capturar startY + identifier del dedo en touchstart (changedTouches); en touchmove calcular deltaX/deltaY, decidir dirección UNA vez al cruzar slop de 10px (empate gana 'vertical'), return temprano si lock vertical, comportamiento actual si horizontal, nada si aún en slop; en touchend reset completo y disparar onTrigger solo si lock != 'vertical' y |deltaX| > 70; añadir handler touchcancel con reset compartido. Listeners passive: true. Sin cambios en CSS (touch-action: pan-y ya existe) ni en renderList.",
   "issue": {
     "number": 42,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/42",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/42",
     "title": "Problemas al hacer scroll vertical"
   },
   "acceptance criteria": [

@@ -21,12 +21,12 @@
   ],
   "issue": {
     "number": 177,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/177",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/177",
     "title": "Revisión de textos de estados"
   },
   "pr": {
     "number": 179,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/179",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/179",
     "title": "fix: textos de estado por tipo — «Marcar jugado» para videojuegos (issue #177)",
     "branch": "fix/issue-177-textos-estados",
     "commit": "4ff5e67",

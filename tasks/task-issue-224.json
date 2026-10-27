@@ -24,12 +24,12 @@
   ],
   "issue": {
     "number": 224,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/224",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/224",
     "title": "Mejoras pestaña ingredientes"
   },
   "pr": {
     "number": 227,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/227",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/227",
     "title": "[content] Mejoras pestaña ingredientes",
     "branch": "content/issue-224-mejoras-pestana-ingredientes",
     "commit": "4c029fa",

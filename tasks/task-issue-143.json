@@ -33,13 +33,13 @@
   ],
   "issue": {
     "number": 143,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/143",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/143",
     "title": "La action issues-done-on-dev cierra issues no deseadas"
   },
   "no_closes": true,
   "previousPr": {
     "number": 148,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/148",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/148",
     "title": "[bug] Cierre dirigido de issue al fusionar PR en dev (issue #143)",
     "branch": "fix/issue-143-cierre-issue-al-fusionar-pr",
     "commit": "1334aa0",
@@ -47,7 +47,7 @@
   },
   "pr": {
     "number": 151,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/151",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/151",
     "title": "[bug] Corregir acceso al payload del evento en issues-done-on-dev (issue #143, iteración)",
     "branch": "fix/issue-143-context-payload-fix",
     "commit": "a30091e",

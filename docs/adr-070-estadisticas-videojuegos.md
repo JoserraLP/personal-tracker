@@ -29,7 +29,7 @@ themselves.
 
 Issue #174 asks to add video game statistics to the profile.
 
-Related issue: #174 — https://github.com/gonzalitojh/Registro-personal/issues/174
+Related issue: #174 — https://github.com/gonzalitojh/personal-tracker/issues/174
 
 ## Decision
 
@@ -168,4 +168,4 @@ figures, five charts, the played/sessions/hours semantics) are updated
 - Security scan: PASS with no findings (a pre-existing client pattern,
   no secrets nor PII).
 
-Related issue: #174 — https://github.com/gonzalitojh/Registro-personal/issues/174
+Related issue: #174 — https://github.com/gonzalitojh/personal-tracker/issues/174

@@ -5,7 +5,7 @@ Implemented
 
 ## Context
 
-The application "Mi Registro" allows the user to manage movies, series,
+The application "Personal Tracker" allows the user to manage movies, series,
 books and friends, with all data available in memory through a context
 object (`ctx`). However, navigating between content required switching
 tabs (Series → Movies → Books) or going to the profile section to see

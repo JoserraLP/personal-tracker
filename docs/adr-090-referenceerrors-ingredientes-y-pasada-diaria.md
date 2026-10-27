@@ -276,4 +276,4 @@ daily run»).
   left calling the
   `getItemsByGroup`.
 
-Related issue: #243 — https://github.com/gonzalitojh/Registro-personal/issues/243
+Related issue: #243 — https://github.com/gonzalitojh/personal-tracker/issues/243

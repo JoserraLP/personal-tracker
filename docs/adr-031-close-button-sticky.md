@@ -14,7 +14,7 @@ Issue #26 reports that the detail modal's ✕ button was not visible when scroll
 
 The decision was taken following the task-architect's plan; QA approved with 5/5 criteria and the security review came out clean. It is a CSS-only change: no HTML or JS touched.
 
-Related issue: #26 — https://github.com/gonzalitojh/Registro-personal/issues/26
+Related issue: #26 — https://github.com/gonzalitojh/personal-tracker/issues/26
 
 ## Decision
 
@@ -56,4 +56,4 @@ Being a shared rule, the fix automatically applies to both modals (`#item-modal`
 | `css/styles.css` | `.modal__close`: `position: absolute` → `position: sticky; top: 0.7rem; right: 0.7rem`, with `display: block; width: fit-content; margin-left: auto` (anchored to the right), `background: var(--paper)` as a chip covering the content while scrolling and `border-radius: var(--radius)` |
 | `docs/adr-031-close-button-sticky.md` | **New**: this document |
 
-Related issue: #26 — https://github.com/gonzalitojh/Registro-personal/issues/26
+Related issue: #26 — https://github.com/gonzalitojh/personal-tracker/issues/26

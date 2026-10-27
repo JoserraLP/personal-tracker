@@ -20,12 +20,12 @@
   ],
   "issue": {
     "number": 314,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/314",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/314",
     "title": "Fin inesperado auto-resolve-issues"
   },
   "pr": {
     "number": 315,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/315",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/315",
     "base": "dev",
     "head": "bug/issue-314-falso-exito-auto-resolve",
     "title": "[bug] Fin inesperado auto-resolve-issues: detectar el falso éxito de la sesión y relanzar (issue #314)",

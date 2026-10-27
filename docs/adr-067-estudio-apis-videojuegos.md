@@ -88,7 +88,7 @@ This review's decisions:
 4. **User manual §19** expanded with the «No se pudo conectar con
    IGDB…» case (wrong URL or a Worker behind Cloudflare Access).
 
-Related issue: #47 — https://github.com/gonzalitojh/Registro-personal/issues/47
+Related issue: #47 — https://github.com/gonzalitojh/personal-tracker/issues/47
 
 ## Decision
 
@@ -289,4 +289,4 @@ Complete steps in `cloudflare/igdb-proxy/README.md`. Summary:
 
 Related to: tasks/task-issue-47.json
 
-Related issue: #47 — https://github.com/gonzalitojh/Registro-personal/issues/47
+Related issue: #47 — https://github.com/gonzalitojh/personal-tracker/issues/47

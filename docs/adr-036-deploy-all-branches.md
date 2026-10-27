@@ -37,7 +37,7 @@ Accepted
 
 Until now, GitHub Pages was published in **legacy** mode («Deploy from a
 branch»): only the `main` branch was served at
-`https://gonzalitojh.github.io/Registro-personal/`, and only when `dev` →
+`https://gonzalitojh.github.io/personal-tracker/`, and only when `dev` →
 `main` was promoted. Work branches (feature, fix…) had no public preview:
 to test a change, one had to deploy it locally or wait for it to reach
 `main`.
@@ -47,9 +47,9 @@ Issue #83 asked for:
 1. A GitHub Action that deploys **all branches** of the repository to
    GitHub Pages.
 2. The `main` branch stays at the root
-   (`https://gonzalitojh.github.io/Registro-personal/`, no branch name).
+   (`https://gonzalitojh.github.io/personal-tracker/`, no branch name).
 3. Each branch is served in its own subdirectory
-   (`https://gonzalitojh.github.io/Registro-personal/<branch>/`) with the
+   (`https://gonzalitojh.github.io/personal-tracker/<branch>/`) with the
    web **complete and functional** (CSS/JS, `ocio/*` partials, login,
    service worker, PWA manifest).
 4. The workflow must avoid **infinite loops** (the deploy's push must not
@@ -58,17 +58,17 @@ Issue #83 asked for:
 State detected in the code that needed changing:
 
 - The **service worker** used absolute hardcoded routes
-  `/Registro-personal/...` in `STATIC_ASSETS`, in the offline fallbacks
-  and in the check `url.pathname.startsWith('/Registro-personal/')`.
-- `js/sw-register.js` registered the SW with `SW_PATH='/Registro-personal/service-worker.js'`
-  and `SW_SCOPE='/Registro-personal/'` (absolute hardcoded).
+  `/personal-tracker/...` in `STATIC_ASSETS`, in the offline fallbacks
+  and in the check `url.pathname.startsWith('/personal-tracker/')`.
+- `js/sw-register.js` registered the SW with `SW_PATH='/personal-tracker/service-worker.js'`
+  and `SW_SCOPE='/personal-tracker/'` (absolute hardcoded).
 - `manifest.json` had absolute `start_url` and `scope`
-  (`/Registro-personal/`).
+  (`/personal-tracker/`).
 - `index.html` and the `ocio/*.html` partials already used relative routes
   (`css/...`, `js/...`, `ocio/...`) and relative fetch, so they were
   compatible with subdirectories without touching anything.
 
-Related issue: #83 — https://github.com/gonzalitojh/Registro-personal/issues/83
+Related issue: #83 — https://github.com/gonzalitojh/personal-tracker/issues/83
 
 ## Decision
 
@@ -160,7 +160,7 @@ Builds `_site/` (the repo's root) with **all remote branches**:
 
 ### 3. Dynamic routes in the service worker (`service-worker.js`)
 
-All absolute routes `/Registro-personal/...` are removed:
+All absolute routes `/personal-tracker/...` are removed:
 
 - On startup: `const scopeURL = new URL(self.registration.scope)`,
   `scopePath = scopeURL.pathname` and a helper
@@ -172,7 +172,7 @@ All absolute routes `/Registro-personal/...` are removed:
   the `cache.put` of the app shell after a network navigation use
   `resolved('./index.html')`.
 - The check for **own assets** changes from
-  `url.pathname.startsWith('/Registro-personal/')` to
+  `url.pathname.startsWith('/personal-tracker/')` to
   `url.pathname.startsWith(scopePath)`.
 - **Caches renamed** from `mi-registro-v2-*` to `mi-registro-v3-*`: the
   `activate` deletes any cache outside the allowlist, so old entries saved
@@ -310,7 +310,7 @@ and behavior when deleting a branch.
 |---------|--------|
 | `.github/workflows/deploy-all-branches.yml` | **New**: Pages workflow with all branches (`on: push` + `workflow_dispatch` + `delete`), legacy→Actions migration via `gh api`, jobs `build`/`deploy`, `concurrency` with cancellation |
 | `scripts/build-pages-site.sh` | **New**: builds `_site/` with all branches (default at root, rest in sanitized subdirectories), `.nojekyll` per folder, collision checks, `strip_sensitive()` |
-| `service-worker.js` | Absolute routes `/Registro-personal/...` → dynamic base (`scopeURL`/`scopePath`/`resolved()`); relative `STATIC_ASSETS`; fallbacks with `resolved('./index.html')`; check `startsWith(scopePath)`; caches renamed to `v3`; `?v=20260808` |
+| `service-worker.js` | Absolute routes `/personal-tracker/...` → dynamic base (`scopeURL`/`scopePath`/`resolved()`); relative `STATIC_ASSETS`; fallbacks with `resolved('./index.html')`; check `startsWith(scopePath)`; caches renamed to `v3`; `?v=20260808` |
 | `js/sw-register.js` | `SITE_BASE`/`SW_PATH`/`SW_SCOPE` derived from `import.meta.url`; registration with explicit scope |
 | `manifest.json` | `start_url` and `scope` → `'./'` (relative to the manifest) |
 | `js/config.js` | `APP_VERSION` from `20260807` to `20260808` |
@@ -320,4 +320,4 @@ and behavior when deleting a branch.
 | `docs/manual-de-usuario.md` | **Unchanged** (internal infrastructure change, not visible to the user) |
 | `github-pages` environment (Settings) | One-time manual configuration: Deployment branches → pattern `**/*` (after first migration to GitHub Actions) |
 
-Related issue: #83 — https://github.com/gonzalitojh/Registro-personal/issues/83
+Related issue: #83 — https://github.com/gonzalitojh/personal-tracker/issues/83

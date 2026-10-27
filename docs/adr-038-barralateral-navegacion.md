@@ -10,7 +10,7 @@ Accepted
 
 The web is **vanilla JS with no framework** (index.html + css/styles.css +
 ocio/*.html + js/*.js) and until now its header was: an `<h1 class="app-title">
-Mi Registro</h1>`, the 🔔 emoji as the notifications bell and a 🔍
+Personal Tracker</h1>`, the 🔔 emoji as the notifications bell and a 🔍
 (`#btn-global-search`) that opened the **global search in a modal** (centered
 overlay with backdrop, documented in ADR-013).
 
@@ -25,11 +25,11 @@ movies and books as their own sections) with:
   modal is removed** (the global search function is kept in the new bar:
   Ctrl+K / Cmd+K / «/» keep working).
 - The bell becomes a **flat SVG icon** (not the 3D 🔔 emoji).
-- The title **«Mi Registro» is removed from the main screen** and displayed
+- The title **«Personal Tracker» is removed from the main screen** and displayed
   as the search bar's text on entry, switching to the default placeholder
   after a few seconds.
 
-Related issue: #46 — https://github.com/gonzalitojh/Registro-personal/issues/46
+Related issue: #46 — https://github.com/gonzalitojh/personal-tracker/issues/46
 
 **Historical note**: this ADR documents the replacement of ADR-013's global
 search modal (magnifier button + `#global-search` overlay) with a search bar
@@ -84,8 +84,8 @@ From left to right:
 
 **Removed**:
 
-- `<h1 class="app-title">Mi Registro</h1>` from the header: the title becomes
-  the search bar's **animated placeholder** — on entry it shows «Mi Registro»
+- `<h1 class="app-title">Personal Tracker</h1>` from the header: the title becomes
+  the search bar's **animated placeholder** — on entry it shows «Personal Tracker»
   and after **3.5 s** it switches to the default placeholder
   «Buscar películas, series, libros o amigos...». The sequence lives in
   `js/ui.js` (`showApp`/`showAuthScreen`, constants
@@ -185,7 +185,7 @@ it never reaches this handler.
 - **Navigation ready for the future**: `SECTIONS` allows adding own sections
   (series, movies, books) without rewriting the drawer module.
 - **Clean Gmail-style header**: a single central search bar replaces the 🔍
-  button; the title «Mi Registro» is recovered as an animated placeholder
+  button; the title «Personal Tracker» is recovered as an animated placeholder
   without taking permanent space.
 - **Coherent metaphor**: the global search is now a dropdown anchored to the
   bar (notifications dropdown pattern), not a modal; the Ctrl+K / Cmd+K and
@@ -224,7 +224,7 @@ it never reaches this handler.
   (global search: drop-down panel, closing with Esc/click outside/✕),
   **12** (notifications: bell) and **15** (when the data updates). Mentions
   of the 🔍 magnifier and the modal removed.
-- **The title «Mi Registro» persists** on the access card
+- **The title «Personal Tracker» persists** on the access card
   (`#auth-screen`) and as the drawer's title, besides the animated
   placeholder.
 
@@ -233,10 +233,10 @@ it never reaches this handler.
 | File | Change |
 |---------|--------|
 | `js/sidebar.js` | **New**: side drawer with exported `SECTIONS` array («Ocio» entry), `setupSidebar()`, open/close (Escape with single listener, backdrop, ✕, entry), focus trap, `aria-expanded`/`aria-hidden`, smooth scroll with `prefers-reduced-motion`, `closeGlobalSearch()` on open |
-| `index.html` | `aside#app-sidebar` + `#app-sidebar-backdrop`; header: `#btn-sidebar-toggle`, `.search-bar-wrap` with `#global-search-input`/`#global-search-clear`/`#global-search-results`, flat SVG bell; **removed** header's `<h1 class="app-title">Mi Registro</h1>`, `#btn-global-search` (🔍) and the `#global-search` modal; versioned `?v=20260810` |
+| `index.html` | `aside#app-sidebar` + `#app-sidebar-backdrop`; header: `#btn-sidebar-toggle`, `.search-bar-wrap` with `#global-search-input`/`#global-search-clear`/`#global-search-results`, flat SVG bell; **removed** header's `<h1 class="app-title">Personal Tracker</h1>`, `#btn-global-search` (🔍) and the `#global-search` modal; versioned `?v=20260810` |
 | `css/styles.css` | `.app-sidebar*` (drawer `min(300px, 85vw)`, z-index 60) and `.app-sidebar-backdrop` (z-index 55); `.search-bar-wrap` (`flex: 1; min-width: 0`); `.icon-btn svg`; refactor `.global-search__*` (input in the header, anchored dropdown z-index 40, ✕, groups, states over paper); media queries: 2-row header ≤480 px and `fixed` dropdown ≤600 px (pattern `.notif-dropdown`); modal styles and their light-mode overrides removed |
 | `js/global-search.js` | Refactor from modal to **anchored dropdown** (no `trapFocus`): opening with focus/click/shortcuts, closing with Escape (with `stopPropagation` only when open), click outside and ✕; grouped results 5/5/5/3; keyboard navigation; `navigateTo` → `openItem`/friend toast; drawer closing if open when starting the search |
-| `js/ui.js` | Animated bar placeholder («Mi Registro» → default after 3.5 s) in `showApp` with timer cleared in `showAuthScreen` (logout); constants `DEFAULT_SEARCH_PLACEHOLDER`/`SEARCH_BRAND_PLACEHOLDER`/`SEARCH_PLACEHOLDER_SWITCH_MS` |
+| `js/ui.js` | Animated bar placeholder («Personal Tracker» → default after 3.5 s) in `showApp` with timer cleared in `showAuthScreen` (logout); constants `DEFAULT_SEARCH_PLACEHOLDER`/`SEARCH_BRAND_PLACEHOLDER`/`SEARCH_PLACEHOLDER_SWITCH_MS` |
 | `js/modal-handlers.js` | Global Escape without reference to the removed modal; priority: rating > item modal > notifications |
 | `js/app.js` | Import of `setupSidebar` and call in `init()` |
 | `js/config.js` | `APP_VERSION` from `20260809` to `20260810` |
@@ -244,4 +244,4 @@ it never reaches this handler.
 | `docs/manual-de-usuario.md` | Sections 3 (main screen), 7.3 (global search), 12 (notifications) and 15 (data updates): hamburger + sidebar with «Ocio», search bar with animated placeholder, drop-down results panel, closing with Esc/click outside/✕; mentions of the 🔍 magnifier and the modal removed |
 | `docs/adr-038-barralateral-navegacion.md` | **New**: this document |
 
-Related issue: #46 — https://github.com/gonzalitojh/Registro-personal/issues/46
+Related issue: #46 — https://github.com/gonzalitojh/personal-tracker/issues/46

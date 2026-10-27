@@ -19,12 +19,12 @@
   ],
   "issue": {
     "number": 149,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/149",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/149",
     "title": "Múltiple búsqueda en catálogo"
   },
   "pr": {
     "number": 152,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/152",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/152",
     "title": "[fix] Desmarcar catálogo al borrar y re-búsqueda automática; fallback de portadas 403 (issue #149)",
     "branch": "fix/issue-149-busqueda-multiple-catalogo",
     "commit": "56c43b4",

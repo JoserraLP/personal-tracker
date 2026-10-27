@@ -215,7 +215,7 @@ cell's color with no class, and a
 static review of the grouped-selectors pattern (a single source of truth per rule, the
 AGENTS.md's rule 4); a security scan with no HIGH findings.
 
-Related issue: #269 — https://github.com/gonzalitojh/Registro-personal/issues/269
+Related issue: #269 — https://github.com/gonzalitojh/personal-tracker/issues/269
 
 ## Decision
 
@@ -474,4 +474,4 @@ The summary gets calculated **entirely on the client** with the already subscrib
 | `docs/manual-de-usuario.md` | **Modified**: the §3 and §9 with the Gym's third tab; a new subsection **§9.1 "Your summary"** (the 9.2, the 9.3 and the 9.4 renumbered); the §17 Settings with the three tabs; **the iteration 2**: the §9.1 with the range box (hidden except on "Range"), the workouts/exercises' cards and the muscle-groups and per-exercise breakdowns; **the iteration 3**: the §9.1 with the unique calendar (the first click = the from, the second = the to, the month arrows, the Clear/Done, the Escape/the outside click) and the Min weight/Max weight/Increase columns with the "—" when weightless; **the iteration 4**: the §9.1 with the calendar staying open until choosing both dates, and the per-exercise table just with the signed (+/−) weight difference between the oldest and the newest |
 | `docs/adr-098-pestana-resumen-gimnasio.md` | **New**: this document (the iterations 2, 3 and 4 documented) |
 
-Related issue: #269 — https://github.com/gonzalitojh/Registro-personal/issues/269
+Related issue: #269 — https://github.com/gonzalitojh/personal-tracker/issues/269

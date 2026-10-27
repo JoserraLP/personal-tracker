@@ -318,6 +318,6 @@ comment authorship.
 | `.github/workflows/auto-resolve-issues.yml` | **Modified**: the "OpenCode Session" step adds an `env: GH_TOKEN: ${{ github.token }}` (a step override; the author of ALL the session's gh operations: the `github-actions[bot]`); an explanatory note in the workflow's header alongside issue #245's block |
 | `README.md` | **Modified**: section 6, point 6 — the author's note now covers all the comments, PRs and label changes of the session and of the failure steps (the `github-actions[bot]`; they do not re-fire the workflow) |
 | `docs/adr-094-comentarios-sesion-github-actions.md` | **New**: this document |
-| `tasks/task-issue-257.json` | The task's task file (the title/description with the root cause, the acceptance criteria AC1–AC5, the DoD and the `issue` block with issue #257 — https://github.com/gonzalitojh/Registro-personal/issues/257) |
+| `tasks/task-issue-257.json` | The task's task file (the title/description with the root cause, the acceptance criteria AC1–AC5, the DoD and the `issue` block with issue #257 — https://github.com/gonzalitojh/personal-tracker/issues/257) |
 
 Related issue: #257

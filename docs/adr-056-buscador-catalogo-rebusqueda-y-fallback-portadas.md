@@ -31,7 +31,7 @@ global search (`js/global-search.js`):
    generating console errors. The same can happen with friend
    avatars.
 
-Related issue: #149 — https://github.com/gonzalitojh/Registro-personal/issues/149
+Related issue: #149 — https://github.com/gonzalitojh/personal-tracker/issues/149
 
 ## Decision
 
@@ -211,4 +211,4 @@ delegation pattern the type buttons' click already uses).
 | `docs/manual-de-usuario.md` | **Modified**: section 7.1 — when clearing the text the chosen catalog unmarks and the type button must be pressed again; while continuing to type with an already-chosen catalog the search repeats automatically in that same catalog; covers that cannot load are automatically replaced by the «Sin imagen» image (AGENTS.md's rule 3) |
 | `docs/adr-056-buscador-catalogo-rebusqueda-y-fallback-portadas.md` | **New**: this document |
 
-Related issue: #149 — https://github.com/gonzalitojh/Registro-personal/issues/149
+Related issue: #149 — https://github.com/gonzalitojh/personal-tracker/issues/149

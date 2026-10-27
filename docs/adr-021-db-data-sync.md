@@ -18,7 +18,7 @@ Before this change, `js/daily-check.js` ran `checkForUpdates` once a day (guard 
 
 The ideal option raised in the issue — keeping the DB synced in real time with the API — is not viable due to cost (one call per item on every change is unaffordable), so the recommended minimal option was adopted: **complete daily refresh** (no longer only gaps) plus a **manual sync button** in Settings.
 
-Related issue: #23 — https://github.com/gonzalitojh/Registro-personal/issues/23
+Related issue: #23 — https://github.com/gonzalitojh/personal-tracker/issues/23
 
 ## Decision
 
@@ -140,4 +140,4 @@ the run aborts. The truthy-only policy remains in the minimal run's
 fragments that still write (`releaseDate`, series airing fields, book
 synopses).
 
-Related issue: #23 — https://github.com/gonzalitojh/Registro-personal/issues/23
+Related issue: #23 — https://github.com/gonzalitojh/personal-tracker/issues/23

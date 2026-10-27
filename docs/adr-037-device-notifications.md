@@ -34,7 +34,7 @@ State detected in the code:
   per-type notification settings (`settings.js` →
   `DEFAULT_SETTINGS.notifications`, `notif-*` toggles in `index.html`).
 
-Related issue: #84 — https://github.com/gonzalitojh/Registro-personal/issues/84
+Related issue: #84 — https://github.com/gonzalitojh/personal-tracker/issues/84
 
 ## Decision
 
@@ -68,7 +68,7 @@ covers the real case, with no need for a push server.
 ### 2. `service-worker.js` (show and open)
 
 - **`message` listener → `SHOW_NOTIFICATION`**: validates `id` and
-  `message` and calls `self.registration.showNotification('Mi Registro',
+  `message` and calls `self.registration.showNotification('Personal Tracker',
   {...})` with:
   - `icon` and `badge` relative to the scope:
     `resolved('./resources/icon.png')` (multi-branch, ADR-036).
@@ -207,7 +207,7 @@ covers the real case, with no need for a push server.
 | File | Change |
 |---------|--------|
 | `js/push.js` | **New**: bell → system bridge module: per-session baseline, detection by `id` (`seenIds`, `MAX_SEEN`), `device_push` + `visibilityState` conditions, `postMessage` `SHOW_NOTIFICATION`, support/permission helpers, `resetDevicePush()` |
-| `service-worker.js` | `message` listener `SHOW_NOTIFICATION` → `showNotification('Mi Registro', ...)` with dedup `tag` and scope-relative routes; `notificationclick` listener → focus of existing window or `clients.openWindow`; `js/push.js` in `STATIC_ASSETS`; `?v=20260809` |
+| `service-worker.js` | `message` listener `SHOW_NOTIFICATION` → `showNotification('Personal Tracker', ...)` with dedup `tag` and scope-relative routes; `notificationclick` listener → focus of existing window or `clients.openWindow`; `js/push.js` in `STATIC_ASSETS`; `?v=20260809` |
 | `js/settings.js` | `device_push: false` in `DEFAULT_SETTINGS`; sync of the `notif-device` toggle; disabled if no support or permission `denied`; `change` handler with `requestPermission()` in a user gesture, reverted + toast if denied |
 | `index.html` | Toggle «Notificaciones en el dispositivo» (`id=notif-device`, hint) in the Settings' Notificaciones card; versioned `?v=20260809` |
 | `js/app.js` | Import of `push.js`; `handleNotificationsSnapshot(notifications)` after `renderNotifications` in the `subscribeToNotifications` callback; `resetDevicePush()` on logout |
@@ -216,4 +216,4 @@ covers the real case, with no need for a push server.
 | `docs/adr-037-device-notifications.md` | **New**: this document |
 | `docs/manual-de-usuario.md` | Sections 12 (Notificaciones), 14 (Ajustes → Notificaciones) and 18 (Problemas frecuentes) updated |
 
-Related issue: #84 — https://github.com/gonzalitojh/Registro-personal/issues/84
+Related issue: #84 — https://github.com/gonzalitojh/personal-tracker/issues/84

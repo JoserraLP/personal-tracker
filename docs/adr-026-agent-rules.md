@@ -26,7 +26,7 @@ The goal was to create a **single, automatic place** for the project's
 general rules, so that the free agent and any opencode agent (subagents,
 build/plan) would always have them present, in any task, without exception.
 
-Related issue: #19 — https://github.com/gonzalitojh/Registro-personal/issues/19
+Related issue: #19 — https://github.com/gonzalitojh/personal-tracker/issues/19
 
 ## Decision
 
@@ -138,4 +138,4 @@ or UI, the QA reviewer must also verify the responsiveness rule of the root
 | `.opencode/agents/qa-reviewer.md` | Section `## Reglas generales del proyecto`: the QA reviewer verifies the responsiveness rule in tasks touching HTML, CSS or UI and reports it |
 | `docs/adr-026-agent-rules.md` | **New**: this document |
 
-Related issue: #19 — https://github.com/gonzalitojh/Registro-personal/issues/19
+Related issue: #19 — https://github.com/gonzalitojh/personal-tracker/issues/19

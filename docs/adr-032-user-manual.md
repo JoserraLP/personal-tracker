@@ -8,14 +8,14 @@ August 2026
 
 ## Context
 
-The web «Mi Registro» had grown to accumulate many features —statuses per item type (series, movies and books), episode and reading management, histories, searches (TMDB/Google Books/Open Library catalog, own list and global with Ctrl+K), manual creation, organization (grid/list, filters, order, colors), detail profiles with trailer/streaming/saga/recommendations, ratings, quick actions (big button, swipe, undo delete), notifications, profile, settings, sync, privacy, PWA, etc.— without **any end-user-facing documentation** existing. Knowledge of the web's behavior lived only in the code and in the ADRs, written for developers and agents, not for a user who wants to "watch the series they follow tomorrow" or know why a book does not appear in the catalog.
+The web «Personal Tracker» had grown to accumulate many features —statuses per item type (series, movies and books), episode and reading management, histories, searches (TMDB/Google Books/Open Library catalog, own list and global with Ctrl+K), manual creation, organization (grid/list, filters, order, colors), detail profiles with trailer/streaming/saga/recommendations, ratings, quick actions (big button, swipe, undo delete), notifications, profile, settings, sync, privacy, PWA, etc.— without **any end-user-facing documentation** existing. Knowledge of the web's behavior lived only in the code and in the ADRs, written for developers and agents, not for a user who wants to "watch the series they follow tomorrow" or know why a book does not appear in the catalog.
 
 Issue #60 asked for two concrete things:
 
 1. A **complete user manual**, in non-technical language, that any user could read and understand: well organized, with sections and subsections, covering the different statuses and options of each item type, the settings and actions, how often the data updates, how to search, etc.
 2. A **rule for the agent** that forces the relevant explanation to be included in that manual whenever changes affecting what the user sees or does are made — so the manual does not become obsolete a few weeks after its creation.
 
-Related issue: #60 — https://github.com/gonzalitojh/Registro-personal/issues/60
+Related issue: #60 — https://github.com/gonzalitojh/personal-tracker/issues/60
 
 ## Decision
 
@@ -25,7 +25,7 @@ Create `docs/manual-de-usuario.md`, a complete user manual in Spanish, written i
 
 An 18-section manual (with numbered subsections where required), covering everything that can be done on the web:
 
-1. **What Mi Registro is**: purpose (private log of series, movies and books), automatic data completion by the web, friend-group model with logs visible in read mode.
+1. **What Personal Tracker is**: purpose (private log of series, movies and books), automatic data completion by the web, friend-group model with logs visible in read mode.
 2. **How to get in**: Google login, guest list (error message if the email is not on it), automatic account creation, «Salir» button.
 3. **The main screen**: header (bell, magnifying glass, gear, sun/moon, photo/name, salir) and the three Series/Movies/Books tabs; default landing on Series with the «Viendo» filter and list view.
 4. **Series**: statuses (Pendiente/Viendo/Vista/Standby/Abandonada), adding, watching and marking episodes (with dates), pausing/abandoning/resuming, re-watching from the beginning, watch history, editing and deleting.
@@ -88,4 +88,4 @@ Being in the root `AGENTS.md`, the rule is automatically loaded into the context
 | `AGENTS.md` | Rule `### 3. Manual de usuario siempre actualizado` in `## Reglas generales`: any change affecting what the user sees or does must be reflected in `docs/manual-de-usuario.md` in the same task; purely internal changes do not require it |
 | `docs/adr-032-user-manual.md` | **New**: this document |
 
-Related issue: #60 — https://github.com/gonzalitojh/Registro-personal/issues/60
+Related issue: #60 — https://github.com/gonzalitojh/personal-tracker/issues/60

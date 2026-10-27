@@ -28,7 +28,7 @@ contained the **«Ocio»** entry. In that state:
 Issue #75 also asks to **remove the ⚙️ and ☀️/🌙 buttons from the header**
 and leave the theme as an option exclusive to the Ajustes section.
 
-Related issue: #75 — https://github.com/gonzalitojh/Registro-personal/issues/75
+Related issue: #75 — https://github.com/gonzalitojh/personal-tracker/issues/75
 
 **Historical note**: this ADR documents the removal of the header shortcuts
 to Ajustes (⚙️) and the theme (☀️/🌙) that ADR-009, ADR-012 and ADR-035
@@ -204,4 +204,4 @@ row** (the search gets narrower).
 | `docs/manual-de-usuario.md` | Sections 3 and 14: ⚙️ and ☀️/🌙 removed from the header; «Ajustes» at the bottom of the sidebar as a new access path; theme only from Ajustes |
 | `docs/adr-039-ajustes-barra-lateral.md` | **New**: this document |
 
-Related issue: #75 — https://github.com/gonzalitojh/Registro-personal/issues/75
+Related issue: #75 — https://github.com/gonzalitojh/personal-tracker/issues/75

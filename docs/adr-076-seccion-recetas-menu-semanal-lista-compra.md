@@ -74,7 +74,7 @@ security scan's QA; this ADR documents the
 architecture decision, like the recent ones (the
 ADR-059 to ADR-068).
 
-Related issue: #64 — https://github.com/gonzalitojh/Registro-personal/issues/64
+Related issue: #64 — https://github.com/gonzalitojh/personal-tracker/issues/64
 
 ## Decision
 
@@ -604,4 +604,4 @@ normalized names).
   AGENTS.md's rule 3 |
 | `docs/adr-076-seccion-recetas-menu-semanal-lista-compra.md` | **New**: this document |
 
-Related issue: #64 — https://github.com/gonzalitojh/Registro-personal/issues/64
+Related issue: #64 — https://github.com/gonzalitojh/personal-tracker/issues/64

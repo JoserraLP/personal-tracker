@@ -35,7 +35,7 @@ updated in the same task (`docs/manual-de-usuario.md` §9 and §10,
 AGENTS.md's rule 3). This ADR documents the decision retrospectively,
 like the recent ones (ADR-059, ADR-060, ADR-061, ADR-062).
 
-Related issue: #80 — https://github.com/gonzalitojh/Registro-personal/issues/80
+Related issue: #80 — https://github.com/gonzalitojh/personal-tracker/issues/80
 
 ## Decision
 
@@ -234,4 +234,4 @@ It is invoked after **the three paths** that mutate `item.watched`:
 | `service-worker.js` | **Modified**: bump `?v=20260835` → `?v=20260836` on the 6 versioned assets of `STATIC_ASSETS` (via `scripts/bump-version.sh`) |
 | `docs/adr-063-valoracion-media-episodios.md` | **New**: this document |
 
-Related issue: #80 — https://github.com/gonzalitojh/Registro-personal/issues/80
+Related issue: #80 — https://github.com/gonzalitojh/personal-tracker/issues/80

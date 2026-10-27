@@ -36,7 +36,7 @@ the merge into `dev` triggered the next cycle. The user reported 4 problems
    events; an output similar to the local client (default format) is
    wanted.
 
-Related issue: #126 — https://github.com/gonzalitojh/Registro-personal/issues/126
+Related issue: #126 — https://github.com/gonzalitojh/personal-tracker/issues/126
 
 ## Decision
 
@@ -179,4 +179,4 @@ already captured with `$?`).
 | `README.md` | **Modified**: section 6, point 6 — resolution is NO LONGER triggered on PR merge (only a new issue, a comment on an ongoing issue or a manual dispatch) and after each successful session the Pages deployment relaunches automatically |
 | `docs/manual-de-usuario.md` | **Unchanged** (internal infrastructure change, not visible to the end user) |
 
-Related issue: #126 — https://github.com/gonzalitojh/Registro-personal/issues/126
+Related issue: #126 — https://github.com/gonzalitojh/personal-tracker/issues/126

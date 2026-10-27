@@ -1,6 +1,6 @@
-# User manual — Mi Registro [My Tracker]
+# User manual — Personal Tracker [My Tracker]
 
-Welcome to **Mi Registro**, your private notebook to keep track of the
+Welcome to **Personal Tracker**, your private notebook to keep track of the
 movies you watch, the series you follow, the books you read and the
 video games you play.
 
@@ -11,7 +11,7 @@ everything you can do in the web app. Read it by sections as needed.
 
 ## Contents
 
-1. [What is Mi Registro](#1-what-is-mi-registro)
+1. [What is Personal Tracker](#1-what-is-mi-registro)
 2. [How to sign in](#2-how-to-sign-in)
 3. [The main screen](#3-the-main-screen)
 4. [Series](#4-series)
@@ -38,9 +38,9 @@ Also: [Purchases (wishlist)](#purchases-wishlist) ·
 
 ---
 
-## 1. What is Mi Registro
+## 1. What is Personal Tracker
 
-Mi Registro is a web app for noting down:
+Personal Tracker is a web app for noting down:
 
 - **Series** you are watching, have watched or want to watch, episode by
   episode.
@@ -95,7 +95,7 @@ Right after signing in you will see:
     one section visible again, the sidebar reappears.
   - **Search bar** (in the middle): searches **within the section you
     are in** (more in [section 10](#10-how-to-search)). On sign-in,
-    the bar briefly shows the name of the web app —**«Mi Registro»**—
+    the bar briefly shows the name of the web app —**«Personal Tracker»**—
     and after a few seconds it switches to the section's text: «Buscar
     películas, series, libros y videojuegos...» [Search movies, series,
     books and video games...] in Leisure, «Buscar
@@ -1556,7 +1556,7 @@ It is reached from **«Ajustes» at the bottom of the sidebar**
 
 ## 20. Install the web app on your phone
 
-Mi Registro works as a normal website, but it can also be
+Personal Tracker works as a normal website, but it can also be
 **installed** so it behaves like an application:
 
 - **On mobile** (Android/iPhone): open the web app and use the

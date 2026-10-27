@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 208,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/208",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/208",
     "title": "Estructura de pestañas"
   },
   "pr": {
     "number": 212,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/212",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/212",
     "title": "Estructura de pestañas: barra de Recetas tipo Ocio y fix de la pantalla de acceso (issue #208)"
   }
 }

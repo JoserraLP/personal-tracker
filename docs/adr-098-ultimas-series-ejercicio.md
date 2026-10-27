@@ -107,7 +107,7 @@ ADR-095, the
 ADR-096, the
 ADR-097).
 
-Related issue: #270 — https://github.com/gonzalitojh/Registro-personal/issues/270
+Related issue: #270 — https://github.com/gonzalitojh/personal-tracker/issues/270
 
 ## Decision
 
@@ -330,4 +330,4 @@ records" heading when there is no history**: rejected — it would add visual no
   appear on new exercises) |
 | `docs/adr-098-ultimas-series-ejercicio.md` | **New**: this document |
 
-Related issue: #270 — https://github.com/gonzalitojh/Registro-personal/issues/270
+Related issue: #270 — https://github.com/gonzalitojh/personal-tracker/issues/270

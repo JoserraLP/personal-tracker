@@ -25,7 +25,7 @@
   ],
   "issue": {
     "number": 133,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/133",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/133",
     "title": "Arreglo de los episodios de las series"
   },
   "plan": {
@@ -61,7 +61,7 @@
   },
   "pr": {
     "number": 168,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/168",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/168",
     "title": "[feature] Arreglo de los episodios de las series: layout 2 líneas y re-visionado",
     "branch": "feature/issue-133-episodios-series",
     "commit": "362a150",

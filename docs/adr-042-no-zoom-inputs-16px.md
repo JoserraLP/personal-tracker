@@ -27,7 +27,7 @@ breaks accessibility (users with low vision who need to magnify the page).
 The solution had to eliminate the **automatic** zoom while keeping the
 **manual** zoom intact.
 
-Related issue: #92 — https://github.com/gonzalitojh/Registro-personal/issues/92
+Related issue: #92 — https://github.com/gonzalitojh/personal-tracker/issues/92
 
 ## Decision
 
@@ -168,4 +168,4 @@ in `index.html`).
 | `service-worker.js` | **Modified**: `STATIC_ASSETS` with `?v=20260816` (invalidates `20260815` and older caches) |
 | `docs/adr-042-no-zoom-inputs-16px.md` | **New**: this document |
 
-Related issue: #92 — https://github.com/gonzalitojh/Registro-personal/issues/92
+Related issue: #92 — https://github.com/gonzalitojh/personal-tracker/issues/92

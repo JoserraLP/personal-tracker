@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 47,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/47",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/47",
     "title": "Pestaña de videojuegos"
   },
   "pr": {
     "number": 166,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/166",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/166",
     "branch": "feat/issue-47-pestana-videojuegos"
   }
 }

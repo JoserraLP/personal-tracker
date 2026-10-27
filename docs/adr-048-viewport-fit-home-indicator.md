@@ -36,7 +36,7 @@ safe margin in the bar, the content gap and the toast), but they were
 `env(safe-area-inset-bottom)` is 0 by definition, so enabling the
 safe margin on iOS does not alter that OS.
 
-Related issue: #116 — https://github.com/gonzalitojh/Registro-personal/issues/116
+Related issue: #116 — https://github.com/gonzalitojh/personal-tracker/issues/116
 
 ## Decision
 
@@ -176,4 +176,4 @@ which did not touch the manual for an equivalent change, and ADR-042).
 | `docs/manual-de-usuario.md` | **Unchanged**: section 3 already describes the tab bar; the safe margin is a device detail |
 | `docs/adr-048-viewport-fit-home-indicator.md` | **New**: this document |
 
-Related issue: #116 — https://github.com/gonzalitojh/Registro-personal/issues/116
+Related issue: #116 — https://github.com/gonzalitojh/personal-tracker/issues/116

@@ -1,7 +1,7 @@
 {
   "name": "Registro Personal",
   "short_name": "Registro",
-  "description": "Registro personal de películas, series y libros.",
+  "description": "Personal Tracker de películas, series y libros.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

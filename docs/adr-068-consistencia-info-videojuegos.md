@@ -181,4 +181,4 @@ documented one, with no ambiguity, and is only invoked when needed
 
 Related to: tasks/task-issue-171.json
 
-Related issue: #171 — https://github.com/gonzalitojh/Registro-personal/issues/171
+Related issue: #171 — https://github.com/gonzalitojh/personal-tracker/issues/171

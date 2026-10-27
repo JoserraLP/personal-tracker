@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 206,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/206",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/206",
     "title": "Navegación por secciones"
   },
   "pr": {
     "number": 210,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/210",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/210",
     "title": "Navegación por secciones: cabecera global y búsqueda acotada a la sección"
   }
 }

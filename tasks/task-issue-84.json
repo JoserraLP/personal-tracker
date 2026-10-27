@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 84,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/84",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/84",
     "title": "Notificaciones push-up"
   },
   "pr": {
     "number": 88,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/88",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/88",
     "title": "Notificaciones del sistema cuando la app no está en primer plano (issue #84)",
     "branch": "feature/issue-84-device-notifications",
     "commit": "c92273a",

@@ -15,7 +15,7 @@ Accepted
 > for APIs, network-only for writes and auth) remain in force.
 
 ## Context
-The "Mi Registro" application already had a `manifest.json` that
+The "Personal Tracker" application already had a `manifest.json` that
 defined the basic metadata for being a Progressive Web App
 (name, icons, theme, `display: standalone`). However, it lacked the
 **service worker**, which is the essential component that enables:
@@ -30,7 +30,7 @@ defined the basic metadata for being a Progressive Web App
    managing application versions without interfering with the
    user experience.
 
-The application is served from the subpath `/Registro-personal/` on
+The application is served from the subpath `/personal-tracker/` on
 GitHub Pages, and uses multiple external resources: Firebase for
 authentication and database, TMDB for movie/series data,
 Google Books and Open Library for book data, Google Fonts for
@@ -66,7 +66,7 @@ manifest.json                  → Added scope and description
 
 1. The user visits the page.
 2. `sw-register.js` registers `service-worker.js` with the scope
-   `/Registro-personal/`.
+   `/personal-tracker/`.
 3. The SW's `install` event preloads all static assets
    (30+ files) into the `mi-registro-v1-static` cache.
 4. The `activate` event clears old caches and takes control of

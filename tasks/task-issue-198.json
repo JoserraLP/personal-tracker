@@ -20,12 +20,12 @@
   ],
   "issue": {
     "number": 198,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/198",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/198",
     "title": "Excluir ramas del despliegue"
   },
   "pr": {
     "number": 205,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/205",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/205",
     "title": "[refactor] Excluir ramas no-deploy/ del despliegue de Pages (issue #198)",
     "branch": "refactor/issue-198-excluir-ramas-no-deploy",
     "commit": "5602498",

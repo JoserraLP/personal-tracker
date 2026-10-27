@@ -29,12 +29,12 @@
   ],
   "issue": {
     "number": 92,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/92",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/92",
     "title": "Evitar zoom"
   },
   "pr": {
     "number": 102,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/102",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/102",
     "title": "[fix] Evitar zoom automático al enfocar campos de escritura en móvil (issue #92)",
     "branch": "fix/issue-92-evitar-zoom",
     "commit": "20d1980",

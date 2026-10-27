@@ -15,7 +15,7 @@ In the 3rd reopening of issue #27 the user consulted the TMDB API and pointed ou
 
 **The gap**: the **season's** `air_date` was never used as a source. `getTvSeasonsMeta`/`getTvExtraDetails` already normalized it (`airDate: air_date || null`), but nobody persisted or consumed it. Concrete consequence: a series between seasons without `next_episode_to_air` and with a stale persisted `nextEpisodeAirDate` (e.g. `null` saved forever) was left without a source: `getNextEpisodeAirInfo` returned `null` and the series showed no badge, stripes or relegation, and could be marked without confirmation, even though its season's `air_date` indicated it was still unreleased.
 
-Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27
+Related issue: #27 — https://github.com/gonzalitojh/personal-tracker/issues/27
 
 ## Decision
 
@@ -107,4 +107,4 @@ The `source` tag is added in memory via spread (`{ ...toAir, source: "toAir" }`)
 | `docs/adr-024-unreleased-uniform-treatment.md` | Update note: the TV confirmation phase (rejected there due to the import cycle) is implemented via parameter injection, and `seasonAirDates` extends the sources story |
 | `docs/adr-025-season-air-dates.md` | **New**: this document |
 
-Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27
+Related issue: #27 — https://github.com/gonzalitojh/personal-tracker/issues/27

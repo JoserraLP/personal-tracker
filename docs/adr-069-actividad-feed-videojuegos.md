@@ -29,7 +29,7 @@ jugar…» did not appear among the friends' activities.
 
 Issue #173 asks to include video game activity in the feed.
 
-Related issue: #173 — https://github.com/gonzalitojh/Registro-personal/issues/173
+Related issue: #173 — https://github.com/gonzalitojh/personal-tracker/issues/173
 
 ## Decision
 
@@ -151,4 +151,4 @@ modal already supported `game` items since ADR-068 (issue
 - Security scan: PASS with no findings (a pre-existing read-only
   pattern, no secrets nor PII).
 
-Related issue: #173 — https://github.com/gonzalitojh/Registro-personal/issues/173
+Related issue: #173 — https://github.com/gonzalitojh/personal-tracker/issues/173
