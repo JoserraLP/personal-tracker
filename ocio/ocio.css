@@ -2758,3 +2758,17 @@ button, a, input, select, textarea { touch-action: manipulation; }
 [data-theme="black"] .experience-card__delete {
   color: var(--stamp-dark);
 }
+
+/* Note over 10 (ADR-116): 10 numeric pills; they wrap on narrow screens */
+.rating-picker {
+  flex-wrap: wrap;
+}
+.rating-picker button,
+.rating-picker--small button {
+  min-width: 30px;
+  padding: 0 6px;
+  aspect-ratio: auto;
+}
+.rating-picker button.is-half {
+  display: none;
+}

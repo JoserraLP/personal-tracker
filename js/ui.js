@@ -581,17 +581,22 @@ function normalizeRating(value) {
 
 // Accessible label of a picker button for value N (1-5).
 function ratingButtonAriaLabel(n) {
-  return n === 1 ? "1 estrella" : `${n} estrellas`;
+  return `${n} de 10`;
 }
 
 // Informational HTML of an item's stars (cards and read-only
 // detail view). Half stars show as «½» after the full ones
 // (e.g. 2.5) issue #276.
 export function ratingStarsHtml(rating) {
-  const v = normalizeRating(rating);
-  if (!v) return "";
-  const full = "...".repeat(Math.floor(v));
-  return v % 1 === 0 ? full : full + "";
+  const nota = notaDe(rating);
+  if (!nota) return "";
+  return String(nota) + " / 10";
+}
+
+// The note over 10 for the UI (integer 0-10): internal half-scale
+// represented with stars * 2 (ADR-116).
+export function notaDe(rating) {
+  return Math.round(normalizeRating(rating) * 2);
 }
 
 // HTML of the star picker (1-5, with halves since issue #276).
@@ -600,36 +605,34 @@ export function ratingStarsHtml(rating) {
 // "rm-rating"). A value like 2.5 paints «is-active» on 1-2 and the
 // half star on button 3 (is-half class).
 export function ratingPickerHtml(rating, idPrefix = "field-rating", extraHtml = "") {
-  const value = normalizeRating(rating);
+  const nota = notaDe(rating);
   return `
     <div class="field-group">
       <label>Valoración</label>
       <div class="rating-picker" id="${idPrefix}">
-        ${[1, 2, 3, 4, 5]
-          .map((n) => {
-            const full = value >= n;
-            const half = value === n - 0.5;
-            return `<button type="button" data-value="${n}" class="${
-              full ? "is-active" : ""
-            }${half ? " is-half" : ""}" aria-label="${
-              half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
-            }">${half ? "½" : n}</button>`;
-          })
+        ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+          .map(
+            (n) => `
+          <button type="button" data-value="${n}" class="${nota >= n ? "is-active" : ""}"
+                  aria-label="${ratingButtonAriaLabel(n)}">${n}</button>`
+          )
           .join("")}
       </div>
       ${extraHtml}
     </div>`;
 }
 
-// Average rating of the rated episodes of the show (issue #80).
-// No average: hidden span (placeholder updateEpisodeAverage updates).
+// Average rating of the rated episodes of the show (issue #80),
+// presented as a note over 10 (ADR-116). No average: hidden span
+// (placeholder updateEpisodeAverage updates).
 function episodeAverageHtml(watched, idPrefix) {
   const avg = computeEpisodeAverageRating(watched);
   if (!avg) {
     return `<span class="episode-average" id="${idPrefix}-episode-average" hidden></span>`;
   }
   const ratedLabel = avg.count === 1 ? "1 episodio valorado" : `${avg.count} episodios valorados`;
-  return `<span class="episode-average" id="${idPrefix}-episode-average" title="Media de ${ratedLabel}">Media episodios: <strong>${avg.average.toFixed(1)}</strong></span>`;
+  const media10 = (avg.average * 2).toFixed(1);
+  return `<span class="episode-average" id="${idPrefix}-episode-average" title="Media de ${ratedLabel}">Media episodios: <strong>${media10}</strong> / 10</span>`;
 }
 
 function notesFieldHtml(notes) {
@@ -648,25 +651,18 @@ export function wireRatingAndGetValue(content, initialRating, idPrefix = "field-
   let selectedRating = normalizeRating(initialRating);
   const buttons = content.querySelectorAll(`#${idPrefix} button`);
   const repaint = () => {
+    const nota = Math.round(selectedRating * 2);
     buttons.forEach((b) => {
       const n = Number(b.dataset.value);
-      const full = selectedRating >= n;
-      const half = selectedRating === n - 0.5;
-      b.classList.toggle("is-active", full && !half);
-      b.classList.toggle("is-half", half);
-      b.textContent = half ? "½" : n;
-      b.setAttribute(
-        "aria-label",
-        half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
-      );
+      b.classList.toggle("is-active", nota >= n && nota > 0);
+      b.setAttribute("aria-label", ratingButtonAriaLabel(n));
     });
   };
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      const value = Number(btn.dataset.value);
-      if (selectedRating === value) selectedRating = value - 0.5;
-      else if (selectedRating === value - 0.5) selectedRating = 0;
-      else selectedRating = value;
+      const nota = Number(btn.dataset.value);
+      if (Math.round(selectedRating * 2) === nota) selectedRating = 0;
+      else selectedRating = nota / 2;
       repaint();
     });
   });
@@ -1746,16 +1742,10 @@ function applyEpisodeRowState(row, entry) {
   else visual.removeAttribute("data-count");
   ratingWrap.querySelectorAll(".episode-rating__star").forEach((s) => {
     const n = Number(s.dataset.value);
-    const value = normalizeRating(checked ? entry.rating : 0);
-    const full = value >= n;
-    const half = value === n - 0.5;
-    s.classList.toggle("is-active", full && !half);
-    s.classList.toggle("is-half", half);
-    s.textContent = half ? "½" : "★";
-    s.setAttribute(
-      "aria-label",
-      half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
-    );
+    const nota = notaDe(checked ? entry.rating : 0);
+    s.classList.toggle("is-active", nota >= n && nota > 0);
+    s.textContent = n;
+    s.setAttribute("aria-label", ratingButtonAriaLabel(n));
   });
 }
 
@@ -1823,16 +1813,12 @@ function renderEpisodeRows(episodes, seasonWatched, { manual = false } = {}) {
         </div>
         <div class="episode-row__meta ${checked ? "" : "hidden"}">
           <div class="episode-rating">
-            ${[1, 2, 3, 4, 5]
+            ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
               .map((n) => {
-                const value = normalizeRating(rating);
-                const full = value >= n;
-                const half = value === n - 0.5;
+                const nota = notaDe(checked ? rating : 0);
                 return `<button type="button" class="episode-rating__star ${
-                  full ? "is-active" : ""
-                }${half ? " is-half" : ""}" data-value="${n}" aria-label="${
-                  half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
-                }">${half ? "½" : "★"}</button>`;
+                  nota >= n && nota > 0 ? "is-active" : ""
+                }" data-value="${n}" aria-label="${ratingButtonAriaLabel(n)}">${n}</button>`;
               })
               .join("")}
           </div>
@@ -2092,26 +2078,20 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
               (item.watched || {})[String(seasonNumber)]?.[String(episodeNumber)]
             )?.rating
           );
-          // Half-star cycle (issue #276): N → N-0.5 → clear.
+          // Note cycle (ADR-116): first press on the button N selects
+          // the note N; pressing the same again clears it.
           let newValue;
-          if (current === value) newValue = value - 0.5;
-          else if (current === value - 0.5) newValue = null;
-          else newValue = value;
+          if (current * 2 === value) newValue = null;
+          else newValue = value / 2;
           starButtons.forEach((b) => (b.disabled = true));
           try {
             await onSetEpisodeRating(seasonNumber, episodeNumber, newValue);
             starButtons.forEach((b) => {
               const n = Number(b.dataset.value);
-              const v = normalizeRating(newValue || 0);
-              const full = v >= n;
-              const half = v === n - 0.5;
-              b.classList.toggle("is-active", full && !half);
-              b.classList.toggle("is-half", half);
-              b.textContent = half ? "1/2" : "";
-              b.setAttribute(
-                "aria-label",
-                half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
-              );
+              const nota = notaDe(newValue || 0);
+              b.classList.toggle("is-active", nota >= n && nota > 0);
+              b.textContent = n;
+              b.setAttribute("aria-label", ratingButtonAriaLabel(n));
             });
             updateEpisodeAverage();
           } finally {
