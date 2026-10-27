@@ -1,19 +1,19 @@
 // =============================================================
-// CONFIGURACIÓN — rellena estos valores con los tuyos.
-// Ninguno de estos valores es "secreto" en el sentido tradicional:
-// la protección real de tus datos la dan las reglas de seguridad
-// de Firestore (ver firestore.rules) y el inicio de sesión, no el
-// hecho de que estas claves estén ocultas. Aun así, ver el README
-// para restringir por dominio la clave de Google Books.
+// CONFIGURATION — fill these values with your own.
+// None of these values is "secret" in the traditional sense:
+// the real protection of your data comes from the Firestore security
+// rules (see firestore.rules) and the login flow, not from
+// these keys being hidden. Still, see the README
+// for restricting the Google Books key by domain.
 // =============================================================
 
-// Versión de despliegue/caché. Se incrementa con scripts/bump-version.sh
-// y se usa para versionar las URLs de los assets (?v=...) de modo que
-// cada deploy invalide las cachés del service worker y del navegador.
+// Deployment/cache version. It is incremented by scripts/bump-version.sh
+// and used to version asset URLs (?v=...) so that
+// each deploy invalidates the caches of the service worker and the browser.
 export const APP_VERSION = '20261029b';
 
-// Configuración de tu proyecto de Firebase
-// (Firebase console → Configuración del proyecto → Tus apps → SDK)
+// Configuration of your Firebase project
+// (Firebase console → Project settings → Your apps → SDK)
 export const firebaseConfig = {
   apiKey: "AIzaSyA7Hp6Udu07Eh83Ti4Od5zHWqrV73X_0Yg",
   authDomain: "personal-tracker-e0783.firebaseapp.com",
@@ -25,34 +25,34 @@ export const firebaseConfig = {
 };
 
 
-  // La lista de quién puede entrar vive ÚNICAMENTE en la regla
-  // isAllowedUser() de firestore.rules (issue #195): se eliminó
-  // js/allowed-emails.js, que la duplicaba.
+  // The list of who can log in lives ONLY in the
+  // isAllowedUser() rule of firestore.rules (issue #195):
+  // js/allowed-emails.js, which duplicated it, was removed.
 
-  // Clave de la API de TMDB (gratuita, no comercial)
-// Consíguela en https://www.themoviedb.org/settings/api
+  // TMDB API key (free, non-commercial)
+// Get it at https://www.themoviedb.org/settings/api
 export const TMDB_API_KEY = "f23a198de513705e5970b196de181edb";
 
-// Clave de la API de Google Books (opcional).
-// Sin clave funciona igual, con un límite de peticiones más bajo.
-// Si la usas, restríngela por referrer HTTP a tu dominio de GitHub Pages
-// desde Google Cloud Console → Credenciales.
+// Google Books API key (optional).
+// It works the same without a key, with a lower request limit.
+// If you use it, restrict it by HTTP referrer to your GitHub Pages domain
+// from Google Cloud Console → Credentials.
 export const GOOGLE_BOOKS_API_KEY = "AIzaSyAQ0NCW84ldhfmUboMo3ErylgkqexygYZM";
 
-// URL pública de tu Cloudflare Worker, proxy de IGDB (Twitch).
-// IGDB no tiene CORS y su Client Secret no puede exponerse en una SPA:
-// el Worker guarda los secretos y reenvía las peticiones a IGDB.
-// IMPORTANTE: pon aquí la URL EXACTA que imprime `wrangler deploy`
-// (formato https://igdb-proxy.<tu-subdominio>.workers.dev). Si pones
-// una URL que no existe, la búsqueda de videojuegos fallará.
-// Despliega el Worker y configura los secretos siguiendo
-// cloudflare/igdb-proxy/README.md, y pon aquí su URL.
-// Sin valor (""), la búsqueda de videojuegos muestra un aviso claro
-// («Falta IGDB_PROXY_URL…») y el resto de la app funciona igual.
+// Public URL of your Cloudflare Worker, IGDB (Twitch) proxy.
+// IGDB has no CORS and its Client Secret cannot be exposed in an SPA:
+// the Worker keeps the secrets and forwards the requests to IGDB.
+// IMPORTANT: put here the EXACT URL printed by `wrangler deploy`
+// (format https://igdb-proxy.<your-subdomain>.workers.dev). If you set
+// a URL that doesn't exist, the videogame search will fail.
+// Deploy the Worker and configure the secrets following
+// cloudflare/igdb-proxy/README.md, and put its URL here.
+// With no value (""), the videogame search shows a clear warning
+// («Falta IGDB_PROXY_URL…») and the rest of the app works the same.
 export const IGDB_PROXY_URL = "https://igdb-proxy.gonzalojh596.workers.dev";
 
-// URL pública del proxy de Steam (Worker de Cloudflare; ver
-// cloudflare/steam-proxy/README.md). El secreto de la API de Steam
-// no se expone en la web: lo guarda el Worker. Si está vacío (""),
-// la tarjeta de Ajustes avisa y la integración no está disponible.
+// Public URL of the Steam proxy (Cloudflare Worker; see
+// cloudflare/steam-proxy/README.md). The Steam API secret
+// is not exposed on the web: the Worker keeps it. If it is empty (""),
+// the Settings card warns and the integration is unavailable.
 export const STEAM_PROXY_URL = "https://steam-proxy.joserralp.workers.dev";

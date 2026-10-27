@@ -1,118 +1,287 @@
-# ADR-095: Medias estrellas de valoración (issue #276)
+# ADR-095: Half-star ratings (issue #276)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #276 pide poder dar **medias estrellas** en las valoraciones
-personales (películas, libros, videojuegos, series y episodios). La
-propuesta textual del usuario: «al pulsar una vez, sobre el 3 por
-ejemplo, se marcarían 3 estrellas, pero si se vuelve a pulsar sobre el
-3, se marcaría la mitad y por tanto sería 2.5».
+Issue #276 asks to be able
+to give
+**half stars**
+in the personal ratings (movies, books, video
+games, series and episodes). The
+user's textual proposal:
+"when pressing once, on the
+3
+for example, 3
+stars would get marked, but if pressing again
+on the
+3, the
+half would get marked and therefore
+it would be
+2.5".
 
-Estado actual del código antes del cambio:
+The code's state before the change:
 
-- El picker de valoración (`ratingPickerHtml` y `wireRatingAndGetValue`
-  en `js/ui.js`) ofrecía 5 botones numéricos (1-5) con conmutación
-  binaria: pulsar el mismo valor quitaba la valoración (pasaba a 0).
-- Las estrellas de episodio de serie (`renderEpisodeRows`,
-  `applyEpisodeRowState` y el handler de clic en `js/ui.js`) usaban un
-  conteo de estrellas activas (`querySelectorAll(".is-active").length`)
-  para decidir el desmarcado, lógica frágil que no soporta valores .5.
-- Los displays informativos (tarjetas del grid `renderGrid` y ficha de
-  solo lectura `openReadOnlyModal`) pintaban `"★".repeat(rating)`, que
-  truncaría 2.5 → «★★» perdiendo la media.
-- `computeEpisodeAverageRating` (`js/tv-progress.js`) descartaba
-  valoraciones < 1.
-- El modelo de datos (`item.rating`, `episode.rating`) guarda números;
-  Firestore acepta floats sin cambios de esquema.
+- The rating picker (the
+  `ratingPickerHtml` and the
+  `wireRatingAndGetValue` on
+  the
+  `js/ui.js`) offered 5 numeric
+  buttons (1-5)
+  with
+  binary toggling:
+  pressing
+  the same
+  value removed
+  the rating
+  (it went to
+  0).
+- The series
+  episodes' stars (the
+  `renderEpisodeRows`, the
+  `applyEpisodeRowState` and the click
+  handler in the
+  `js/ui.js`)
+  used a
+  count
+  of
+  active
+  stars (the
+  `querySelectorAll(".is-active").length`)
+  to decide
+  the unmarking, a
+  fragile logic that does not support
+  the .5 values.
+- The informative displays (the
+  grid's cards from the
+  `renderGrid` and the read-only
+  profile from the
+  `openReadOnlyModal`) painted the
+  `"★".repeat(rating)`,
+  which would truncate
+  2.5 →
+  "★★", losing the half.
+- The
+  `computeEpisodeAverageRating`
+  (the
+  `js/tv-progress.js`) discarded
+  ratings
+  < 1.
+- The data model (the
+  `item.rating`, the
+  `episode.rating`)
 
-## Decisión
+  stores numbers;
+  Firestore accepts floats with no
+  schema changes.
 
-Permitir valoraciones en pasos de 0.5 en todos los puntos de valoración
-personal, centralizando la lógica en `js/ui.js`:
+## Decision
 
-1. **Ciclo de pulsación uniforme** (picker principal y estrellas de
-   episodio): sobre el mismo botón N, 1er pulso → N, 2º pulso → N−0.5,
-   3er pulso → 0 (quitar, conservando el deshacer previo). El caso N=1
-   también produce 0.5 (ciclo uniforme, sin ramas especiales).
-2. **Visualización de la media**: el botón afectado (el de valor N
-   cuando el rating es N−0.5) se pinta con la clase `is-half`, los
-   mismos colores que `is-active` (variables de tema `--ochre-spine` /
-   `--ink`, sin overrides extra) y su contenido pasa a «½». En los
-   displays informativos se usa el nuevo helper exportado
-   `ratingStarsHtml(rating)` que pinta «★★½» (glifo U+00BD, soporte
-   universal).
-3. **Saneado central**: nuevo helper privado `normalizeRating(v)` =
-   `Math.round(v * 2) / 2` con límites [0, 5], aplicado en los puntos
-   de entrada (picker y estrellas de episodio) y en los displays.
-   `aria-label` dinámico por botón («2,5 estrellas» en la media,
-   «N estrellas» en el resto).
-4. **Estrellas de episodio**: el handler de clic deja de contar
-   estrellas activas y compara contra el rating real de `item.watched`
-   (patrón issue #136: derivar del dato, nunca del estado visual).
-   `applyEpisodeRowState` también pinta `is-half`.
-5. **Media de episodios**: el suelo de `computeEpisodeAverageRating`
-   baja de 1 a 0.5 (las medias estrellas cuentan como valoración
-   válida); el display con `toFixed(1)` ya era compatible.
-6. **Manual de usuario** (`docs/manual-de-usuario.md`, regla 3 de
-   AGENTS.md): se actualizan las secciones 5.3, 11 y 12 con el nuevo
-   ciclo y los ejemplos «★★½» / 2.5.
+Allow ratings in 0.5 steps at all the personal-rating
+points, centralizing the logic in the
+`js/ui.js`:
 
-Alternativas descartadas:
+1. **A uniform pressing
+  cycle** (the
+  main
+  picker and the
+  episodes'
+  stars): on the same button N, the
+  1st
+  press → N, the
+  2nd → N−0.5, the
+  3rd → 0 (the
+  removal
+  keeps the previous
+  undo).
+  The
+  N=1
+  case also
+  produces the
+  0.5
+  (a
+  uniform
+  cycle, no
+  special
+  branches).
+2. **The half's display**: the affected button (the one of
+  value N when the rating is N−0.5)
+  paints with the
+  `is-half`
+  class, the same colors as the
+  `is-active` (the theme variables of
+  the
+  `--ochre-spine` /
+  `--ink`, with no extra
+  overrides) and its content becomes
+  "½". On the informative displays the new exported helper
+  `ratingStarsHtml(rating)` paints the
+  "★★½" (the
+  U+00BD
+  glyph, universal
+  support).
+3. **A central normalization**:
+  a new private
+  `normalizeRating(v)`
+  = the
+  `Math.round(v * 2) / 2`
+  with the
+  [0, 5]
+  bounds, applied on the entry
+  points (the
+  picker and the episodes'
+  stars) and on
+  the
+  displays.
+  A
+  per-button dynamic `aria-label`
+  ("2,5 stars"
+  on the
+  half, "N
+  stars"
+  on the rest).
+4. **The episodes'
+  stars**: the click handler stops counting
+  active
+  stars and compares against the
+  `item.watched`'s
+  real
+  rating (issue #136's pattern:
+  derive from the data, never from the visual state).
+  The
+  `applyEpisodeRowState`
+  also paints
+  the
+  `is-half`.
+5. **The episodes' average**: the `computeEpisodeAverageRating`'s
+  floor drops
+  from
+  1 to the
+  0.5
+  (the half stars count as a
+  valid rating); the display's
+  `toFixed(1)`
+  was already compatible.
+6. **The user manual**
+  (the
+  `docs/manual-de-usuario.md`, the
+  AGENTS.md's rule 3):
+  the sections 5.3, 11
+  and 12 update with the new
+  cycle and the "★★½" /
+  2.5
+  examples.
 
-- **Saltar 0.5 en el ciclo para N=1** (1 → 0 directamente): asimetría
-  según el botón, más ramas de código y rompe la uniformidad del ciclo.
-- **Pseudo-elemento rellenando media estrella**: más CSS y
-  posicionamiento, mayor riesgo visual en los cuatro modos de tema; el
-  glifo «½» es texto plano con soporte universal.
-- **Picker deslizante/continuo** (0.1-5): cambio de interacción mucho
-  mayor, fuera del alcance de la issue.
+Rejected alternatives:
 
-## Consecuencias
+- **Skipping 0.5 in the N=1
+  cycle**
+  (1 → 0
+  directly): an
+  asymmetry depending on the button, more
+  code
+  branches and it breaks the cycle's uniformity.
+- **A pseudo-element filling
+  the half
+  star**:
+  more CSS and
+  positioning, a
+  bigger visual
+  risk
+  on the
+  four theme
+  modes; the
+  "½"
+  glyph
+  is plain text with universal support.
+- **A sliding/continuous
+  picker** (the
+  0.1-5):
+  a much bigger interaction
+  change, out of
+  the issue's
+  scope.
 
-**Positivas:**
+## Consequences
 
-- El usuario puede expresar valoraciones más matizadas (2.5, 4.5...)
-  con el mínimo cambio de interacción: un pulso extra en el mismo botón.
-- Cambio centralizado: todos los consumidores del picker (fichas,
-  ventana de valoración emergente de la issue #21, acciones rápidas,
-  buscador) heredan las medias sin tocarlos.
-- El deshacer previo («pulsar otra vez quita») se conserva como tercer
-  paso del ciclo; no hay regresión.
-- Los displays (grid, ficha de solo lectura) y la media de episodios
-  reflejan las medias correctamente.
+**Positive:**
 
-**Negativas:**
+- The user can express finer ratings
+  (the
+  2.5, the
+  4.5...)
+  with the minimal interaction change: one
+  extra press
+  on the same button.
+- A centralized change:
+  all the picker's consumers (the
+  profiles, issue #21's pop-up
+  rating window,
+  the quick
+  actions,
+  the search)
+  inherit the halves without
+  being touched.
+- The previous undo
+  ("pressing again removes")
+  stays as
+  the third
+  step of the cycle;
+  no
+  regression.
+- The displays (the
+  grid,
+  the read-only profile) and the episodes'
+  average correctly reflect
+  the halves.
 
-- El ciclo requiere un pulso más para quitar una valoración entera (3
-  pulsos en vez de 2); compensado por la uniformidad y documentado en
-  el manual.
-- El glifo «½» depende de la fuente del sistema; U+00BD tiene soporte
-  universal en las fuentes del proyecto (documentado en el ADR).
+**Negative:**
 
-**Neutras:**
+- The cycle
+  requires an extra press to remove a whole
+  rating (3 presses instead of the 2); compensated by the
+  uniformity and documented in the
+  manual.
+- The
+  "½" glyph depends on the system
+  font;
+  the
+  U+00BD has
+  universal support
+  on the project's
+  fonts
+  (documented
+  on the ADR).
 
-- No cambia el esquema de datos ni las exportaciones (ICS, backup): el
-  rating sigue siendo un número.
-- El ordenado por valoraciones no existe (`js/sorting.js` no ordena por
-  rating), por lo que no hay cambios ahí.
+**Neutral:**
 
-## Archivos creados/modificados
+- It does not change the
+  data schema nor the exports
+  (the
+  ICS, the
+  backup): the
+  rating keeps being a number.
+- The ratings'
+  sorting does not exist
+  (the
+  `js/sorting.js` does not sort
+  by rating), so there are no changes there.
 
-| Archivo | Cambio |
+## Created/modified files
+
+| File | Change |
 |---------|--------|
-| `js/ui.js` | **Modificado**: `normalizeRating`, `ratingButtonAriaLabel`, `ratingStarsHtml` (nuevos); `ratingPickerHtml` y `wireRatingAndGetValue` con medias y ciclo N → N−0.5 → 0; `renderEpisodeRows`, `applyEpisodeRowState` y handler de estrellas de episodio con `is-half`; `renderGrid` y `openReadOnlyModal` usan `ratingStarsHtml` |
-| `js/tv-progress.js` | **Modificado**: suelo de `computeEpisodeAverageRating` 1 → 0.5 |
-| `js/rating-modal.js` | **Modificado**: toast «Elige una valoración (de 1 a 5 estrellas, con medias).» |
-| `ocio/ocio.css` | **Modificado**: `.rating-picker button.is-half`, `.episode-rating__star.is-half`; selector agrupado `[data-theme="black"]` ampliado con `is-half` |
-| `docs/manual-de-usuario.md` | **Modificado**: secciones 5.3, 12 y 13.2 con el ciclo de medias estrellas |
-| `docs/adr-095-medias-estrellas-valoracion.md` | **Nuevo**: este documento |
-| `js/config.js`, `index.html`, `service-worker.js` | **Modificados**: bump de versión PWA `20260926` → `20260927` |
-| `tasks/task-issue-276.json` | Task file de la tarea (status `review` + bloque `pr` al publicar) |
+| `js/ui.js` | **Modified**: `normalizeRating`, `ratingButtonAriaLabel`, `ratingStarsHtml` (new); `ratingPickerHtml` and `wireRatingAndGetValue` with halves and the N → N−0.5 → 0 cycle; `renderEpisodeRows`, `applyEpisodeRowState` and the episodes' stars' handler with `is-half`; `renderGrid` and `openReadOnlyModal` use `ratingStarsHtml` |
+| `js/tv-progress.js` | **Modified**: the `computeEpisodeAverageRating`'s floor getting lowered 1 → 0.5 |
+| `js/rating-modal.js` | **Modified**: the toast “Choose a rating (from 1 to 5 stars, with halves).” |
+| `ocio/ocio.css` | **Modified**: `.rating-picker button.is-half`, `.episode-rating__star.is-half`; the grouped `[data-theme="black"]` selector expanded with `is-half` |
+| `docs/manual-de-usuario.md` | **Modified**: the 5.3, 12 and 13.2 sections with the half-stars cycle |
+| `docs/adr-095-medias-estrellas-valoracion.md` | **New**: this document |
+| `js/config.js`, `index.html`, `service-worker.js` | **Modified**: the PWA's version bump `20260926` → `20260927` |
+| `tasks/task-issue-276.json` | The task's task file (the status of `review` + the `pr` block when publishing) |
 
 Related issue: #276

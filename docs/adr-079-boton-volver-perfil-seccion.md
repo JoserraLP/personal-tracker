@@ -1,121 +1,164 @@
-# ADR-079: El botón volver del perfil regresa a la sección previa (Ocio o Recetas) (issue #213)
+# ADR-079: The profile's back button returns to the previous section (Ocio or Recetas) (issue #213)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-11
 
-## Contexto
+## Context
 
-La issue #213 (type: bug, priority: high) detecta que **el botón de
-volver del perfil siempre llevaba a la sección de Ocio**, aunque el
-usuario hubiera entrado al perfil desde la sección de **Recetas**.
-Con la llegada de Recetas (issue #64, ADR-076) la web tiene dos
-secciones de primer nivel de contenido (Ocio y Recetas), y el patrón
-«volver siempre a Ocio» ya no reflejaba la intención del usuario.
+Issue #213 (type: bug, priority: high) detects that **the
+profile's back button always went to the Ocio section**, even though the
+user had entered the profile from the **Recetas**
+section. With Recipes' arrival (issue #64,
+ ADR-076) the web has two top-level content sections
+(Ocio and Recipes), and the
+"always go back to Ocio" pattern no longer reflected the user's
+intent.
 
-Estado previo (construido en ADR-061, ADR-077 y ADR-078):
+Previous state (built in ADR-061, ADR-077 and ADR-078):
 
-- El perfil tiene su propia cabecera (`#profile-view__header`) con la
-  **flecha de volver** (`#btn-close-profile`, `.icon-btn` con SVG
-  `arrow-left`, ADR-061) y las pestañas (Estadísticas/Amigos/
-  Actividad/Ajustes) en la misma fila; la **cabecera global no
-  aparece** en el perfil (ADR-077, issue #206). Es una excepción al
-  componente único de pestañas `tabs--bar` (ADR-078).
-- El handler de `#btn-close-profile` en `js/profile.js` cerraba la
-  vista con un toggle manual y **siempre** hacía
-  `navigate(normalizeTabKey("ocio", getLastOcioKey()))`: volvía a la
-  última pestaña de Ocio activa (normalizada a la primera visible si
-  quedó oculta, issue #97), ignorando que el usuario podía venir de
-  Recetas.
-- El router (`js/router.js`) ya mantenía memorias por sección
-  (`lastOcioKey` y `lastRecipesTab`, actualizadas en `applyRoute`),
-  pero **no recordaba cuál había sido la última sección de primer
-  nivel** (ocio o recetas) antes de entrar al perfil.
+- The profile has its own header (`#profile-view__header`) with
+  the **back arrow** (`#btn-close-profile`, an
+  `.icon-btn` with the
+  `arrow-left` SVG, ADR-061) and the tabs
+  (Estadísticas/Amigos/Actividad/Ajustes)
+  on the same row; the **global header does not show** in the
+  profile (ADR-077, issue #206).
+  It is an exception to the single
+  `tabs--bar` tabs component (ADR-078).
+- `js/profile.js`'s `#btn-close-profile`
+  handler closed the
+  view with a manual toggle and **always** did
+  `navigate(normalizeTabKey("ocio", getLastOcioKey()))`: it went back to
+  the last active
+  Ocio tab (normalized to the first visible
+  if it was hidden, issue #97), ignoring that the user could
+  be coming from Recipes.
+- The router (`js/router.js`) already kept per-section memories
+  (`lastOcioKey` and
+  `lastRecipesTab`, updated in
+  `applyRoute`),
+  but it **did not remember
+  which had been the last top-level section**
+  (ocio or recetas) before entering the profile.
 
-## Decisión
+## Decision
 
-1. **Memoria de última sección en el router** (`js/router.js`): nueva
-   variable `lastSection` (valor inicial `"ocio"`) que se actualiza en
-   `applyRoute()` **solo** cuando la ruta es de `ocio` o `recetas`
-   (las rutas de `perfil`, deliberadamente, NO la actualizan: al
-   entrar en el perfil queda a salvo la sección de contenido desde la
-   que se vino). Se exporta `getLastSection()` y se añade al API
-   devuelto por `initRouter`.
-2. **El handler de volver decide por sección** (`js/profile.js`):
-   - Si `getLastSection() === "recetas"` → navega a
+1. **A last-section memory in the router** (`js/router.js`): a new
+   `lastSection` variable (initial value `"ocio"`) updated in
+   `applyRoute()` **only** when the route is
+   `ocio` or
+   `recetas` (the
+   `perfil` routes deliberately do NOT update it: on entering the
+   profile, the content section one came
+   from is protected).
+   `getLastSection()` is exported and added to the
+   API
+   returned by `initRouter`.
+2. **The back handler decides per section** (`js/profile.js`):
+   - If `getLastSection() === "recetas"` → it navigates to
      `{ section: "recetas", tab: normalizeTabKey("recetas",
-     getLastRecipesTab()) }`. El cambio de hash dispara `onRoute` →
-     `openRecipes({ fromRouter: true })` (js/recipes.js), que cierra
-     `#app` y `#profile-view`, destapa `#recipes-view` con su pestaña
-     y repinta la cabecera global: **no hace falta tocar `#app`** en
-     esta rama.
-   - Si no (Ocio o valor por defecto) → comportamiento previo:
-     cerrar `#profile-view`, mostrar `#app` y navegar a
-     `normalizeTabKey("ocio", getLastOcioKey())` (última pestaña de
-     Ocio, normalizada a la primera visible si quedó oculta, #97).
-   - El toggle manual de cierre de la vista se conserva (cubre el caso
-     de navegar sin cambiar el hash).
-3. **Sin cambios de CSS**: no hay cambios visuales; solo lógica de
-   navegación.
-4. **Bump PWA** `20260908` → `20260909` (`scripts/bump-version.sh`,
-   toca `js/config.js`, `index.html`, `service-worker.js`), práctica
-   de un bump por PR (ADR-049/059).
-5. **Manual de usuario actualizado** (§3.2 y §15): la flecha de volver
-   del perfil regresa a la sección (Ocio o Recetas) desde la que se
-   entró, con la pestaña que se tenía activa (regla 3 de AGENTS.md).
+     getLastRecipesTab()) }`. The hash's change fires
+     the `onRoute` →
+     `openRecipes({ fromRouter: true })` (js/recipes.js), which closes
+     `#app` and
+     `#profile-view`, uncovers
+     `#recipes-view` with its tab and repaints the global
+     header: there is no need to touch
+     `#app` on this
+     branch.
+   - Otherwise (Ocio or the default value) → the previous
+     behavior:
+     closing `#profile-view`, showing
+     `#app` and navigating to
+     `normalizeTabKey("ocio", getLastOcioKey())` (the last Ocio tab,
+     normalized to the first visible if it was hidden,
+     #97).
+   - The manual
+     close toggle of the view is kept (it
+     covers navigating without changing the hash).
+3. **No CSS changes**: there are no visual changes; only
+   navigation logic.
+4. **PWA
+   bump** `20260908` → `20260909` (`scripts/bump-version.sh`,
+   touching `js/config.js`, `index.html`,
+   `service-worker.js`), the
+   one-bump-per-PR
+   practice (ADR-049/059).
+5. **User manual updated** (§3.2 and §15): the profile's
+   back arrow returns to the section one entered
+   from (Ocio or Recipes), with the tab that was active
+   (AGENTS.md's rule 3).
 
-### Toggles de vistas (verificado sobre el código real)
+### View toggles (verified against the real code)
 
-- **Rama Recetas**: `navigate({ section: "recetas", ... })` cambia el
-  hash (`#/perfil/...` → `#/recetas/...`) y dispara `onRoute` rama
-  `recetas` (js/app.js) → `recipesApi.openRecipes({ tab, fromRouter:
-  true })` (js/recipes.js `openRecipes`), que hace exactamente:
-  `#app.hidden`, `#profile-view.hidden`, `#recipes-view` visible y
-  alterna barra/paneles por pestaña. El propio onRoute re-normaliza la
-  pestaña con `normalizeTabKey` y reescribe la URL si quedó oculta
-  (#97). No hace falta mostrar `#app` ni tocar `#recipes-view` en el
-  handler.
-- **Rama Ocio**: se conserva el toggle manual actual (cerrar
-  `#profile-view` + mostrar `#app`) y el onRoute de Ocio re-oculta
-  `#profile-view` y `#recipes-view`, activa el panel y muestra `#app`
-  (condicional a `currentUser`) — sin regresiones respecto al
-  comportamiento previo.
+- **The Recipes branch**: `navigate({ section: "recetas", ... })` changes the
+   hash (`#/perfil/...` → `#/recetas/...`) and fires the
+   onRoute's `recetas` branch (js/app.js) → the
+   `recipesApi.openRecipes({ tab, fromRouter: true })` (js/recipes.js
+  `openRecipes`), which does exactly:
+   `#app.hidden`,
+   `#profile-view.hidden`, `#recipes-view` visible and
+   alternates bar/panels per tab. The onRoute itself re-normalizes the
+   tab with `normalizeTabKey` and rewrites the URLs if they were hidden
+   (#97). There is no need to show
+   `#app` nor touch `#recipes-view` on the
+   handler.
+- **The Ocio branch**: the current manual toggle is
+   kept
+   (close `#profile-view` + show
+   `#app`) and Ocio's
+   onRoute re-hides `#profile-view` and
+   `#recipes-view`, activates the panel and shows
+   `#app` (conditional on
+   `currentUser`) — with no regression from the previous
+   behavior.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Trazar el historial del navegador (history.back)**: descartado —
-  las memorias de sesión del router son la fuente de verdad existente
-  y evitan dependencias del historial (recarga, deep-link directo).
-- **Guard en el router para secciones ocultas en Ajustes**: descartado
-  — fuera de alcance de #213 y consistente con el comportamiento
-  preexistente de Ocio (el router no bloquea navegar a una sección
-  oculta por URL).
+- **Tracing the browser's history (history.back)**: rejected —
+   the router's session memories are the
+   existing source of truth and avoid
+   history dependencies (reload,
+   direct deep-link).
+- **A router guard for sections hidden in Settings**:
+   rejected — out of #213's
+   scope and consistent with
+   Ocio's pre-existing behavior (the
+   router does not block navigating to a section
+   hidden by URL).
 
-## Consecuencias
+## Consequences
 
-- **Positivas**: el volver del perfil refleja la intención real del
-  usuario (Ocio o Recetas) con su última pestaña activa; cero cambios
-  visuales; los edge cases quedan cubiertos (deep-link directo a
-  `#/perfil` sin sección visitada cae a Ocio por defecto; entrada
-  desde sidebar «Ajustes» o menú de perfil respeta la sección de
-  origen).
-- **Neutras**: las memorias `lastSection`/`lastOcioKey`/`lastRecipesTab`
-  son de sesión y no interfieren con el histórico atrás/adelante del
-  navegador (que sigue su propio historial de hash).
-- **Negativas**: ninguna conocida.
+- **Positive**: the profile's back reflects
+  the user's real intent (Ocio or Recipes)
+  with their last active tab; zero visual
+  changes; the edge cases are covered (a direct deep-link
+  to `#/perfil`
+  with no visited section falls back to Ocio by default; entry
+  from the sidebar's
+  "Ajustes" or the
+  profile menu respects the origin section).
+- **Neutral**: the
+  `lastSection`/`lastOcioKey`/`lastRecipesTab`
+  memories are per session and do not interfere with the
+  browser's back/forward history (which follows its
+  own
+  hash history).
+- **Negative**: none known.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/router.js` | **Modificado**: nueva memoria `lastSection` (default `"ocio"`) actualizada en `applyRoute()` solo para ocio/recetas; exportado `getLastSection()` y añadido al API de `initRouter`; comentario de cabecera ampliado |
-| `js/profile.js` | **Modificado**: import de `getLastRecipesTab`/`getLastSection`; handler de `#btn-close-profile` decide destino por `getLastSection()` (Recetas → última pestaña de Recetas normalizada; si no → Ocio) |
-| `js/config.js` | **Modificado**: `APP_VERSION` `20260908` → `20260909` |
-| `index.html` | **Modificado**: refs `?v=20260908` → `?v=20260909` |
-| `service-worker.js` | **Modificado**: 7 entradas versionadas `?v=20260908` → `?v=20260909` |
-| `docs/manual-de-usuario.md` | **Modificado**: §3.2 y §15 — la flecha de volver del perfil regresa a la sección (Ocio o Recetas) desde la que se entró, con su pestaña activa |
-| `docs/adr-079-boton-volver-perfil-seccion.md` | **Nuevo**: este documento |
+| `js/router.js` | **Modified**: the new `lastSection` memory (the default `"ocio"`) updated in `applyRoute()` only for ocio/recetas; `getLastSection()` exported and added to the `initRouter` API; header comment expanded |
+| `js/profile.js` | **Modified**: import of `getLastRecipesTab`/`getLastSection`; the `#btn-close-profile` handler chooses the destination by `getLastSection()` (Recipes → the last normalized Recipes tab; otherwise → Ocio) |
+| `js/config.js` | **Modified**: `APP_VERSION` `20260908` → `20260909` |
+| `index.html` | **Modified**: the `?v=20260908` refs → `?v=20260909` |
+| `service-worker.js` | **Modified**: 7 versioned entries `?v=20260908` → `?v=20260909` |
+| `docs/manual-de-usuario.md` | **Modified**: §3.2 and §15 — the profile's back arrow returns to the section (Ocio or Recipes) one entered from, with its active tab |
+| `docs/adr-079-boton-volver-perfil-seccion.md` | **New**: this document |
 
 Related issue: #213

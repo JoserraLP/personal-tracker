@@ -1,44 +1,43 @@
-# ADR-112: Identidad visual IMDb (plana, sin Liquid Glass)
+# ADR-112: IMDb visual identity (flat, no Liquid Glass)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-10-26
 
-## Contexto
-Tras la iteración "IMDb + Apple Liquid Glass" (ADR-109) el propietario
-pide retirar el vidrio de Apple y referenciar la web de imdb.com para
-toda la UI.
+## Context
+After the "IMDb + Apple Liquid Glass" iteration (ADR-109) the owner asks
+to remove the Apple glass and reference imdb.com's website for the whole
+UI.
 
-Referencia IMDb (2026): portada en negro, acento dorado de marca
-(#F5C518) en titulares y valoraciones, superficies planas sin blur,
-tarjetas poster-forward y tipografía de catálogo en versalitas.
+IMDb reference (2026): black cover, brand gold accent (#F5C518) on
+headings and ratings, flat surfaces with no blur, poster-forward cards
+and catalog typography in small caps.
 
-## Decisión
-Se sustituye la capa del ADR-109 por una capa de overrides plana
-(final de `css/styles.css` y `ocio/ocio.css`):
+## Decision
+The ADR-109 layer is replaced by a flat overrides layer (end of
+`css/styles.css` and `ocio/ocio.css`):
 
-1. **Sin Liquid Glass**: cero `backdrop-filter`/blur; superficies
-   sólidas por familia (oscura `--ink`/`--ink-raised`, clara
+1. **No Liquid Glass**: zero `backdrop-filter`/blur; solid surfaces per
+   family (dark `--ink`/`--ink-raised`, light
    `--paper-dim`/`--white`).
-2. **Dorado IMDb** (`--brand-gold` #f5c518 + `--brand-gold-ink`):
-   - Texto de titulares (`--heading`) SOLO en la familia oscura
-     (sobre papel daría ~1.7:1; en clara el heading es `--ink`).
-   - Botón primario y escudo de valoración auto-colored (dorado con
-     tinta oscura ≈ 10:1) en los 4 modos.
-3. **Tarjetas poster-forward**: sólidas, hairline, radio 10px
-   (`--radius-card`), sin perforación de ticket, cover 210px, sello
-   de estado transparente a borde, chip de valoración escudo dorado,
-   contador ×N píldora plana.
-4. **Titulares de sección** en sans versalitas con tracking.
-5. Barras (cabecera/pestañas), dropdowns, toast y modales planos con
-   hairline.
+2. **IMDb gold** (`--brand-gold` #f5c518 + `--brand-gold-ink`):
+   - Heading text (`--heading`) ONLY in the dark family (on paper it
+     would give ~1.7:1; in light the heading is `--ink`).
+   - Primary button and rating shield auto-colored (gold with dark ink
+     ≈ 10:1) in all 4 modes.
+3. **Poster-forward cards**: solid, hairline, 10px radius
+   (`--radius-card`), no ticket perforation, 210px cover, transparent
+   status stamp with border, gold shield rating chip, ×N counter as a
+   flat pill.
+4. **Section headings** in sans small caps with tracking.
+5. Bars (header/tabs), dropdowns, toast and modals flat with hairline.
 
-Contraste verificado (los 4 modos, con los overrides de familia
-re-afirmados sobre la base), estados de tarjeta conservados.
+Verified contrast (all 4 modes, with the family overrides re-asserted
+over the base); card states preserved.
 
-## Consecuencias
-- Se elimina la dependencia del `@supports`/fallback de
-  backdrop-filter (mejor rendimiento en móvil y navegadores viejos).
-- El manual no cambia (re-estilización sin comportamiento).
+## Consequences
+- The `@supports`/backdrop-filter fallback dependency is removed
+  (better performance on mobile and old browsers).
+- The manual does not change (re-styling without behavior).

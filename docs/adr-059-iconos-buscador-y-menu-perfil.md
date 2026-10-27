@@ -1,197 +1,197 @@
-# ADR-059: Iconos en el buscador global y en el menú de perfil (issue #134)
+# ADR-059: Icons in the global search and in the profile menu (issue #134)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-09
 
-## Contexto
+## Context
 
-La issue #134 (type: style) pide dos mejoras visuales relacionadas con
-los iconos:
+Issue #134 (type: style) asks for two icon-related visual improvements:
 
-1. **Menú desplegable del perfil**: el dropdown (`#profile-dropdown`,
-   `index.html`) tenía 4 entradas de sección (Estadísticas, Amigos,
-   Actividad, Ajustes) + Cerrar sesión, **todas sin icono**.
-2. **Buscador global**: la barra superior (`#global-search-results`,
-   `js/global-search.js`) usaba **emojis** 📺/🎬/📚 para los tipos de
-   medio en los títulos de grupo («Catálogo · X» y resultados de
-   colección), y los botones de tipo (Serie/Película/Libro) no tenían
-   icono. En cambio, las **pestañas** (`index.html`,
-   `.tab--tv`/`.tab--movies`/`.tab--books`) ya usaban **SVGs inline**
-   con su color de acento (`--teal-reel` series, `--stamp` películas,
-   `--ochre-spine` libros).
+1. **Profile dropdown menu**: the dropdown (`#profile-dropdown`,
+   `index.html`) had 4 section entries (Estadísticas, Amigos,
+   Actividad, Ajustes) + Cerrar sesión, **all without icons**.
+2. **Global search**: the top bar (`#global-search-results`,
+   `js/global-search.js`) used **emojis** 📺/🎬/📚 for the media
+   types in the group titles («Catálogo · X» and collection results), and
+   the type buttons (Series/Movie/Book) had no icon. In contrast, the
+   **tabs** (`index.html`,
+   `.tab--tv`/`.tab--movies`/`.tab--books`) already used **inline SVGs**
+   with their accent color (`--teal-reel` series, `--stamp` movies,
+   `--ochre-spine` books).
 
-La issue pide: (a) un icono sencillo en cada sección del dropdown del
-perfil; (b) que los iconos de series/películas/libros de la búsqueda
-sean **los mismos que los de las pestañas** y usen también **su color**.
+The issue asks: (a) a simple icon on each section of the profile's
+dropdown; (b) the search's series/movies/books icons to be
+**the same as the tabs'** and also use **their color**.
 
-La implementación está validada (QA PASS, 6/6 criterios) y escaneada
-(seguridad PASS, 0 hallazgos); el manual de usuario se actualizó en la
-misma tarea (regla 3 de AGENTS.md). Este ADR documenta la decisión a
-posteriori.
+The implementation is validated (QA PASS, 6/6 criteria) and scanned
+(security PASS, 0 findings); the user manual was updated in the
+same task (AGENTS.md's rule 3). This ADR documents the decision
+retrospectively.
 
 Related issue: #134 — https://github.com/gonzalitojh/Registro-personal/issues/134
 
-## Decisión
+## Decision
 
-Añadir iconos al menú de perfil y unificar la iconografía del buscador
-global con la de las pestañas (mismos SVGs, mismos colores de acento).
+Add icons to the profile menu and unify the global search's iconography
+with the tabs' (same SVGs, same accent colors).
 
-### 1. `js/constants.js`: fuente canónica `MEDIA_ICONS`
+### 1. `js/constants.js`: canonical source `MEDIA_ICONS`
 
-Nuevo export:
+New export:
 
 ```js
 export const MEDIA_ICONS = { tv, movies, books }
 ```
 
-- Los SVGs se copian **verbatim** de las pestañas de `index.html`
+- The SVGs are copied **verbatim** from `index.html`'s tabs
   (`.tab--tv` / `.tab--movies` / `.tab--books`).
-- La fuente canónica queda **comentada en el propio archivo**: si
-  cambian las pestañas, hay que actualizar `MEDIA_ICONS` (issue #134).
+- The canonical source is **commented in the file itself**: if
+  the tabs change, `MEDIA_ICONS` must be updated (issue #134).
 
-### 2. `js/global-search.js`: los emojis se sustituyen por los SVGs
+### 2. `js/global-search.js`: the emojis are replaced by the SVGs
 
 - `import { MEDIA_ICONS } from "./constants.js"`.
-- `GROUPS[].icon` y `groupIcons` usan los SVGs de `MEDIA_ICONS`; el
-  grupo **amigos conserva el 👤** (no existe pestaña homóloga).
-- `renderTypeButtons()` añade
-  `<span class="global-search__type-icon" aria-hidden="true">` con el
-  SVG + la clase modificadora `global-search__type-btn--<key>` por tipo.
-- Los títulos de grupo llevan la clase `global-search__group-title--<key>`
-  (solo media; `friends` sin modificador) en `renderResults`,
-  `renderExternalSection` y `externalSectionLoadingHtml`.
+- `GROUPS[].icon` and `groupIcons` use `MEDIA_ICONS`' SVGs; the
+  **friends group keeps the 👤** (there is no homologous tab).
+- `renderTypeButtons()` adds
+  `<span class="global-search__type-icon" aria-hidden="true">` with the
+  SVG + the `global-search__type-btn--<key>` modifier class per type.
+- Group titles carry the `global-search__group-title--<key>` class
+  (media only; `friends` without modifier) in `renderResults`,
+  `renderExternalSection` and `externalSectionLoadingHtml`.
 
-### 3. `index.html`: iconos en el menú desplegable del perfil
+### 3. `index.html`: icons in the profile's dropdown menu
 
-Los 5 items del dropdown (`#profile-dropdown`) incorporan un **SVG
-feather inline** cada uno, dentro de un `span aria-hidden="true"`:
+Each of the dropdown's (`#profile-dropdown`) 5 items incorporates an
+**inline feather SVG**, inside a `span aria-hidden="true"`:
 
-| Item | Icono feather |
+| Item | Feather icon |
 |------|---------------|
 | Estadísticas | `bar-chart-2` |
 | Amigos | `users` |
 | Actividad | `activity` (pulse) |
-| Ajustes | el mismo engranaje que usa `js/sidebar.js` |
+| Ajustes | the same gear used by `js/sidebar.js` |
 | Cerrar sesión | `log-out` |
 
-Se conservan `role="menuitem"`, `data-section` e ids existentes
-(`#btn-profile-logout`): el wiring de `js/profile.js` no cambia.
+`role="menuitem"`, `data-section` and the existing ids
+(`#btn-profile-logout`) are kept: `js/profile.js`'s wiring does not
+change.
 
-### 4. `css/styles.css`: flex en el dropdown y acento por tipo
+### 4. `css/styles.css`: flex on the dropdown and per-type accent
 
 - `.profile-dropdown__item`: `display:flex` + `gap: 0.6rem`; `svg`
-  `1.05rem` con `color: currentColor` (el item de logout hereda
+  `1.05rem` with `color: currentColor` (the logout item inherits
   `--stamp-dark`).
-- `.global-search__type-btn`: `inline-flex` + `gap: 6px` + variable
-  `--type-accent` por tipo (`--tv` → `--teal-reel`, `--movies` →
-  `--stamp`, `--books` → `--ochre-spine`); el icono se colorea con el
-  acento.
-- `hover` e `is-active` usan `var(--type-accent)`; en `is-active` el
-  `svg` pasa a `color: inherit` (evita acento-sobre-acento) y hay una
-  **excepción** `.global-search__type-btn--books.is-active { color:
-  var(--ink) }` por contraste de texto sobre fondo ocre.
-- `.global-search__group-title svg`: `1rem`, coloreado con el acento
-  por tipo.
+- `.global-search__type-btn`: `inline-flex` + `gap: 6px` + a
+  `--type-accent` variable per type (`--tv` → `--teal-reel`, `--movies`
+  → `--stamp`, `--books` → `--ochre-spine`); the icon is colored
+  with the accent.
+- `hover` and `is-active` use `var(--type-accent)`; in `is-active` the
+  `svg` goes to `color: inherit` (avoids accent-on-accent) and there is an
+  **exception** `.global-search__type-btn--books.is-active { color:
+  var(--ink) }` for text contrast over the ochre background.
+- `.global-search__group-title svg`: `1rem`, colored with the
+  per-type accent.
 
-### 5. Documentación, manual de usuario y PWA
+### 5. Documentation, user manual and PWA
 
-- **Manual** (`docs/manual-de-usuario.md`): §7.2 (los resultados de la
-  búsqueda se agrupan con los mismos iconos de las pestañas, cada uno
-  en su color — series verde, películas rojo, libros ocre — y el icono
-  👤 para amigos) y §13 (cada opción del menú de perfil lleva su
-  icono).
-- **Bump PWA** `20260831` → `20260832` (un bump por PR que toca
+- **Manual** (`docs/manual-de-usuario.md`): §7.2 (the search's results
+  are grouped with the same icons as the tabs, each in its color — series
+  green, movies red, books ochre — and the 👤 icon for friends) and §13
+  (each option of the profile menu carries its icon).
+- **PWA bump** `20260831` → `20260832` (one bump per PR touching
   assets, cf. ADR-049): `js/config.js` (`APP_VERSION`), `index.html`
-  (`?v=20260832` ×3) y `service-worker.js` (`?v=20260832` ×6), vía
+  (`?v=20260832` ×3) and `service-worker.js` (`?v=20260832` ×6), via
   `scripts/bump-version.sh`.
 
-### 6. Entrega
+### 6. Delivery
 
-Rama `style/issue-134-iconos-desplegable-perfil` con 4 micro-commits:
+Branch `style/issue-134-iconos-desplegable-perfil` with 4 micro-commits:
 
-- `1d668e5` feat: iconos de tipo en el buscador global con colores de
-  pestaña (issue #134)
-- `d3a68e1` feat: iconos en el menú desplegable del perfil (issue #134)
-- `7aac898` style: acento por tipo en buscador y flex en items del menú
-  de perfil (issue #134)
-- `065e87a` chore: bump de versión PWA 20260832 y manual con iconos de
-  buscador y menú (issue #134)
+- `1d668e5` feat: type icons in the global search with the tabs'
+  colors (issue #134)
+- `d3a68e1` feat: icons in the profile's dropdown menu (issue #134)
+- `7aac898` style: per-type accent in the search and flex in the profile
+  menu's items (issue #134)
+- `065e87a` chore: PWA version bump 20260832 and manual with the
+  search's and menu's icons (issue #134)
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Mantener los emojis 📺/🎬/📚 en la búsqueda**: descartado — la
-  issue pide explícitamente los mismos iconos que las pestañas con su
-  color; los emojis no pueden heredar el acento por tipo y rompen la
-  coherencia visual con el resto de la interfaz.
-- **Generar las pestañas por JS** (renderizar su markup desde
-  `MEDIA_ICONS` para evitar la duplicación del SVG): descartado — scope
-  creep: el patrón del repo es markup estático con SVG inline en
-  `index.html`; el cambio se limita a documentar la fuente canónica en
-  un comentario de `constants.js`.
-- **Color fijo teal en los botones de tipo activos**: descartado —
-  rompería la coherencia con el acento por tipo (cada medio tiene su
-  color de pestaña); solo se acepta la excepción puntual de
-  `books.is-active` con `var(--ink)` por contraste sobre el ocre.
-- **Iconos en el feed de actividad de `js/ui.js`**: NO-GOAL declarado —
-  los emojis de `eventIcon()` (`js/ui.js`, líneas 2085-2090: 🎬/📺/🏁/
-  📖/📚/📌) pertenecen a otra feature (feed de actividad, ADR-015) y no
-  se tocan; la issue #134 cubre solo el buscador y el menú de perfil.
+- **Keeping the 📺/🎬/📚 emojis in the search**: rejected — the issue
+  explicitly asks for the same icons as the tabs with their color; emojis
+  cannot inherit the per-type accent and break the visual coherence
+  with the rest of the interface.
+- **Generating the tabs via JS** (rendering their markup from
+  `MEDIA_ICONS` to avoid duplicating the SVG): rejected — scope
+  creep: the repo's pattern is static markup with inline SVG in
+  `index.html`; the change is limited to documenting the canonical source in
+  a `constants.js` comment.
+- **Fixed teal color on the active type buttons**: rejected — it would
+  break the coherence with the per-type accent (each medium has its tab
+  color); only the `books.is-active` exception with `var(--ink)` is
+  accepted for contrast on the ochre.
+- **Icons in `js/ui.js`'s activity feed**: declared NO-GOAL — the emojis
+  of `eventIcon()` (`js/ui.js`, lines 2085-2090: 🎬/📺/🏁/
+  📖/📚/📌) belong to another feature (activity feed, ADR-015) and are
+  not touched; issue #134 covers only the search and the profile menu.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Menú de perfil más reconocible**: cada sección (y Cerrar sesión)
-  tiene su icono feather; la lectura del menú es más rápida.
-- **Buscador coherente con las pestañas**: mismos SVGs y mismos acentos
-  (`--teal-reel`/`--stamp`/`--ochre-spine`) en títulos de grupo y
-  botones de tipo; se elimina la mezcla emojis/SVG.
-- **Accesibilidad**: los iconos van en `span aria-hidden="true"` y los
-  SVGs conservan su `aria-hidden` — no duplican el texto legible; el
-  grupo amigos sigue identificado con 👤.
-- **Wiring intacto**: `role`/`data-section`/ids del dropdown no
-  cambian; `js/profile.js` no se toca.
-- **Manual al día**: regla 3 de AGENTS.md cumplida en la misma tarea
-  (§7.2 y §13).
-- **QA y seguridad PASS antes de documentar**: la decisión está
-  validada en la práctica (6/6 criterios, 0 hallazgos).
+- **More recognizable profile menu**: each section (and Cerrar sesión)
+  has its feather icon; reading the menu is faster.
+- **Search coherent with the tabs**: same SVGs and same accents
+  (`--teal-reel`/`--stamp`/`--ochre-spine`) on group titles and
+  type buttons; the emoji/SVG mix is removed.
+- **Accessibility**: the icons go in `span aria-hidden="true"` and the
+  SVGs keep their `aria-hidden` — they do not duplicate the readable
+  text; the friends group stays identified with 👤.
+- **Wiring intact**: the dropdown's `role`/`data-section`/ids do
+  not change; `js/profile.js` is not touched.
+- **Manual up to date**: AGENTS.md's rule 3 met in the same task
+  (§7.2 and §13).
+- **QA and security PASS before documenting**: the decision is
+  validated in practice (6/6 criteria, 0 findings).
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Markup SVG duplicado**: las pestañas en `index.html` y
-  `MEDIA_ICONS` en `js/constants.js` son dos copias del mismo SVG.
-  Riesgo de desincronización si cambian las pestañas; mitigado con el
-  comentario de fuente canónica en `constants.js`.
-- **Excepción de contraste ad-hoc**: `books.is-active` con `var(--ink)`
-  es una regla puntual que habrá que revisar si cambia el acento ocre.
-- **Cambio visual en la búsqueda**: quien reconocía los emojis de los
-  grupos ve ahora iconos; mitigado con la actualización del manual
+- **Duplicated SVG markup**: the tabs in `index.html` and
+  `MEDIA_ICONS` in `js/constants.js` are two copies of the same SVG.
+  Desync risk if the tabs change; mitigated by the canonical-source
+  comment in `constants.js`.
+- **Ad-hoc contrast exception**: `books.is-active` with `var(--ink)`
+  is a one-off rule to be revisited if the ochre accent changes.
+- **Visual change in the search**: whoever recognized the groups'
+  emojis now sees icons; mitigated by the manual's update
   (§7.2).
 
-### Neutras
+### Neutral
 
-- **Bump PWA de rutina**: `20260831` → `20260832` siguiendo la práctica
-  de un bump por PR (ADR-049), aplicado con `scripts/bump-version.sh`.
-- **ADR históricos intactos**: los que mencionan emojis 📺🎬📚 (p. ej.
-  `adr-038-barralateral-navegacion.md`) son registro histórico del
-  estado previo y **no se modifican**.
-- **Emojis del feed de actividad sin cambios**: `eventIcon()` de
-  `js/ui.js` queda como estaba (feature aparte, NO-GOAL de esta issue).
+- **Routine PWA bump**: `20260831` → `20260832` following the
+  one-bump-per-PR practice (ADR-049), applied with
+  `scripts/bump-version.sh`.
+- **Historical ADRs intact**: the ones mentioning the 📺🎬📚 emojis (e.g.
+  `adr-038-barralateral-navegacion.md`) are historical records of the
+  previous state and are **not modified**.
+- **Activity feed's emojis unchanged**: `js/ui.js`'s `eventIcon()` stays
+  as it was (a separate feature, this issue's NO-GOAL).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/constants.js` | **Modificado**: nuevo export `MEDIA_ICONS = { tv, movies, books }` con los SVGs de las pestañas copiados verbatim de `index.html` (fuente canónica comentada en el propio archivo, issue #134) |
-| `js/global-search.js` | **Modificado**: import de `MEDIA_ICONS`; `GROUPS[].icon` y `groupIcons` usan los SVGs (amigos conserva 👤); `renderTypeButtons()` añade `<span class="global-search__type-icon" aria-hidden="true">` + clase `global-search__type-btn--<key>`; títulos de grupo con `global-search__group-title--<key>` (solo media; friends sin modificador) en `renderResults`, `renderExternalSection` y `externalSectionLoadingHtml` |
-| `index.html` | **Modificado**: los 5 items del dropdown del perfil con SVGs feather inline (Estadísticas=`bar-chart-2`, Amigos=`users`, Actividad=`activity`, Ajustes=el engranaje de `js/sidebar.js`, Cerrar sesión=`log-out`), cada uno en un `span aria-hidden`; conservados `role`/`data-section`/ids; bump `?v=20260831` → `?v=20260832` (×3) |
-| `css/styles.css` | **Modificado**: `.profile-dropdown__item` flex + `gap: 0.6rem` + `svg` `1.05rem` `color: currentColor` (el logout hereda `--stamp-dark`); `.global-search__type-btn` inline-flex + `gap: 6px` + `--type-accent` por tipo (`--tv`→`--teal-reel`, `--movies`→`--stamp`, `--books`→`--ochre-spine`); icono coloreado con el acento; hover e is-active con `var(--type-accent)`; en is-active el svg usa `color: inherit` y excepción `--books.is-active { color: var(--ink) }`; `.global-search__group-title svg` `1rem` con acento por tipo |
-| `js/config.js` | **Modificado**: `APP_VERSION` `20260831` → `20260832` |
-| `service-worker.js` | **Modificado**: bump `?v=20260831` → `?v=20260832` en los 6 assets versionados de `STATIC_ASSETS` (vía `scripts/bump-version.sh`) |
-| `docs/manual-de-usuario.md` | **Modificado**: §7.2 (los resultados de la búsqueda se agrupan con los mismos iconos de las pestañas, cada uno en su color, y el 👤 para amigos) y §13 (cada opción del menú de perfil lleva su icono) — regla 3 de AGENTS.md |
-| `docs/adr-059-iconos-buscador-y-menu-perfil.md` | **Nuevo**: este documento |
+| `js/constants.js` | **Modified**: new export `MEDIA_ICONS = { tv, movies, books }` with the tabs' SVGs copied verbatim from `index.html` (canonical source commented in the file itself, issue #134) |
+| `js/global-search.js` | **Modified**: import of `MEDIA_ICONS`; `GROUPS[].icon` and `groupIcons` use the SVGs (friends keeps 👤); `renderTypeButtons()` adds `<span class="global-search__type-icon" aria-hidden="true">` + class `global-search__type-btn--<key>`; group titles with `global-search__group-title--<key>` (media only; friends without modifier) in `renderResults`, `renderExternalSection` and `externalSectionLoadingHtml` |
+| `index.html` | **Modified**: the profile dropdown's 5 items with inline feather SVGs (Estadísticas=`bar-chart-2`, Amigos=`users`, Actividad=`activity`, Ajustes=`js/sidebar.js`'s gear, Cerrar sesión=`log-out`), each in an `aria-hidden` span; `role`/`data-section`/ids kept; bump `?v=20260831` → `?v=20260832` (×3) |
+| `css/styles.css` | **Modified**: `.profile-dropdown__item` flex + `gap: 0.6rem` + `svg` `1.05rem` `color: currentColor` (logout inherits `--stamp-dark`); `.global-search__type-btn` inline-flex + `gap: 6px` + per-type `--type-accent` (`--tv`→`--teal-reel`, `--movies`→`--stamp`, `--books`→`--ochre-spine`); icon colored with the accent; hover and is-active with `var(--type-accent)`; in is-active the svg uses `color: inherit` and the `--books.is-active { color: var(--ink) }` exception; `.global-search__group-title svg` `1rem` with per-type accent |
+| `js/config.js` | **Modified**: `APP_VERSION` `20260831` → `20260832` |
+| `service-worker.js` | **Modified**: bump `?v=20260831` → `?v=20260832` on the 6 versioned assets of `STATIC_ASSETS` (via `scripts/bump-version.sh`) |
+| `docs/manual-de-usuario.md` | **Modified**: §7.2 (the search's results group with the same icons as the tabs, each in its color, and 👤 for friends) and §13 (each option of the profile menu carries its icon) — AGENTS.md's rule 3 |
+| `docs/adr-059-iconos-buscador-y-menu-perfil.md` | **New**: this document |
 
 Related issue: #134 — https://github.com/gonzalitojh/Registro-personal/issues/134

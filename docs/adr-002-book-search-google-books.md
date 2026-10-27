@@ -1,83 +1,83 @@
-# ADR-002: Búsqueda de libros con Google Books API y agrupación inteligente
+# ADR-002: Book search with Google Books API and smart grouping
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Contexto
-La búsqueda de libros usaba Open Library como fuente principal y Google Books como respaldo. Aunque Open Library agrupa por obra (un libro = un resultado), su calidad de metadatos es inferior: sinopsis limitada, menos portadas disponibles, y resultados a veces incompletos. Google Books tiene metadatos superiores (sinopsis completas, múltiples portadas por edición, conteo de páginas) pero agrupa por edición, lo que inundaba la lista con la misma novela en tapa dura, bolsillo, inglés, francés...
+## Context
+Book search used Open Library as the primary source and Google Books as a fallback. Although Open Library groups by work (one book = one result), its metadata quality is lower: limited synopses, fewer covers available, and sometimes incomplete results. Google Books has superior metadata (complete synopses, multiple covers per edition, page counts) but groups by edition, which flooded the list with the same novel in hardcover, paperback, English, French...
 
-El usuario prefería la calidad de resultados de Google Books pero quería evitar la duplicación por edición.
+The user preferred the quality of Google Books results but wanted to avoid duplication by edition.
 
-## Decisión
-Cambiar la fuente principal de búsqueda de libros a **Google Books API**, implementando una **agrupación inteligente por título+autor** que consolida múltiples ediciones de la misma obra en un único resultado. Al añadir un libro con múltiples ediciones agrupadas, se muestra un **modal de selección** donde el usuario puede elegir:
+## Decision
+Switch the primary book search source to the **Google Books API**, implementing **smart grouping by title+author** that consolidates multiple editions of the same work into a single result. When adding a book with multiple grouped editions, a **selection modal** is shown where the user can choose:
 
-1. **Portada**: entre todas las portadas disponibles de todas las ediciones agrupadas.
-2. **Sinopsis**: entre las diferentes sinopsis disponibles (si difieren entre ediciones).
+1. **Cover**: among all covers available from all grouped editions.
+2. **Synopsis**: among the different synopses available (if they differ between editions).
 
-Open Library se mantiene como fuente de respaldo cuando Google Books no encuentra resultados o falla.
+Open Library is kept as the fallback source when Google Books finds no results or fails.
 
-### Flujo de datos (nuevo)
+### Data flow (new)
 
 ```
-Consulta del usuario
+User query
   │
   ▼
-searchBooks() ─── Google Books primero
+searchBooks() ─── Google Books first
   │
-  ├─ Google Books devuelve items crudos (múltiples ediciones)
+  ├─ Google Books returns raw items (multiple editions)
   │     │
   │     ▼
-  │  groupBooksByWork()  ← agrupa por título+autor normalizados
-  │     │                  fusiona covers[], descriptions[]
-  │     │                  elige mejor edición representante
+  │  groupBooksByWork()  ← groups by normalized title+author
+  │     │                  merges covers[], descriptions[]
+  │     │                  picks the best representative edition
   │     ▼
-  │  Resultados enriquecidos con allCovers[], allDescriptions[], editionsCount
+  │  Results enriched with allCovers[], allDescriptions[], editionsCount
   │
-  ├─ Si no hay resultados → respaldo Open Library (sin cambios)
-  │
-  ▼
-renderSearchResults()  ← muestra badge "X eds." para libros agrupados
+  ├─ If no results → Open Library fallback (unchanged)
   │
   ▼
-Usuario pulsa "Añadir"
+renderSearchResults()  ← shows "X eds." badge for grouped books
   │
-  ├─ Si 1 portada + 1 sinopsis → ruta rápida (sin modal)
+  ▼
+User presses "Add"
   │
-  ├─ Si múltiples portadas O sinopsis
+  ├─ If 1 cover + 1 synopsis → quick path (no modal)
+  │
+  ├─ If multiple covers OR synopses
   │     │
   │     ▼
-  │  openBookConfirmModal()  ← selector de portada + sinopsis
+  │  openBookConfirmModal()  ← cover + synopsis picker
   │     │
   │     ▼
-  │  Usuario elige → addItem() con valores seleccionados
+  │  User chooses → addItem() with selected values
   │
   ▼
-Libro guardado en Firestore (estructura sin cambios)
+Book saved to Firestore (structure unchanged)
 ```
 
-### Detección cruzada de "ya añadido"
-Un libro añadido vía Open Library (externalId "/works/...") se detecta también en resultados de Google Books (y viceversa) mediante coincidencia por título+autor normalizados, no solo por externalId.
+### Cross-detection of "already added"
+A book added via Open Library (externalId "/works/...") is also detected in Google Books results (and vice versa) by matching normalized title+author, not only by externalId.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **Mejores resultados**: Google Books ofrece sinopsis completas, más portadas, y metadatos más ricos.
-- **Sin duplicación**: La agrupación por título+autor consolida ediciones de la misma obra.
-- **Control del usuario**: Al añadir, se puede elegir portada y sinopsis de entre todas las opciones.
-- **Compatibilidad cruzada**: Un libro añadido por Open Library se reconoce en búsquedas de Google Books.
-- **Respaldado**: Si Google Books falla, Open Library sigue disponible.
+### Positive
+- **Better results**: Google Books offers complete synopses, more covers, and richer metadata.
+- **No duplication**: Grouping by title+author consolidates editions of the same work.
+- **User control**: When adding, the user can pick the cover and synopsis from all options.
+- **Cross-compatibility**: A book added via Open Library is recognized in Google Books searches.
+- **Fallback available**: If Google Books fails, Open Library remains available.
 
-### Negativos
-- **Complejidad adicional**: La agrupación y el modal de selección añaden código.
-- **Dependencia de Google Books**: Si su API cambia o limita el acceso, se cae al respaldo de Open Library.
-- **Posible sobrerrepresentación**: La normalización de títulos puede agrupar libros distintos con títulos similares (riesgo bajo, mitigado por incluir el autor en la clave).
+### Negative
+- **Added complexity**: The grouping and the selection modal add code.
+- **Dependence on Google Books**: If its API changes or restricts access, the fallback to Open Library kicks in.
+- **Possible over-grouping**: Title normalization may group different books with similar titles (low risk, mitigated by including the author in the key).
 
-### Neutros
-- **Estructura Firestore sin cambios**: No se necesita migración de datos existentes.
-- **UX sin cambios en películas/series**: Solo afecta a la pestaña de libros.
+### Neutral
+- **Firestore structure unchanged**: No migration of existing data is needed.
+- **UX unchanged for movies/series**: Only affects the books tab.
 
-## Archivos modificados
-- `js/api-books.js` — Reescrito: Google Books como fuente principal, `groupBooksByWork()`, `normalizeTitle()`, `pickBestEdition()`
-- `js/search.js` — Modificado: detección cruzada de "ya añadido", modal de confirmación para libros
-- `js/ui.js` — Modificado: `renderSearchResults()` con parámetro `customCheck`, badge de ediciones, `openBookConfirmModal()`
-- `ocio/ocio.css` — Modificado: estilos para cover picker, description picker, badge de ediciones
+## Files modified
+- `js/api-books.js` — Rewritten: Google Books as primary source, `groupBooksByWork()`, `normalizeTitle()`, `pickBestEdition()`
+- `js/search.js` — Modified: cross-detection of "already added", confirmation modal for books
+- `js/ui.js` — Modified: `renderSearchResults()` with `customCheck` parameter, editions badge, `openBookConfirmModal()`
+- `ocio/ocio.css` — Modified: styles for cover picker, description picker, editions badge

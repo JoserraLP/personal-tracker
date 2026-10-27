@@ -1,248 +1,769 @@
-# ADR-095: Sección de Gimnasio (issue #62)
+# ADR-095: The Gym section (issue #62)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #62 pide una **nueva sección de gimnasio** con su propio
-endpoint `/gimnasio`, incluida en la barra lateral de navegación
-(igual que Ocio y Recetas), para **registrar entrenos**, **registrar
-los pesos y repeticiones** de cada ejercicio y **registrar
-ejercicios**. Pide además poder **cambiar el peso entre lbs y kg en
-todo momento**, investigar si existe alguna API de ejercicios de la
-que extraer información, y documentar con detalle cualquier idea útil
-adicional. Deben respetarse las convenciones del resto de secciones
-(barra superior, pestañas ocultables en Ajustes, responsividad y
-cuatro modos de tema).
+Issue #62 asks for a
+**new
+gym
+section** with its own
+`/gimnasio`
+endpoint, included in the
+navigation
+sidebar
+(like
+the Ocio and Recetas), to
+**log
+workouts**, to
+**log
+each exercise's weights and reps** and to
+**log
+exercises**. It also asks to
+**switch weights between
+lbs and kg at any moment**, to research whether an
+exercises'
+API exists
+to pull
+information from, and to document
+any extra useful idea in detail. The rest of the
+sections'
+conventions must be respected
+(the
+top
+bar, the hideable
+tabs in Settings, the
+responsiveness and the
+four theme
+modes).
 
-Precedentes que fijan el patrón de esta sección:
+Precedents fixing
+ this section's pattern:
 
-- **Recetas** (issue #64, ADR-076/ADR-078/ADR-087): vista de primer
-  nivel **hermana de `profile-view` y fuera de `#app`**, con su
-  propia `nav.tabs--bar` (misma clase que la de Ocio) y sin botón de
-  volver ni título (issue #206, ADR-077): la navegación vive en la
-  cabecera global.
-- **Ocultación de secciones y pestañas** (issue #97, ADR-067):
-  `SECTION_REGISTRY` en `js/settings.js` es el registro central que
-  alimenta los ajustes de visibilidad.
-- **Router de hash** (ADR-051) con memorias por sección
-  (`lastOcioKey`, `lastRecipesTab`) y de la última sección de primer
-  nivel (`lastSection`, issue #213), que usa la flecha de volver del
-  perfil.
-- **Auto-ocultado de cabecera/pestañas** (ADR-060, ADR-094): una sola
-  fuente de verdad en `js/auto-hide-nav.js` con selectores genéricos
-  sobre `body` y resolución del panel activo por vista.
-- **Unidad de medida desplegable en Recetas** (issue #251, ADR-092):
-  precedente de selector de unidad con las mismas reglas de
-  conversión y presentación.
+- **Recetas**
+  (issue #64, ADR-076/ADR-078/ADR-087):
+  a
+  top
+  level
+  **sister
+  view
+  of the
+  profile-view and outside
+  the
+  `#app`**, with its own
+  `nav.tabs--bar` (the same
+  class as Ocio's) and with no back
+  button nor title
+  (issue #206, ADR-077):
+  the navigation lives in the global
+  header.
+- **The sections and tabs'
+  hiding**
+  (issue #97, ADR-067):
+  the
+  `SECTION_REGISTRY` in the
+  `js/settings.js` is the
+  central
+  registry
+  feeding the
+  visibility
+  settings.
+- **The hash
+  router**
+  (ADR-051) with
+  per-section
+  memories (the
+  `lastOcioKey`, the
+  lastRecipesTab) and of the
+  last
+  top-level
+  section
+  (the `lastSection`, issue
+  #213),
+  which the profile's
+  back
+  arrow uses
+  .
+- **The header/tabs'
+  auto-hiding**
+  (the
+  ADR-060, ADR-094):
+  a
+  single source of truth
+  in the
+  `js/auto-hide-nav.js` with
+  the
+  generic
+  selectors over the
+  body
+  and a
+  resolution of
+  the
+  active panel per
+  view
+  .
+- **The Recipes'
+  dropdown
+  unit of measure**
+  (issue #251, ADR-092):
+  a
+  unit-selector
+  precedent with the same
+  conversion
+  and
+  presentation rules.
 
-La implementación está validada (QA PASS: 2 rondas — la primera
-detectó H1 de contraste en negro puro, el nombre snapshot al editar y
-el refresco del constructor; todo corregido en el commit
-`67b2136`) y escaneada (seguridad PASS, 0 hallazgos HIGH); el manual
-de usuario se actualiza en esta misma tarea (regla 3 de AGENTS.md).
-Este ADR documenta la decisión a posteriori, como los recientes
-(ADR-093, ADR-094).
+The implementation is validated
+  (
+  a
+  QA PASS: 2
+  rounds — the first detected a
+  H1
+  contrast in pure
+  black,
+  the name being
+  a
+  snapshot when edited and the
+  constructor's refresh; all
+  fixed in commit
+  `67b2136`) and
+  scanned
+  (a
+  security
+  PASS,
+  0
+  HIGH
+  findings); the user manual updates in this very
+  task
+  (the
+  AGENTS.md's rule 3).
+  This ADR
+  documents
+  the decision
+  retrospectively,
+  like the recent ones
+  (the
+  ADR-093, ADR-094).
 
 Related issue: #62 — https://github.com/gonzalitojh/Registro-personal/issues/62
 
-## Decisión
+## Decision
 
-### 1. Sección de primer nivel «Gimnasio», hermana de Recetas
+### 1. The
+  top-level
+  "Gimnasio"
+  section, the
+  Recipes' sister
 
-- **Vista propia `#gym-view`** fuera de `#app` (mismo patrón que
-  `#recipes-view`): cuando está visible, `#app` queda oculta; no hay
-  botón de volver ni título, la navegación vive en la cabecera
-  global (issue #206).
-- **Barra de pestañas propia estilo Ocio** (`nav.tabs--bar` con la
-  misma clase común de ADR-078): **«Entrenos»** (pestaña por defecto,
-  acento **teal**) y **«Ejercicios»** (acento **ocre**). Ambas
-  ocultables desde Ajustes vía `SECTION_REGISTRY` (issue #97).
-- **Entrada «Gimnasio» en la barra lateral** (`js/sidebar.js`) con su
-  icono, que abre la sección volviendo a la última pestaña de la
-  sesión (`getLastGymTab()`).
-- **Router extendido** (`js/router.js`): ruta `#/gimnasio`
-  (Entrenos) y `#/gimnasio/ejercicios`; `GYM_TAB_TO_PANEL`,
-  `gymHashFor()`, `lastGymTab` y `lastSection = "gimnasio"` (la
-  flecha de volver del perfil regresa también a Gimnasio). El wiring
-  de pestañas queda acotado a `.tab[data-panel]` en `app.js` y las de
-  Gimnasio usan `data-gym-tab` exclusivo (evita la colisión con Ocio
-  y Recetas).
+- **Its own
+  `#gym-view`
+  view**
+  outside
+  the
+  `#app`
+  (the
+  `#recipes-view`'s same pattern):
+  when visible,
+  the
+  `#app`
+  stays hidden;
+  there is no back
+  button nor title;
+  the navigation lives in the global
+  header (issue #206).
+- **Its own
+  Ocio-styled tab
+  bar**
+  (a
+  `nav.tabs--bar`
+  with the
+  common class of ADR-078):
+  **«Entrenos»**
+  (the
+  default tab, a
+  **teal**
+  accent) and
+  **«Ejercicios»**
+  (an
+  **ochre**
+  accent). Both hideable from
+  Settings via
+  the
+  `SECTION_REGISTRY`
+  (issue #97).
+- **The
+  "Gimnasio" entry on the
+  sidebar**
+  (the
+  `js/sidebar.js`) with
+  its
+  icons, which opens
+  the
+  section returning to
+  the
+  session's last tab
+  (the
+  `getLastGymTab()`).
+- **The
+  extended
+  router**
+  (the
+  `js/router.js`):
+  the
+  `#/gimnasio`
+  route
+  (Workouts)
+  and the
+  `#/gimnasio/ejercicios`;
+  the
+  `GYM_TAB_TO_PANEL`, the
+  `gymHashFor()`, the
+  `lastGymTab`
+  and the
+  `lastSection = "gimnasio"`
+  (the
+  profile's back
+  arrow also returns to
+  the
+  Gym). The tabs'
+  wiring stays
+  scoped to
+  the
+  `.tab[data-panel]` in
+  the
+  `app.js` and the
+  Gym's use
+  an
+  exclusive
+  `data-gym-tab`
+  (avoiding
+  the collision with
+  Ocio
+  and Recipes).
 
-### 2. Modelo de datos en Firestore
+### 2. The
+  Firestore
+  data model
 
-- **`users/{uid}/gym-workouts/{id}`** (entrenos):
-  `fechaISO` (string `YYYY-MM-DD`, orden desc), `nombre?`, `nota?`,
-  `ejercicios: [{ ejercicioId|null, nombre (snapshot), series:
-  [{pesoKg, reps}] }]`, `addedAt`/`updatedAt` (serverTimestamp).
-  El **nombre es snapshot**: si un ejercicio se borra del catálogo,
-  los entrenos que lo usan conservan su nombre.
-- **`users/{uid}/gym-exercises/{id}`** (catálogo de ejercicios):
-  `nombre` (orden asc), `grupoMuscular?` (presets), `notas?`,
+- **The
+  `users/{uid}/gym-workouts/{id}`**
+  (the
+  workouts):
+  a
+  `fechaISO` (a
+  `YYYY-MM-DD`
+  string,
+  desc
+  sort),
+  a
+  `nombre?`, a
+  `nota?`,
+  the
+  `exercises: [{ exerciseId|null, nombre
+  (the
+  snapshot), series: [{pesoKg, reps}] }]`,
+  the
+  `addedAt`/`updatedAt` (the
+  serverTimestamp). The
+  **name is a
+  snapshot**: if an
+  exercise gets deleted
+  from the
+  catalog,
+  the workouts
+  using it keep
+  its
+  name.
+- **The
+  `users/{uid}/gym-exercises/{id}`**
+  (the
+  exercises'
+  catalog):
+  a
+  `nombre` (an
+  asc
+  sort), a
+  `muscleGroup?` (the
+  presets), the
+  `notas?`,
+  the
   `addedAt`/`updatedAt`.
-- **Peso canónico SIEMPRE en kg** (`pesoKg`): la unidad de
-  presentación nunca se guarda en los documentos.
-- **`firestore.rules`**: mismo patrón estándar que el resto de
-  colecciones — lectura para cualquier usuario autorizado
-  (`isAllowedUser()`, registros entre amigos), escritura solo del
-  dueño (`isOwner`).
+- **The
+  weight is canonically ALWAYS in kg**
+  (the
+  `pesoKg`):
+  the presentation unit is never
+  stored on the
+  documents.
+- **The
+  `firestore.rules`**:
+  the other collections' same standard pattern — a
+  read for any
+  authorized user
+  (the
+  `isAllowedUser()`, the
+  friends'
+  logs), the
+  write only
+  by the
+  owner
+  (the
+  `isOwner`).
 
-### 3. Unidad de peso (kg/lbs) solo de presentación
+### 3. The
+  weight unit
+  (the
+  kg/lbs)
+  is presentation-only
 
-- Preferencia **`settings.unidadPeso`** (`"kg"` | `"lbs"`) en
-  localStorage, con **sync a Firestore** (preferencias del perfil,
-  mismo debounce que el resto de ajustes) para que se sincronice
-  entre dispositivos.
-- Conversión **1 kg = 2.20462 lbs** (`KG_PER_LB`); display con **1
-  decimal** y entrada → kg con **2 decimales**. Los valores guardados
-  **nunca cambian** al alternar: la conversión ocurre solo en los
-  renders (listas, detalle del entreno, formularios y placeholders de
-  los inputs de peso).
-- **Select `#gym-unit-select`** en `.gym-units`, visible en toda la
-  sección (bajo la barra de pestañas). Al cambiar: re-render de la
-  pestaña activa y del modal de entreno abierto (lectura o edición,
-  desde el borrador en memoria, que siempre está en kg).
+- The
+  **`settings.unidadPeso`**
+  preference
+  (a
+  `"kg"` |
+  `"lbs"`)
+  in the
+  localStorage, with
+  a
+  **sync
+  to Firestore**
+  (the profile's
+  preferences, the same debounce as the
+  rest of the
+  settings) so it
+  syncs
+  between devices.
+- The
+  **1 kg = 2.20462 lbs**
+  conversion (the
+  `KG_PER_LB`);
+  the display with
+  **1
+  decimal** and the
+  entry → kg with
+  **2**.
+  The
+  stored
+  values **never change** when
+  toggling: the conversion
+  happens only on the renders
+  (the
+  lists, the workout's
+  detail, the
+  forms and
+  the
+  weights'
+  inputs'
+  placeholders).
+- **The
+  `#gym-unit-select` select** on
+  the
+  `.gym-units`,
+  visible in the whole section
+  (beneath the tab bar). On
+  change: the active tab's and the open workout's
+  modal's re-render
+  (a
+  reading or edition, from the
+  in-memory draft,
+  which is always
+  in kg).
 
-### 4. Investigación de APIs de ejercicios y catálogo v1
+### 4. The
+  exercises' APIs research
+  and the
+  v1
+  catalog
 
-Hallazgos **reales** de la investigación del plan:
+The plan's research's
+**real** findings:
 
-- **wger API v2** — gratuita, sin key para lectura, CORS abierto,
-  ~845 ejercicios multilingües (incluye español), open source AGPL
-  auto-hostable. **Candidata nº 1 para una iteración futura**.
-- **ExerciseDB** (RapidAPI) — requiere key y proxy CORS: **descartada
-  en v1**.
-- **API Ninjas Exercises** — requiere key: **descartada**.
-- **exercise-api** estática de marcmayol.com — JSON estático bilingüe
-  ES/EN, sin key, CORS `*`, ~104 ejercicios: **interesante para un
-  seed offline** en el futuro.
+- **The
+  wger API v2** — free, with no
+  read
+  key, open
+  CORS, ~845
+  multilingual
+  exercises
+  (Spanish included), an
+  open-source AGPL, self-hostable.
+  **The
+  nº1 candidate for a
+  future
+  iteration**.
+- **ExerciseDB**
+  (RapidAPI) — it requires a key and a
+  CORS proxy: **discarded on
+  v1**.
+- **The
+  API Ninjas' Exercises** — they
+  require a key:
+  **discarded**.
+- The
+  marcmayol.com's
+  static exercise-api — a
+  static bilingual
+  ES/EN
+  JSON, with no
+  key, a
+  `*`
+  CORS, ~104
+  exercises:
+  **interesting for a
+  future
+  offline
+  seed**.
 
-**Decisión v1**: **catálogo manual propio** (offline-first, sin
-dependencias ni rate limits, coherente con el catálogo de
-ingredientes y las etiquetas propias de Recetas), con la integración
-futura **documentada**: búsqueda en wger con prefill del formulario y
-fallback al catálogo propio.
+**The v1
+  decision**: an
+  **own manual
+  catalog**
+  (offline-first, with no
+  dependencies nor
+  rate limits, coherent with the
+  ingredients'
+  catalog and Recipes'
+  own
+  tags), with the future
+  integration **documented**:
+  a
+  wger
+  search
+  with the form's
+  prefill and a
+  fallback to the own
+  catalog.
 
-### 5. Alcance v1 (fuera de scope, documentado)
+### 5. The v1 scope (out of scope, documented)
 
-- **Búsqueda global en Gimnasio**: fuera de scope; el guard
-  obligatorio de `js/global-search.js` devuelve vacío en la sección
-  (no cae a la rama de Ocio ni mezcla colecciones ajenas) y el
-  placeholder dice «Buscar en tu gimnasio...».
-- **Export/backup sin Gimnasio**: coherente con el resto de la
-  familia de registro propio (Recetas tampoco se incluye);
-  documentado como mejora futura (ampliar la copia de seguridad).
-- **Sin dependencias nuevas** (ni librerías ni APIs).
+- **The Gym's global
+  search**:
+  out of scope; the
+  `js/global-search.js`'s
+  mandatory
+  guard returns
+  late
+  on the
+  section
+  (it does not fall to the Ocio branch
+  nor mix
+  foreign
+  collections) and the
+  placeholder says "Search in your
+  gym...".
+- **The export/backup
+  without the Gym**:
+  coherent with the
+  own-log
+  family's rest
+  (Recipes is not
+  included either);
+  documented as a
+  future
+  improvement (expanding
+  the
+  backup).
+- **No new
+  dependencies**
+  (neither
+  libraries
+  nor
+  APIs).
 
-### 6. Decisiones autónomas (sesión headless)
+### 6. The autonomous decisions
+  (the headless session)
 
-- Acentos: **Entrenos = teal**, **Ejercicios = ocre** (reutiliza las
-  variables de tema existentes, sin colores hardcodeados fuera de los
-  sellos documentados).
-- Etiqueta «Entrenos» para la pestaña de entrenamientos.
-- Grupos musculares: **select con presets** (Pecho, Espalda,
-  Hombros, Bíceps, Tríceps, Antebrazos, Piernas, Glúteos, Core,
-  Cardio, Cuerpo completo) + **«Otro»** (texto libre).
-- **`confirm()` nativo** para los borrados de entrenos y ejercicios
-  (coherente con la simplicidad de la sección).
-- **Sync de la unidad a Firestore** (preferencias del perfil).
-- **Manual de usuario renumerado**: capítulo 9 insertado con
-  renumeración del resto (precedente: Recetas se insertó como cap. 8).
+- The
+  accents (the
+  labels/captions):
+  **Workouts = teal**, **Exercises = ochre** (reusing the
+  existing theme variables, with no hardcoded colors outside
+  the documented stamps).
+- The
+  "Workouts" label for the
+  workouts
+  tab.
+- The
+  muscle
+  groups:
+  a
+  **select with presets** (the
+  Chest, Back,
+  Shoulders, Biceps,
+  Triceps, Forearms
+  , the
+  Legs, Glutes,
+  Core, the
+  Cardio, the whole body) + "**Other**"
+  (a
+  free
+  text).
+- A
+  **native `confirm()`** for the
+  workouts'
+  and the
+  exercises'
+  delete
+  confirms
+  (coherent with the section's simplicity).
+- **The unit's
+  sync
+  to
+  the
+  Firestore** (the
+  profile's
+  preferences).
+- **The
+  user manual
+  renumbered**: the
+  chapter
+  9 inserted with the
+  rest renumbered
+  (the precedent: Recipes inserted as the
+  chapter
+  8
+  too).
 
-### 7. Ideas futuras documentadas
+### 7. The
+  documented future
+  ideas
 
-Volumen total por entreno, récords personales/1RM, historial por
-ejercicio con gráfica, resumen semanal, plantillas de rutinas,
-búsqueda/filtro por grupo muscular, integración wger (búsqueda con
-prefill del formulario y fallback al catálogo propio), ampliar la
-copia de seguridad a toda la familia de registro propio, temporizador
-de descanso y recordatorios de entreno.
+The total
+  volume per workout, the personal
+  records/
+  1RMs, the per-exercise history with a chart, a weekly
+  summary,
+  the
+  routine
+  templates, a
+  muscle-group search/filter, the
+  wger
+  integration
+  (a
+  search
+  with the form's
+  prefill and a
+  fallback to the own
+  catalog), expanding
+  the backup to the whole
+  own-log
+  family, a
+  rest
+  timer
+  and
+  workout
+  reminders
+  .
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Integrar una API de ejercicios en v1**: descartado — todas las
-  opciones investigadas (ExerciseDB, API Ninjas) requieren key y/o
-  proxy CORS; wger es la mejor candidata pero añadiría dependencia y
-  latencia de red para un catálogo que el usuario va a personalizar.
-  El catálogo manual es offline-first, sin rate limits y coherente
-  con ingredientes/etiquetas. La integración queda documentada como
-  iteración futura (ADR-065 y ADR-074 marcan el precedente de
-  «estudio → ADR de decisión»).
-- **Guardar el peso en la unidad elegida en cada momento**:
-  descartado — rompería el histórico si se alterna la unidad; el kg
-  canónico con conversión solo de presentación es el estándar.
-- **Select de unidad solo en el formulario de entreno**: descartado —
-  la issue pide cambiar «en todo momento»; el select de sección
-  (visible siempre) con re-render global lo garantiza.
-- **Vista dentro de `#app`** (como una pestaña más de Ocio):
-  descartado — la issue pide una sección de primer nivel hermana de
-  Ocio/Recetas, con su propia barra de pestañas.
-- **Búsqueda global en Gimnasio en v1**: descartado — sin scope de
-  búsqueda definido; el guard en `global-search.js` evita caer a la
-  rama de Ocio (riesgo clave del wiring).
+- **Integrating an exercises'
+  API on v1**:
+  rejected — all the researched options (the ExerciseDB, the
+  API Ninjas) require
+  a
+  key and/or a
+  CORS proxy; the
+  wger is the
+  best candidate but would add a
+  dependence and a network
+  latency for a
+  catalog the
+  user will
+  customize. The
+  manual
+  catalog is offline-first, with
+  no
+  rate limits and coherent with the
+  ingredients/tags. The
+  integration
+  is documented as a
+  future
+  iteration (the
+  ADR-065 and ADR-074 mark
+  the
+  "study → the decision's ADR"
+  precedent).
+- **Storing the
+  weight in whichever
+  unit is chosen at
+  each
+  moment**:
+  rejected — it would
+  break the history
+  if the unit were
+  toggled; the
+  canonical
+  kg
+  with a presentation-only conversion
+  is the standard.
+- **A unit
+  select only on the workout's
+  form**:
+  rejected — the issue asks to change
+  it "at any moment"; the
+  section's
+  select (visible always) with a global re-render guarantees it.
+- **A view inside the
+  `#app`**
+  (as just another
+  Ocio tab):
+  rejected — the issue asks for a top-level section
+  sister of
+  the
+  Ocio/Recipes, with its own tab bar.
+- **The Gym's global
+  search on v1**:
+  rejected — with no
+  search scope defined; the
+  `global-search.js`'s
+  guard avoids falling to the Ocio
+  branch (the wiring's key
+  risk).
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Consistencia total con el patrón de secciones**: cabecera global,
-  barra de pestañas estilo Ocio (ADR-078), ocultable en Ajustes
-  (ADR-067), auto-ocultado por scroll (ADR-060/ADR-094 con
-  `.gym-toolbar` en `CONTROLS_SELECTOR`), router de hash con memorias
-  (ADR-051), rutas directas compartibles (`#/gimnasio`,
-  `#/gimnasio/ejercicios`).
-- **Datos robustos**: peso canónico en kg (la unidad es solo
-  presentación), nombre snapshot en los entrenos (sobrevive al
-  borrado del catálogo), sincronización en tiempo real con reintento
-  con backoff (patrón issue #147).
-- **Offline-first**: el catálogo manual funciona sin red ni
-  dependencias externas.
-- **Manual al día** (regla 3 de AGENTS.md): capítulo 9 «Gimnasio»
-  insertado y resto de capítulos renumerados.
+- **Total section-pattern
+  consistency**: the global
+  header, the
+  Ocio-styled tab bar (the
+  ADR-078), hideable
+  in Settings
+  (the
+  ADR-067), the scroll
+  auto-hiding
+  (the
+  ADR-060/ADR-094 with the
+  `.gym-toolbar` on the
+  `CONTROLS_SELECTOR`), the hash
+  router
+  with memories
+  (the
+  ADR-051), the
+  shareable direct
+  routes (the
+  `#/gym`,
+  the `#/gym/exercises`).
+- **Robust data**: the
+  canonical
+  weight
+  in kg
+  (the unit being presentation-only), the
+  workouts'
+  name
+  snapshot (it
+  survives the catalog's
+  delete), the realtime
+  sync
+  with a
+  backoff
+  retry (issue #147's
+  pattern).
+- **Offline-first**: the manual
+  catalog works
+  with no
+  network or external dependencies.
+- **The manual up to date**
+  (the
+  AGENTS.md's rule 3): the
+  chapter 9
+  "Gym"
+  inserted and the other
+  chapters renumbered.
 
-### Neutras
+### Neutral
 
-- **La búsqueda de la cabecera no encuentra nada en Gimnasio en v1**
-  (guard en `global-search.js`; placeholder «Buscar en tu gimnasio...»);
-  el manual lo indica de forma honesta.
-- **El backup no incluye Gimnasio** (ni Recetas): mejora futura
-  documentada.
-- **ADR-092 queda como precedente complementario** (unidad de medida
-  en Recetas); este ADR extiende el concepto al peso de gimnasio.
+- **The header's search finds nothing in the Gym on v1** (the
+  `global-search.js`'s
+  guard; the
+  "Search in your gym..." placeholder);
+  the manual honestly indicates it.
+- **The backup does not include the Gym** (nor
+  Recipes):
+  a documented future improvement.
+- **The ADR-092 remains a complementary precedent**
+  (a unit of measure in Recipes); this ADR extends the concept to the
+  gym
+  weights.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Ninguna conocida.** Validado: QA PASS (2 rondas; AC1–AC9
-  cumplidos) y seguridad PASS (0 hallazgos HIGH; 3 LOW informativos
-  de patrones preexistentes). Verificados los cuatro modos de tema
-  (ADR-009/ADR-064/ADR-066) y la responsividad (360/768/1280 px sin
-  scroll horizontal). El wiring de `.tab` acotado a `.tab[data-panel]`
-  evita la colisión con Ocio/Recetas; `applyTabVisibility` solo añade
-  `hidden` (nunca lo quita) y `gymApi` se crea antes de
-  `initRouter` (sin TDZ).
+- **None known.**
+  Validated: a
+  QA PASS
+  (2 rounds;
+  the
+  AC1–AC9 met) and a
+  security PASS
+  (0
+  HIGH
+  findings; 3
+  LOW
+  informative
+  of pre-existing patterns). The four theme
+  modes verified
+  (the
+  ADR-009/ADR-064/ADR-066) and the
+  responsiveness
+  (the
+  360/768/1280 px with no horizontal scroll). The
+  wiring of the
+  `.tab`
+  stays scoped to
+  the
+  `.tab[data-panel]` avoiding the Ocio/Recipes
+  collision; the
+  `applyTabVisibility` only adds the
+  `hidden`
+  (never
+  removing it) and the
+  `gymApi` is created
+  before
+  the
+  `initRouter`
+  (with no
+  TDZ).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `index.html` | **Modificado**: vista `#gym-view` (barra de pestañas `data-gym-tab`, selector `.gym-units #gym-unit-select`, paneles Entrenos/Ejercicios con sus toolbars), modales `#gym-workout-modal` y `#gym-exercise-modal`; title/description actualizados |
-| `js/gym.js` | **Nuevo**: módulo de la sección (pestañas Entrenos/Ejercicios, tarjetas con resumen «N ejercicios · M series», modal de entreno lectura/alta/edición con constructor de ejercicios y series, modal de ejercicio, conversión kg/lbs con re-render global) |
-| `js/router.js` | **Modificado**: `GYM_TAB_TO_PANEL`, `GYM_DEFAULT_TAB`, `GYM_PREFIX`, `gymHashFor()`, `getLastGymTab()`, `lastSection = "gimnasio"`, ruta `#/gimnasio` en `parseHash`/`canonicalHashFor` |
-| `js/settings.js` | **Modificado**: `unidadPeso` en settings por defecto, `SECTION_REGISTRY.gimnasio` (tabs entrenos/ejercicios), `getUnit()`/`setUnit()` con sync a Firestore |
-| `js/sidebar.js` | **Modificado**: entrada «Gimnasio» con icono y vuelta a la última pestaña |
-| `js/app.js` | **Modificado**: wiring de `setupGym`/`subscribeGymData`/`resetGymData`, rama `route.section === "gimnasio"` en el router con normalización de pestaña oculta, `.tab[data-panel]` acotado a Ocio |
-| `js/db.js` | **Modificado**: `subscribeToGymWorkouts`, `addGymWorkout`, `updateGymWorkout`, `deleteGymWorkout`, `subscribeToGymExercises`, `addGymExercise`, `updateGymExercise`, `deleteGymExercise` |
-| `js/ui.js` | **Modificado**: placeholder y aria-label de búsqueda para la sección gimnasio («Buscar en tu gimnasio...») |
-| `js/global-search.js` | **Modificado**: guard de la sección gimnasio (sin resultados v1) y hint de búsqueda propio |
-| `js/auto-hide-nav.js` | **Modificado**: `activePanel()` resuelve `#gym-view .gym-view__body section:not(.hidden)`; `.gym-toolbar` en `CONTROLS_SELECTOR`; `MutationObserver` vigila `#gym-view` y sus paneles |
-| `service-worker.js` | **Modificado**: `js/gym.js` añadido a `STATIC_ASSETS` (precaché) |
-| `css/styles.css` | **Modificado**: estilos de la sección (tarjetas, catálogo, constructor, modales, `.gym-units`) con overrides agrupados para las cuatro familias de tema (light/white y black) |
-| `firestore.rules` | **Modificado**: `match /gym-workouts/{itemId}` y `match /gym-exercises/{itemId}` con el patrón estándar (read `isAllowedUser`, write `isAllowedUser && isOwner`) |
-| `docs/manual-de-usuario.md` | **Modificado**: capítulo 9 «Gimnasio» insertado y renumeración de capítulos (§3, §3.2, §9-§20 → §10-§21, §16 Ajustes con la nueva sección) |
-| `docs/adr-095-seccion-gimnasio.md` | **Nuevo**: este documento |
+| `index.html` | **Modified**: the `#gym-view` view (the tabs' bar with the `data-gym-tab`, the `.gym-units #gym-unit-select` select, the Workouts/Exercises panels with their toolbars), the `#gym-workout-modal` and `#gym-exercise-modal` modals; the title/description updated |
+| `js/gym.js` | **New**: the section's module (the Workouts/Exercises tabs, cards with the "N exercises · M series" summary, the workout's reading/create/edit modal with the exercises' and the series' constructor, the exercise modal, the kg/lbs conversion with a global re-render) |
+| `js/router.js` | **Modified**: the `GYM_TAB_TO_PANEL`, the `GYM_DEFAULT_TAB`, the `GYM_PREFIX`, the `gymHashFor()`, the `getLastGymTab()`, the `lastSection = "gym"`, the `#/gimnasio` route on the `parseHash`/`canonicalHashFor` |
+| `js/settings.js` | **Modified**: the weight unit on the default settings, the `SECTION_REGISTRY.gym` (the workouts/exercises tabs), the `getUnit()`/`setUnit()` with the Firestore sync |
+| `js/sidebar.js` | **Modified**: the "Gym" entry with its icon and returning to the last tab |
+| `js/app.js` | **Modified**: the `setupGym`/`subscribeGymData`/`resetGymData` wiring, the router's `route.section === "gym"` branch with a hidden-tab normalization, the `.tab[data-panel]` scoped to Ocio |
+| `js/db.js` | **Modified**: the `subscribeToGymWorkouts`, the `addGymWorkout`, the `updateGymWorkout`, the `deleteGymWorkout`, the `subscribeToGymExercises`, the `addGymExercise`, the `updateGymExercise`, the `deleteGymExercise` |
+| `js/ui.js` | **Modified**: the gym section's search'
+  placeholder and aria-label ("Search in your gym...") |
+| `js/global-search.js` | **Modified**: the gym section's guard
+  (no v1 results) and its own search hint |
+| `js/auto-hide-nav.js` | **Modified**: the `activePanel()` resolves
+  the
+  `#gym-view .gym-view__body section:not(.hidden)`; the `.gym-toolbar` is in the
+  `CONTROLS_SELECTOR`; the `MutationObserver` watches
+  the
+  `#gym-view`
+  and its
+  panels |
+| `service-worker.js` | **Modified**: `js/gym.js` added to the `STATIC_ASSETS`
+  (the precache) |
+| `css/styles.css` | **Modified**: the section's styles (the cards, the catalog, the constructor, the modals, the `.gym-units`) with grouped overrides for the four theme families (the light/white and black ones) |
+| `firestore.rules` | **Modified**: the `match /gym-workouts/{itemId}` and the `match /gym-exercises/{itemId}` with the standard pattern
+  (the read is `isAllowedUser`, the
+  write is `isAllowedUser && isOwner`) |
+| `docs/manual-de-usuario.md` | **Modified**: the chapter 9 "Gym" inserted and the chapters renumbered (the
+  §3, §3.2,
+  §§9-§20 → the
+  §§10-§21, the
+  §16 Settings with the new section) |
+| `docs/adr-095-seccion-gimnasio.md` | **New**: this document |
 
 Related issue: #62 — https://github.com/gonzalitojh/Registro-personal/issues/62

@@ -1,252 +1,252 @@
-# ADR-066: Modo Negro puro con superficies oscuras (issue #165)
+# ADR-066: Pure black mode with dark surfaces (issue #165)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-09
 
-## Contexto
+## Context
 
-El modo **«Negro puro»** añadido en ADR-064 (issue #43) solo oscurecía
-el **fondo**: el bloque `[data-theme="black"]` redeclaraba únicamente
-`--ink: #000000`, `--ink-raised: #0a0a0a` y los cinco tintes
-`--ink-alpha-*` como negros translúcidos. Todas las **superficies**
-(tarjetas, paneles laterales, dropdowns, modales, ajustes, búsqueda
-global, notificaciones, fichas de ocio, filas de lista) seguían
-pintadas con `--paper` (`#f1ead9`, pergamino), porque heredaban de
-`:root`: en negro puro el fondo era negro pero las superficies seguían
-siendo claras, rompiendo la coherencia visual del modo.
+The **«Negro puro»** mode added in ADR-064 (issue #43) only darkened
+the **background**: the `[data-theme="black"]` block redeclared only
+`--ink: #000000`, `--ink-raised: #0a0a0a` and the five
+`--ink-alpha-*` tints as translucent blacks. All the **surfaces**
+(cards, side panels, dropdowns, modals, settings, the global
+search, notifications, ocio profiles, list rows) kept being
+painted with `--paper` (`#f1ead9`, parchment), because they inherited
+from `:root`: in pure black the background was black but the surfaces
+stayed light, breaking the mode's visual coherence.
 
-La issue #165 pide que en negro puro **todas las superficies queden
-oscuras** (negras / near-black), con su texto legible, y además añadir
-a AGENTS.md una **regla permanente** que obligue a verificar los
-cuatro modos de tema en cualquier elemento nuevo.
+Issue #165 asks that in pure black **all the surfaces be dark**
+(black / near-black), with legible text, and additionally to add to
+AGENTS.md a **permanent rule** requiring verifying the
+four theme modes on any new element.
 
-La implementación está **validada (QA PASS)** en los 7 criterios de
-aceptación y **escaneada por seguridad (PASS, 0 HIGH**; las claves
-client-side encontradas son preexistentes en `main`, no nuevas), en la
-rama `style/issue-165-modos-visualizacion` con los commits `8fb619d`
-(feat), `f79bc42` (fix estados de filas) y `091df30` (fix contraste AA
-en hovers con acento y barras gráficas). El manual de usuario se
-actualizó en la misma tarea (`docs/manual-de-usuario.md` §14, regla 3
-de AGENTS.md). Este ADR documenta la decisión **a posteriori**, como
-los recientes (ADR-059 a ADR-065), **extendiendo ADR-064 y ADR-009**.
+The implementation is **validated (QA PASS)** on the 7 acceptance
+criteria and **security-scanned (PASS, 0 HIGH**; the client-side keys
+found are pre-existing in `main`, not new), on the branch
+`style/issue-165-modos-visualizacion` with the commits `8fb619d`
+(feat), `f79bc42` (fix of the rows' states) and `091df30` (fix of AA
+contrast on hovers with accent and graphic bars). The user manual was
+updated in the same task (`docs/manual-de-usuario.md` §14, rule 3
+of AGENTS.md). This ADR documents the decision **retrospectively**,
+like the recent ones (ADR-059 to ADR-065), **extending ADR-064 and
+ADR-009**.
 
 Related issue: #165 — https://github.com/gonzalitojh/Registro-personal/issues/165
 
-## Decisión
+## Decision
 
-Extender el bloque `[data-theme="black"]` con **variables delta
-adicionales** para oscurecer todas las superficies, más una **sección
-de overrides por selector agrupado** que sigue el mismo patrón de
-selectores agrupados (una sola fuente de verdad por regla) que usan
-las familias `[data-theme="light"]`/`[data-theme="white"]` (ADR-064).
-La decisión se organiza en seis puntos: las variables delta, los
-overrides agrupados, los sellos con hex fijo, la rotación de
-variables, el contraste verificado y la nueva regla 4 de AGENTS.md.
+Extend the `[data-theme="black"]` block with **additional delta
+variables** to darken all the surfaces, plus a **grouped-selector
+override section** following the same grouped-selectors pattern (a
+single source of truth per rule) that the
+`[data-theme="light"]`/`[data-theme="white"]` families use (ADR-064).
+The decision is organized in six points: the delta variables, the
+grouped overrides, the fixed-hex stamps, the variable rotation, the
+verified contrast and AGENTS.md's new rule 4.
 
-### 1. Bloque `[data-theme="black"]` ampliado (delta, `css/styles.css` y `ocio/ocio.css`)
+### 1. The `[data-theme="black"]` block expanded (delta, `css/styles.css` and `ocio/ocio.css`)
 
-El bloque delta pasa de redeclarar solo la tinta a redeclarar también
-las superficies:
+The delta block goes from redeclaring only the ink to also redeclaring
+the surfaces:
 
-- `--paper-dim: #111111` (superficies secundarias).
-- `--white: #0f0f0f` (entradas de formulario).
-- `--paper-line: rgba(241, 234, 217, 0.28)` (bordes sobre superficies
-  oscuras).
-- Los cinco tintes `--ink-alpha-*` **se revierten a tintes claros**
-  `rgba(241, 234, 217, X)` (en vez de negros): en negro puro actúan
-  sobre superficies oscuras, así que el hover/foco se pinta con
-  pergamino translúcido.
-- Los cuatro estados `--bg-state-*` pasan a oscuros: `#12372f`
-  (en_curso), `#33291a` (completado), `#26241e` (standby) y `#3d1f18`
+- `--paper-dim: #111111` (secondary surfaces).
+- `--white: #0f0f0f` (form inputs).
+- `--paper-line: rgba(241, 234, 217, 0.28)` (borders over dark
+  surfaces).
+- The five `--ink-alpha-*` tints are **reverted to light tints**
+  `rgba(241, 234, 217, X)` (instead of black ones): in pure black they act
+  over dark surfaces, so hover/focus paints with translucent
+  parchment.
+- The four `--bg-state-*` states go dark: `#12372f`
+  (en_curso), `#33291a` (completado), `#26241e` (standby) and `#3d1f18`
   (abandonado).
-- Acentos claros para su uso sobre fondo oscuro: `--teal-reel-dark:
+- Light accents for use over a dark background: `--teal-reel-dark:
   #4f9c8e`, `--ochre-spine-dark: #c99a4e`, `--stamp-dark: #cf6655`
-  (texto/gráficos con tinta negra encima).
+  (text/graphics with black ink on top).
 
-**Todo lo demás sigue heredando de `:root`** (como en ADR-064): el
-papel base `--paper` se conserva y pasa a ser el **texto** del modo
-(ver punto 4).
+**Everything else keeps inheriting from `:root`** (as in ADR-064): the
+base `--paper` is kept and becomes the mode's **text**
+(see point 4).
 
-### 2. Sección de overrides por selector agrupado para negro puro
+### 2. Grouped-selector override section for pure black
 
-Se añade una sección de overrides per-elemento scoped bajo
-`[data-theme="black"]` con el **mismo patrón de selectores agrupados**
-que las familias `[data-theme="light"]`/`[data-theme="white"]`
-(ADR-064): una sola fuente de verdad por regla, agrupando selectores
-por comas. Cubre todos los componentes con superficie de papel:
-tarjetas, paneles laterales, dropdowns, modales, ajustes, búsqueda
-global, notificaciones, fichas de ocio (`ocio/ocio.css`) y filas de
-lista, incluidos los estados `en_curso`/`completado`/`standby`/
-`abandonado` y `unreleased` (fix `f79bc42`), que pasan a usar las
-superficies y estados oscuros del punto 1.
+An override section scoped per element under
+`[data-theme="black"]` is added with the **same grouped-selectors
+pattern** as the
+`[data-theme="light"]`/`[data-theme="white"]` families
+(ADR-064): a single source of truth per rule, grouping selectors
+with commas. It covers all the components with a paper surface:
+cards, side panels, dropdowns, modals, settings, the global search,
+notifications, ocio profiles (`ocio/ocio.css`) and list rows,
+including the `en_curso`/`completado`/`standby`/
+`abandonado` and `unreleased` states (fix `f79bc42`), which move to the
+dark surfaces and states of point 1.
 
-### 3. Sellos de tarjetas con hex originales (sin variables)
+### 3. Card stamps with original hexes (no variables)
 
-Los sellos de las tarjetas (`item-card__stamp--*`) **conservan sus
-hex originales** (`#7e2c22`, `#1c4a41`, `#8f6522`) en lugar de usar
-variables: representan la **realidad física del sello estampado** en
-la tarjeta y deben verse **idénticos en los 4 modos**. Cada regla
-lleva un comentario que explica por qué no usa variable, siguiendo la
-regla 4 de AGENTS.md (punto 6).
+The cards' stamps (`item-card__stamp--*`) **keep their original
+hexes** (`#7e2c22`, `#1c4a41`, `#8f6522`) instead of using
+variables: they represent the **physical reality of the stamp**
+pressed on the card and must look **identical in all 4 modes**. Each rule
+carries a comment explaining why it does not use a variable, following
+AGENTS.md's rule 4 (point 6).
 
-### 4. Rotación de variables
+### 4. Variable rotation
 
-En negro puro la rotación de variables gira igual que en oscuro:
-`--ink` es **fondo** y `--paper` es **texto**. Los overrides
-per-elemento invierten selector/semántica donde hace falta (p. ej.
-textos que en `:root` son `--ink` pasan a `--paper` en el override,
-y superficies que eran `--paper` pasan a `--ink`/`--ink-raised`/
+In pure black the variable rotation turns the same as in dark:
+`--ink` is **background** and `--paper` is **text**. The
+per-element overrides invert selector/semantics where needed (e.g.
+texts that in `:root` are `--ink` become `--paper` in the override,
+and surfaces that were `--paper` become `--ink`/`--ink-raised`/
 `--paper-dim`).
 
-### 5. Contraste WCAG AA (verificado)
+### 5. WCAG AA contrast (verified)
 
-Ratio mínimo AA: 4.5:1 para texto normal y 3:1 para gráficos. Valores
-verificados:
+Minimum AA ratio: 4.5:1 for normal text and 3:1 for graphics. Verified
+values:
 
-| Par | Ratio | Uso |
+| Pair | Ratio | Use |
 |-----|-------|-----|
-| `#f1ead9` (papel) sobre `#0a0a0a` (ink-raised) | 16.51:1 | texto sobre superficies elevadas |
-| `#000` (tinta) sobre `#4f9c8e` (teal-reel-dark) | 6.48:1 | textos con acento claro |
-| `#000` sobre `#c99a4e` (ochre-spine-dark) | 8.22:1 | textos con acento claro |
-| `#f1ead9` sobre `#a63b2e` (stamp) | 5.33:1 | `.btn--danger` (base y `:hover`) |
-| Estados `#12372f`/`#33291a`/`#26241e`/`#3d1f18` con papel | ≈ 10-12:1 | fondo de estados con texto pergamino |
-| Sellos `#7e2c22`/`#1c4a41`/`#8f6522` sobre sello claro | 3.75-7.21:1 | decorativo (sello físico de tarjeta) |
+| `#f1ead9` (paper) over `#0a0a0a` (ink-raised) | 16.51:1 | text over elevated surfaces |
+| `#000` (ink) over `#4f9c8e` (teal-reel-dark) | 6.48:1 | texts with a light accent |
+| `#000` over `#c99a4e` (ochre-spine-dark) | 8.22:1 | texts with a light accent |
+| `#f1ead9` over `#a63b2e` (stamp) | 5.33:1 | `.btn--danger` (base and `:hover`) |
+| States `#12372f`/`#33291a`/`#26241e`/`#3d1f18` with paper | ≈ 10-12:1 | states' background with parchment text |
+| Stamps `#7e2c22`/`#1c4a41`/`#8f6522` over a light stamp | 3.75-7.21:1 | decorative (the card's physical stamp) |
 
-Gráficos (3:1): tabs activos con inset 3 px (6.11/5.36/7.75:1) y
-checkbox de episodio (6.11:1). **Hovers de botones con acento**
-resuelven **fondo de acento claro con tinta negra** (6.48:1 y 8.22:1,
-ver punto 5 de la iteración QA). No aplica: `.btn--danger:hover`
-mantiene fondo `--stamp` base con texto papel.
+Graphics (3:1): active tabs with a 3 px inset (6.11/5.36/7.75:1) and
+the episode checkbox (6.11:1). **Button hovers with an accent**
+resolve **a light-accent background with black ink** (6.48:1 and
+8.22:1, see the QA iteration's point 5). Not applicable:
+`.btn--danger:hover` keeps the base `--stamp` background with paper
+text.
 
-### 6. Regla 4 nueva de AGENTS.md
+### 6. New AGENTS.md rule 4
 
-Se añade a AGENTS.md la regla permanente **«Visualización correcta
-en todos los modos de tema»**: todo elemento nuevo debe verificarse
-en los **cuatro modos**, con contraste mínimo WCAG AA (4.5:1 texto,
-3:1 gráficos); los overrides deben seguir el **patrón de selectores
-agrupados** con una sola fuente de verdad por regla; los colores
-hardcodeados deben llevar un **comentario justificativo** de por qué
-no usan variable.
+AGENTS.md's permanent rule **«Visualización correcta en todos los
+modos de tema»** is added: every new element must be verified in the
+**four modes**, with a minimum WCAG AA contrast (4.5:1 text,
+3:1 graphics); the overrides must follow the **grouped-selectors
+pattern** with a single source of truth per rule; hardcoded
+colors must carry a **justifying comment** for why they do not use a
+variable.
 
-### Iteración QA (fixes en `091df30`)
+### QA iteration (fixes in `091df30`)
 
-El qa-reviewer detectó dos problemas de contraste en la primera
-versión, corregidos en `091df30`:
+The qa-reviewer detected two contrast problems in the first
+version, fixed in `091df30`:
 
-1. **Hovers con acentos claros como fondo y texto papel** → ratio
-   insuficiente (2.1-2.7:1). Corregido: **tinta negra sobre acento
-   claro** (6.48:1 / 8.22:1).
-2. **`.btn--danger:hover`** con `--stamp-dark` sobre `--stamp` →
-   1.73:1. Corregido: el hover de danger **se queda sin override**
-   (mantiene `--stamp` base con texto papel, 5.33:1).
+1. **Hovers with light accents as background and paper text** → an
+   insufficient ratio (2.1-2.7:1). Fixed: **black ink over a light
+   accent** (6.48:1 / 8.22:1).
+2. **`.btn--danger:hover`** with `--stamp-dark` over `--stamp` →
+   1.73:1. Fixed: the danger hover stays **without an override**
+   (it keeps the base `--stamp` with paper text, 5.33:1).
 
-QA final: **PASS en los 7 criterios de aceptación** de la issue #165.
-Escaneo de seguridad: **PASS** (0 HIGH; las claves client-side
-detectadas son preexistentes en `main`, no introducidas en esta rama).
+Final QA: **PASS on the 7 acceptance criteria** of issue #165.
+Security scan: **PASS** (0 HIGH; the detected client-side keys
+are pre-existing in `main`, not introduced in this branch).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Margarita de variables por modo** (reescribir en negro puro todas
-  las variables de `:root` y todos los overrides de la familia oscura
-  modo a modo, sin compartir): descartado — duplicaría decenas de
-  reglas y crearía dos fuentes de verdad. Se optó por el **bloque
-  delta ampliado** + overrides con **selectores agrupados** (mismo
-  patrón que ADR-064): una sola fuente de verdad por regla y herencia
-  automática del resto de `:root` (papel, acentos, sombras, filtro del
-  date picker) aunque evolucione.
-- **Introducir variables nuevas para los sellos de las tarjetas**
-  (p. ej. `--stamp-*` en cada modo): descartado — los sellos
-  representan la realidad física del sello estampado en la tarjeta y
-  deben verse idénticos en los 4 modos; se conservan los hex
-  originales con comentario justificativo (regla 4 de AGENTS.md).
-- **Aplicar los overrides de negro puro duplicando los bloques de la
-  familia oscura** en lugar de agrupar selectores: descartado —
-  rompería la única fuente de verdad por regla que ya estableció
-  ADR-064 para las familias clara/blanca.
-- **Mantener los `--ink-alpha-*` como tintes negros** y resolver los
-  hovers oscuros con otro mecanismo: descartado — sobre superficies
-  oscuras un tinte negro es invisible; la reversión a tintes claros de
-  pergamino es la que da hovers legibles en negro puro.
-- **Dejar las superficies claras en negro puro** (limitarse al fondo,
-  como ADR-064): descartado — es exactamente lo que la issue #165
-  pide corregir: el modo debe ser coherente, con fondo Y superficies
-  oscuras.
+- **Per-mode variable daisy** (rewriting in pure black all of `:root`'s
+  variables and the dark family's overrides one mode at a time, with no
+  sharing): rejected — it would duplicate dozens of rules and create
+  two sources of truth. The choice was the **expanded delta block** +
+  overrides with **grouped selectors** (the same pattern as
+  ADR-064): a single source of truth per rule and automatic
+  inheritance of the rest of `:root` (paper, accents, shadows, the date
+  picker's filter) as it evolves.
+- **Introducing new variables for the cards' stamps**
+  (e.g. `--stamp-*` per mode): rejected — the stamps
+  represent the physical reality of the stamp pressed on the card and
+  must look identical in all 4 modes; the original
+  hexes are kept with a justifying comment (AGENTS.md's rule 4).
+- **Applying the pure black overrides by duplicating the dark family's
+  blocks** instead of grouping selectors: rejected — it would break the
+  single source of truth per rule that ADR-064 already established
+  for the light/white families.
+- **Keeping the `--ink-alpha-*` as black tints** and solving the dark
+  hovers with another mechanism: rejected — over dark surfaces a
+  black tint is invisible; the reversion to parchment light tints is what
+  gives legible hovers in pure black.
+- **Leaving light surfaces in pure black** (limiting to the background,
+  as ADR-064 did): rejected — it is exactly what issue #165 asks
+  to fix: the mode must be coherent, with BOTH the background and the
+  surfaces dark.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Issue #165 resuelta**: en negro puro todas las superficies (tarjetas,
-  paneles laterales, dropdowns, modales, ajustes, búsqueda global,
-  notificaciones, fichas de ocio, filas de lista) quedan oscuras, con
-  su texto legible (criterios de aceptación 1-7, QA PASS).
-- **Regla permanente en AGENTS.md** (regla 4): cualquier elemento
-  nuevo deberá verificarse en los 4 modos con mínimo WCAG AA; evita
-  regresiones futuras como la de esta issue.
-- **Contraste WCAG AA verificado** en texto (16.51:1, 6.48:1, 8.22:1,
-  5.33:1, ≈10-12:1 en estados) y gráficos (3:1 superado: 6.11:1 del
-  checkbox de episodio y 5.36-7.75:1 de las tabs activas), incluidos
-  los hovers.
-- **Patrón de selectores agrupados consolidado**: negro puro usa la
-  misma técnica de una sola fuente de verdad por regla que claro y
-  blanco puro (ADR-064), con una sección de overrides propia y
-  comentada.
-- **Sellos físicos intactos**: las tarjetas se ven idénticas en los 4
-  modos; cada hex hardcodeado lleva su comentario justificativo.
-- **Sin regresiones** en oscuro/claro/blanco puro: diff de estilos
-  computados = 0 cambios en los otros tres modos; verificado también
-  sin scroll horizontal a 360/768/1280 px (regla 2 de AGENTS.md).
-- **Seguridad PASS**: 0 HIGH; sin claves nuevas introducidas.
+- **Issue #165 solved**: in pure black all the surfaces (cards,
+  side panels, dropdowns, modals, settings, the global search,
+  notifications, ocio profiles, list rows) become dark, with
+  legible text (acceptance criteria 1-7, QA PASS).
+- **Permanent rule in AGENTS.md** (rule 4): any new element must be
+  verified in the 4 modes with a minimum WCAG AA; it avoids future
+  regressions like this issue's.
+- **WCAG AA contrast verified** in text (16.51:1, 6.48:1, 8.22:1,
+  5.33:1, ≈10-12:1 in states) and graphics (3:1 exceeded: the episode
+  checkbox's 6.11:1 and the active tabs' 5.36-7.75:1), including
+  hovers.
+- **Grouped-selectors pattern consolidated**: pure black uses the
+  same single-source-of-truth-per-rule technique as light and pure
+  white (ADR-064), with its own commented override section.
+- **Physical stamps intact**: the cards look identical in all 4
+  modes; each hardcoded hex carries its justifying comment.
+- **No regressions** in dark/light/pure white: the computed-styles diff =
+  0 changes in the other three modes; also verified with no
+  horizontal scroll at 360/768/1280 px (AGENTS.md's rule 2).
+- **Security PASS**: 0 HIGH; no new keys introduced.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Mayor superficie de CSS**: el bloque delta ampliado y la sección
-  de overrides agrupados añaden ~100 líneas entre `css/styles.css` y
-  `ocio/ocio.css`; cada componente nuevo con superficie de papel
-  necesitará su extensión a negro puro (mitigado por la regla 4 de
-  AGENTS.md).
-- **Doble papel de los `--ink-alpha-*`**: en la familia oscura son
-  tintes claros (sobre superficies oscuras) y en la clara son tintes
-  negros; un uso nuevo de estos tintes exige comprobar el par
-  fondo/texto de cada familia.
-- **Comentarios a mantener en sincronía**: los bloques documentan sus
-  contrastes; si un color cambia, hay que actualizar el comentario y
-  verificar el ratio (misma deuda asumida en ADR-064).
-- **Acentos claros `*-dark` solo válidos con tinta negra encima**:
-  usarlos como fondo con texto papel produce 2.1-2.7:1 (el fallo que
-  corrigió el QA); el patrón correcto queda documentado en el CSS.
+- **Bigger CSS surface**: the expanded delta block and the grouped
+  overrides section add ~100 lines between `css/styles.css` and
+  `ocio/ocio.css`; each new component with a paper surface will need
+  its extension to pure black (mitigated by AGENTS.md's rule 4).
+- **Double role of the `--ink-alpha-*`**: in the dark family they are
+  light tints (over dark surfaces) and in the light one they are black
+  tints; a new use of these tints requires checking the
+  background/text pair of each family.
+- **Comments to keep in sync**: the blocks document their contrasts;
+  if a color changes, the comment must be updated and the ratio verified
+  (the same assumed debt as in ADR-064).
+- **Light `*-dark` accents valid only with black ink above**:
+  using them as a background with paper text produces 2.1-2.7:1 (the
+  failure the QA fixed); the correct pattern is documented in the CSS.
 
-### Neutras
+### Neutral
 
-- **Sin dependencias nuevas**: misma arquitectura CSS Custom
-  Properties + `[data-theme]` de ADR-009/ADR-064; GitHub Pages sin
-  paso de build.
-- **`--paper` conserva su papel de texto** en negro puro: la rotación
-  ink/papel es la misma que en oscuro, solo que ahora las superficies
-  se redeclaran.
-- **Bump PWA `20260837` → `20260838`** (ADR-019): un bump por PR
-  (ADR-049/059/061/064), vía `scripts/bump-version.sh`, por tocar
-  assets precacheados (`css/styles.css`, `ocio/ocio.css`,
+- **No new dependencies**: ADR-009/ADR-064's same CSS Custom
+  Properties + `[data-theme]` architecture; GitHub Pages without a
+  build step.
+- **`--paper` keeps its role as text** in pure black: the ink/paper
+  rotation is the same as dark, only the surfaces are now redeclared.
+- **PWA bump `20260837` → `20260838`** (ADR-019): one bump per PR
+  (ADR-049/059/061/064), via `scripts/bump-version.sh`, for touching
+  precached assets (`css/styles.css`, `ocio/ocio.css`,
   `index.html`, `js/config.js`, `service-worker.js`).
-- **Manual de usuario al día**: §14 Apariencia → Tema documenta que
-  el modo Negro puro ahora oscurece fondo **y** superficies — regla 3
-  de AGENTS.md.
+- **User manual up to date**: §14 Settings → Apariencia → Tema documents
+  that the pure black mode now darkens BOTH the background **and** the
+  surfaces — AGENTS.md's rule 3.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `css/styles.css` | **Modificado**: bloque delta `[data-theme="black"]` ampliado (`--paper-dim #111111`, `--white #0f0f0f`, `--paper-line rgba(241,234,217,0.28)`, `--ink-alpha-*` revertidos a tintes claros `rgba(241,234,217,X)`, `--bg-state-*` oscuros `#12372f`/`#33291a`/`#26241e`/`#3d1f18`, acentos claros `--teal-reel-dark #4f9c8e`, `--ochre-spine-dark #c99a4e`, `--stamp-dark #cf6655`); nueva sección de overrides por selector agrupado `[data-theme="black"]` (mismo patrón de selectores agrupados que light/white); sellos `item-card__stamp--*` conservan sus hex originales (`#7e2c22`/`#1c4a41`/`#8f6522`) con comentario justificativo en cada regla |
-| `ocio/ocio.css` | **Modificado**: bloque delta y overrides agrupados `[data-theme="black"]` para fichas de ocio (mismo patrón que `css/styles.css`) |
-| `AGENTS.md` | **Modificado**: nueva regla 4 «Visualización correcta en todos los modos de tema» (verificar los 4 modos, mínimo WCAG AA 4.5:1/3:1, patrón de selectores agrupados con una sola fuente de verdad, colores hardcodeados con comentario justificativo) |
-| `docs/manual-de-usuario.md` | **Modificado**: §14 Apariencia → Tema: el modo Negro puro ahora oscurece fondo **y** superficies (no solo el fondo) — regla 3 de AGENTS.md |
-| `js/config.js` | **Modificado**: `APP_VERSION` `20260837` → `20260838` |
-| `index.html` | **Modificado**: bump `?v=20260837` → `?v=20260838` (×3: `styles.css`, `ocio.css`, `app.js`) vía `scripts/bump-version.sh` |
-| `service-worker.js` | **Modificado**: bump `?v=20260837` → `?v=20260838` en los 6 assets versionados de `STATIC_ASSETS` (vía `scripts/bump-version.sh`) |
-| `tasks/task-issue-165.json` | **Modificado**: estado de la tarea (implementado → validado por QA PASS en los 7 criterios → escaneado por seguridad PASS) con bloque `pr` e issue #165 |
-| `docs/adr-066-modo-negro-puro-superficies-oscuras.md` | **Nuevo**: este documento |
+| `css/styles.css` | **Modified**: the `[data-theme="black"]` delta block expanded (`--paper-dim #111111`, `--white #0f0f0f`, `--paper-line rgba(241,234,217,0.28)`, `--ink-alpha-*` reverted to light tints `rgba(241,234,217,X)`, dark `--bg-state-*` `#12372f`/`#33291a`/`#26241e`/`#3d1f18`, light accents `--teal-reel-dark #4f9c8e`, `--ochre-spine-dark #c99a4e`, `--stamp-dark #cf6655`); new `[data-theme="black"]` grouped-selector override section (the same grouped-selectors pattern as light/white); the `item-card__stamp--*` stamps keep their original hexes (`#7e2c22`/`#1c4a41`/`#8f6522`) with a justifying comment on each rule |
+| `ocio/ocio.css` | **Modified**: the `[data-theme="black"]` delta block and grouped overrides for ocio profiles (the same pattern as `css/styles.css`) |
+| `AGENTS.md` | **Modified**: new rule 4 «Visualización correcta en todos los modos de tema» (verify the 4 modes, minimum WCAG AA 4.5:1/3:1, the grouped-selectors pattern with a single source of truth, hardcoded colors with a justifying comment) |
+| `docs/manual-de-usuario.md` | **Modified**: §14 Settings → Apariencia → Tema: the pure black mode now darkens BOTH the background **and** the surfaces (not only the background) — AGENTS.md's rule 3 |
+| `js/config.js` | **Modified**: `APP_VERSION` `20260837` → `20260838` |
+| `index.html` | **Modified**: bump `?v=20260837` → `?v=20260838` (×3: `styles.css`, `ocio.css`, `app.js`) via `scripts/bump-version.sh` |
+| `service-worker.js` | **Modified**: bump `?v=20260837` → `?v=20260838` on the 6 versioned assets of `STATIC_ASSETS` (via `scripts/bump-version.sh`) |
+| `tasks/task-issue-165.json` | **Modified**: the task's state (implemented → QA PASS validated on the 7 criteria → security scan PASS) with the `pr` block and issue #165 |
+| `docs/adr-066-modo-negro-puro-superficies-oscuras.md` | **New**: this document |
 
 Related issue: #165 — https://github.com/gonzalitojh/Registro-personal/issues/165

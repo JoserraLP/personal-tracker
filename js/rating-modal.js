@@ -1,25 +1,23 @@
 // =============================================================
-// Ventana de valoración emergente (issue #21): segundo modal que
-// se superpone al modal de detalle (o aparece sobre la biblioteca
-// en las acciones rápidas) al marcar como visto/leído una película,
-// un libro o un episodio de serie. Reutiliza el armazón #rating-modal
-// de index.html, los estilos de puntuación de la comunidad y el
-// picker de estrellas de ui.js.
+// Pop-up rating window (issue #21): second modal that overlays the
+// detail modal (or appears over the library in quick actions) when
+// marking a movie, a book or a show episode as watched/read. It
+// reuses the #rating-modal frame from index.html, the community
+// score styles and the star picker from ui.js.
 //
-// La promesa que devuelve openRatingModal() se resuelve con el
-// rating guardado (1-5, con medias desde la issue #276), con
-// RATING_MODAL_UNDONE si se deshizo el marcado, o con null si se
-// descartó. Nunca rechaza: los errores de guardado/deshacer se
-// notifican con un toast y la ventana permanece
-// abierta.
+// The promise returned by openRatingModal() resolves with the saved
+// rating (1-5, with halves since issue #276), with
+// RATING_MODAL_UNDONE if the marking was undone, or with null if it
+// was discarded. It never rejects: save/undo errors are notified
+// with a toast and the window stays open.
 // =============================================================
 
 import { ratingPickerHtml, wireRatingAndGetValue, showToast, PLACEHOLDER_COVER } from "./ui.js";
 import { trapFocus } from "./focus-utils.js";
 
-// Valor especial con el que se resuelve la promesa cuando el usuario
-// pulsa «Deshacer»: el marcado recién hecho se anuló y la UI de debajo
-// debe volver a su estado previo (issue #136).
+// Special value with which the promise resolves when the user hits
+// «Deshacer»: the newly made marking was undone and the UI below
+// must go back to its previous state (issue #136).
 export const RATING_MODAL_UNDONE = "undone";
 
 function escapeHtml(str) {
@@ -31,11 +29,11 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
-// Portada segura para el atributo src: solo se aceptan URLs https o
-// data:image/ (patrón del repo para placeholders, p. ej. PLACEHOLDER_COVER).
-// Cualquier otro esquema (javascript:, data:text/html...) o URL inválida
-// cae al placeholder. Se combina con escapeHtml en el atributo por
-// defensa en profundidad.
+// Safe cover for the src attribute: only https URLs or
+// data:image/ are accepted (repo pattern for placeholders, e.g.
+// PLACEHOLDER_COVER). Any other scheme (javascript:, data:text/html...)
+// or invalid URL falls back to the placeholder. It is combined with
+// escapeHtml on the attribute for defense in depth.
 function safeCoverUrl(url) {
   if (!url) return PLACEHOLDER_COVER;
   try {
@@ -47,51 +45,52 @@ function safeCoverUrl(url) {
       return url;
     }
   } catch {
-    // URL no parseable → placeholder
+    // Unparseable URL → placeholder
   }
   return PLACEHOLDER_COVER;
 }
 
-// Estado del modal abierto actualmente (o null). closeRatingModal()
-// lo usa para cerrar la ventana desde fuera (p. ej. la tecla Escape,
-// que prioriza el handler global de modal-handlers.js).
+// State of the currently open modal (or null). closeRatingModal()
+// uses it to close the window from outside (e.g. the Escape key,
+// which prioritizes the global handler of modal-handlers.js).
 let currentClose = null;
-// Mientras el deshacer está en curso, los cierres externos (✕,
-// backdrop, Escape, «Ahora no») se ignoran: no deben resolver la
-// promesa con null a mitad de la restauración (issue #136).
+// While the undo is in progress, external closes (✕, backdrop,
+// Escape, «Ahora no») are ignored: they must not resolve the
+// promise with null in the middle of the restoration (issue #136).
 let undoInProgress = false;
 
 /**
- * Cierra la ventana de valoración sin guardar (si está abierta).
- * La usa el handler global de Escape en modal-handlers.js.
+ * Closes the rating window without saving (if open).
+ * Used by the global Escape handler in modal-handlers.js.
  */
 export function closeRatingModal() {
   if (currentClose) currentClose(null);
 }
 
-// Los botones de cierre del armazón estático (✕ y backdrop) viven en
-// index.html, así que sus listeners se registran UNA sola vez al cargar
-// el módulo (no por cada apertura). Delegan en closeRatingModal(), que
-// resuelve la promesa pendiente con null si no se guardó, y es
-// idempotente: sin modal abierto (currentClose null) no hace nada.
+// The close buttons of the static frame (✕ and backdrop) live in
+// index.html, so their listeners are registered ONCE when the module
+// loads (not on each open). They delegate to closeRatingModal(),
+// which resolves the pending promise with null if nothing was saved,
+// and is idempotent: with no open modal (currentClose null) it does
+// nothing.
 document.getElementById("rating-modal-close").addEventListener("click", () => closeRatingModal());
 document.getElementById("rating-modal-backdrop").addEventListener("click", () => closeRatingModal());
 
 /**
- * Abre la ventana de valoración sobre lo que haya en pantalla.
+ * Opens the rating window over whatever is on screen.
  * @param {object} opts
  * @param {string} opts.type            - "movie" | "tv" | "book"
- * @param {string} opts.title           - Título del ítem
- * @param {string|null} opts.coverUrl   - Portada (o null para placeholder)
- * @param {string} [opts.episodeLabel]  - Línea opcional del episodio ("T1E3 · Piloto")
- * @param {number|null} opts.communityRating - Nota de la comunidad (o null → "Sin puntuaciones")
- * @param {string} opts.communityLabel  - "TMDB" o "TMDB · episodio"
- * @param {number|null} opts.initialRating - Valoración previa del usuario (1-5, con medias)
- * @param {Function} opts.onSave        - async (rating) => {}, persiste la valoración
- * @param {Function} [opts.onUndo]      - async () => {}, anula el marcado recién hecho
- * @param {string} [opts.undoLabel]     - Texto del botón «Deshacer» (por defecto "Deshacer")
- * @returns {Promise<number|string|null>} Rating 1-5 guardado (pasos de 0.5), RATING_MODAL_UNDONE si se
- *          deshizo el marcado, o null si se descartó.
+ * @param {string} opts.title           - Title of the item
+ * @param {string|null} opts.coverUrl   - Cover (or null for the placeholder)
+ * @param {string} [opts.episodeLabel]  - Optional episode line ("S1E3 · Pilot")
+ * @param {number|null} opts.communityRating - Community score (or null → "Sin puntuaciones")
+ * @param {string} opts.communityLabel  - "TMDB" or "TMDB · episode"
+ * @param {number|null} opts.initialRating - Previous user rating (1-5, with halves)
+ * @param {Function} opts.onSave        - async (rating) => {}, persists the rating
+ * @param {Function} [opts.onUndo]      - async () => {}, undoes the just-made marking
+ * @param {string} [opts.undoLabel]     - Text of the «Deshacer» button (default "Deshacer")
+ * @returns {Promise<number|string|null>} Saved rating 1-5 (0.5 steps), RATING_MODAL_UNDONE if the
+ *          marking was undone, or null if it was discarded.
  */
 export function openRatingModal({ type, title, coverUrl, episodeLabel, communityRating, communityLabel, initialRating, onSave, onUndo, undoLabel = "Deshacer" }) {
   return new Promise((resolve) => {
@@ -128,7 +127,7 @@ export function openRatingModal({ type, title, coverUrl, episodeLabel, community
       </div>
     `;
 
-    // Picker compacto para la ventana pequeña
+    // Compact picker for the small window
     const picker = content.querySelector(".rating-picker");
     if (picker) picker.classList.add("rating-picker--small");
 
@@ -136,8 +135,8 @@ export function openRatingModal({ type, title, coverUrl, episodeLabel, community
 
     let settled = false;
     const close = (result) => {
-      if (undoInProgress) return; // el deshacer en curso decide el cierre (issue #136)
-      if (settled) return; // idempotente: cerrar dos veces no resuelve dos veces
+      if (undoInProgress) return; // the undo in progress decides the close (issue #136)
+      if (settled) return; // idempotent: closing twice does not resolve twice
       settled = true;
       currentClose = null;
 
@@ -145,8 +144,8 @@ export function openRatingModal({ type, title, coverUrl, episodeLabel, community
         modal._focusTrapCleanup();
         modal._focusTrapCleanup = null;
       }
-      // Restaurar el foco al elemento previo, si sigue en el DOM
-      // (p. ej. la casilla del episodio o el botón de acción rápida)
+      // Restore focus to the previous element, if still in the DOM
+      // (e.g. the episode checkbox or the quick action button)
       if (modal._previousActiveElement && document.contains(modal._previousActiveElement)) {
         modal._previousActiveElement.focus();
       }
@@ -158,10 +157,10 @@ export function openRatingModal({ type, title, coverUrl, episodeLabel, community
     };
     currentClose = close;
 
-    // "Ahora no" también descarta
+    // "Ahora no" also discards
     content.querySelector("#rm-save-later").addEventListener("click", () => close(null));
 
-    // Guardar: persiste y cierra con el rating; si falla, toast y se queda abierta
+    // Save: persists and closes with the rating; if it fails, toast and the window stays open
     content.querySelector("#rm-save").addEventListener("click", async () => {
       const rating = getRating();
       if (!rating) {
@@ -174,19 +173,19 @@ export function openRatingModal({ type, title, coverUrl, episodeLabel, community
         await onSave(rating);
         close(rating);
       } catch (err) {
-        // Robustez frente a errores que no son instancia de Error
-        // (p. ej. throw de strings/valores): el toast nunca muestra
+        // Robustness against errors that are not Error instances
+        // (e.g. thrown strings/values): the toast never shows
         // "undefined".
         showToast("No se pudo guardar la valoración: " + String(err && err.message ? err.message : err));
         saveBtn.disabled = false;
       }
     });
 
-    // Deshacer: anula el marcado recién hecho y cierra con
-    // RATING_MODAL_UNDONE; si falla, toast y la ventana se queda
-    // abierta. Ambos botones (deshacer y guardar) se deshabilitan
-    // durante la operación para evitar carreras, y los cierres
-    // externos se ignoran mientras corre (issue #136).
+    // Undo: cancels the just-made marking and closes with
+    // RATING_MODAL_UNDONE; if it fails, toast and the window stays
+    // open. Both buttons (undo and save) are disabled during the
+    // operation to avoid races, and external closes are ignored
+    // while it runs (issue #136).
     if (onUndo) {
       content.querySelector("#rm-undo").addEventListener("click", async () => {
         const undoBtn = content.querySelector("#rm-undo");
@@ -196,9 +195,9 @@ export function openRatingModal({ type, title, coverUrl, episodeLabel, community
         undoInProgress = true;
         try {
           await onUndo();
-          // Liberar la guarda ANTES de cerrar: el close() con
-          // RATING_MODAL_UNDONE debe pasar (la guarda solo bloquea
-          // los cierres externos con null mientras el undo corre).
+          // Release the guard BEFORE closing: the close() with
+          // RATING_MODAL_UNDONE must pass (the guard only blocks
+          // external closes with null while the undo runs).
           undoInProgress = false;
           close(RATING_MODAL_UNDONE);
         } catch (err) {

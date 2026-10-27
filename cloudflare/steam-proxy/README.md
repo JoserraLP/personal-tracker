@@ -1,52 +1,51 @@
-# steam-proxy — Worker de Cloudflare
+# steam-proxy — Cloudflare Worker
 
-Proxy de la API de Steam para la app. La API de Steam exige una clave
-(`STEAM_API_KEY`) que no puede exponerse en la web, y sus respuestas no
-llevan CORS: este Worker guarda la clave como secreto y devuelve la
-lista de juegos con horas jugadas lista para la app.
+Steam API proxy for the app. The Steam API requires a key
+(`STEAM_API_KEY`) that cannot be exposed in the web, and its responses
+carry no CORS: this Worker stores the key as a secret and returns the
+list of games with hours played, ready for the app.
 
-## Obtener lo necesario
+## Getting what's needed
 
-1. **Clave de la API de Steam**: entra en https://steamcommunity.com/dev/apikey con tu
-   cuenta de Steam (dominio "localhost" vale para registrarla) y copia la clave.
-2. **Tu SteamID64**: puedes verlo en tu perfil de Steam (la URL
-   `.../profiles/7656119XXXXXXXXXXXX`) o con herramientas como
+1. **Steam API key**: go to https://steamcommunity.com/dev/apikey with your
+   Steam account ("localhost" as domain works to register it) and copy the key.
+2. **Your SteamID64**: you can see it in your Steam profile (the URL
+   `.../profiles/7656119XXXXXXXXXXXX`) or with tools such as
    <https://steamid.io>.
-3. **Perfil público**: tus horas solo se comparten si tu detalle del
-   juego es público en Steam (Perfil → Editar → Privacidad → Detalles
-   del juego → Público).
+3. **Public profile**: your hours are only shared if your game detail is
+   public on Steam (Profile → Edit → Privacy → Game details → Public).
 
-## Desplegar
+## Deploy
 
 ```bash
 cd cloudflare/steam-proxy
-npm install --save-dev wrangler   # (o usa npx wrangler)
+npm install --save-dev wrangler   # (or use npx wrangler)
 npx wrangler login
-npx wrangler secret put STEAM_API_KEY      # pega la clave de Steam
-# Opcional (recomendado): limitar el origen a tu GitHub Pages
-npx wrangler secret put ALLOWED_ORIGIN     # pega p. ej. https://joserralp.github.io
+npx wrangler secret put STEAM_API_KEY      # paste the Steam key
+# Optional (recommended): restrict the origin to your GitHub Pages
+npx wrangler secret put ALLOWED_ORIGIN     # paste e.g. https://joserralp.github.io
 npx wrangler deploy
 ```
 
-`wrangler deploy` imprime la URL pública (formato
-`https://steam-proxy.<tu-subdominio>.workers.dev`).
+`wrangler deploy` prints the public URL (format
+`https://steam-proxy.<your-subdomain>.workers.dev`).
 
-## Conectar con la app
+## Connect with the app
 
-Pon esa URL en `js/config.js`:
+Put that URL in `js/config.js`:
 
 ```js
-export const STEAM_PROXY_URL = "https://steam-proxy.<tu-subdominio>.workers.dev";
+export const STEAM_PROXY_URL = "https://steam-proxy.<your-subdomain>.workers.dev";
 ```
 
-y sube con `scripts/bump-version.sh` después (la config se cachea
-con el service worker).
+and push afterwards with `scripts/bump-version.sh` (the config is cached
+by the service worker).
 
-## Verificación
+## Verification
 
-1. Abre `https://steam-proxy.<tu-subdominio>.workers.dev/` en el navegador:
-   debe responder `{"ok":true,"service":"steam-proxy",...}`.
-2. Prueba `GET /owned?steamid=<tuSteamID64>`: lista de juegos con
-   `playtimeHours` y `lastPlayedAt`.
-3. En la web, Ajustes → Integración de Steam: pega tu SteamID64 y
-   «Buscar mis juegos».
+1. Open `https://steam-proxy.<your-subdomain>.workers.dev/` in the browser:
+   it must respond `{"ok":true,"service":"steam-proxy",...}`.
+2. Try `GET /owned?steamid=<yourSteamID64>`: list of games with
+   `playtimeHours` and `lastPlayedAt`.
+3. On the web, Settings → Steam integration: paste your SteamID64 and
+   hit "Find my games".

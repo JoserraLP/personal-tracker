@@ -1,164 +1,333 @@
-# ADR-098: Últimas series del ejercicio en el detalle del catálogo
+# ADR-098: The exercise's last sets on the catalog's detail view
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #270 pide que en la pestaña **«Ejercicios»** se muestren, en
-el **detalle (modo lectura) de un ejercicio del catálogo**, las series
-que se hicieron la **última vez** que se trabajó ese ejercicio. Hasta
-ahora el detalle solo mostraba nombre, grupo muscular y notas: el
-usuario que quería retomar un ejercicio con las mismas cargas tenía
-que abrir el entreno correspondiente en busca de la sesión más
-reciente.
+Issue #270 asks
+that
+on the
+**«Ejercicios»**
+tab, the
+**sets
+got shown on the
+exercise's
+detail (read
+mode) of
+the
+catalog** that were
+done the
+**last
+time** that
+exercise got
+worked
+. Until
+now the detail only
+showed a
+name, a
+muscle
+group and
+notes: the user that wanted to
+resume
+an exercise with the
+same loads
+had to
+open the corresponding workout
+looking
+for the most recent
+session.
 
-La base ya resolvía la mitad del problema: el pre-relleno del
-constructor de entrenos (#265, ADR-097) localiza las series de la
-última vez mediante el match por `ejercicioId` con fallback legacy por
-nombre; esta issue **lleva esa misma información al detalle del
-catálogo**, de modo que el usuario la vea sin abrir ningún entreno.
+The base already
+solved half
+the
+problem: the workout
+constructor's pre-fill
+(#265, ADR-097) locates
+the
+last-time
+sets through the
+`ejercicioId` match with a
+legacy
+name-based
+fallback; this issue **carries
+that same information to the
+catalog's detail**, so the
+user sees it
+without opening any
+workout.
 
-Contexto de ramificación: igual que ADR-096 y ADR-097, esta tarea nace
-de `feat/issue-62-seccion-gimnasio` (la sección y el ADR-095 aún no
-están en `dev`; PR #262 pendiente de integración). La rama de la #270
-se fusionará en esa rama intermedia, de modo que este ADR llegará a
-`dev` junto con la sección completa; por eso el número de serie
-continúa tras ADR-097 (en el repo existen duplicados históricos de
-ADR, ej. dos `adr-094` y dos `adr-093`, por eso el siguiente número se
-calcula como el máximo existente + 1).
+Branch
+context: like ADR-096 and ADR-097, this task
+is
+born
+from
+`feat/issue-62-seccion-gimnasio` (the section and the
+ADR-095 are not yet
+in the
+`dev`; the
+PR
+#262
+pending integration). The #270's branch
+merges into that intermediate branch, so this ADR arrives at
+the
+`dev` together with the whole section; that's why the
+serial number continues after
+the
+ADR-097 (on the
+repo there are historical ADR's
+duplicates, e.g.
+two
+`adr-094`s and
+two
+`adr-093`s, that's why the next
+number gets calculated as the
+existing
+maximum + 1).
 
-La implementación está validada (QA PASS contra los criterios de
-aceptación del task file, responsividad 360/768/1280 px y cuatro modos
-de tema según las reglas 2 y 4 de AGENTS.md) y el manual de usuario se
-actualiza en esta misma tarea (regla 3 de AGENTS.md, §9.2). Este ADR
-documenta la decisión a posteriori, como los recientes (ADR-093,
-ADR-094, ADR-095, ADR-096, ADR-097).
+The implementation is validated (a
+QA PASS against the
+task
+file's acceptance criteria, the
+360/768/1280 px responsiveness and the
+four theme
+modes per the
+2 and 4 rules of the
+AGENTS.md) and the user manual updates on this very
+task (the
+AGENTS.md's rule 3, the
+§9.2). This ADR
+documents the decision retrospectively, like the recent ones (the
+ADR-093, the
+ADR-094, the
+ADR-095, the
+ADR-096, the
+ADR-097).
 
 Related issue: #270 — https://github.com/gonzalitojh/Registro-personal/issues/270
 
-## Decisión
+## Decision
 
-### 1. Sección «Última vez» en el detalle del ejercicio
+### 1. The «Última vez» (Last time) section on the exercise's detail
 
-El modo lectura del ejercicio (`exerciseDetailHtml(ex)`) incorpora una
-sección **«Última vez»** que muestra:
+The exercise's read
+mode (the
+`exerciseDetailHtml(ex)`) incorporates a
+**«Última vez»**
+section that shows:
 
-- la **fecha** del entreno más reciente donde se trabajó el ejercicio,
-  formateada con `ctx.formatDateEs` (con fallback al ISO crudo si el
-  formateo no produce texto);
-- su **tabla de series** (peso × repeticiones) en la **unidad de
-  presentación activa** (kg/lbs): cada fila es un par de `spans` con
-  `kgToDisplay(series.pesoKg)` + `unitLabel()` y `reps`, reutilizando
-  las clases `.gym-series-table`/`.gym-series-row` ya existentes en la
-  sección (ADR-095/097), sin CSS nuevo ni listeners nuevos (están ya
-  cubiertas en los cuatro modos de tema).
+- the
+  **date** of
+  the most recent workout where the exercise got
+  worked, formatted with the
+  `ctx.formatDateEs` (with a
+  fallback to the raw ISO if
+  the formatting does not
+  produce text);
+- its **sets'
+  table** (the weight × the reps) in
+  the
+  **active
+  presentation unit** (the
+  kg/lbs): each row is a
+  pair of
+  `spans` with
+  the
+  `kgToDisplay(series.pesoKg)` + the
+  `unitLabel()` and the
+  reps`, reusing
+  the
+  `.gym-series-table`/`.gym-series-row` classes already existing on
+  the
+  section (the
+  ADR-095/097), with no new CSS nor new
+  listeners (they
+  are already covered in the four theme
+  modes).
 
-**Solo se renderiza si hay datos previos**: si el ejercicio nunca se
-trabajó (`lastWorkoutForExercise` devuelve `null`), la sección no
-aparece en absoluto.
+**It only renders if there is previous
+data**: if the exercise never got
+worked (the
+`lastWorkoutForExercise`
+returns a
+`null`), the section does not
+appear at all.
 
-### 2. Refactor del match: `lastWorkoutForExercise()`
+### 2. The match's refactor: the
+  `lastWorkoutForExercise()`
 
-La función `lastWorkoutSeriesForExercise()` (#265, pre-relleno del
-constructor) se refactoriza a **`lastWorkoutForExercise(exerciseId,
-nombre)`**, que ahora devuelve **`{ fechaISO, series } | null`** (con
-`series` como copia `{pesoKg, reps}`), manteniendo exactamente la
-misma lógica de match:
+The
+`lastWorkoutSeriesForExercise()` function
+(#265, the constructor's
+pre-fill) gets refactored to a
+**`lastWorkoutForExercise(exerciseId, nombre)`**, which now
+returns
+**`{ fechaISO, series } | null`** (with the
+`series` as a
+`{pesoKg, reps}`
+copy), keeping exactly the
+same match logic:
 
-- recorre `workouts`, que ya llega **ordenado por `fechaISO` desc**
-  desde la suscripción `orderBy("fechaISO","desc")` de `db.js`
-  (ADR-095);
-- **prioridad estricta del match canónico por `ejercicioId`**: la
-  primera entrada con series de ese ejercicio gana y retorna;
-- **fallback legacy por nombre snapshot normalizado** (trim +
-  minúsculas) solo si ningún entreno tiene una entrada canónica de ese
-  ejercicio, para datos antiguos sin id.
+- it walks
+  the
+  `workouts`, which already
+  arrive **sorted by the
+  `fechaISO` desc** from
+  the
+  `db.js`'s
+  `orderBy("fechaISO","desc")` subscription
+  (the
+  ADR-095);
+- **the canonical
+  `ejercicioId` match's
+  strict priority**: the
+  first
+  entry with sets of
+  that exercise wins
+  and returns;
+- **a legacy
+  normalized snapshot-name fallback** (a
+  trim +
+  lowercase) only if no workout has a
+  canonical
+  entry of
+  that exercise, for the
+  old no-id data.
 
-El call-site del pre-relleno (#265) se adapta al nuevo contrato
-(`prev.series` en lugar de la serie directa); el detalle usa la misma
-función, de modo que **ambas vistas comparten una sola fuente de
-verdad** para «la última vez».
+The pre-fill's call-site (#265) adapts to the new
+contract (the
+`prev.series` instead of the
+direct
+set); the detail uses
+the
+same function, so
+**both views
+share
+a single source of truth** for
+"the last
+time".
 
-### 3. Sin consultas extra a Firestore
+### 3. With no extra Firestore queries
 
-La sección «Última vez» se alimenta del **estado en memoria ya
-suscrito** (`workouts` ordenado desc), igual que el pre-relleno
-(ADR-097): no hay consultas adicionales, latencia ni coste de lectura
-nuevos; el render es sincrónico dentro del modal.
+The
+«Última vez»
+section feeds from the
+**already subscribed
+in-memory state** (the
+`workouts` sorted
+desc), identical to the
+pre-fill
+(ADR-097): there are no extra
+queries, latency nor new read
+costs; the render is sync within the modal.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Epígrafe vacío «Sin registros previos» cuando no hay historial**:
-  descartado — añadiría ruido visual en catálogos nuevos, donde casi
-  ningún ejercicio se ha trabajado todavía; la ausencia de la sección
-  comunica lo mismo sin ruido.
-- **Función hermana para el detalle que duplicara el bucle de match**:
-  descartado — crearía dos fuentes de verdad para «la última vez» con
-  riesgo de divergencia; el refactor de la función existente (#265)
-  para devolver también `fechaISO` resuelve ambos usos con una sola
-  implementación.
-- **Consulta adicional a Firestore** (p. ej. por ejercicio):
-  descartado — `workouts` ya está suscrito y ordenado desc por
-  `fechaISO`; una consulta extra añadiría latencia, estado asíncrono y
-  costes de lectura sin beneficio, el mismo argumento ya documentado
-  en ADR-097.
+- **An empty "No previous
+records" heading when there is no history**: rejected — it would add visual noise on new catalogs, where almost no exercise has got worked yet; the section's absence communicates the same thing without noise.
+- **A sibling function for the
+  detail that would duplicate the match loop**: rejected — it would create two sources of truth for "the
+  last time" with a
+  divergence risk; the existing function's refactor (#265) to also return the
+  `fechaISO` solves
+  both
+  uses with a single
+  implementation.
+- **An extra Firestore query** (e.g. per
+  exercise): rejected — the
+  `workouts` is already subscribed and
+  sorted desc by the
+  `fechaISO`; an extra query would add latency, an async state and read costs without
+  a benefit, the same argument already
+  documented in
+  the
+  ADR-097.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Ver con qué cargas se acabó la última sesión sin abrir el
-  entreno**: el detalle del ejercicio responde la pregunta de la issue
-  de un vistazo, con la fecha y la tabla de series en la unidad activa.
-- **Una sola fuente de verdad para el match**: pre-relleno del
-  constructor (#265) y detalle del catálogo (#270) comparten
-  `lastWorkoutForExercise()`; el refactor añade la fecha al contrato
-  sin tocar la lógica de emparejamiento ya validada.
-- **Offline-first y sin coste adicional**: la sección usa los datos ya
-  suscritos en memoria; no hay consultas ni latencia nueva.
-- **Sin superficie nueva que mantener**: se reutilizan las clases de
-  lectura existentes, ya cubiertas en los cuatro modos de tema, sin
-  CSS ni listeners adicionales.
+- **Seeing with
+  which loads the last session ended without opening the
+  workout**: the exercise detail answers the issue's question at a
+  glance, with the date and the sets'
+  table in the active unit.
+- **A single match source of truth**: the
+  constructor's pre-fill (#265) and the
+  catalog's detail (#270) share
+  the
+  `lastWorkoutForExercise()`; the
+  refactor adds the date to the contract without
+  touching the already validated matching logic.
+- **Offline-first and with no extra cost**: the section uses the already subscribed in-memory data; there are no new queries nor latency.
+- **No new surface to maintain**: the
+  existing read classes get reused, already covered in the four theme modes, with no extra CSS nor listeners.
 
-### Neutras
+### Neutral
 
-- **El cambio de nombre de un ejercicio no rompe el match canónico**:
-  la prioridad estricta por `ejercicioId` prevalece siempre; el
-  fallback por nombre solo aplica a datos legacy sin id (y puede no
-  acertar si el ejercicio se renombró tras guardarse el entreno:
-  comportamiento degradado, no erróneo, ya documentado en ADR-097).
-- **El detalle de un ejercicio con muchas series previas crece**: la
-  tabla muestra todas las series de la última sesión, pero el modal ya
-  es scroll container (`.modal__card` con `max-height: 88vh` y
-  `overflow-y: auto`), así que el contenido nunca se corta.
-- **La sección solo aparece con historial**: en catálogos nuevos o con
-  ejercicios nunca trabajados el detalle queda igual que antes.
-- **Manual de usuario actualizado** (§9.2): la sección «Última vez»
-  del modo lectura documentada (regla 3 de AGENTS.md).
+- **An exercise's rename does not break the canonical match**: the
+  strict `ejercicioId` priority always prevails; the name-based fallback only
+  applies to the no-id legacy data (and may miss if the exercise got renamed after the workout got stored: a degraded behavior, not an erroneous one, already documented in ADR-097).
+- **An exercise's detail with many previous sets grows**: the
+  table shows all the last session's sets, but the modal is already a scroll container (the
+  `.modal__card` with the
+  `max-height: 88vh` and an
+  `overflow-y: auto`), so the content never gets cut.
+- **The section only appears with history**: on new catalogs or with never-worked exercises the detail stays identical to before.
+- **The user manual updated** (the
+  §9.2): the read
+  mode's «Última vez»
+  section documented (the
+  AGENTS.md's rule 3).
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Empates de `fechaISO` entre entrenos**: el mismo riesgo ya
-  documentado en ADR-097 para el pre-relleno — si hay varios entrenos
-  con la misma fecha, el orden entre ellos no está garantizado por la
-  suscripción (solo el criterio `fechaISO` desc) y la sección podría
-  mostrar un entreno distinto del realmente último. Impacto bajo:
-  mismo día, resultados similares y siempre revisables, y el guard por
-  `ejercicioId` es estable para el resto de casos.
-- **Ninguna otra conocida.** Validado: QA PASS (criterios del task
-  file, responsividad y cuatro modos de tema) y el código continúa el
-  patrón de validación y seguridad del resto de la sección (ADR-095).
+- **`fechaISO` ties between workouts**: the same risk already documented in ADR-097 for the pre-fill — if there are several workouts with the same date, the order between them is not guaranteed by the subscription (just the `fechaISO` desc criterion) and the section might
+  show
+  a workout
+  different
+  from the actually
+  last one. A
+  low impact: the same day, similar results and always reviewable, and the `ejercicioId` guard is stable for the
+  rest of the
+  cases.
+- **No other known ones.**
+  Validated: a QA PASS (the task file's criteria, the responsiveness and the four theme modes) and the code continues
+  the
+  section's rest's validation and security pattern (the ADR-095).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/gym.js` | **Modificado**: refactor de `lastWorkoutSeriesForExercise()` (#265) a `lastWorkoutForExercise(exerciseId, nombre)` devolviendo `{ fechaISO, series } \| null` (copia `{pesoKg, reps}`) con la misma lógica de match (canónico por `ejercicioId`, fallback legacy por nombre normalizado); call-site del pre-relleno adaptado a `prev.series`; `exerciseDetailHtml()` añade la sección «Última vez» (fecha con `ctx.formatDateEs` y tabla `.gym-series-table`/`.gym-series-row` con `spans` en la unidad activa; solo se renderiza si hay historial) |
-| `docs/manual-de-usuario.md` | **Modificado**: §9.2 — sección «Última vez» del modo lectura (fecha y tabla de series del entreno más reciente, en la unidad de peso activa; no aparece en ejercicios nuevos) |
-| `docs/adr-098-ultimas-series-ejercicio.md` | **Nuevo**: este documento |
+| `js/gym.js` | **Modified**: the
+  `lastWorkoutSeriesForExercise()`'s refactor (#265) into
+  a
+  `lastWorkoutForExercise(exerciseId, nombre)` returning
+  `{ fechaISO, series } \| null` (a
+  `{pesoKg, reps}`
+  copy) with the same match logic (the
+  canonical by
+  the
+  `ejercicioId`, the legacy name-based fallback); the
+  pre-fill's call-site adapted to the
+  `prev.series`; the
+  `exerciseDetailHtml()` adds the
+  «Última vez»
+  section (a date with the
+  `ctx.formatDateEs` and a
+  `.gym-series-table`/`.gym-series-row`
+  table with
+  `spans` in the active unit; it only renders if there is history) |
+| `docs/manual-de-usuario.md` | **Modified**: the
+  §9.2 — the read
+  mode's «Última vez»
+  section (the date and the sets'
+  table of the most recent workout, in the active weight unit; it does not
+  appear on new exercises) |
+| `docs/adr-098-ultimas-series-ejercicio.md` | **New**: this document |
 
 Related issue: #270 — https://github.com/gonzalitojh/Registro-personal/issues/270

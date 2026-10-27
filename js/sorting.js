@@ -1,22 +1,24 @@
 // =============================================================
-// Funciones de ordenación y comparación. Extraídas de app.js
-// para reutilizarlas tanto en app.js (ordenación de la lista)
-// como en ui.js (badges de episodios sin estrenar).
+// Sorting and comparison functions. Extracted from app.js to be
+// reusable both in app.js (list sorting) and in ui.js (badges for
+// unreleased episodes).
 // =============================================================
 
 import { isUnreleasedDate } from "./release.js";
 
-// Información de emisión del siguiente episodio que le toca ver al
-// usuario: { season, episode, airDate, source } o null si se desconoce.
-// Precedencia documentada de fuentes:
-//   1. nextEpisodeToAir (TMDB en vivo) cuando coincide con el siguiente
-//      episodio del usuario (source "toAir").
-//   2. seasonAirDates[temporada] (refrescado a diario; null = temporada
-//      aún sin estrenar) cuando el episodio pertenece a esa temporada
+// Air info of the next episode that is the user's turn to watch:
+// { season, episode, airDate, source } or null when unknown.
+// Documented source precedence:
+//   1. nextEpisodeToAir (live TMDB) when it matches the user's next
+//      episode (source "toAir").
+//   2. seasonAirDates[season] (refreshed daily; null = season not yet
+//      released) when the episode belongs to that season
 //      (source "season").
-//   3. nextEpisodeAirDate (backfill histórico persistido) (source "stored").
-// El tag `source` es solo informativo del predicado: nunca se persiste
-// (los paths que construyen objetos persistidos lo construyen sin tag).
+//   3. nextEpisodeAirDate (persisted historical backfill)
+//      (source "stored").
+// The `source` tag is purely informational for the predicate: it is
+// never persisted (paths that build persisted objects build them
+// without the tag).
 export function getNextEpisodeAirInfo(item) {
   const ne = item.nextEpisode;
   if (item.type !== "tv" || item.manual || !ne) return null;
@@ -35,33 +37,32 @@ export function getNextEpisodeAirInfo(item) {
   return null;
 }
 
-// Comprueba si el siguiente episodio que le toca ver al usuario
-// coincide con el próximo episodio que TMDB dice que aún no se ha
-// emitido (o cuyo episodio guardado localmente no tiene fecha o la
-// tiene futura).
+// Checks whether the next episode that is the user's turn to watch
+// matches the upcoming episode TMDB says has not aired yet (or whose
+// locally stored episode has no date or a future one).
 export function isNextEpisodeUnreleased(item) {
   const info = getNextEpisodeAirInfo(item);
   return !!info && isUnreleasedDate(info.airDate);
 }
 
-// Un ítem está "sin estrenar" si su siguiente contenido (estreno de la
-// película, siguiente episodio o premiere de la serie) no tiene fecha
-// oficial o la tiene futura. Las series manuales quedan excluidas.
+// An item is "unreleased" if its next content (movie premiere, next
+// episode or series premiere) has no official date or the date is in
+// the future. Manual shows are excluded.
 export function isItemUnreleased(item) {
   if (item.manual) return false;
   if (item.type === "movie") {
     return !(item.watchLog && item.watchLog.length) && isUnreleasedDate(item.releaseDate);
   }
   if (item.type === "tv") {
-    if (!item.nextEpisode) return false; // completada: nunca "sin estrenar"
+    if (!item.nextEpisode) return false; // finished: never "unreleased"
     return item.awaitingRelease === true || isNextEpisodeUnreleased(item);
   }
   return false;
 }
 
-// Normaliza a un texto comparable tanto las fechas "YYYY-MM-DD" que
-// guardamos nosotros como los Timestamp de Firestore (addedAt), para
-// poder compararlos entre sí en el mismo orden.
+// Normalizes to comparable text both the "YYYY-MM-DD" dates we
+// store and Firestore Timestamps (addedAt), so they can be compared
+// with each other in the same order.
 export function toComparableTime(value) {
   if (!value) return null;
   if (typeof value === "string") return value;
@@ -70,14 +71,14 @@ export function toComparableTime(value) {
   return null;
 }
 
-// Última actividad real (último episodio visto, última vez vista/leída);
-// si todavía no hay ninguna, se usa la fecha en la que se añadió.
+// Last real activity (last episode watched, last watch/read);
+// if there is none yet, the date the item was added is used.
 function getActivityOrAddedTime(item) {
   return toComparableTime(getSortDate(item)) || toComparableTime(item.addedAt);
 }
 
-// Última actividad según el tipo de ítem (para ordenar por fecha
-// de actividad reciente).
+// Last activity depending on the item type (to sort by recent
+// activity date).
 export function getSortDate(item) {
   let activity = null;
   if (item.type === "movie") {
@@ -97,9 +98,9 @@ export function getSortDate(item) {
       activity = last.finishedAt || last.startedAt || null;
     }
   }
-  // Si se acaba de detectar que se ha estrenado (pelis y series que
-  // estaban pendientes de estreno), eso también cuenta como actividad,
-  // para que suba en el orden aunque todavía no se haya visto.
+  // If it was just detected that it has been released (movies and
+  // shows that were awaiting release), that also counts as activity,
+  // so it moves up in the order even if it has not been watched yet.
   if (item.releasedNoticedAt && (!activity || item.releasedNoticedAt > activity)) {
     activity = item.releasedNoticedAt;
   }
@@ -139,7 +140,7 @@ export function applySort(items, sortKey) {
   if (sortKey === "alfabetico") return [...items].sort(compareAlphabetical);
   if (sortKey === "anio") return [...items].sort(compareByYearDesc);
   if (sortKey === "fecha") return [...items].sort(compareByDateDesc);
-  // "añadido" (por defecto): lo visto/leído más recientemente sube arriba;
-  // lo que aún no se ha empezado se ordena por cuándo se añadió.
+  // "añadido" (default): what was watched/read most recently moves up;
+  // what has not been started yet is sorted by when it was added.
   return [...items].sort(compareByActivityDesc);
 }

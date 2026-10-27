@@ -1,10 +1,10 @@
 # =============================================================
-# wrangler.toml — configuración del Worker proxy de Steam.
+# wrangler.toml — configuration of the Steam proxy Worker.
 #
-# Los secretos NO van aquí: se configuran con:
+# Secrets do NOT go here: configure them with:
 #   wrangler secret put STEAM_API_KEY
-# y opcionalmente:
-#   wrangler secret put ALLOWED_ORIGIN   (p. ej. https://joserralp.github.io)
+# and optionally:
+#   wrangler secret put ALLOWED_ORIGIN   (e.g. https://joserralp.github.io)
 # =============================================================
 name = "steam-proxy"
 main = "worker.js"

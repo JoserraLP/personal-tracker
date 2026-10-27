@@ -1,78 +1,78 @@
-# ADR-019: Rama `dev` como rama de integración para las PR de los agentes
+# ADR-019: `dev` branch as the integration branch for the agents' PRs
 
-## Estado
-Implementado
+## Status
+Implemented
 
-## Fecha
-Agosto 2026
+## Date
+August 2026
 
-**NOTA — REFUTACIÓN (ADR-029 / ADR-053)**: la afirmación de la sección «Consecuencias → Neutras» («GitHub cierra la issue con Closes #N al fusionar la PR en cualquier rama, incluida dev») es INCORRECTA: GitHub solo auto-cierra issues con keywords de cierre al fusionar en la **rama por defecto** (`main`). Sobre `dev` el cierre lo realizan los workflows: ADR-029 (issue #42) y, actualmente, ADR-053 (issue #143) con el cierre dirigido de la issue de la PR al fusionar en `dev`.
+**NOTE — REFUTATION (ADR-029 / ADR-053)**: the claim in the section "Consecuencias → Neutras" ("GitHub closes the issue with Closes #N when merging the PR into any branch, including dev") is INCORRECT: GitHub only auto-closes issues with closing keywords when merging into the **default branch** (`main`). On `dev` the closure is performed by the workflows: ADR-029 (issue #42) and, currently, ADR-053 (issue #143) with targeted closure of the PR's issue when merging into `dev`.
 
-## Contexto
+## Context
 
-Hasta ahora, el agente publisher creaba todas las Pull Requests contra la rama por defecto del repositorio (`main`), lo que hacía que los cambios llegaran directamente al entorno de producción sin pasar por un entorno intermedio de verificación.
+Until now, the publisher agent created all Pull Requests against the default branch of the repository (`main`), which meant changes went directly to the production environment without going through an intermediate verification environment.
 
-Para resolverlo, el usuario creó la rama `dev` como **rama de integración**, la desplegó en **Cloudflare Pages como entorno de desarrollo** y promoverá `dev` a `main` cuando estime que la versión es estable. La issue #20 divide el trabajo en dos partes:
+To solve this, the user created the `dev` branch as the **integration branch**, deployed it to **Cloudflare Pages as the development environment**, and will promote `dev` to `main` when they consider the version stable. Issue #20 splits the work into two parts:
 
-1. **Parte del usuario (hecha)**: creación de la rama `dev` en el remoto y sesión iniciada en Cloudflare Pages para el despliegue del entorno de desarrollo.
-2. **Parte del agente (esta tarea)**: configurar a los agentes para que TODAS las PR apunten a `dev` como rama base (en lugar de `main`).
+1. **User's part (done)**: creation of the `dev` branch on the remote and a session logged in at Cloudflare Pages for deployment of the development environment.
+2. **Agent's part (this task)**: configure the agents so that ALL PRs target `dev` as base branch (instead of `main`).
 
 Related issue: #20 — https://github.com/gonzalitojh/Registro-personal/issues/20
 
-## Decisión
+## Decision
 
-Configurar el flujo de publicación de los agentes para que `dev` sea la rama de integración de todo el trabajo, con los siguientes componentes:
+Configure the agents' publishing flow so that `dev` is the integration branch for all work, with the following components:
 
-### 1. PR contra `dev` como rama base
+### 1. PRs against `dev` as base branch
 
-El publisher crea **todas** las PR contra la rama `dev` (y no contra la rama por defecto del repositorio):
+The publisher creates **all** PRs against the `dev` branch (not against the repository's default branch):
 
 ```
 gh pr create --base dev --title "<title>" --body "<body>"
 ```
 
-Si `gh pr create --base dev` falla, el publisher debe verificar que `origin/dev` existe y que la rama de feature tiene commits, reportando el error si no es así.
+If `gh pr create --base dev` fails, the publisher must verify that `origin/dev` exists and that the feature branch has commits, reporting the error if not.
 
-### 2. Ramas de feature creadas SIEMPRE desde `origin/dev`
+### 2. Feature branches created ALWAYS from `origin/dev`
 
-Las ramas de feature se crean siempre a partir de `origin/dev` —nunca desde la rama actual ni desde `main`— para que el diff de la PR contra `dev` sea limpio:
+Feature branches are always created from `origin/dev` —never from the current branch nor from `main`— so that the PR diff against `dev` is clean:
 
 - `git checkout -b <branch-name> origin/dev`
-- Si la rama de feature ya existe localmente, **no se recrea**: se hace `git checkout <branch-name>` y `git rebase origin/dev` si hace falta.
+- If the feature branch already exists locally, it is **not recreated**: `git checkout <branch-name>` is done, and `git rebase origin/dev` if needed.
 
-### 3. Verificación pre-flight de `origin/dev`
+### 3. Pre-flight verification of `origin/dev`
 
-Antes de publicar, el publisher ejecuta `git fetch origin --prune` y verifica que `origin/dev` existe (`git branch -r | grep dev`). Si no existe, se detiene y reporta el error.
+Before publishing, the publisher runs `git fetch origin --prune` and verifies that `origin/dev` exists (`git branch -r | grep dev`). If it does not exist, it stops and reports the error.
 
-### 4. Flujo de ramas
+### 4. Branch flow
 
-- `dev` = rama de **integración**: todas las PR de los agentes se fusionan aquí y el entorno de desarrollo de Cloudflare Pages se despliega desde esta rama.
-- El usuario promueve `dev` a `main` cuando estima que la versión es estable.
-- `main` = rama de **producción**: recibe únicamente promociones de `dev`.
+- `dev` = **integration** branch: all the agents' PRs are merged here and the Cloudflare Pages development environment deploys from this branch.
+- The user promotes `dev` to `main` when they consider the version stable.
+- `main` = **production** branch: receives only promotions from `dev`.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **PR directas contra `main`**: descartado porque el usuario no vería los cambios en el entorno de desarrollo antes de que lleguen a producción.
-- **Vercel, Netlify o GitHub Actions para el despliegue del entorno de desarrollo**: descartado; se eligió Cloudflare Pages por el límite de despliegues.
+- **Direct PRs against `main`**: rejected because the user would not see the changes in the development environment before they reach production.
+- **Vercel, Netlify or GitHub Actions for deploying the development environment**: rejected; Cloudflare Pages was chosen for its deployment limit.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **Verificación antes de producción**: todos los cambios se prueban en el entorno de desarrollo (Cloudflare Pages, rama `dev`) antes de que el usuario los promueva a `main`.
-- **Diffs limpios**: al partir las ramas de feature desde `origin/dev`, el diff de cada PR contra `dev` contiene únicamente los cambios de la tarea.
+### Positive
+- **Verification before production**: all changes are tested in the development environment (Cloudflare Pages, `dev` branch) before the user promotes them to `main`.
+- **Clean diffs**: by starting feature branches from `origin/dev`, each PR's diff against `dev` contains only the task's changes.
 
-### Negativas
-- **Posibles conflictos puntuales al promover `dev` a `main`**: si la promoción no es fast-forward, el usuario deberá resolver conflictos manualmente.
-- **Ramas de feature antiguas creadas desde `main`**: si `dev` diverge de `main`, una rama de feature antigua puede arrastrar diffs no deseados; hay que recrearlas o rebasarlas contra `origin/dev`.
+### Negative
+- **Possible occasional conflicts when promoting `dev` to `main`**: if the promotion is not fast-forward, the user will have to resolve conflicts manually.
+- **Old feature branches created from `main`**: if `dev` diverges from `main`, an old feature branch may carry unwanted diffs; they must be recreated or rebased against `origin/dev`.
 
-### Neutras
-- **Cierre automático de issues**: GitHub cierra la issue con `Closes #N` al fusionar la PR en cualquier rama, incluida `dev` (el cierre funciona igual que contra `main`).
-- **La nomenclatura de ramas no cambia**: sigue el patrón `<type-prefix>/issue-<N>-<slug>` (ej. `fix/issue-18-<slug>`); solo cambia la rama base de la PR y el origen de las ramas de feature.
+### Neutral
+- **Automatic issue closure**: GitHub closes the issue with `Closes #N` when merging the PR into any branch, including `dev` (closure works the same as against `main`).
+- **Branch naming does not change**: it follows the pattern `<type-prefix>/issue-<N>-<slug>` (e.g. `fix/issue-18-<slug>`); only the PR's base branch and the origin of feature branches change.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `.opencode/agents/publisher.md` | Pre-flight `git fetch origin --prune` con verificación de `origin/dev`, checkout de ramas de feature desde `origin/dev` (con rebase si la rama ya existe) y `gh pr create --base dev` en todas las PR |
-| `.opencode/agents/sdd-master.md` | Nota en Step 5 (Publishing): todas las PR se crean contra `dev`, nunca contra `main`; el usuario promueve `dev` a `main` cuando la versión es estable; el publisher aplica `--base dev` automáticamente |
-| `docs/adr-019-dev-branch-integration.md` | **Nuevo**: este ADR documentando el flujo de ramas `dev` (integración) → `main` (producción) |
+| `.opencode/agents/publisher.md` | Pre-flight `git fetch origin --prune` with verification of `origin/dev`, checkout of feature branches from `origin/dev` (with rebase if the branch already exists) and `gh pr create --base dev` on all PRs |
+| `.opencode/agents/sdd-master.md` | Note in Step 5 (Publishing): all PRs are created against `dev`, never against `main`; the user promotes `dev` to `main` when the version is stable; the publisher applies `--base dev` automatically |
+| `docs/adr-019-dev-branch-integration.md` | **New**: this ADR documenting the branch flow `dev` (integration) → `main` (production) |

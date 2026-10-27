@@ -1,228 +1,539 @@
-# ADR-097: Definir ejercicios de entrenos
+# ADR-097: Define the workouts' exercises
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #265 pide **cuatro mejoras en la sección Gimnasio** (issue
-#62, ADR-095), todas centradas en cómo se definen los ejercicios
-dentro del constructor de entrenos:
+Issue #265 asks for
+**four
+improvements on the
+Gym section** (issue
+#62, ADR-095), all
+focused on how the exercises are
+defined inside the workouts'
+constructor:
 
-1. Un botón **«Nuevo ejercicio»** junto a «+ Añadir ejercicio» que
-   abra la misma ventana de creación de ejercicio de la pestaña
-   Ejercicios.
-2. **Eliminar la opción «Otro (escribir nombre)…»** del desplegable de
-   ejercicios del constructor.
-3. Un botón **«Duplicar serie»** junto a «+ Añadir serie» en cada
-   bloque de ejercicio.
-4. Que al añadir un ejercicio **ya trabajado previamente**, las series
-   se rellenen por defecto con las de la **última vez** que se trabajó.
+1. A
+   **"Nuevo ejercicio" (New exercise)**
+   button next to "+ Añadir ejercicio" that
+   opens the
+   Exercises tab's same
+   exercise-creation
+   window.
+2. **Removing the
+   «Otro (escribir nombre)…» option** from the
+   constructor's exercises'
+   dropdown.
+3. A
+   **"Duplicar serie" (Duplicate set)**
+   button next to "+ Añadir serie" on
+   each exercise block.
+4. That when adding an
+   **already previously worked**
+   exercise, the
+   sets get filled by default with the
+   ones of the
+   **last
+   time** it got worked
+   .
 
-Contexto de ramificación: igual que ADR-096, esta tarea nace de
-`feat/issue-62-seccion-gimnasio` (la sección y el ADR-095 aún no están
-en `dev`; PR #262 pendiente de integración). La rama de la #265 se
-fusionará en esa rama intermedia, de modo que este ADR llegará a `dev`
-junto con la sección completa; por eso el número de serie continúa
-tras ADR-096 (en el repo existen duplicados históricos de ADR, ej.
-dos `adr-094`, por eso el siguiente número se calcula como el máximo
-existente + 1).
+Branch
+context: like ADR-096, this task
+is
+born
+from
+`feat/issue-62-seccion-gimnasio` (the section and the
+ADR-095 are not yet in the
+`dev`; the
+PR
+#262 pending integration). The
+ #265's branch merges into that intermediate branch, so this ADR arrives at the
+ `dev` together with the whole section; that's why the serial number continues after
+ the
+ ADR-096 (on the repo there are historical ADR's duplicates, e.g.
+ two
+ `adr-094`s, that's why the next
+ number gets calculated as the
+ existing
+ maximum + 1).
 
-La implementación está validada (QA PASS contra los criterios de
-aceptación del task file: botones y pre-relleno verificados,
-responsividad 360/768/1280 px y cuatro modos de tema según las reglas
-2 y 4 de AGENTS.md) y el manual de usuario se actualiza en esta misma
-tarea (regla 3 de AGENTS.md, §9.1). Este ADR documenta la decisión a
-posteriori, como los recientes (ADR-093, ADR-094, ADR-095, ADR-096).
+The implementation is validated (a
+QA PASS against the task
+file's acceptance criteria: the buttons and the
+pre-fill verified, the 360/768/1280 px responsiveness and the
+four theme modes per the
+2 and 4 rules of AGENTS.md) and the
+user manual updates on this very
+task (rule
+3 of AGENTS.md, the
+§9.1). This ADR
+documents the decision retrospectively, like the recent ones
+(the
+ADR-093, ADR-094, ADR-095, ADR-096).
 
-### Iteración (comentario de 2026-08-13)
+### A
+ n iteration (a
+  comment of 2026-08-13)
 
-La issue recibió un comentario de seguimiento con dos peticiones
-nuevas, incorporadas en la misma PR:
+The issue received a
+follow-up comment with two new
+requests, incorporated on the same PR:
 
-1. **Etiquetas en los recuadros de peso y repeticiones**: la tabla de
-   series del constructor de entreno añade una **cabecera de
-   columnas** (`.gym-series-row--head`, con «Peso (kg/lbs)» y
-   «Repeticiones») usando la misma rejilla que las filas, para que
-   quede claro qué recuadro es cada uno. La etiqueta de peso refleja
-   la unidad activa. La cabecera se excluye de la lectura del
-   formulario con `:not(.gym-series-row--head)` (una primera versión
-   sin el `:not` rompía el sync de series: TypeError al leer `value`
-   de los spans; detectado en QA y corregido).
-2. **Desplegable kg/lbs en el modal de entreno**: el formulario de
-   creación/edición de entrenos incorpora un selector «Unidad de
-   peso» (`#gym-wk-unit`) **sincronizado bidireccionalmente** con el
-   global de la sección (`#gym-unit-select`): al cambiar cualquiera
-   de los dos se persiste con `setUnit` (whitelist kg/lbs) y se
-   re-renderiza todo lo que muestra pesos (`renderAllWithUnit`),
-   convirtiendo las series desde el borrador canónico en kg. Antes de
-   re-renderizar se sincroniza el borrador con lo tecleado, para no
-   perder valores a medio escribir.
+1. **Labels on the weight and reps'
+  boxes**: the workout
+  constructor's sets'
+  table adds a
+  **column-header** (the
+  `.gym-series-row--head`, with the
+  «Peso (kg/lbs)» and the
+  «Repeticiones»)
+  using the rows' same grid, so it is clear which box is each one. The
+  weight's label reflects the active unit. The
+  header is excluded from the
+  form's readability with the
+  `:not(.gym-series-row--head)` (an
+  initial
+  version without the
+  `:not` broke the sets' sync: a
+  TypeError when reading
+  the
+  `value` of
+  the
+  spans; a
+  QA-detected error
+  , fixed).
+2. **A kg/lbs dropdown on the workout
+  modal**: the workouts'
+  create/edit
+  form incorporates a "Unit of
+  weight" selector (the
+  `#gym-wk-unit`) **bidirectionally
+  synchronized** with
+  the
+  section's global one (the
+  `#gym-unit-select`): when changing either of them, it
+  persists with the
+  `setUnit` (the
+  kg/lbs whitelist) and re-renders
+  everything showing weights (the
+  `renderAllWithUnit`), converting
+  the
+  sets
+  from the
+  kg-canonical
+  draft. Before
+  re-rendering, the
+  draft syncs
+  with the
+  typed
+  content, to not
+  lose
+  mid-writing values.
 
 Related issue: #265 — https://github.com/gonzalitojh/Registro-personal/issues/265
 
-## Decisión
+## Decision
 
-### 1. Botón «Nuevo ejercicio»: reutiliza el modal de la pestaña Ejercicios
+### 1. The "Nuevo ejercicio" button: it reuses the Exercises tab's modal
 
-Junto a «+ Añadir ejercicio» se añade **«Nuevo ejercicio»** en la
-misma fila (`.gym-block-button-row`, con salto de línea en pantallas
-estrechas). Al pulsarlo se abre **`openExerciseModal()`, el MISMO
-modal de alta de ejercicio que la pestaña Ejercicios**, sin cerrar el
-modal de entreno: al guardar el ejercicio nuevo, el catálogo se
-actualiza (suscripción en vivo de `db.js`) y el usuario lo selecciona
-en el desplegable del constructor. Mismo patrón que el hint «Ver
-catálogo de ejercicios» del catálogo vacío: una sola fuente de verdad
-para la creación de ejercicios (ADR-095, `js/gym.js`).
+Next to
+"+ Añadir ejercicio", the
+**"Nuevo ejercicio"** is added on the
+same row (the
+`.gym-block-button-row`, with a
+line break on narrow
+screens). On
+pressing, the
+**`openExerciseModal()`, the SAME exercise-creation modal
+as the Assess-exercises tab** opens
+, without
+closing the workout
+modal: on saving
+the new exercise, the catalog updates (a
+live
+`db.js` subscription) and the user
+selects it on
+the constructor's dropdown. The
+empty
+catalog's «Ver catálogo de ejercicios»
+  hint's same pattern: a
+single source of truth for the
+exercises'
+creation (the
+ADR-095, the
+`js/gym.js`).
 
-### 2. Eliminación de «Otro (escribir nombre)…» con compatibilidad legacy
+### 2. The removal of «Otro (escribir nombre)…» with a legacy compatibility
 
-Se elimina la opción **`value="__custom__"`** del desplegable de
-ejercicios del constructor (y con ella el input de nombre libre y la
-rama `customSelected` de la lógica de sync). El catálogo pasa a ser la
-**única vía** para definir ejercicios de un entreno, cerrando la doble
-representación de datos (`ejercicioId` vs `null` + nombre) que
-ADR-095 había previsto.
+The
+**`value="__custom__"`** option is removed
+from the constructor's exercises'
+dropdown
+(and with
+it, the free-name
+input and the
+`customSelected`
+branch
+of
+the
+sync logic). The catalog becomes the
+**only
+way** to define a workout's
+exercises, closing
+the
+  `null` + name's double
+data
+representation that ADR-095 had anticipated.
 
-**Compatibilidad con datos antiguos** (entrenos guardados antes con
-`ejercicioId: null` y nombre snapshot):
+**The compatibility with old data** (workouts saved before with the
+`exerciseId: null` and a
+name
+snapshot):
 
-- El bloque muestra el **nombre snapshot como placeholder** del select
-  (en vez de «Elige un ejercicio…») para no perder la referencia.
-- `syncWorkoutDraftFromDom` **mantiene el fallback al nombre del
-  borrador** (`workoutDraft.ejercicios[idx]?.nombre`) cuando el select
-  no encuentra el ejercicio en el catálogo; al guardar, el entreno
-  legacy conserva su nombre sin alteraciones.
+- The block shows
+  the
+  **name snapshot as the select's placeholder** (instead of
+  «Elige un ejercicio…») to not
+  lose
+  the reference.
+- The
+  `syncWorkoutDraftFromDom` **keeps the
+  draft's name
+  fallback** (the
+  `workoutDraft.exercises[idx]?.nombre`) when
+  the select does not find the exercise in the
+  catalog; on saving, the legacy
+  workout keeps
+  its name
+  unaltered.
 
-### 3. Botón «Duplicar serie»
+### 3. The "Duplicar serie" button
 
-En cada bloque de ejercicio, junto a «+ Añadir serie», se añade
-**«Duplicar serie»**: clona la **última serie del bloque** (peso en kg
-y repeticiones) añadiéndola al final y devuelve el foco a la fila
-nueva. Si el bloque no tiene ninguna serie, muestra un
-**`showToast`** de aviso («No hay ninguna serie que duplicar.») sin
-crear filas vacías. Caso de uso real: series progresivas donde la
-siguiente serie parte de la anterior con un ajuste mínimo.
+On each exercise block, next to "+ Añadir serie", the
+**"Duplicar serie"** is added: it
+clones the
+**block's last set** (the weight in kg and the reps)
+adding it
+at the end and returns the focus to the
+new row. If
+the block has no
+set at all, it shows an
+alerting
+**`showToast`** («No hay ninguna serie que duplicar.»)
+without
+creating empty rows. A
+real
+use case: the progressive sets,
+where
+the next set starts from the previous one with a
+minimal
+adjustment.
 
-### 4. Pre-relleno de series de la última vez
+### 4. The last
+  session's sets'
+  pre-fill
 
-Al **seleccionar en el constructor un ejercicio del catálogo que ya se
-trabajó antes**, sus series se siembran con las de la **última vez**
-(entreno más reciente por `fechaISO`), de modo que solo haya que
-ajustarlas. Reglas de la implementación:
+When
+**selecting on the constructor a catalog exercise that got
+worked before**, its
+sets get seeded with the
+ones of the
+**last
+time** (the most recent workout
+by the
+`fechaISO`), so
+only
+they need
+adjusting. The implementation's rules:
 
-- **Fuente de datos sin consulta extra**: `workouts` ya llega ordenado
-  desc por `fechaISO` de la suscripción `orderBy("fechaISO","desc")`
-  de `db.js` (ADR-095); `lastWorkoutSeriesForExercise()` recorre el
-  array en memoria y devuelve una copia `{pesoKg, reps}` de la primera
-  ocurrencia con series.
-- **Match canónico por `ejercicioId` con prioridad estricta**; para
-  datos legacy sin id (entrenos pre-eliminación de «Otro…») hay
-  **fallback por nombre snapshot normalizado** (trim + minúsculas),
-  usado solo si ningún entreno tiene una entrada canónica de ese
-  ejercicio (así una entrada legacy del mismo nombre en el entreno
-  más reciente nunca gana al canónico).
-- **Solo si el bloque aún no tiene series** (`entry.series.length === 0`):
-  no pisa nada ya escrito ni las series de un entreno en edición; si
-  no hay series previas o no hay match, no hace nada.
-- **Los datos siguen canónicos en kg**: el borrador guarda SIEMPRE
-  `pesoKg`; la unidad de presentación (kg/lbs) convierte solo en el
-  render (ADR-095), así que el pre-relleno es agnóstico a la unidad
-  activa.
+- **A no-extra-query data source**: the
+  `workouts` already arrive sorted
+  desc by the
+  `fechaISO` of
+  the
+  `db.js`'s
+  `orderBy("fechaISO","desc")` subscription
+  (the
+  ADR-095); the
+  `lastWorkoutSeriesForExercise()`
+  walks the
+  in-memory array and returns a
+  `{pesoKg, reps}`
+  copy of
+  the
+  first
+  occurrence
+  with sets.
+- **A canonical match by the
+  `ejercicioId` with a
+  strict priority**; for the
+  no-id legacy data (the pre-«Otro…'
+  removal
+  workouts) there is
+  a
+  **normalized snapshot-name fallback** (trim + lowercase),
+  used only if no workout has a
+  canonical
+  entry of
+  that exercise (so a
+  legacy entry of the same
+  name on
+  the
+  most
+  recent workout never beats the canonical
+  one).
+- **Only if the block has no sets yet** (the
+  `entry.series.length === 0`):
+  it does not
+  step on anything already written nor on a
+  workout's sets being
+  edited; if there are no previous
+  sets or no match, it does nothing
+  .
+- **The data stays kg-canonical**: the draft
+  ALWAYS stores
+  the
+  `pesoKg`; the presentation unit
+  (the kg/lbs) converts only on the render
+  (the
+  ADR-095), so the
+  pre-fill is agnostic to the
+  active
+  unit.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Modal de ejercicio duplicado/embebido dentro del constructor**:
-  descartado — duplicaría el markup y la lógica del modal de la
-  pestaña Ejercicios, creando dos fuentes de verdad para la creación;
-  reutilizar `openExerciseModal()` (patrón ya usado por el hint de
-  catálogo vacío) es coherente y sin coste, y el modal de entreno
-  permanece abierto con el borrador intacto.
-- **Mantener «Otro…» oculto (pero presente en el código)** o
-  **sustituirlo por un campo de texto libre**: descartado — la issue
-  pide eliminarlo; con «Nuevo ejercicio» el caso de uso queda cubierto
-  y se acaba la dualidad de modelos (`ejercicioId` vs `null`+nombre),
-  simplificando la lógica de sync y el pre-relleno.
-- **Pre-relleno con una consulta extra a Firestore** (p. ej. por
-  ejercicio): descartado — `workouts` ya está suscrito y ordenado desc
-  por `fechaISO`; una consulta adicional añadiría latencia, estado
-  asíncrono y costes de lectura sin beneficio (la suscripción ya tiene
-  todo el histórico en memoria).
-- **Pre-relleno incondicional al seleccionar un ejercicio** (pisar lo
-  escrito): descartado — sobrescribiría series ya introducidas y las
-  de un entreno en edición; el guard `entry.series.length === 0` solo
-  siembra bloques vacíos, que es el caso que la issue pide cubrir.
-- **Duplicar por índice fijo o con selector de serie**: descartado —
-  la «serie inmediatamente superior» es la última del bloque (la que
-  se acaba de rellenar), no hace falta selección; un selector
-  añadiría UI sin valor y el duplicado de la última cubre las series
-  progresivas.
+- **An embedded/duplicated exercise modal inside the constructor**: rejected — it would duplicate
+  the Exercises tab's modal's markup and
+  logic, creating two
+  creation
+  sources of truth; reusing the
+  `openExerciseModal()` (a
+  pattern already used by the empty-catalog
+  hint) is coherent and has no
+  cost, and the workout
+  modal stays open with the draft
+  intact.
+- **Keeping «Otro…» hidden (but in the code)** or
+  **replacing it with a free-text field**:
+  rejected — the
+  issue asks to remove it; with the
+  "New exercise" the
+  use case stays
+  covered and the model's duality ends (the
+  `ejercicioId` vs the
+  `null` + a name), simplifying the
+  sync logic and the
+  pre-fill.
+- **A pre-fill with an extra Firestore query** (e.g.
+  per exercise): rejected — the
+  `workouts` is already subscribed and
+  sorted
+  desc by the
+  `fechaISO`; an extra query would add
+  latency, an
+  async
+  state and
+  read
+  costs
+  without a
+  benefit (the subscription already has the whole history in
+  memory).
+- **An unconditional pre-fill when selecting an exercise** (stepping on what's
+  written): rejected — it would overwrite
+  already entered
+  sets and the
+  in-edition
+  workout's ones; the
+  `entry.series.length === 0` guard
+  only seeds the empty
+  blocks, which is the
+  case the issue asks to
+  cover.
+- **Duplicating by a fixed index or with a set selector**:
+  rejected — the "immediately previous set" is the
+  block's
+  last one (the just-filled one), so no
+  selection is needed; a selector
+  would add
+  valueless UI and the last one's duplicate covers the
+  progressive sets.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Crear un ejercicio sin abandonar el entreno**: una sola fuente de
-  verdad (el modal de Ejercicios) y cero riesgo de perder el borrador
-  del entreno abierto.
-- **Modelo de datos simplificado**: el catálogo es la única vía para
-  definir ejercicios; los datos legacy (id `null` + nombre snapshot)
-  se conservan y siguen editables sin pérdida de referencia.
-- **Menos escritura y menos errores de transcripción**: series
-  duplicadas y pre-relleno de la última sesión con pesos reales
-  guardados (canónicos en kg, sin redondeos de conversión).
-- **Offline-first y sin coste adicional**: el pre-relleno usa los
-  datos ya suscritos en memoria; no hay consultas ni latencia nueva.
+- **Creating an exercise without leaving the workout**: a
+  single source of truth (the
+  Exercises modal) and
+  zero risk
+  of losing the
+  open workout's draft.
+- **A simplified data model**: the catalog is the only
+  way to define exercises; the
+  legacy data (a
+  `null` id + a
+  name snapshot)
+  survives and stays
+  editable with no reference
+  loss.
+- **Less typing and fewer transcription errors**: the
+  duplicated sets and the last
+  session's pre-fill with the
+  real
+  stored
+  weights (the canonical
+  in kg, with no
+  conversion roundings).
+- **Offline-first and with no extra cost**: the pre-fill uses the
+  already subscribed
+  in-memory data; there are no new
+  queries nor
+  latency.
 
-### Neutras
+### Neutral
 
-- **El pre-relleno solo aplica al seleccionar un ejercicio por primera
-  vez en el bloque**: al editar un entreno existente (series ya
-  presentes) o tras escribir manualmente, no interfiere.
-- **El match legacy por nombre normalizado puede no acertar** si el
-  ejercicio se renombró tras guardarse el entreno: en ese caso
-  simplemente no pre-rellena (comportamiento degradado, no erróneo).
-- **Revalidado en iteración** (reanudación de la sesión): QA PASS y
-  escaneo de seguridad sin hallazgos. Se aplicó una mejora sobre el
-  match del pre-relleno — prioridad estricta del `ejercicioId`
-  canónico frente al fallback por nombre — y se actualizó este ADR en
-  consecuencia (antes el fallback podía ganar dentro de un mismo
-  entreno si la entrada legacy aparecía antes en el array; impacto
-  mínimo, corregido en la revisión).
-- **Manual de usuario actualizado** (§9.1): botones «Nuevo ejercicio»
-  y «Duplicar serie», comportamiento del pre-relleno, etiquetas de
-  la tabla de series y selector de unidad del modal documentados
-  (regla 3 de AGENTS.md).
+- **The pre-fill only applies when selecting an exercise for the first time on the block**: when editing
+  an existing workout (the sets already present) or after
+  manually typing, it does not
+  interfere.
+- **The legacy match by a
+  normalized name may miss** if the
+  exercise got
+  renamed after
+  the workout getting
+  stored: in
+  that case it
+  simply does not pre-fill (a
+  degraded behavior,
+  not
+  an
+  erroneous one).
+- **Revalidated on iteration** (the
+  session's
+  resume): a
+  QA PASS and a
+  security scan with no
+  findings. An improvement got applied on
+  the
+  pre-fill's match — the
+  canonical
+  `ejercicioId`'s
+  strict priority against the
+  name-based
+  fallback — and this ADR updated accordingly (before, the
+  fallback could win inside the same workout if the
+  legacy entry appeared earlier in the array; a
+  minimal
+  impact, fixed on revision).
+- **The user manual updated** (the
+  §9.1): the
+  "New exercise" and the
+  "Duplicate set"
+  buttons, the pre-fill's
+  behavior, the
+  sets'
+  table's labels and the
+  modal's
+  unit selector documented (the
+  AGENTS.md's rule 3).
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Empates de `fechaISO` entre entrenos**: si hay varios entrenos con
-  la misma fecha, el orden entre ellos no está garantizado por la
-  suscripción (solo el criterio `fechaISO` desc); el pre-relleno podría
-  tomar un entreno distinto del realmente último. Impacto bajo: mismo
-  día, resultados similares y siempre revisables, y el guard por
-  `ejercicioId` es estable para el resto de casos.
-- **Los pesos pre-rellenos son orientativos**: si ese día el usuario
-  cambió la carga, debe ajustarla; el pre-relleno nunca pisa series ya
-  escritas, así que el riesgo de pérdida de datos es nulo.
-- **Ninguna otra conocida.** Validado: QA PASS (AC1–AC4 del task file,
-  responsividad y cuatro modos de tema) y el código continúa el patrón
-  de validación y seguridad del resto de la sección (ADR-095). La
-  iteración re-validó los criterios originales y los dos nuevos
-  (etiquetas y selector de unidad sincronizado) tras un fix de QA
-  (TypeError del sync por la cabecera, resuelto con `:not`), con
-  escaneo de seguridad sin hallazgos.
+- **`fechaISO` ties between workouts**: if there are several
+  workouts with the same
+  date, the
+  order
+  between them is not
+  guaranteed by the
+  subscription (just
+  the
+  `fechaISO` desc criterion); the
+  pre-fill might take
+  a workout
+  different
+  from
+  the
+  actually last one. A
+  low impact: the same
+  day, similar results and always
+  reviewable, and the
+  `ejercicioId` guard is stable for the
+  rest of
+  the cases.
+- **The pre-filled weights are indicative**: if
+  that day the
+  user changed the load, they must adjust it; the
+  pre-fill never steps on already written sets, so the
+  data-loss risk is null.
+- **No other known ones.**
+  Validated: a
+  QA PASS
+  (the task file's AC1–AC4, the responsiveness and the four theme
+  modes) and the code continues
+  the
+  section's rest's validation and security
+  pattern (the
+  ADR-095). The iteration re-validated the original
+  criteria and the two
+  new
+  ones (the labels and the
+  synchronized
+  unit selector) after a
+  QA fix (the sync's
+  TypeError by the header, resolved with the
+  `:not`), with a
+  security scan with no
+  findings.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/gym.js` | **Modificado**: botón «Nuevo ejercicio» (abre `openExerciseModal()` sin cerrar el modal de entreno), eliminación de «Otro…» (`__custom__`) con placeholder del nombre legacy, botón «Duplicar serie» (última serie, `showToast` si no hay), pre-relleno de series (`lastWorkoutSeriesForExercise()` / `maybePrefillSeriesFromLastWorkout()`) con match por `ejercicioId` y fallback por nombre; **iteración**: cabecera de etiquetas Peso/Repeticiones (`.gym-series-row--head`) excluida del sync con `:not(...)`, selector `#gym-wk-unit` en el modal sincronizado con `#gym-unit-select` (sync previo del borrador para no perder lo tecleado) |
-| `css/styles.css` | **Modificado**: `.gym-block-button-row` (fila de botones «añadir/nuevo» y «añadir/duplicar» con salto en pantallas estrechas; sin overrides de tema: reutiliza `.btn` y `.gym-add-series-btn`, ya cubiertos en las cuatro familias); **iteración**: `.gym-series-row--head` (cabecera de etiquetas, misma rejilla que las filas, `var(--ink-soft)` cubierta en las cuatro familias) |
-| `docs/manual-de-usuario.md` | **Modificado**: §9.1 — botones «Nuevo ejercicio» y «Duplicar serie», pre-relleno de series de la última vez y etiquetas de la tabla de series; §9.3 — selector de unidad del modal sincronizado con el de la sección |
-| `docs/adr-097-ejercicios-entrenos.md` | **Nuevo**: este documento |
+| `js/gym.js` | **Modified**: the
+  "New exercise" button (it opens the
+  `openExerciseModal()` without closing the
+  workout modal), the removal of
+  «Otro…» (the
+  `__custom__`) with the legacy name's placeholder, the
+  "Duplicate set" button (the last set, a
+  `showToast` if there is none), the
+  sets' pre-fill (the
+  `lastWorkoutSeriesForExercise()` / the
+  `maybePrefillSeriesFromLastWorkout()`) with a match by the
+  `ejercicioId` and a name-based fallback; **the iteration**: the
+  Weight/Reps labels' header (the
+  `.gym-series-row--head`) is excluded from
+  the
+  sync with the
+  `:not(...)`, the
+  `#gym-wk-unit` selector on the modal
+  synchronized with the
+  `#gym-unit-select` (a before-sync
+  of
+  the
+  draft to not lose the typed values) |
+| `css/styles.css` | **Modified**: the
+  `.gym-block-button-row` (the
+  "add/new" and "add/duplicate" buttons' row with a
+  break on narrow screens; with no
+  theme overrides: it reuses the
+  `.btn` and the
+  `.gym-add-series-btn`, already covered in the four families); **the iteration**: the
+  `.gym-series-row--head` (the labels' header, the rows' same grid, the
+  `var(--ink-soft)`) covered in the four families) |
+| `docs/manual-de-usuario.md` | **Modified**: the §9.1 — the
+  "New exercise" and the
+  "Duplicate set"
+  buttons, the last session's sets'
+  pre-fill and the
+  sets'
+  table's labels; the §9.3 — the
+  modal's unit selector synchronized with the section's one |
+| `docs/adr-097-ejercicios-entrenos.md` | **New**: this document |
 
 Related issue: #265 — https://github.com/gonzalitojh/Registro-personal/issues/265

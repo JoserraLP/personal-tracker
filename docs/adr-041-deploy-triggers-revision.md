@@ -1,87 +1,87 @@
-# ADR-041: Revisión de triggers del workflow deploy-all-branches (issue #98)
+# ADR-041: Review of the deploy-all-branches workflow triggers (issue #98)
 
-> **OBSOLETO (ADR-106, 2026-10-24)**: el workflow que este ADR revisaba
-> (deploy-all-branches) fue eliminado al pasar a publicar solo `main`
-> (`deploy-pages.yml`). Se conserva como histórico.
+> **OBSOLETE (ADR-106, 2026-10-24)**: the workflow this ADR reviewed
+> (deploy-all-branches) was removed when switching to publishing only
+> `main` (`deploy-pages.yml`). Kept as historical.
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-06
 
-## Contexto
+## Context
 
-El ADR-036 introdujo el workflow
-`.github/workflows/deploy-all-branches.yml`, que despliega **todas las
-ramas** del repositorio en GitHub Pages (main en la raíz, cada rama en su
-subdirectorio). Su trigger `on: push` se disparaba en **cada push de
-cualquier rama** (más `workflow_dispatch` y `delete`), tal y como
-documentaba el ADR-036.
+ADR-036 introduced the workflow
+`.github/workflows/deploy-all-branches.yml`, which deploys **all
+branches** of the repository to GitHub Pages (main at the root, each
+branch in its subdirectory). Its `on: push` trigger fired on **every push
+of any branch** (plus `workflow_dispatch` and `delete`), as ADR-036
+documented.
 
-La issue #98 reportaba que el workflow **tardaba mucho**, que el log
-**parecía entrar en bucle** y que varios despliegues recientes habían
-fallado con `Timeout reached, aborting!`. El diagnóstico (master,
-2026-08-06) identificó la causa raíz:
+Issue #98 reported that the workflow **took too long**, that the log
+**seemed to loop** and that several recent deployments had failed with
+`Timeout reached, aborting!`. The diagnosis (master,
+2026-08-06) identified the root cause:
 
-- **Cada ejecución crea un deployment de GitHub Pages**, y Pages procesa
-  los deployments **en cola, uno a uno**. Con cola vacía un deploy es
-  rápido (evidencia: run 31107063823, evento `delete` 13:40, build 11 s +
-  deploy 8 s, éxito en ~28 s). Con picos de pushes (cada PR genera 2-3
-  pushes + merge + borrado de rama) la cola se satura: los deployments
-  quedan en estado `deployment_queued` y `actions/deploy-pages` aborta a
-  los 10 minutos con `Timeout reached, aborting!` (evidencia: run
-  31103249570, `workflow_dispatch`, deploy atascado 10 m 31 s, fallo).
-- El «bucle» percibido en el log no era tal: era el **poll de estado cada
-  5 s** (`Current status: deployment_queued`) repetido hasta el timeout.
-- Un **problema intermitente conocido de la infraestructura de GitHub
-  Pages** (actions/deploy-pages#406, desde 2026-01-13) agravaba el caso:
-  incluso con la cola vacía, algunos deployments quedaban en cola sin
-  motivo aparente.
-- Además, el paso de **migración Pages legacy → Actions vía `gh api`**
-  fallaba en **todos** los runs (warning recurrente «No se pudo migrar
-  Pages legacy…»): el `GITHUB_TOKEN` no tiene permisos de administración
-  para esa API. La vía oficial es `actions/configure-pages@v5`, que es
-  además el prerequisito documentado de `deploy-pages`.
+- **Every run creates a GitHub Pages deployment**, and Pages processes
+  deployments **queued, one by one**. With an empty queue a deploy is
+  fast (evidence: run 31107063823, `delete` event 13:40, build 11 s +
+  deploy 8 s, success in ~28 s). With push spikes (each PR generates 2-3
+  pushes + merge + branch deletion) the queue saturates: deployments
+  stay in `deployment_queued` state and `actions/deploy-pages` aborts at
+  10 minutes with `Timeout reached, aborting!` (evidence: run
+  31103249570, `workflow_dispatch`, deploy stuck 10 m 31 s, failure).
+- The perceived "loop" in the log was not one: it was the **state poll
+  every 5 s** (`Current status: deployment_queued`) repeated until the
+  timeout.
+- A **known intermittent problem of the GitHub Pages infrastructure**
+  (actions/deploy-pages#406, since 2026-01-13) aggravated the case:
+  even with an empty queue, some deployments got stuck in queue without
+  apparent reason.
+- In addition, the step **Pages legacy → Actions migration via `gh api`**
+  failed on **every** run (recurring warning "No se pudo migrar Pages
+  legacy…"): the `GITHUB_TOKEN` lacks administration permissions
+  for that API. The official path is `actions/configure-pages@v5`, which
+  is also `deploy-pages`' documented prerequisite.
 
 Related issue: #98 — https://github.com/gonzalitojh/Registro-personal/issues/98
 
-## Decisión
+## Decision
 
-Revisar los **disparadores** y el **paso de migración** del workflow,
-manteniendo intacta la funcionalidad de ADR-036 (main en la raíz, cada
-rama en `/<rama>/`, sin bucles infinitos, `concurrency` con cancelación):
+Review the workflow's **triggers** and **migration step**, keeping
+ADR-036's functionality intact (main at the root, each branch at
+`/<branch>/`, no infinite loops, `concurrency` with cancellation):
 
-### 1. Trigger `push` limitado a las ramas de integración `main` y `dev`
+### 1. `push` trigger limited to the integration branches `main` and `dev`
 
-`on: push` pasa de «todas las ramas, sin filtro» a
-`branches: [main, dev]`. Cada merge a `main`/`dev` reconstruye **todas**
-las ramas: `scripts/build-pages-site.sh` siempre despliega la lista
-completa de ramas remotas, por lo que los previews de las ramas abiertas
-se actualizan con cada merge sin necesidad de disparar por cada push de
-la propia rama. `workflow_dispatch` se mantiene para forzar un
-re-despliegue manual desde la UI, y `delete` se mantiene para que el
-sitio deje de servir las ramas borradas.
+`on: push` goes from "all branches, no filter" to
+`branches: [main, dev]`. Each merge to `main`/`dev` rebuilds **all**
+branches: `scripts/build-pages-site.sh` always deploys the full list of
+remote branches, so the open branches' previews update with each merge
+without needing to trigger on every push of the branch itself.
+`workflow_dispatch` is kept to force a manual re-deploy from the UI, and
+`delete` is kept so the site stops serving deleted branches.
 
-### 2. Guard en el job `build` para el evento `delete`
+### 2. Guard in the `build` job for the `delete` event
 
-El evento `delete` no admite filtros de rama, así que el guard se mueve
-al job:
+The `delete` event does not accept branch filters, so the guard moves
+into the job:
 
 ```yaml
 if: github.event_name != 'delete' || github.event.ref_type == 'branch'
 ```
 
-Descarta los **borrados de tags** (el sitio no debe reconstruirse por un
-tag eliminado) y se queda con los **borrados de ramas**. En
-`push`/`workflow_dispatch` la propiedad `ref_type` no existe, por lo que
-la condición se evalúa `true` y el job siempre se ejecuta.
+It discards **tag deletions** (the site must not rebuild for a deleted
+tag) and keeps **branch deletions**. On
+`push`/`workflow_dispatch` the `ref_type` property does not exist, so the
+condition evaluates `true` and the job always runs.
 
-### 3. Sustitución del hack `gh api` por `actions/configure-pages@v5`
+### 3. Replacement of the `gh api` hack with `actions/configure-pages@v5`
 
-El paso «Migrar Pages a GitHub Actions (intento automático)» (PUT/POST vía
-`gh api` con `GITHUB_TOKEN`, que fallaba siempre y emitía un warning
-recurrente) se sustituye por:
+The step «Migrate Pages to GitHub Actions (automatic attempt)» (PUT/POST
+via `gh api` with `GITHUB_TOKEN`, which always failed and emitted a
+recurring warning) is replaced by:
 
 ```yaml
 - name: Configurar GitHub Pages (prerequisito de deploy-pages)
@@ -90,181 +90,178 @@ recurrente) se sustituye por:
     enablement: true   # migra Pages legacy → Actions si procede
 ```
 
-`actions/configure-pages@v5` es el **prerequisito oficial** de
-`actions/deploy-pages`; con `enablement: true` migra Pages legacy → Actions
-cuando procede, es **idempotente** (sin efectos si ya está configurado) y
-elimina el warning recurrente de los logs.
+`actions/configure-pages@v5` is `actions/deploy-pages`' **official
+prerequisite**; with `enablement: true` it migrates Pages legacy →
+Actions when applicable, is **idempotent** (no effects if already
+configured) and removes the logs' recurring warning.
 
-### 4. README sección 6 actualizado
+### 4. README section 6 updated
 
-La sección 6 («Subir a GitHub y activar Pages») refleja la nueva política:
-despliegue de todas las ramas en cada push a `main`/`dev`, nota de que los
-previews se actualizan con los merges (no con cada push de la rama),
-re-despliegue manual con `workflow_dispatch` y comportamiento de borrado
-solo de ramas (borrar un tag no reconstruye).
+Section 6 («Subir a GitHub y activar Pages») reflects the new policy:
+deployment of all branches on every push to `main`/`dev`, a note that
+previews update with merges (not with each branch push), manual
+re-deploy with `workflow_dispatch` and branch-only deletion behavior
+(deleting a tag does not rebuild).
 
-**No se tocaron** `scripts/build-pages-site.sh` (el script ya despliega
-todas las ramas en cada ejecución; no hay nada que cambiar) ni
-`docs/manual-de-usuario.md` (cambio interno de infraestructura, no visible
-para el usuario final — misma decisión que ADR-036).
+**Not touched**: `scripts/build-pages-site.sh` (the script already
+deploys all branches on every run; there is nothing to change) nor
+`docs/manual-de-usuario.md` (internal infrastructure change, not visible
+to the end user — same decision as ADR-036).
 
-### 5. Reintentos automáticos del deploy (iteración 2)
+### 5. Automatic deployment retries (iteration 2)
 
-Tras el merge de la iteración 1 (PR #99) el run del propio merge
-(`31109152406`, push a `dev`, 14:06Z) volvió a fallar con
-`Timeout reached, aborting!`: el deployment se creó correctamente pero quedó
-atascado en **`deployment_in_progress`** (no en cola) durante los 10
-minutos de timeout. La cola ya estaba vacía (solo un deployment) y el
-workflow ya usaba `configure-pages@v5`: es el **problema intermitente de la
-infraestructura de GitHub Pages** (actions/deploy-pages#406, deployments
-atascados en cualquier estado, `queued`/`in_progress`/`syncing_files`).
+After iteration 1's merge (PR #99), the merge's own run
+(`31109152406`, push to `dev`, 14:06Z) failed again with
+`Timeout reached, aborting!`: the deployment was created correctly but
+got stuck in **`deployment_in_progress`** (not queued) for the 10
+minutes of timeout. The queue was already empty (a single deployment) and
+the workflow already used `configure-pages@v5`: it is the **intermittent
+problem of the GitHub Pages infrastructure** (actions/deploy-pages#406,
+deployments stuck in any state, `queued`/`in_progress`/`syncing_files`).
 
-Mitigación con **jobs nativos de GitHub Actions (sin dependencias de
-terceros)**:
+Mitigation with **native GitHub Actions jobs (no third-party
+dependencies)**:
 
-- El paso de deploy de cada intento lleva `continue-on-error: true`
-  **a nivel de step** (intentos 1 y 2): un timeout por infraestructura no
-  tiñe el run por sí solo; el resultado final lo deciden los reintentos.
-- Cada job expone su resultado real por **outputs de job** con
-  `steps.<id>.outcome` (el valor del paso **antes** de aplicar
-  `continue-on-error`). **Detalle crítico de semántica**: no se usa
-  `needs.<job>.result` para decidir el retry, porque con
-  `continue-on-error` a nivel de job GitHub Actions lo reporta como
-  `success` aunque el job falle (los retries nunca se dispararían); la
-  distinción outcome/conclusion solo existe a nivel de step.
-- Jobs `deploy-retry-1` y `deploy-retry-2` que se ejecutan solo si el
-  output del job anterior es `failure`
+- Each attempt's deploy step has `continue-on-error: true` **at step
+  level** (attempts 1 and 2): an infrastructure timeout does not tinge
+  the run on its own; the final result is decided by the retries.
+- Each job exposes its real result via **job outputs** with
+  `steps.<id>.outcome` (the step's value **before** applying
+  `continue-on-error`). **Critical semantic detail**: `needs.<job>.result`
+  is not used to decide the retry, because with `continue-on-error` at
+  job level GitHub Actions reports it as `success` even if the job
+  failed (the retries would never fire); the outcome/conclusion
+  distinction only exists at step level.
+- Jobs `deploy-retry-1` and `deploy-retry-2` run only if the previous
+  job's output is `failure`
   (`if: needs.<job>.outputs.deploy_result == 'failure' && !cancelled()`),
-  con una espera previa de 60 s / 120 s (tiempo para que la cola de Pages
-  procese o drene el deployment atascado). Reutilizan el artefacto del
-  mismo run (`deploy-pages` lo localiza por nombre) y crean un deployment
-  **nuevo**; como el bug es intermitente, un deployment nuevo tiene alta
-  probabilidad de completarse (evidencia: en el mismo día, deployments en
-  8-30 s cuando la infra va bien).
-- El último retry (`deploy-retry-2`) va **sin** `continue-on-error`: si las
-  3 oportunidades fallan, el run falla (señal real) y se re-lanza
-  manualmente con `workflow_dispatch`.
+  with a prior wait of 60 s / 120 s (time for the Pages queue to process
+  or drain the stuck deployment). They reuse the same run's artifact
+  (`deploy-pages` locates it by name) and create a **new** deployment;
+  since the bug is intermittent, a new deployment has a high probability
+  of completing (evidence: on the same day, deployments in
+  8-30 s when the infra is fine).
+- The last retry (`deploy-retry-2`) goes **without** `continue-on-error`: if
+  the 3 opportunities fail, the run fails (a real signal) and is
+  re-launched manually with `workflow_dispatch`.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Mantener `push` a todas las ramas**: descartado — es la **causa raíz**
-  de la saturación de la cola de deployments; cualquier mitigación sobre
-  el timeout o la espera dejaría el problema de fondo sin resolver.
-- **Aumentar el timeout de `actions/deploy-pages`**: descartado —
-  **imposible**: el timeout está hard-capped a 600000 ms (10 minutos) en
-  la propia acción y no es configurable desde el workflow.
-- **Wrapper de reintentos de terceros** (acciones que envuelven
-  `deploy-pages` con retry, p. ej. `Wandalen/wretry.action`): descartado —
-  añade una dependencia externa no mantenida por GitHub y complica la
-  lectura de outputs (`page_url`); el mismo efecto de retry se consigue
-  con **jobs nativos encadenados** (`deploy-retry-*`), sin dependencias.
-- **Eliminar por completo el evento `delete`**: descartado — el sitio debe
-  **dejar de servir las ramas borradas**; sin el evento, el subdirectorio
-  de una rama eliminada permanecería publicado indefinidamente.
-- **Confiar solo en la reducción de triggers (iteración 1) sin retry**:
-  descartado — el run del merge de la propia iteración 1 demostró que un
-  único deployment también puede atascarse por el problema intermitente de
-  la infraestructura; la reducción de triggers era necesaria pero no
-  suficiente.
+- **Keeping `push` on all branches**: rejected — it is the **root cause**
+  of the deployment queue's saturation; any mitigation over the timeout or
+  the wait would leave the underlying problem unsolved.
+- **Increasing `actions/deploy-pages`' timeout**: rejected —
+  **impossible**: the timeout is hard-capped at 600000 ms (10 minutes) in
+  the action itself and is not configurable from the workflow.
+- **Third-party retry wrapper** (actions wrapping `deploy-pages` with
+  retry, e.g. `Wandalen/wretry.action`): rejected — it adds an external
+  dependency not maintained by GitHub and complicates output reading
+  (`page_url`); the same retry effect is achieved with **native chained
+  jobs** (`deploy-retry-*`), with no dependencies.
+- **Removing the `delete` event entirely**: rejected — the site must
+  **stop serving deleted branches**; without the event, the subdirectory
+  of a deleted branch would remain published indefinitely.
+- **Relying only on the trigger reduction (iteration 1) without retry**:
+  rejected — iteration 1's own merge run proved that a single deployment
+  can also get stuck due to the infrastructure's intermittent problem;
+  the trigger reduction was necessary but not sufficient.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Reducción drástica de deployments**: de dispararse en cada push de
-  cualquier rama a solo merges a `main`/`dev`, `delete` de ramas y
-  `workflow_dispatch` manual. Con la frecuencia reducida, la **cola de
-  Pages drena** y no se vuelve a producir `Timeout reached, aborting!` en
-  condiciones normales.
-- **Los previews se mantienen**: cada ejecución sigue construyendo
-  **todas** las ramas (el script no cambió), así que cada merge a
-  `main`/`dev` actualiza el preview de todas las ramas abiertas.
-- **Warning recurrente eliminado**: `actions/configure-pages@v5` con
-  `enablement: true` sustituye al hack `gh api` que fallaba en todos los
-  runs (el `GITHUB_TOKEN` no tiene permisos de administración para esa
-  API); además es el prerequisito oficial de `deploy-pages`.
-- **Borrados de tags sin reconstrucción**: el guard
-  `ref_type == 'branch'` evita builds completos por tags eliminados.
-- **Sin cambios de comportamiento para el sitio publicado**: main sigue en
-  la raíz, cada rama en su subdirectorio, y no se tocó ni el script de
-  build ni la app.
+- **Drastic reduction of deployments**: from firing on every push of any
+  branch to only merges to `main`/`dev`, `delete` of branches and a manual
+  `workflow_dispatch`. With the reduced frequency, the **Pages queue
+  drains** and `Timeout reached, aborting!` stops happening under normal
+  conditions.
+- **Previews are kept**: each run keeps building **all** branches (the
+  script did not change), so every merge to `main`/`dev` updates the
+  preview of all open branches.
+- **Recurring warning removed**: `actions/configure-pages@v5` with
+  `enablement: true` replaces the `gh api` hack that failed on every run
+  (the `GITHUB_TOKEN` lacks administration permissions for that API);
+  besides, it is `deploy-pages`' official prerequisite.
+- **Tag deletions without rebuild**: the `ref_type == 'branch'` guard
+  avoids full builds for deleted tags.
+- **No behavior change for the published site**: main stays at the root,
+  each branch in its subdirectory, and neither the build script nor the
+  app were touched.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Previews de ramas abiertas menos frescos**: un push a una rama de
-  trabajo ya no actualiza su preview inmediatamente; solo se refresca con
-  un merge a `main`/`dev` o con `workflow_dispatch` manual. Es el
-  trade-off asumido de la decisión.
-- **El problema intermitente de la infraestructura de Pages persiste**
-  (actions/deploy-pages#406): no es solucionable desde el repo. La
-  reducción de triggers + los reintentos lo mitigan (3 oportunidades por
-  run; cada deployment nuevo tiene alta probabilidad de completarse),
-  pero un fallo de infraestructura prolongado podría seguir haciendo
-  fallar un run tras agotar los 3 intentos (re-lanzar manualmente con
-  `workflow_dispatch` o re-run).
-- **Runs más largos en el peor caso**: si los 3 intentos agotan sus
-  timeouts (10 min cada uno + esperas de 60/120 s), el run puede durar
-  ~32 minutos antes de fallar. Es el coste asumido por la resiliencia; en
-  condiciones normales el deploy completa en <1 min en el primer intento.
-- **El historial de ADR-036 queda parcialmente obsoleto**: su sección de
-  triggers (`on: push` a todas las ramas) y el paso de migración vía
-  `gh api` ya no describen el comportamiento real; se añade una nota de
-  deprecación en el propio ADR-036 apuntando a este documento.
+- **Less fresh previews of open branches**: a push to a work branch no
+  longer updates its preview immediately; it only refreshes with a merge
+  to `main`/`dev` or a manual `workflow_dispatch`. It is the decision's
+  accepted trade-off.
+- **The Pages infrastructure's intermittent problem persists**
+  (actions/deploy-pages#406): not solvable from the repo. The trigger
+  reduction + retries mitigate it (3 opportunities per run; each new
+  deployment has a high probability of completing), but a prolonged
+  infrastructure failure could still make a run fail after exhausting
+  the 3 attempts (relaunch manually with `workflow_dispatch` or re-run).
+- **Longer runs in the worst case**: if the 3 attempts exhaust their
+  timeouts (10 min each + waits of 60/120 s), the run can last
+  ~32 minutes before failing. It is the assumed cost of resilience; under
+  normal conditions the deploy completes in <1 min on the first attempt.
+- **ADR-036's history becomes partially obsolete**: its triggers section
+  (`on: push` on all branches) and the `gh api` migration step no longer
+  describe the real behavior; a deprecation note is added to ADR-036
+  itself pointing to this document.
 
-### Neutras
+### Neutral
 
-- **`docs/manual-de-usuario.md` sin cambios**: el cambio es interno
-  (infraestructura de despliegue); el usuario final no ve ninguna
-  diferencia de comportamiento, por lo que no aplica la obligación de
-  AGENTS.md de actualizar el manual (misma decisión que ADR-036).
-- **`scripts/build-pages-site.sh` sin cambios**: la construcción de
-  `_site/` con todas las ramas, el saneo de nombres, los checks de
-  colisión y `strip_sensitive()` se mantienen exactamente como los
-  documentó el ADR-036.
-- **`concurrency` y permisos intactos**: `group: pages,
-  cancel-in-progress: true` y los permisos `contents: read`, `pages:
-  write`, `id-token: write` no se tocan.
+- **`docs/manual-de-usuario.md` unchanged**: the change is internal
+  (deployment infrastructure); the end user sees no behavioral
+  difference, so AGENTS.md's obligation to update the manual does not
+  apply (same decision as ADR-036).
+- **`scripts/build-pages-site.sh` unchanged**: the `_site/` build with all
+  branches, name sanitization, collision checks and `strip_sensitive()`
+  remain exactly as ADR-036 documented.
+- **`concurrency` and permissions intact**: `group: pages,
+  cancel-in-progress: true` and the permissions `contents: read`, `pages:
+  write`, `id-token: write` are not touched.
 
-## Nota de implementación
+## Implementation note
 
-- En `push`/`workflow_dispatch` la propiedad `github.event.ref_type` no
-  existe (devuelve una cadena vacía), por lo que el guard
-  `github.event_name != 'delete' || github.event.ref_type == 'branch'` se
-  evalúa `true` y el job `build` se ejecuta siempre. Solo el evento
-  `delete` con `ref_type == 'tag'` descarta el job.
-- El timeout de 10 minutos (`600000 ms`) está hard-capped en
-  `actions/deploy-pages@v4`; el log de un deployment atascado muestra
-  `Current status: deployment_queued` (o `deployment_in_progress`)
-  repetido cada 5 s hasta el abort (`Timeout reached, aborting!`), lo que
-  se percibía como un bucle.
-- `actions/configure-pages@v5` con `enablement: true` es idempotente: si
-  Pages ya está configurado con GitHub Actions no produce cambios, solo
-  configura el sitio según el artefacto que se sube después.
-- Los jobs `deploy-retry-*` reutilizan el artefacto `github-pages` del
-  mismo run: `actions/deploy-pages` lo localiza por nombre a través de la
-  API de artefactos, sin necesidad de checkout ni de volver a subirlo.
-- Los reintentos se deciden con `needs.<job>.outputs.deploy_result`
-  (propagado con `steps.<id>.outcome`), **no** con `needs.<job>.result`:
-  con `continue-on-error` a nivel de job, `result` devuelve `success`
-  aunque el job falle (semántica verificada: actions/runner#2347,
-  actions/toolkit#1034). El output de un job `skipped`/`cancelled` se
-  evalúa a vacío, con lo que `== 'failure'` es falso y los retries no se
-  ejecutan (comportamiento correcto: no reintentar si el build falló, se
-  borró un tag o el run se canceló por concurrency).
-- Los tres jobs usan el mismo `environment: github-pages` (sin protection
-  rules restrictivas; el `url` se resuelve por job desde su propio
-  `steps.deployment.outputs.page_url`). `timeout-minutes: 15` por job
-  acota el peor caso (deploy ~10 min + sleeps).
+- On `push`/`workflow_dispatch` the `github.event.ref_type` property does
+  not exist (returns an empty string), so the guard
+  `github.event_name != 'delete' || github.event.ref_type == 'branch'`
+  evaluates `true` and the `build` job always runs. Only the `delete`
+  event with `ref_type == 'tag'` discards the job.
+- The 10-minute timeout (`600000 ms`) is hard-capped in
+  `actions/deploy-pages@v4`; a stuck deployment's log shows
+  `Current status: deployment_queued` (or `deployment_in_progress`)
+  repeated every 5 s until the abort (`Timeout reached, aborting!`), which
+  was perceived as a loop.
+- `actions/configure-pages@v5` with `enablement: true` is idempotent: if
+  Pages is already configured with GitHub Actions it makes no changes, it
+  only configures the site per the artifact uploaded afterwards.
+- The `deploy-retry-*` jobs reuse the same run's `github-pages` artifact:
+  `actions/deploy-pages` locates it by name via the artifacts API, with
+  no need for checkout nor to upload it again.
+- Retries are decided with `needs.<job>.outputs.deploy_result`
+  (propagated with `steps.<id>.outcome`), **not** with
+  `needs.<job>.result`: with `continue-on-error` at job level, `result`
+  returns `success` even if the job failed (verified semantics:
+  actions/runner#2347, actions/toolkit#1034). A `skipped`/`cancelled`
+  job's output evaluates to empty, so `== 'failure'` is false and the
+  retries do not run (correct behavior: do not retry if the build failed,
+  a tag was deleted or the run was cancelled by concurrency).
+- The three jobs use the same `environment: github-pages` (no restrictive
+  protection rules; the `url` is resolved per job from its own
+  `steps.deployment.outputs.page_url`). `timeout-minutes: 15` per job
+  bounds the worst case (deploy ~10 min + sleeps).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `.github/workflows/deploy-all-branches.yml` | **Modificado**: `on: push` limitado a `branches: [main, dev]`; guard `if: github.event_name != 'delete' \|\| github.event.ref_type == 'branch'` en el job `build` (descarta borrados de tags); hack de migración `gh api` sustituido por `actions/configure-pages@v5` con `enablement: true`; jobs `deploy-retry-1`/`deploy-retry-2` con reintentos (iteración 2: `continue-on-error` a nivel de step + outputs de job `steps.<id>.outcome`); comentario de cabecera con la política de triggers y los reintentos |
-| `README.md` | Sección 6 actualizada: despliegue en cada push a `main`/`dev`, nota de previews actualizados solo con merges, re-despliegue manual y borrado de tags sin reconstrucción |
-| `docs/adr-036-deploy-all-branches.md` | **Modificado**: nota de deprecación parcial al inicio (política de triggers y paso `gh api` sustituidos por ADR-041, issue #98); el resto del ADR queda intacto como histórico |
-| `docs/adr-041-deploy-triggers-revision.md` | **Nuevo**: este documento (ampliado con la iteración 2: reintentos de deploy) |
-| `docs/manual-de-usuario.md` | **Sin cambios** (cambio interno de infraestructura, no visible para el usuario final — misma decisión que ADR-036) |
-| `scripts/build-pages-site.sh` | **Sin cambios** (el script ya despliega todas las ramas en cada ejecución) |
+| `.github/workflows/deploy-all-branches.yml` | **Modified**: `on: push` limited to `branches: [main, dev]`; guard `if: github.event_name != 'delete' \|\| github.event.ref_type == 'branch'` in the `build` job (discards tag deletions); the `gh api` migration hack replaced by `actions/configure-pages@v5` with `enablement: true`; jobs `deploy-retry-1`/`deploy-retry-2` with retries (iteration 2: `continue-on-error` at step level + job outputs from `steps.<id>.outcome`); header comment with the triggers policy and the retries |
+| `README.md` | Section 6 updated: deployment on every push to `main`/`dev`, note that previews update only with merges, manual re-deploy and tag deletion without rebuild |
+| `docs/adr-036-deploy-all-branches.md` | **Modified**: partial deprecation note at the start (triggers policy and the `gh api` step replaced by ADR-041, issue #98); the rest of the ADR stays intact as historical |
+| `docs/adr-041-deploy-triggers-revision.md` | **New**: this document (expanded with iteration 2: deploy retries) |
+| `docs/manual-de-usuario.md` | **Unchanged** (internal infrastructure change, not visible to the end user — same decision as ADR-036) |
+| `scripts/build-pages-site.sh` | **Unchanged** (the script already deploys all branches on every run) |
 
 Related issue: #98 — https://github.com/gonzalitojh/Registro-personal/issues/98

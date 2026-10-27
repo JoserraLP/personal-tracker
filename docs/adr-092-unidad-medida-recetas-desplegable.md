@@ -1,107 +1,228 @@
-# ADR-092: Unidad de medida de los ingredientes de receta como desplegable (issue #251)
+# ADR-092: The recipe ingredients' unit of measure as a dropdown (issue #251)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #251 pide que al **crear o editar una receta** la unidad de
-medida de los ingredientes sea un **desplegable** con las opciones
-**g, Kg, mL, L y Unidades**.
+Issue #251 asks that when
+**creating or editing a
+ recipe** the
+ ingredients' unit of
+ measure be a
+ **dropdown** with
+ the
+ **g, Kg, mL, L and Units** options.
 
-Estado previo: en `ingredienteRowHtml` (js/recipes.js, ~línea 1593) la
-unidad era un `<input type="text" class="ing-unidad">` de **texto
-libre** con placeholder «Unidad», así que cada receta podía guardar
-cualquier texto (g, gr, gramos, cucharada…), lo que dificultaba la
-comparación con la cantidad de paquete y la agregación por
-«nombre|unidad» (ADR-086).
+Previous state: in the
+ `ingredientRowHtml`
+ (js/recipes.js, ~line
+ 1593) the unit was a
+ **free-text**
+ `<input type="text" class="ing-unit">` with the
+ "Unit"
+ placeholder, so each recipe could store
+ any
+ text
+ (the
+ g, gr, gramos,
+ spoon…),
+ which made
+ comparing against the package's quantity and the
+ "name|unit"-keyed aggregation (ADR-086) harder.
 
-Patrón previo existente en la app:
+An already-existing
+ pattern in the app:
 
-- `SHOPPING_UNITS = ["g", "Kg", "mL", "L", "Unidades"]` en
-  js/recipes-data.js (línea 121), la misma lista que ya usa el ítem
-  extra `#extra-unidad` y el modal de añadir a la compra
-  `#ing-shopping-unidad` (issue #249, ADR-091).
-- `PACKAGE_UNITS` (js/recipes.js, línea 901) con su **primera opción
-  vacía «—»** para «sin especificar» (issue #224, ADR-085).
+- The
+  `SHOPPING_UNITS = ["g", "Kg", "mL", "L", "Units"]` in
+  js/recipes-data.js (line
+  121), the
+  same list the extra item's
+  `#extra-unit` and the
+  add-to-shopping
+  modal's
+  `#ing-shopping-unit` already use
+  (issue #249, ADR-091).
+- The
+  `PACKAGE_UNITS` (js/recipes.js, line
+  901) with its
+  **first
+  empty "—" option** for
+  "unspecified" (issue #224, ADR-085).
 
-Nota del flujo (misma excepción que ADR-083, ADR-085, ADR-087,
-ADR-088, ADR-089, ADR-090 y ADR-091): la base de trabajo es la rama
-`content/issue-64-seccion-recetas`; la rama de trabajo se crea desde
-ahí y la PR va **también a `content/issue-64-seccion-recetas`, no a
-`dev`**. El ADR se numera **092** (el número 090 quedó usado por dos
-ADR de la issue #242, el 091 por la #249).
+Flow note (the
+ same exception as
+ ADR-083, ADR-085,
+ ADR-087, ADR-088,
+ ADR-089, ADR-090 and
+ ADR-091): the
+ work's base is the
+ `content/issue-64-seccion-recetas` branch; the work
+ branch is created from there and the
+ PR goes **also
+ to
+ `content/issue-64-seccion-recetas`, not to
+ `dev`**. The ADR is
+ numbered
+ **092** (the
+ number 090 was used by two
+ ADRs of the
+ issue #242, and the
+ 091 by the
+ #249).
 
-## Decisión
+## Decision
 
-1. **Nuevo helper `unidadOptionsHtml(unidad)`** en js/recipes.js
-   (junto a `ingredienteRowHtml`): genera un
-   `<select class="ing-unidad" aria-label="Unidad de medida">` con la
-   **primera opción vacía «—»** (selected explícito cuando la fila no
-   tiene unidad, patrón `PACKAGE_UNITS` — evita que el navegador
-   preseleccione «g» en filas nuevas) seguida de las **5 opciones de
-   `SHOPPING_UNITS`** (g, Kg, mL, L, Unidades). La coincidencia con la
-   unidad guardada se compara **normalizando ambos lados con
-   `normalizeUnit`**, así «kg» guardado coincide con la opción «Kg» de
-   la lista.
-2. **Datos legados**: si la unidad guardada no coincide con ninguna
-   estándar (p. ej. «cucharada», de cuando el campo era texto libre),
-   se añade como **opción extra al final, seleccionada**, con `value` y
-   `label` escapados con `escapeHtml` (es dato de usuario); el dato se
-   conserva tal cual al editar y guardar. El `selected` cae
-   **exactamente en una opción** en todos los casos (vacía, estándar o
-   legada), nunca en dos.
-3. **Lectura/persistencia sin cambios**: `readRecipeFromForm` sigue
-   leyendo `.ing-unidad` y normalizando con `normalizeUnit` (el
-   `.value` de un select se lee igual que el de un input); los datos
-   nuevos quedan siempre en el conjunto normalizado (g, kg, ml, l,
-   unidades), mejorando la consistencia con la comparación de paquetes
-   y la agregación por «nombre|unidad» (ADR-086).
-4. **CSS (css/styles.css)**: `select` se añade a los selectores
-   agrupados de la píldora base de `.recipe-form__ingrediente`
-   (`--paper-dim`/`--ink` con `min-width: 0`), al grupo de **overrides
-   de familia clara** (`[data-theme="light"]`/`[data-theme="white"]`,
-   patrón agrupado, una sola fuente de verdad) y al **override de negro
-   puro** (`[data-theme="black"]`). Además, la regla propia
-   `.recipe-form__ingrediente select { width: 100% }` para que el
-   `min-content` del select (la opción más ancha, p. ej. una unidad
-   legada larga) no desborde su celda del grid
-   `1.4fr 0.7fr 0.9fr auto` (y las dos columnas ≤560 px): sin scroll
-   horizontal en 360 / 768 / 1280 px (AGENTS.md §2).
-5. **Manual de usuario §8.1**: «A cada ingrediente le pones la
+1. **A new helper `unitOptionsHtml(unit)`** in js/recipes.js
+   (next to the
+   `ingredientRowHtml`): it generates a
+   `<select class="ing-unit" aria-label="Unit of measure">` with the
+   **first
+   empty "—" option** (an
+   explicit
+   selected
+   when the row
+   has no
+   unit, the
+   `PACKAGE_UNITS`
+   pattern
+  — it prevents the browser from preselecting
+  the
+  "g" on new rows) followed by the
+   **5
+   options of
+   the
+   `SHOPPING_UNITS`** (the
+   g, Kg, mL, L, Units). The match with the
+   stored
+   unit is compared **normalizing both sides with the
+   `normalizeUnit`**, so a stored "kg" matches the list's "Kg" option.
+2. **Legacy data**: if the stored unit matches no
+   standard one (e.g.
+   a
+   "cucharada", from when
+   the field was a free text), it is added as an
+   **extra
+   option at the end, selected**, with the
+   `value` and
+   label
+   escaped with
+   the
+   `escapeHtml` (they are user data); the
+   datum stays
+   as-is when editing and saving. The
+   `selected` ends up
+   **exactly on one option** in all
+   cases
+   (empty,
+   standard
+   or
+   legacy), never
+   on two.
+3. **The reading/persistence unchanged**: the
+   `readRecipeFromForm` keeps reading the
+   `.ing-unit` and normalizing with
+   the
+   `normalizeUnit` (a select's
+   `.value` is read just like an input's); the new
+   data always stay in the normalized
+   set (the
+   g, kg, ml,
+   l,
+   units), improving the consistency with the
+   packages'
+   comparison and the
+   "name|unit"-keyed aggregation (ADR-086).
+4. **CSS (css/styles.css)**: the select
+   is added to the
+   base
+   `.recipe-form__ingrediente` pill's
+   grouped selectors (the
+   `--paper-dim`/`--ink` with
+   a
+   `min-width: 0`), to the
+   **light family's overrides**
+   group (the
+   `[data-theme="light"]`/`[data-theme="white"]`, a
+   grouped
+   pattern, a single source of truth) and to the
+   **pure
+   black's override**
+   (the
+   `[data-theme="black"]`). Also, the
+   own rule being added is the
+   `.recipe-form__ingrediente select { width: 100% }` so the
+   select's
+   `min-content` (the widest option, e.g. a long legacy
+   unit) does not overflow its
+  `1.4fr 0.7fr 0.9fr auto` grid cell
+   (and the two columns at ≤560 px): with no horizontal scroll
+   at
+   360 / 768 / 1280 px (AGENTS.md
+   §2).
+5. **The user manual's §8.1**: "A cada ingrediente le pones la
    **cantidad** y eliges su **unidad de medida** en un desplegable con
    las opciones **g, Kg, mL, L y Unidades** (puedes dejarla sin
-   elegir)».
-6. **PWA**: bump `20260924 → 20260925` en js/config.js
-   (`APP_VERSION`), index.html (`?v=` ×3: styles.css, ocio.css,
-   app.js) y service-worker.js (`STATIC_ASSETS`, las 7 entradas
-   versionadas con `?v=`).
+   elegir)".
+6. **PWA**: the bump `20260924 → 20260925` in js/config.js
+   (the
+   `APP_VERSION`), the index.html (the
+   `?v=` ×3: styles.css, ocio.css,
+   app.js) and the
+   service-worker.js (the
+   `STATIC_ASSETS`, its 7
+   versioned entries with a
+   `?v=`).
 
-## Consecuencias
+## Consequences
 
-- **Positivas**: la unidad de medida pasa a ser una selección cerrada
-  con las cinco unidades que pidió el usuario; los datos nuevos quedan
-  siempre en el conjunto normalizado (g, kg, ml, l, unidades), de modo
-  que la comparación de paquetes (ADR-086) y la agregación por
-  «nombre|unidad» (ADR-086, issue #225) quedan más consistentes; la
-  experiencia es la misma que la del ítem extra y el modal de añadir a
-  la compra (ADR-091), con la lista compartida `SHOPPING_UNITS`.
-- **Neutras**: las unidades legadas (texto libre de recetas antiguas)
-  se siguen viendo y conservan tal cual al editar, como opción extra
-  del desplegable; la unidad vacía («—») sigue permitida igual que
-  antes; en móvil los selects nativos usan el popup del sistema —
-  comportamiento ya preexistente en la app (ítem extra y modal de
-  compra, ADR-091). Los CSS reutilizan el patrón de selectores
-  agrupados existente, añadiendo `select` a las reglas base, claras y
-  negro puro.
-- **Negativas**: ninguna conocida. Validado: sintaxis JS, criterios de
-  aceptación, responsividad 360 / 768 / 1280 px sin scroll horizontal
-  (AGENTS.md §2), cuatro modos de tema con contraste AA heredado de los
-  inputs hermanos (AGENTS.md §4) y escaneo de seguridad sin hallazgos —
-  toda interpolación de dato de usuario pasa por `escapeHtml` (incluida
-  la opción extra legada).
+- **Positive**: the unit of measure becomes a
+   closed choice
+   with the five units the user asked for; the new
+   data always stay in the normalized set (the
+   g, kg, ml, l,
+   units), so the packages' comparison (ADR-086)
+   and
+   the
+   name+unit-keyed (ADR-086,
+   issue #225) aggregation become
+   more consistent; the experience is the extra item's and the
+   add-to-shopping
+   modal's same (ADR-091), with the
+   shared
+   `SHOPPING_UNITS` list.
+- **Neutral**: the legacy units (the old recipes' free text) keep
+   being seen and stay as-is when edited, as the dropdown's extra
+   option; the
+   empty
+   unit ("—") stays allowed as before; on mobile the native selects use the
+   system's
+   popup —
+   the app's already-pre-existing behavior (the extra
+   item and the shopping
+   modal, ADR-091). The CSS reuses the existing grouped-selectors
+   pattern, adding the
+   "select" to the
+   base, light and pure black rules.
+- **Negative**: none known.
+  Validated: the
+  JS
+  syntax, the acceptance criteria, responsiveness at
+  360 / 768 / 1280 px with no horizontal
+  scroll
+  (AGENTS.md §2), the four theme modes with the sibling inputs' inherited AA contrast
+  (AGENTS.md §4) and a security scan with no findings —
+  every user-data
+  interpolation goes
+  through
+  the
+  `escapeHtml` (the
+  legacy extra option
+  included
+).
 
 Related issue: #251

@@ -1,210 +1,198 @@
-# ADR-012: Página de ajustes con selector de tema y preferencias de notificación
+# ADR-012: Settings page with theme selector and notification preferences
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Contexto
-La aplicación había crecido significativamente en funcionalidad (películas,
-series, libros, perfil, estadísticas, amigos, exportación de datos) pero
-carecía de un punto centralizado donde el usuario pudiera configurar sus
-preferencias. Hasta ahora:
+## Context
+The application had grown significantly in functionality (movies, series,
+books, profile, statistics, friends, data export) but lacked a centralized
+place where the user could configure their preferences. Until now:
 
-- El **selector de tema** (oscuro/claro) existía como un botón en la
-  cabecera, con persistencia en `localStorage` (clave `mi-registro-theme`),
-  pero no había una interfaz de ajustes donde el usuario pudiera descubrir
-  esta opción cómodamente.
-- Las **notificaciones** se generaban automáticamente en la comprobación
-  diaria (`daily-check.js`) sin que el usuario pudiera elegir qué tipo de
-  notificaciones recibir.
-- No existía un punto de entrada único para configurar preferencias de la
-  aplicación.
+- The **theme selector** (dark/light) existed as a button in the header,
+  with persistence in `localStorage` (key `mi-registro-theme`), but there
+  was no settings interface where the user could comfortably discover this
+  option.
+- **Notifications** were generated automatically during the daily check
+  (`daily-check.js`) without the user being able to choose which type of
+  notifications to receive.
+- There was no single entry point to configure application preferences.
 
-Se necesitaba crear una página o sección de ajustes accesible desde la
-interfaz que consolidara estas opciones y permitiera añadir más en el
-futuro.
+A settings page or section accessible from the interface was needed, one
+that would consolidate these options and allow adding more in the future.
 
-## Decisión
-Crear una sección de **Ajustes** como una cuarta pestaña dentro de la
-vista de perfil (`#profile-view`), junto a las existentes Estadísticas,
-Amigos y Datos. Se añade un botón con icono de engranaje (⚙️) en la
-cabecera para acceso directo.
+## Decision
+Create a **Settings** section as a fourth tab inside the profile view
+(`#profile-view`), alongside the existing Statistics, Friends and Data
+tabs. A gear icon button (⚙️) is added in the header for direct access.
 
-### Arquitectura
+### Architecture
 
-La sección de ajustes se implementa como:
+The settings section is implemented as:
 
-1. **Nuevo módulo `js/settings.js`**: Encapsula toda la lógica de
-   gestión de ajustes: carga/guardado en `localStorage`, sincronización
-   con Firestore, renderizado de la UI y conexión de eventos.
+1. **New module `js/settings.js`**: Encapsulates all settings management
+   logic: loading/saving in `localStorage`, synchronization with Firestore,
+   UI rendering and event wiring.
 
-2. **Persistencia en dos capas**:
-   - **localStorage** (inmediato): Los cambios se guardan al instante
-     mediante `saveSettings()`, con merge profundo contra valores por
-     defecto.
-   - **Firestore** (diferido): Las preferencias de notificación se
-     sincronizan con el perfil del usuario (`users/{uid}/preferences`)
-     con un debounce de 2 segundos para evitar escrituras excesivas.
-   - El tema se considera una preferencia de dispositivo (un usuario
-     puede querer oscuro en el móvil y claro en el escritorio), por lo
-     que **no** se sincroniza con Firestore, solo con localStorage.
+2. **Two-layer persistence**:
+   - **localStorage** (immediate): Changes are saved instantly via
+     `saveSettings()`, with a deep merge against default values.
+   - **Firestore** (deferred): Notification preferences are synchronized
+     with the user's profile (`users/{uid}/preferences`) with a 2-second
+     debounce to avoid excessive writes.
+   - The theme is considered a device preference (a user may want dark on
+     mobile and light on desktop), so it is **not** synchronized with
+     Firestore, only with localStorage.
 
-3. **Flujo de datos**:
+3. **Data flow**:
    ```
-   Usuario cambia ajuste en UI
+   User changes a setting in the UI
        │
        ▼
-   settings.js: loadSettings() → modifica → saveSettings()
+   settings.js: loadSettings() → modify → saveSettings()
        │
-       ├──▶ localStorage (inmediato)
-       └──▶ Firestore vía upsertUserProfile (debounce 2s, solo notificaciones)
+       ├──▶ localStorage (immediate)
+       └──▶ Firestore via upsertUserProfile (2s debounce, notifications only)
        
-   daily-check.js: getNotificationPrefs() → lee de localStorage
+   daily-check.js: getNotificationPrefs() → reads from localStorage
        │
-       └──▶ Antes de cada addNotification(), verifica que el tipo esté habilitado
+       └──▶ Before each addNotification(), checks that the type is enabled
    ```
 
-4. **Sincronización bidireccional del tema**: Cuando el usuario cambia
-   el tema desde el selector de ajustes o desde el botón de la cabecera,
-   ambas fuentes se mantienen sincronizadas mediante `syncThemeToSettings()`
-   y `syncThemeSelect()`.
+4. **Bidirectional theme synchronization**: When the user changes the theme
+   from the settings selector or from the header button, both sources stay
+   in sync via `syncThemeToSettings()` and `syncThemeSelect()`.
 
-### Ajustes incluidos
+### Included settings
 
-#### Apariencia
-- **Tema**: Selector desplegable con opciones "Oscuro" y "Claro".
-  Reutiliza el sistema de variables CSS existente (`:root` /
-  `[data-theme="light"]`) y la función `setTheme()` de `app.js`.
+#### Appearance
+- **Theme**: Dropdown selector with "Dark" and "Light" options. Reuses the
+  existing CSS variables system (`:root` / `[data-theme="light"]`) and the
+  `setTheme()` function from `app.js`.
 
-#### Notificaciones
-- **Estrenos de películas** (`movie_release`): Notifica cuando una
-  película marcada como `awaitingRelease` se estrena.
-- **Nuevos episodios de series** (`new_episode`): Notifica cuando hay
-  un nuevo episodio disponible de una serie en emisión.
-- **Estrenos de series** (`series_premiere`): Notifica cuando una serie
-  marcada como `awaitingRelease` se estrena.
-- **Actividad de amigos** (`friend_activity`): Preparado para uso futuro
-  (cuando se implemente el feed de actividad de amigos). Actualmente es
-  un no-op que no afecta a ninguna funcionalidad.
+#### Notifications
+- **Movie releases** (`movie_release`): Notifies when a movie marked as
+  `awaitingRelease` is released.
+- **New episodes of series** (`new_episode`): Notifies when a new episode
+  becomes available for an on-air series.
+- **Series premieres** (`series_premiere`): Notifies when a series marked
+  as `awaitingRelease` premieres.
+- **Friend activity** (`friend_activity`): Prepared for future use (when
+  the friend activity feed is implemented). Currently it is a no-op that
+  does not affect any functionality.
 
-### Implementación técnica
+### Technical implementation
 
-#### `js/settings.js` (nuevo)
-- `loadSettings()` / `saveSettings()`: Persistencia en localStorage con
-  merge profundo contra defaults, con try/catch para manejo de errores.
-- `renderSettings(ctx)`: Pinta el estado actual de los ajustes en la UI
-  (select de tema, checkboxes de notificaciones).
-- `setupSettings(ctx)`: Conecta los event listeners de los controles de
-  ajustes. Cada handler lee los datos frescos de localStorage en lugar
-  de usar closures para evitar datos obsoletos.
-- `getNotificationPrefs()`: Exportada para que `daily-check.js` pueda
-  leer las preferencias de notificación de forma síncrona.
-- `syncThemeSelect(theme)` / `syncThemeToSettings(theme)`: Mantienen
-  sincronizados el selector de tema de ajustes y la clave de localStorage
-  del tema cuando se cambia desde el botón de la cabecera.
-- `cleanupSettings()`: Limpia el temporizador de debounce al cerrar
-  sesión, evitando escrituras tardías a Firestore.
-- `scheduleFirestoreSync(ctx)`: Debounce de 2 segundos, lee ajustes
-  frescos de localStorage y persiste solo `preferences.notifications`
-  en Firestore.
+#### `js/settings.js` (new)
+- `loadSettings()` / `saveSettings()`: localStorage persistence with deep
+  merge against defaults, with try/catch for error handling.
+- `renderSettings(ctx)`: Paints the current state of the settings in the UI
+  (theme select, notification checkboxes).
+- `setupSettings(ctx)`: Wires the event listeners of the settings controls.
+  Each handler reads fresh data from localStorage instead of using closures
+  to avoid stale data.
+- `getNotificationPrefs()`: Exported so that `daily-check.js` can read the
+  notification preferences synchronously.
+- `syncThemeSelect(theme)` / `syncThemeToSettings(theme)`: Keep the settings
+  theme selector and the localStorage theme key synchronized when the theme
+  is changed from the header button.
+- `cleanupSettings()`: Clears the debounce timer on logout, avoiding late
+  writes to Firestore.
+- `scheduleFirestoreSync(ctx)`: 2-second debounce, reads fresh settings
+  from localStorage and persists only `preferences.notifications` in
+  Firestore.
 
-#### `js/app.js` (modificado)
-- Se añadió `setTheme` al objeto de contexto (`createCtx()`) para que
-  `settings.js` pueda cambiar el tema mediante `ctx.setTheme()`.
-- El botón `#btn-settings` abre la vista de perfil con la pestaña de
-  ajustes activa.
-- El manejador del toggle de tema (`#btn-theme-toggle`) ahora también
-  llama a `syncThemeSelect(next)` y `syncThemeToSettings(next)`.
-- En `init()`, tras restaurar el tema, se llama a
-  `syncThemeToSettings(getSavedTheme())` para garantizar consistencia.
-- Se llama a `cleanupSettings()` cuando el usuario cierra sesión.
+#### `js/app.js` (modified)
+- `setTheme` was added to the context object (`createCtx()`) so that
+  `settings.js` can change the theme via `ctx.setTheme()`.
+- The `#btn-settings` button opens the profile view with the settings tab
+  active.
+- The theme toggle handler (`#btn-theme-toggle`) now also calls
+  `syncThemeSelect(next)` and `syncThemeToSettings(next)`.
+- In `init()`, after restoring the theme, `syncThemeToSettings(getSavedTheme())`
+  is called to guarantee consistency.
+- `cleanupSettings()` is called when the user logs out.
 
-#### `js/profile.js` (modificado)
-- Se añadió la gestión de la sección `#profile-section-settings` en el
-  manejador de pestañas, importando `renderSettings` para pintar los
-  ajustes cuando se activa la pestaña.
+#### `js/profile.js` (modified)
+- Handling of the `#profile-section-settings` section was added to the tab
+  handler, importing `renderSettings` to paint the settings when the tab is
+  activated.
 
-#### `js/daily-check.js` (modificado)
-- Se importa `getNotificationPrefs()` desde `settings.js`.
-- Cada llamada a `addNotification()` se protege con una comprobación
-  de la preferencia correspondiente (`prefs.movie_release !== false`,
+#### `js/daily-check.js` (modified)
+- `getNotificationPrefs()` is imported from `settings.js`.
+- Each `addNotification()` call is guarded with a check of the corresponding
+  preference (`prefs.movie_release !== false`,
   `prefs.series_premiere !== false`, `prefs.new_episode !== false`).
 
-#### `index.html` (modificado)
-- Botón `#btn-settings` con icono ⚙️ en la cabecera, junto al toggle
-  de tema.
-- Pestaña "Ajustes" en el perfil (`data-section="settings"`).
-- Sección `#profile-section-settings` con:
-  - Selector de tema (`#settings-theme-select`)
-  - Cuatro interruptores de notificaciones con diseño toggle switch.
+#### `index.html` (modified)
+- `#btn-settings` button with ⚙️ icon in the header, next to the theme
+  toggle.
+- "Settings" tab in the profile (`data-section="settings"`).
+- `#profile-section-settings` section with:
+  - Theme selector (`#settings-theme-select`)
+  - Four notification switches with a toggle switch design.
 
-#### `css/styles.css` (modificado)
-- Clases `.settings-card`, `.settings-row`, `.settings-desc`,
-  `.settings-select` para el diseño de tarjetas de ajustes.
-- Clases `.switch`, `.switch__input`, `.switch__slider` para
-  interruptores de tipo toggle.
-- Estilo para `#btn-settings` en la cabecera.
+#### `css/styles.css` (modified)
+- Classes `.settings-card`, `.settings-row`, `.settings-desc`,
+  `.settings-select` for the settings card layout.
+- Classes `.switch`, `.switch__input`, `.switch__slider` for toggle-type
+  switches.
+- Style for `#btn-settings` in the header.
 
-### Alternativas descartadas
+### Rejected alternatives
 
-- **Página separada (nueva vista)**: Se consideró crear una vista
-  independiente como `#settings-view`, pero se optó por integrarla
-  en el perfil existente para mantener la navegación simple y
-  reutilizar el patrón de pestañas ya familiar para el usuario.
-- **Modal de ajustes**: Se descartó por que los modales tienen
-  espacio limitado y no son ideales para configuraciones que el
-  usuario quiere consultar mientras navega.
-- **Sincronizar tema a Firestore**: Se decidió no hacerlo porque
-  el tema es una preferencia de dispositivo. Un usuario puede querer
-  tema oscuro en el móvil y claro en el escritorio.
-- **Usar solo Firestore sin localStorage**: Se descartó porque
-  Firestore requiere conexión a internet y la carga es asíncrona.
-  localStorage permite que los ajustes estén disponibles
-  instantáneamente.
+- **Separate page (new view)**: A standalone view such as `#settings-view`
+  was considered, but the decision was to integrate it into the existing
+  profile to keep navigation simple and reuse the tab pattern already
+  familiar to the user.
+- **Settings modal**: Rejected because modals have limited space and are
+  not ideal for settings the user wants to consult while browsing.
+- **Synchronize theme to Firestore**: Decided against it because the theme
+  is a device preference. A user may want a dark theme on mobile and a light
+  theme on desktop.
+- **Use only Firestore without localStorage**: Rejected because Firestore
+  requires an internet connection and loading is asynchronous. localStorage
+  makes settings available instantly.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- El usuario tiene un lugar centralizado para configurar sus
-  preferencias, descubrible desde un icono en la cabecera.
-- Las notificaciones respetan las preferencias del usuario, reduciendo
-  el ruido informativo.
-- Los cambios se aplican inmediatamente sin recargar la página.
-- La arquitectura es extensible: añadir un nuevo ajuste solo requiere
-  añadir el control HTML, la clave en `DEFAULT_SETTINGS` y consumirla
-  donde corresponda.
-- El sistema de persistencia en dos capas (localStorage + Firestore)
-  proporciona velocidad en local y respaldo en la nube para las
-  preferencias de notificación.
-- El debounce de 2 segundos evita escrituras excesivas a Firestore
-  cuando el usuario ajusta varios controles rápidamente.
+### Positive
+- The user has a centralized place to configure their preferences,
+  discoverable from an icon in the header.
+- Notifications respect the user's preferences, reducing informational
+  noise.
+- Changes apply immediately without reloading the page.
+- The architecture is extensible: adding a new setting only requires adding
+  the HTML control, the key in `DEFAULT_SETTINGS`, and consuming it where
+  appropriate.
+- The two-layer persistence system (localStorage + Firestore) provides local
+  speed and cloud backup for notification preferences.
+- The 2-second debounce avoids excessive writes to Firestore when the user
+  adjusts multiple controls quickly.
 
-### Negativas
-- Los ajustes de notificación solo se sincronizan desde localStorage
-  a Firestore (no en sentido inverso). Si un usuario inicia sesión
-  en un dispositivo nuevo, las preferencias se inicializan con los
-  valores por defecto hasta que las modifique. Esto es un compromiso
-  aceptable para mantener la simplicidad.
-- La clave `mi-registro-settings` en localStorage duplica parte de
-  la información ya almacenada en `mi-registro-theme`, aunque se
-  mantienen sincronizadas mediante `syncThemeToSettings()`.
+### Negative
+- Notification settings are only synchronized from localStorage to Firestore
+  (not the other way around). If a user logs in on a new device, preferences
+  are initialized with default values until they modify them. This is an
+  acceptable trade-off for simplicity.
+- The `mi-registro-settings` key in localStorage duplicates part of the
+  information already stored in `mi-registro-theme`, although they stay
+  synchronized via `syncThemeToSettings()`.
 
-### Neutras
-- La preferencia `friend_activity` no tiene efecto hasta que se
-  implemente el feed de actividad de amigos. Está incluida para
-  que la UI no requiera cambios en el futuro.
-- Las preferencias de notificación se incluyen automáticamente en
-  las exportaciones de copia de seguridad (al ser parte del perfil
-  de usuario en Firestore).
+### Neutral
+- The `friend_activity` preference has no effect until the friend activity
+  feed is implemented. It is included so the UI will not require changes in
+  the future.
+- Notification preferences are automatically included in backup exports
+  (being part of the user profile in Firestore).
 
-## Archivos creados
-- `js/settings.js` — Módulo de gestión de ajustes (179 líneas).
+## Files created
+- `js/settings.js` — Settings management module (179 lines).
 
-## Archivos modificados
-- `index.html` — Botón de ajustes, pestaña y sección HTML de ajustes.
-- `css/styles.css` — Estilos de tarjetas de ajustes, toggle switch.
-- `js/app.js` — Import de settings.js, `setTheme` en ctx, botón de
-  ajustes, sincronización de tema en toggle, cleanup en logout.
-- `js/profile.js` — Gestión de pestaña de ajustes, import de
-  `renderSettings`.
-- `js/daily-check.js` — Import de `getNotificationPrefs`, guardas
-  en notificaciones.
+## Files modified
+- `index.html` — Settings button, tab and settings HTML section.
+- `css/styles.css` — Settings card styles, toggle switch.
+- `js/app.js` — Import of settings.js, `setTheme` in ctx, settings button,
+  theme sync in toggle, cleanup on logout.
+- `js/profile.js` — Settings tab handling, import of `renderSettings`.
+- `js/daily-check.js` — Import of `getNotificationPrefs`, guards on
+  notifications.

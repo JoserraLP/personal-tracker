@@ -1,149 +1,148 @@
-# ADR-005: Puntuación de la comunidad (TMDB) junto a la puntuación personal
+# ADR-005: Community rating (TMDB) next to the personal rating
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Contexto
-La aplicación permite al usuario registrar películas, series y libros,
-asignándoles una valoración personal de 1 a 5 estrellas. Sin embargo,
-no existía ningún punto de referencia externo que ayudara al usuario a
-contextualizar su propia puntuación o a descubrir contenido nuevo.
+## Context
+The application lets the user record movies, series and books,
+assigning them a personal rating of 1 to 5 stars. However,
+there was no external point of reference to help the user
+contextualize their own rating or discover new content.
 
-TMDB (The Movie Database) proporciona en sus respuestas de detalle el
-campo `vote_average` (media de votos de la comunidad, escala 0-10) y
-`vote_count` (número de votos). Estos datos ya se recuperaban al añadir
-películas y series (en `getMovieDetails()` y `getTvExtraDetails()`),
-pero no se exponían al usuario.
+TMDB (The Movie Database) provides in its detail responses the
+field `vote_average` (community vote average, 0-10 scale) and
+`vote_count` (number of votes). This data was already being fetched
+when adding movies and series (in `getMovieDetails()` and `getTvExtraDetails()`),
+but it was not exposed to the user.
 
-Se necesitaba mostrar esta puntuación comunitaria junto a la valoración
-personal, de forma clara y visualmente diferenciada, para que el usuario
-pudiera comparar su opinión con la media de la comunidad.
+The community rating needed to be shown next to the personal
+rating, in a clear and visually differentiated way, so that the user
+could compare their own opinion with the community average.
 
-## Decisión
-Implementar la visualización de la puntuación media de TMDB
-(`vote_average`) como "nota de la comunidad" en la interfaz,
-almacenándola en un nuevo campo `communityRating` en Firestore.
+## Decision
+Implement visualization of the TMDB average rating
+(`vote_average`) as the "community score" in the interface,
+storing it in a new `communityRating` field in Firestore.
 
-### Obtención de datos
-El campo `communityRating` se extrae de las respuestas de TMDB usando
-la siguiente lógica:
+### Data retrieval
+The `communityRating` field is extracted from TMDB responses using
+the following logic:
 
 ```
 communityRating = vote_count > 0 ? vote_average : null
 ```
 
-Esta comprobación evita tratar un `vote_average: 0` con `vote_count: 0`
-como una valoración real. Solo cuando hay al menos un voto se considera
-que la puntuación es significativa.
+This check avoids treating a `vote_average: 0` with `vote_count: 0`
+as a real rating. Only when there is at least one vote is the
+score considered meaningful.
 
-### Flujo de datos
+### Data flow
 ```
 TMDB API response → api-movies.js (communityRating)
-  ├─ Al añadir item (search.js): Object.assign(draft, details) → Firestore
-  └─ En comprobación diaria (daily-check.js): backfill para items existentes
-      └─ ui.js: renderiza el campo communityRating del item
+  ├─ When adding item (search.js): Object.assign(draft, details) → Firestore
+  └─ In daily check (daily-check.js): backfill for existing items
+      └─ ui.js: renders the item's communityRating field
 ```
 
-### Visualización
+### Visualization
 
-#### Tarjetas de cuadrícula
-Ambas puntuaciones se muestran dentro de un contenedor común
-`.item-card__ratings` al final de la tarjeta:
+#### Grid cards
+Both scores are shown inside a common container
+`.item-card__ratings` at the end of the card:
 
-- **Estrellas personales**: Color `--ochre-spine-dark` (dorado/ámbar),
-  formato `★★★`.
-- **Nota comunidad**: Distintivo `TMDB` con fondo `--teal-reel` (verde
-  petróleo) + valor numérico con un decimal (ej. `7.4`), usando la
-  variable `--teal-reel-dark` para el número.
+- **Personal stars**: Color `--ochre-spine-dark` (gold/amber),
+  format `★★★`.
+- **Community score**: `TMDB` badge with `--teal-reel` background
+  (teal) + numeric value with one decimal (e.g. `7.4`), using the
+  variable `--teal-reel-dark` for the number.
 
-Cuando no hay puntuación de TMDB, no se muestra nada en la tarjeta
-(para mantener la compacidad de la cuadrícula).
+When there is no TMDB rating, nothing is shown on the card
+(to keep the grid compact).
 
-#### Modales de detalle
-Se inserta una línea completa entre el sello de "próximo estreno"
-(`upcomingBadge`) y la información ampliada de TMDB (`extraInfoHtml`):
+#### Detail modals
+A full line is inserted between the "upcoming release" badge
+(`upcomingBadge`) and the extended TMDB info (`extraInfoHtml`):
 
-- Si hay `communityRating`: distintivo `TMDB` + valor (ej. `7.4`).
-- Si no hay datos: texto en cursiva `Sin puntuaciones` con color
+- If `communityRating` exists: `TMDB` badge + value (e.g. `7.4`).
+- If there is no data: italic text `No ratings` with color
   `--ink-soft`.
 
-#### Modal de solo lectura (amigos)
-Misma línea de puntuación comunitaria que en los modales de detalle.
+#### Read-only modal (friends)
+Same community rating line as in the detail modals.
 
-### Backfill para datos existentes
-El módulo `daily-check.js` se modificó para incluir `communityRating`
-en su comprobación diaria. Cuando un item carece de este campo y la
-API de TMDB devuelve un valor, se actualiza automáticamente en
-Firestore. Esto funciona tanto para películas como para series.
+### Backfill for existing data
+The `daily-check.js` module was modified to include `communityRating`
+in its daily check. When an item lacks this field and the TMDB
+API returns a value, it is updated automatically in
+Firestore. This works for both movies and series.
 
-### Implementación técnica
+### Technical implementation
 
-- **`js/api-movies.js`**: Se añadió `communityRating` al objeto
-  devuelto por `getMovieDetails()` y `getTvExtraDetails()`.
-- **`js/ui.js`**: Se añadieron dos funciones helper:
-  - `communityRatingHtml(item)` — para tarjetas: devuelve HTML del
-    distintivo o cadena vacía si no hay datos.
-  - `communityRatingDisplay(item)` — para modales: devuelve HTML del
-    distintivo o "Sin puntuaciones" si no hay datos.
-  Se modificaron `renderGrid()`, `openMovieModal()`, `openTvModal()`
-  y `openReadOnlyModal()`.
-- **`js/daily-check.js`**: Se ampliaron las condiciones `needsCheck`
-  y `needsBackfill` para incluir `communityRating == null`, y se
-  añadió la asignación del campo cuando el dato fresco está disponible.
-- **`ocio/ocio.css`**: Se añadieron clases `.item-card__ratings`,
-  `.community-rating`, `.community-rating--empty` y
-  `.modal-detail__ratings`. Se eliminó `margin-top: auto` de
-  `.item-card__rating` (ahora lo aplica el contenedor padre).
+- **`js/api-movies.js`**: `communityRating` was added to the object
+  returned by `getMovieDetails()` and `getTvExtraDetails()`.
+- **`js/ui.js`**: Two helper functions were added:
+  - `communityRatingHtml(item)` — for cards: returns the HTML of the
+    badge or an empty string if there is no data.
+  - `communityRatingDisplay(item)` — for modals: returns the HTML of the
+    badge or "No ratings" if there is no data.
+  `renderGrid()`, `openMovieModal()`, `openTvModal()`
+  and `openReadOnlyModal()` were modified.
+- **`js/daily-check.js`**: The `needsCheck` and `needsBackfill`
+  conditions were extended to include `communityRating == null`, and the
+  assignment of the field was added when fresh data is available.
+- **`ocio/ocio.css`**: Classes `.item-card__ratings`,
+  `.community-rating`, `.community-rating--empty` and
+  `.modal-detail__ratings` were added. `margin-top: auto` was removed from
+  `.item-card__rating` (the parent container now applies it).
 
-### Alternativas descartadas
+### Rejected alternatives
 
-- **Mostrar siempre la línea en tarjetas**: Se optó por no mostrar
-  "Sin puntuaciones" en la cuadrícula para evitar ruido visual.
-  En los modales sí se muestra siempre.
-- **Añadir el dato en el modal de búsqueda (resultados)**: Los
-  resultados de búsqueda siguen el formato de `mapMovieResult` /
-  `mapTvResult` que no incluyen `vote_average`. Se mantiene así para
-  no añadir complejidad a la búsqueda.
-- **Mostrar el número de votos (`vote_count`)**: Se consideró
-  añadirlo pero se descartó por simplicidad; `vote_average` ya
-  proporciona el contexto necesario.
+- **Always showing the line on cards**: It was decided not to show
+  "No ratings" on the grid to avoid visual noise.
+  In modals it is always shown.
+- **Adding the data to the search modal (results)**: Search
+  results follow the format of `mapMovieResult` /
+  `mapTvResult` which do not include `vote_average`. This is kept as-is to
+  avoid adding complexity to the search.
+- **Showing the number of votes (`vote_count`)**: Considered
+  but dropped for simplicity; `vote_average` already
+  provides the necessary context.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- El usuario puede comparar su valoración personal con la media de la
-  comunidad TMDB, enriqueciendo el contexto de sus propias puntuaciones.
-- La información es clara y visualmente diferenciada (dorado para
-  personal, verde petróleo para comunidad).
-- Los items existentes reciben la puntuación comunitaria de forma
-  progresiva mediante la comprobación diaria, sin necesidad de
-  migraciones masivas.
-- No hay cambios en el modelo de datos existente, solo un campo nuevo
-  opcional (`communityRating`).
+### Positive
+- The user can compare their personal rating with the TMDB community
+  average, enriching the context of their own scores.
+- The information is clear and visually differentiated (gold for
+  personal, teal for community).
+- Existing items receive the community rating progressively via the
+  daily check, with no need for mass migrations.
+- No changes to the existing data model, just a new
+  optional field (`communityRating`).
 
-### Negativas
-- Los items añadidos manualmente nunca tendrán `communityRating` (no
-  tienen correspondencia en TMDB). La interfaz muestra "Sin
-  puntuaciones" en estos casos, lo cual es correcto pero puede ser
-  ligeramente confuso si el usuario espera ver datos.
-- La puntuación de TMDB es estática desde el momento en que se añade
-  el item o se actualiza en la comprobación diaria. Si la puntuación
-  cambia significativamente en TMDB, no se reflejará hasta la próxima
-  comprobación diaria (una vez al día).
+### Negative
+- Manually added items will never have `communityRating` (they
+  have no TMDB match). The interface shows "No
+  ratings" in these cases, which is correct but may be
+  slightly confusing if the user expects to see data.
+- The TMDB rating is static from the moment the item is added
+  or updated in the daily check. If the rating
+  changes significantly on TMDB, it will not be reflected until the next
+  daily check (once a day).
 
-### Neutras
-- El campo se almacena como `number` en Firestore (ej. `7.4`), con
-  valor `null` cuando no hay votos en TMDB o el item es manual.
-- No se requiere ninguna nueva llamada API: los datos ya se obtenían
-  en las funciones existentes de detalle de TMDB.
+### Neutral
+- The field is stored as `number` in Firestore (e.g. `7.4`), with
+  value `null` when there are no TMDB votes or the item is manual.
+- No new API calls are required: the data was already being fetched
+  in the existing TMDB detail functions.
 
-## Archivos modificados
-- `js/api-movies.js` — Añadido `communityRating` a `getMovieDetails()`
-  y `getTvExtraDetails()`.
-- `js/ui.js` — Nuevas funciones `communityRatingHtml()` y
-  `communityRatingDisplay()`; modificadas `renderGrid()`,
+## Files modified
+- `js/api-movies.js` — Added `communityRating` to `getMovieDetails()`
+  and `getTvExtraDetails()`.
+- `js/ui.js` — New functions `communityRatingHtml()` and
+  `communityRatingDisplay()`; modified `renderGrid()`,
   `openMovieModal()`, `openTvModal()`, `openReadOnlyModal()`.
-- `js/daily-check.js` — Backfill de `communityRating` en la
-  comprobación diaria para películas y series.
-- `ocio/ocio.css` — Nuevas clases CSS para distintivo de comunidad,
-  contenedor de puntuaciones en tarjetas y modales.
+- `js/daily-check.js` — Backfill of `communityRating` in the
+  daily check for movies and series.
+- `ocio/ocio.css` — New CSS classes for the community badge,
+  ratings container on cards and modals.

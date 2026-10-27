@@ -1,95 +1,93 @@
-# Reglas del proyecto
+# Project rules
 
-Este archivo contiene reglas generales que TODO agente de opencode debe
-cumplir SIEMPRE, en cualquier tarea, sin excepción. Si una tarea entra en
-conflicto con estas reglas, detente y pide confirmación al usuario antes de
-continuar.
+This file contains general rules that EVERY opencode agent must
+comply with ALWAYS, in any task, without exception. If a task conflicts
+with these rules, stop and ask the user for confirmation before
+continuing.
 
-## Reglas generales
+## General rules
 
-### 1. PRs SIEMPRE contra `dev` (nunca contra `main`)
+### 1. PRs ALWAYS against `dev` (never against `main`)
 
-- Todas las Pull Requests se crean contra la rama de integración `dev`.
-- Prohibido crear PRs contra `main` (o pushear directamente a `main`) en
-  cualquier circunstancia. El único que promueve `dev` a `main` es el usuario,
-  cuando considere que la versión es estable.
-- El publisher debe aplicar `--base dev` automáticamente al crear cada PR.
+- All Pull Requests are created against the `dev` integration branch.
+- Creating PRs against `main` (or pushing directly to `main`) is forbidden
+  under any circumstance. The only one who promotes `dev` to `main` is the
+  user, when they consider the version stable.
+- The publisher must apply `--base dev` automatically when creating each PR.
 
-### 2. Responsividad obligatoria
+### 2. Mandatory responsiveness
 
-La web debe verse correctamente en ordenador, tablet y móvil, en cualquier
-ancho de pantalla.
+The web app must look right on desktop, tablet and mobile, at any
+screen width.
 
-Criterios obligatorios:
+Mandatory criteria:
 
-1. No debe existir desplazamiento horizontal a nivel de página en ningún
-   ancho. El scroll horizontal solo está permitido dentro de contenedores
-   concretos diseñados para ello (p. ej. tablas con `overflow-x: auto`).
-2. Ningún texto puede salirse de la pantalla: títulos, fechas, nombres de
-   autores y sinopsis largas deben ajustarse a su contenedor
-   (`overflow-wrap: break-word`, `min-width: 0` en hijos de flex/grid,
-   unidades relativas). No truncar contenido esencial con ellipsis en móvil.
-3. Usar unidades relativas (%, rem, em, fr, vw/vh, `minmax()`) para anchos,
-   columnas y tipografía de cuerpo. Evitar `px` fijos en contenedores de
-   ancho completo.
-4. Prohibido usar `overflow-x: hidden` en `body`/`html` como parche: enmascara
-   el desbordamiento y puede cortar contenido. Siempre corregir la causa raíz.
+1. There must be no page-level horizontal scroll at any
+   width. Horizontal scroll is only allowed inside specific containers
+   designed for it (e.g. tables with `overflow-x: auto`).
+2. No text may go off-screen: titles, dates, author
+   names and long synopses must fit their container
+   (`overflow-wrap: break-word`, `min-width: 0` on flex/grid children,
+   relative units). Do not truncate essential content with ellipsis on mobile.
+3. Use relative units (%, rem, em, fr, vw/vh, `minmax()`) for widths,
+   columns and body typography. Avoid fixed `px` in full-width containers.
+4. Using `overflow-x: hidden` on `body`/`html` as a patch is forbidden: it masks
+   the overflow and can cut content. Always fix the root cause.
 
-Verificación obligatoria cuando la tarea toque HTML, CSS o UI:
+Mandatory verification when the task touches HTML, CSS or UI:
 
-1. Probar en al menos tres anchos: ~360 px (móvil), ~768 px (tablet) y
-   ~1280 px (ordenador), con el modo dispositivo de DevTools.
-2. Confirmar que no hay scroll horizontal:
-   `document.documentElement.scrollWidth <= window.innerWidth` en consola
-   (debe ser true).
-3. Probar con contenido largo realista: títulos largos, fechas, URLs o
-   palabras sin espacios.
+1. Test at least three widths: ~360 px (mobile), ~768 px (tablet) and
+   ~1280 px (desktop), with the DevTools device mode.
+2. Confirm there is no horizontal scroll:
+   `document.documentElement.scrollWidth <= window.innerWidth` in the console
+   (must be true).
+3. Test with realistic long content: long titles, dates, URLs or
+   words without spaces.
 
-### 3. Manual de usuario siempre actualizado
+### 3. User manual always up to date
 
-Existe un manual de usuario en `docs/manual-de-usuario.md` que explica, en
-lenguaje no técnico y para cualquier usuario, todo lo que se puede hacer en
-la web (estados, acciones, ajustes, búsqueda, frecuencias de actualización,
+There is a user manual at `docs/manual-de-usuario.md` that explains, in
+non-technical language and for any user, everything that can be done in
+the web app (statuses, actions, settings, search, refresh frequencies,
 etc.).
 
-- **Cualquier cambio que afecte a lo que el usuario ve o hace** (nuevas
-  funciones, cambios de comportamiento, textos, estados, ajustes,
-  frecuencias de actualización de datos...) **debe reflejarse en el manual**
-  en la misma tarea que lo implementa: añadiendo, corrigiendo o eliminando
-  la sección/subsección pertinente.
-- Los cambios puramente internos (refactors, optimizaciones, seguridad)
-  que no alteren la experiencia del usuario no requieren tocar el manual.
-- El manual debe estar siempre al día con el comportamiento real de la web;
-  una PR que cambie algo visible para el usuario sin actualizarlo quedará
-  incompleta.
+- **Any change that affects what the user sees or does** (new
+  features, behavior changes, texts, statuses, settings,
+  data refresh frequencies...) **must be reflected in the manual**
+  in the same task that implements it: adding, correcting or removing
+  the relevant section/subsection.
+- Purely internal changes (refactors, optimizations, security)
+  that do not alter the user experience do not require touching the manual.
+- The manual must always be up to date with the web app's real behavior;
+  a PR that changes something visible to the user without updating it will
+  be incomplete.
 
-### 4. Visualización correcta en todos los modos de tema
+### 4. Correct display in all theme modes
 
-La web tiene **cuatro modos de visualización**: Oscuro, Negro puro,
-Claro y Blanco puro (ADR-009, ADR-064 y ADR-066). La familia clara
-(Claro/Blanco puro) usa `--paper` como superficie y `--ink` como texto;
-la familia oscura (Oscuro/Negro puro) al revés, con los overrides por
-elemento agrupados en `css/styles.css` y `ocio/ocio.css`.
+The web app has **four display modes**: Dark, Pure black,
+Light and Pure white (ADR-009, ADR-064 and ADR-066). The light family
+(Light/Pure white) uses `--paper` as surface and `--ink` as text;
+the dark family (Dark/Pure black) the other way around, with per-element
+overrides grouped in `css/styles.css` and `ocio/ocio.css`.
 
-**Cualquier cosa nueva que se añada a la web** (componente, elemento,
-pantalla, color, variable CSS...) **debe cumplir siempre la visualización
-en todos los modos existentes**:
+**Anything new added to the web app** (component, element,
+screen, color, CSS variable...) **must always comply with the display in
+all existing modes**:
 
-1. Verificar el elemento nuevo en los **cuatro modos** (no solo en el
-   que se está tocando), incluso si el cambio parece aislado a uno.
-2. Revisar que ninguna superficie o texto quede **invisible ni con
-   contraste insuficiente** en ningún modo (mínimo WCAG AA: 4.5:1 para
-   texto normal, 3:1 para texto grande y componentes gráficos).
-3. Si el elemento usa variables de tema (`--ink`, `--paper`,
-   `--ink-raised`, `--paper-dim`, `--white`, alfas, estados), comprobar
-   los **dos papeles que juega cada variable** según la familia (fondo o
-   texto) y añadir el override correspondiente a las familias
-   (`[data-theme="light"]`/`[data-theme="white"]` y
-   `[data-theme="black"]`) siguiendo el patrón de **selectores agrupados**
-   existente, con una sola fuente de verdad por regla.
-4. Los colores hardcodeados (p. ej. hex de los sellos de las tarjetas en
-   negro puro) deben ir documentados con un comentario que explique por
-   qué no usan variable.
+1. Verify the new element in the **four modes** (not only the
+   one being worked on), even if the change seems isolated to one.
+2. Check that no surface or text is left **invisible or with
+   insufficient contrast** in any mode (minimum WCAG AA: 4.5:1 for
+   normal text, 3:1 for large text and graphical components).
+3. If the element uses theme variables (`--ink`, `--paper`,
+   `--ink-raised`, `--paper-dim`, `--white`, alphas, states), check the
+   **two roles each variable plays** depending on the family (background or
+   text) and add the corresponding override for the families
+   (`[data-theme="light"]`/`[data-theme="white"]` and
+   `[data-theme="black"]`) following the existing **grouped selectors**
+   pattern, with a single source of truth per rule.
+4. Hardcoded colors (e.g. hex of the card stamps in pure black) must be
+   documented with a comment explaining why they do not use a variable.
 
-Una PR que añada algo nuevo sin comprobar (o sin corregir) los cuatro
-modos quedará incompleta.
+A PR that adds something new without checking (or fixing) the four
+modes will be incomplete.

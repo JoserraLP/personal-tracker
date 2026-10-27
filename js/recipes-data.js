@@ -1,16 +1,15 @@
 // =============================================================
-// Datos de recetas (issue #64): etiquetas predefinidas de
-// categorías de ingrediente, alérgenos y tipos de comida, más
-// helpers de normalización y mezcla con las etiquetas
-// personalizadas del usuario (users/{uid}/tags).
+// Recipe data (issue #64): predefined labels for ingredient
+// categories, allergens and meal types, plus helpers for
+// normalization and merging with the user's custom tags
+// (users/{uid}/tags).
 // =============================================================
 
-// Categorías de ingrediente (predefinidas para todos). La issue
-// pedía revisar las 9 iniciales y ampliarlas: se añaden
-// «Bebidas y cafés», «Congelados» y «Otros». Cada categoría lleva su
-// icono (emoji, con precedente en la UI: 👤 en sidebar/global-search)
-// que se muestra junto al título de su grupo en el catálogo (issue
-// #224).
+// Ingredient categories (predefined for everyone). The issue asked
+// to review the initial 9 and expand them: «Bebidas y cafés»,
+// «Congelados» and «Otros» are added. Each category carries its own
+// icon (emoji, with UI precedent: 👤 in sidebar/global-search) that
+// shows next to its group title in the catalog (issue #224).
 export const INGREDIENT_CATEGORIES = [
   { id: "frutas_verduras", label: "Frutas, verduras y hortalizas", icon: "🍎" },
   { id: "carnes_aves", label: "Carnes y aves", icon: "🥩" },
@@ -26,16 +25,16 @@ export const INGREDIENT_CATEGORIES = [
   { id: "otros", label: "Otros", icon: "🗂️" },
 ];
 
-// Icono de las categorías personalizadas del usuario (issue #224).
+// Icon of the user's custom categories (issue #224).
 export const CUSTOM_CATEGORY_ICON = "🏷️";
 
-// Icono del grupo «Sin categoría» (issue #224).
+// Icon of the «Sin categoría» group (issue #224).
 export const UNCATEGORIZED_ICON = "🧺";
 
-// Supermercados para la ficha del ingrediente (issue #224): etiquetas
-// opcionales de dónde se puede comprar cada ingrediente. Los colores
-// de marca viven en el CSS (css/styles.css), no aquí: este archivo
-// solo define los ids y las etiquetas.
+// Supermarkets for the ingredient detail view (issue #224):
+// optional labels of where each ingredient can be bought. Brand
+// colors live in the CSS (css/styles.css), not here: this file only
+// defines ids and labels.
 export const SUPERMARKETS = [
   { id: "lidl", label: "Lidl" },
   { id: "aldi", label: "Aldi" },
@@ -45,8 +44,8 @@ export const SUPERMARKETS = [
   { id: "el_corte_ingles", label: "El Corte Inglés" },
 ];
 
-// Alérgenos / etiquetas dietéticas (predefinidas). Se añaden
-// «Sin frutos secos» y «Sin huevo» a las cuatro de la issue.
+// Allergens / dietary tags (predefined). «Sin frutos secos» and
+// «Sin huevo» are added to the four from the issue.
 export const ALERGEN_TAGS = [
   { id: "sin_gluten", label: "Sin gluten" },
   { id: "vegetariano", label: "Vegetariano" },
@@ -56,8 +55,8 @@ export const ALERGEN_TAGS = [
   { id: "sin_huevo", label: "Sin huevo" },
 ];
 
-// Tipos de comida (predefinidos). Se añaden «Salsas y
-// guarniciones», «Desayunos» y «Bebidas» a los cinco de la issue.
+// Meal types (predefined). «Salsas y guarniciones», «Desayunos»
+// and «Bebidas» are added to the five from the issue.
 export const MEAL_TYPES = [
   { id: "entrante", label: "Entrante" },
   { id: "cuchara", label: "Plato de cuchara" },
@@ -69,16 +68,16 @@ export const MEAL_TYPES = [
   { id: "bebidas", label: "Bebidas" },
 ];
 
-// Agrupación por tipo de etiqueta (el valor de `tipo` en la
-// colección users/{uid}/tags y en los selectores de la UI).
+// Grouping by tag type (the value of `tipo` in the
+// users/{uid}/tags collection and in the UI selectors).
 export const TAGS_BY_TYPE = {
   ingrediente: INGREDIENT_CATEGORIES,
   alergeno: ALERGEN_TAGS,
   tipo: MEAL_TYPES,
 };
 
-// Días de la semana y comidas del menú (fijos, no configurables). El
-// desayuno se eliminó en la issue #242: el menú cubre almuerzo y cena.
+// Week days and menu meals (fixed, not configurable). Breakfast was
+// removed in issue #242: the menu covers lunch and dinner.
 export const DAY_KEYS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
 export const DAY_LABELS = {
   lunes: "Lunes",
@@ -92,8 +91,8 @@ export const DAY_LABELS = {
 export const MEAL_KEYS = ["almuerzo", "cena"];
 export const MEAL_LABELS = { almuerzo: "Almuerzo", cena: "Cena" };
 
-// Normalización a slug para claves de etiqueta e ingrediente:
-// quita tildes, pasa a minúsculas y sustituye separadores por "_".
+// Slug normalization for tag and ingredient keys: removes accents,
+// lowercases and replaces separators with "_".
 export function slugify(text) {
   return String(text || "")
     .normalize("NFD")
@@ -103,48 +102,48 @@ export function slugify(text) {
     .replace(/^_+|_+$/g, "");
 }
 
-// Nombre de ingrediente normalizado (para agregar cantidades en la
-// lista de la compra y para el catálogo de ingredientes).
+// Normalized ingredient name (for aggregating quantities in the
+// shopping list and for the ingredient catalog).
 export function normalizeIngredientName(name) {
   return slugify(name).replace(/_+/g, " ");
 }
 
-// Unidad normalizada (string libre: g, kg, ml, unidades...).
+// Normalized unit (free string: g, kg, ml, unidades...).
 export function normalizeUnit(unit) {
   return String(unit || "").trim().toLowerCase();
 }
 
-// Unidades de medida para añadir un ítem a la lista de la compra
-// (issue #249, iteración): desplegable con las opciones exactas que
-// pidió el usuario. El valor se normaliza con normalizeUnit antes de
-// persistir (g, kg, ml, l, unidades).
+// Measurement units to add an item to the shopping list (issue
+// #249, iteration): dropdown with the exact options the user asked
+// for. The value is normalized with normalizeUnit before persisting
+// (g, kg, ml, l, unidades).
 export const SHOPPING_UNITS = ["g", "Kg", "mL", "L", "Unidades"];
 
-// Combina las etiquetas predefinidas con las personalizadas del
-// usuario (docs de users/{uid}/tags con { nombre, tipo }). Las
-// personalizadas llevan custom: true para la UI de selección.
+// Merges the predefined tags with the user's custom ones (docs of
+// users/{uid}/tags with { nombre, tipo }). Custom ones carry
+// custom: true for the selection UI.
 export function mergeTags(predefined, customTags) {
   const out = (predefined || []).map((t) => ({ id: t.id, label: t.label, custom: false }));
   (customTags || []).forEach((t) => out.push({ id: t.id, label: t.nombre, custom: true }));
   return out;
 }
 
-// Devuelve las etiquetas (predefinidas + personalizadas) cuyos ids
-// estén en `ids`, conservando el orden del array de ids.
+// Returns the tags (predefined + custom) whose ids are in `ids`,
+// keeping the order of the ids array.
 export function tagsByIds(predefined, customTags, ids) {
   const byId = new Map(mergeTags(predefined, customTags).map((t) => [t.id, t]));
   return (ids || []).map((id) => byId.get(id)).filter(Boolean);
 }
 
-// Escapa texto para inyectarlo con seguridad en innerHTML.
+// Escapes text so it can be safely injected with innerHTML.
 export function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (ch) => {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
   });
 }
 
-// Formatea una cantidad: la redondea a 2 decimales y quita ceros
-// finales ("1.5", "2", "0.33").
+// Formats a quantity: rounds to 2 decimals and strips trailing
+// zeros ("1.5", "2", "0.33").
 export function formatCantidad(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "";
@@ -152,12 +151,12 @@ export function formatCantidad(value) {
   return Object.is(rounded, -0) ? "0" : String(rounded);
 }
 
-// Fecha ISO (YYYY-MM-DD) del lunes de la semana actual desplazada
-// `offset` semanas (0 = esta semana, -1 = anterior, 1 = siguiente).
-// El menú semanal se guarda anclado al lunes de la semana ISO.
+// ISO date (YYYY-MM-DD) of the Monday of the current week shifted
+// `offset` weeks (0 = this week, -1 = previous, 1 = next).
+// The weekly menu is stored anchored to the Monday of the ISO week.
 export function mondayISO(offset = 0) {
   const now = new Date();
-  const daysFromMonday = (now.getDay() + 6) % 7; // 0 = lunes
+  const daysFromMonday = (now.getDay() + 6) % 7; // 0 = Monday
   const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysFromMonday + offset * 7);
   const y = monday.getFullYear();
   const m = String(monday.getMonth() + 1).padStart(2, "0");
@@ -165,8 +164,8 @@ export function mondayISO(offset = 0) {
   return `${y}-${m}-${d}`;
 }
 
-// Añade `days` días a una fecha ISO y la devuelve en el mismo
-// formato. Se usa para etiquetar los días de la semana del menú.
+// Adds `days` days to an ISO date and returns it in the same
+// format. Used to label the week days of the menu.
 export function addDaysISO(iso, days) {
   const [y, m, d] = iso.split("-").map(Number);
   const date = new Date(y, m - 1, d + days);
@@ -176,7 +175,7 @@ export function addDaysISO(iso, days) {
   return `${yy}-${mm}-${dd}`;
 }
 
-// Fecha legible a partir de una ISO ("2026-08-10" → "10/08/2026").
+// Readable date from an ISO date ("2026-08-10" → "10/08/2026").
 export function formatDateEs(iso) {
   if (!iso) return "";
   const [y, m, d] = String(iso).split("-");

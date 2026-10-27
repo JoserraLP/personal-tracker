@@ -1,38 +1,38 @@
-# ADR-009: Mostrar plataformas de streaming disponibles desde TMDB
+# ADR-009: Showing available streaming providers from TMDB
 
-## Estado
-Implementado
+## Status
+Implemented
 
-## Contexto
-La aplicación obtiene de TMDB datos ampliados de películas y series (sinopsis, reparto, director, tráiler, colecciones, puntuación de la comunidad, etc.) y los muestra en los modales de detalle. Sin embargo, los usuarios no tenían forma de saber en qué plataformas de streaming (Netflix, HBO Max, Disney+, Prime Video, etc.) estaba disponible un título sin salir de la aplicación.
+## Context
+The application fetches extended movie and series data from TMDB (synopsis, cast, director, trailer, collections, community rating, etc.) and shows it in the detail modals. However, users had no way to know on which streaming platforms (Netflix, HBO Max, Disney+, Prime Video, etc.) a title was available without leaving the application.
 
-TMDB proporciona los endpoints `/movie/{id}/watch/providers` y `/tv/{id}/watch/providers` que devuelven los proveedores de streaming, alquiler y compra disponibles para cada título, organizados por país. Este dato permite mostrar al usuario «dónde ver» cada película o serie de forma actualizada sin coste adicional de API.
+TMDB provides the endpoints `/movie/{id}/watch/providers` and `/tv/{id}/watch/providers` that return the streaming, rental and purchase providers available for each title, organized by country. This data makes it possible to show the user "where to watch" each movie or series in an up-to-date way at no extra API cost.
 
-Se necesitaba incorporar esta información para:
-- Permitir al usuario saber en qué plataformas de streaming está disponible cada título desde el modal de detalle.
-- Distinguir entre streaming (incluido en la suscripción), alquiler y compra.
-- Que la información se muestre tanto para títulos propios como para los de amigos (modal de solo lectura).
-- Mantener la coherencia con el patrón existente de obtención de datos en el momento de abrir el modal.
+This information needed to be incorporated in order to:
+- Let the user know on which streaming platforms each title is available, from the detail modal.
+- Distinguish between streaming (included in the subscription), rental and purchase.
+- Have the information show both for the user's own titles and for friends' (read-only modal).
+- Stay consistent with the existing pattern of fetching data at the moment the modal is opened.
 
-## Decisión
-Implementar la funcionalidad completa de watch providers desde TMDB, que incluye:
+## Decision
+Implement the full TMDB watch providers feature, which includes:
 
-1. Nueva función `getWatchProviders()` en `api-movies.js` para consultar el endpoint de proveedores.
-2. Sistema de caché en memoria con TTL de 24 horas para evitar llamadas redundantes.
-3. Renderizado de una sección visual con logos y nombres de las plataformas en los modales de detalle.
-4. Integración en los tres modales: película, serie y solo lectura (amigos).
-5. Enlace opcional «Ver opciones en TMDB» para consultar más detalles.
-6. Detección automática del país del usuario (con fallback a España) y posibilidad de cambiarlo manualmente en el futuro mediante `localStorage`.
+1. New function `getWatchProviders()` in `api-movies.js` to query the providers endpoint.
+2. In-memory cache system with a 24-hour TTL to avoid redundant calls.
+3. Rendering of a visual section with logos and names of the platforms in the detail modals.
+4. Integration into the three modals: movie, series and read-only (friends).
+5. Optional link "See options on TMDB" for more details.
+6. Automatic detection of the user's country (with fallback to Spain) and the possibility of changing it manually in the future via `localStorage`.
 
-### Obtención de datos
-Se creó la función `getWatchProviders(id, type, countryCode)` en `api-movies.js` que:
+### Data retrieval
+The function `getWatchProviders(id, type, countryCode)` was created in `api-movies.js` and:
 
-1. Verifica la caché en memoria: si existe una entrada válida (menos de 24h), la devuelve sin hacer la llamada.
-2. Si no hay caché, construye la URL del endpoint correspondiente según el tipo (`/movie/{id}/watch/providers` o `/tv/{id}/watch/providers`).
-3. Realiza la petición con `fetchJson` (con 1 reintento) y manejo de errores silencioso.
-4. Si el país solicitado no está disponible en la respuesta, guarda `null` en caché y devuelve `null`.
-5. Normaliza los proveedores en tres categorías: `flatrate` (streaming), `rent` (alquiler), `buy` (compra).
-6. Guarda el resultado en caché y lo devuelve.
+1. Checks the in-memory cache: if there is a valid entry (under 24h), it returns it without making the call.
+2. If there is no cache, builds the URL of the corresponding endpoint depending on the type (`/movie/{id}/watch/providers` or `/tv/{id}/watch/providers`).
+3. Makes the request with `fetchJson` (1 retry) and silent error handling.
+4. If the requested country is not available in the response, stores `null` in cache and returns `null`.
+5. Normalizes the providers into three categories: `flatrate` (streaming), `rent` (rental), `buy` (purchase).
+6. Stores the result in cache and returns it.
 
 ```javascript
 export async function getWatchProviders(id, type, countryCode = "ES") {
@@ -61,118 +61,118 @@ export async function getWatchProviders(id, type, countryCode = "ES") {
 }
 ```
 
-### Detección del país
-Se creó el helper `getUserCountry()` en `modal-handlers.js` que determina el país del usuario siguiendo este orden de precedencia:
+### Country detection
+The helper `getUserCountry()` was created in `modal-handlers.js` and determines the user's country following this order of precedence:
 
-1. `localStorage.getItem("watch-provider-country")` — preferencia guardada por el usuario (para futuro selector de país).
-2. `navigator.language.split("-")[1]` — código de región del navegador (ej: "ES" de "es-ES").
-3. `"ES"` — fallback a España.
+1. `localStorage.getItem("watch-provider-country")` — preference saved by the user (for a future country picker).
+2. `navigator.language.split("-")[1]` — browser region code (e.g. "ES" from "es-ES").
+3. `"ES"` — fallback to Spain.
 
-### Visualización
-Se añadieron tres funciones en `ui.js`:
+### Visualization
+Three functions were added in `ui.js`:
 
-- **`providersGroupHtml(providers, label)`**: Renderiza un grupo de proveedores (Streaming, Alquiler o Compra) con sus logos y nombres.
-- **`watchProvidersHtml(item)`**: Renderiza la sección completa de watch providers, incluyendo:
-  - Título «Disponible en:» si hay al menos un proveedor.
-  - Grupos separados para streaming, alquiler y compra.
-  - Enlace «Ver opciones en TMDB» si TMDB proporciona URL.
-  - Mensaje «Sin info. de streaming para este país» si no hay datos.
-  - Cadena vacía si `item.watchProviders` es `null` (sin datos o error).
+- **`providersGroupHtml(providers, label)`**: Renders a group of providers (Streaming, Rental or Purchase) with their logos and names.
+- **`watchProvidersHtml(item)`**: Renders the full watch providers section, including:
+  - Title "Available on:" if there is at least one provider.
+  - Separate groups for streaming, rental and purchase.
+  - Link "See options on TMDB" if TMDB provides a URL.
+  - Message "No streaming info for this country" if there is no data.
+  - Empty string if `item.watchProviders` is `null` (no data or error).
 
-La sección se inserta en tres modales, en la misma posición (después del tráiler y antes de la información ampliada):
+The section is inserted into three modals, at the same position (after the trailer and before the extended info):
 
-- `openMovieModal()` — modal de detalle de película.
-- `openTvModal()` — modal de detalle de serie.
-- `openReadOnlyModal()` — modal de solo lectura (amigos).
+- `openMovieModal()` — movie detail modal.
+- `openTvModal()` — series detail modal.
+- `openReadOnlyModal()` — read-only modal (friends).
 
-### Integración en modal-handlers.js
-Tanto `openMovieItem()` como `openTvItem()` ahora obtienen los watch providers antes de abrir el modal:
+### Integration into modal-handlers.js
+Both `openMovieItem()` and `openTvItem()` now fetch the watch providers before opening the modal:
 
-1. Si el item tiene `externalId`, se llama a `getWatchProviders(externalId, type, countryCode)` con `await`.
-2. Si la llamada falla (error de red, TMDB no responde, etc.), se asigna `null` silenciosamente.
-3. El resultado se asigna a `item.watchProviders` para que el modal lo muestre.
+1. If the item has an `externalId`, `getWatchProviders(externalId, type, countryCode)` is called with `await`.
+2. If the call fails (network error, TMDB not responding, etc.), `null` is silently assigned.
+3. The result is assigned to `item.watchProviders` so the modal shows it.
 
-Este enfoque es consistente con el patrón existente de `openTvItem()`, que ya espera a obtener las temporadas antes de abrir el modal.
+This approach is consistent with the existing pattern of `openTvItem()`, which already waits to fetch the seasons before opening the modal.
 
-### Caché
-El sistema de caché en memoria (`providersCache`) almacena los resultados de `getWatchProviders()` con un TTL de 24 horas. Esto evita llamadas redundantes a la API de TMDB durante la misma sesión del navegador.
+### Cache
+The in-memory cache system (`providersCache`) stores the results of `getWatchProviders()` with a 24-hour TTL. This avoids redundant calls to the TMDB API during the same browser session.
 
-### Estilos CSS
-Se añadieron las siguientes clases en `ocio/ocio.css`:
+### CSS styles
+The following classes were added in `ocio/ocio.css`:
 
-- `.watch-providers` — contenedor principal, con fondo `--paper-dim` y bordes redondeados.
-- `.watch-providers__title` — título de la sección «Disponible en:».
-- `.watch-providers--empty` — variante para el caso «Sin información».
-- `.watch-providers__group` — cada grupo (Streaming, Alquiler, Compra).
-- `.watch-providers__type-label` — etiqueta del grupo.
-- `.watch-providers__logos` — contenedor flex con los logos.
-- `.watch-provider` — cada proveedor individual (flex con logo + nombre).
-- `.watch-provider__logo` — imagen del logo (22×22px).
-- `.watch-provider__name` — nombre del proveedor.
-- `.watch-providers__link` — enlace a TMDB.
+- `.watch-providers` — main container, with `--paper-dim` background and rounded corners.
+- `.watch-providers__title` — title of the section "Available on:".
+- `.watch-providers--empty` — variant for the "No information" case.
+- `.watch-providers__group` — each group (Streaming, Rental, Purchase).
+- `.watch-providers__type-label` — group label.
+- `.watch-providers__logos` — flex container with the logos.
+- `.watch-provider` — each individual provider (flex with logo + name).
+- `.watch-provider__logo` — logo image (22×22px).
+- `.watch-provider__name` — provider name.
+- `.watch-providers__link` — link to TMDB.
 
-Los logos se cargan desde `https://image.tmdb.org/t/p/w92` con lazy loading. Los estilos son coherentes con el sistema de diseño existente (mismos radios, tipografía, paleta de colores).
+The logos are loaded from `https://image.tmdb.org/t/p/w92` with lazy loading. The styles are consistent with the existing design system (same radii, typography, color palette).
 
-### Flujo de datos
+### Data flow
 ```
-Usuario abre modal de película/serie
+User opens movie/series modal
   │
   ├─ modal-handlers.js: openMovieItem() / openTvItem()
   │   └─ getUserCountry() → "ES" | "US" | "MX" | ...
   │   └─ getWatchProviders(externalId, type, countryCode)
-  │       ├─ ¿En caché? → sí → devuelve datos cacheados
+  │       ├─ In cache? → yes → returns cached data
   │       └─ no → fetch TMDB /watch/providers
-  │           ├─ ¿Error? → null (no se muestra sección)
-  │           └─ OK → guarda en caché y devuelve { flatrate, rent, buy, link }
-  │   └─ item.watchProviders = resultado
+  │           ├─ Error? → null (section not shown)
+  │           └─ OK → stores in cache and returns { flatrate, rent, buy, link }
+  │   └─ item.watchProviders = result
   │
   └─ ui.js: openMovieModal() / openTvModal() / openReadOnlyModal()
       └─ watchProvidersHtml(item)
-          ├─ ¿null? → cadena vacía (no se renderiza nada)
-          ├─ ¿vacío? → "Sin info. de streaming para este país"
-          └─ con datos → grupos de Streaming, Alquiler, Compra + logos
+          ├─ null? → empty string (nothing rendered)
+          ├─ empty? → "No streaming info for this country"
+          └─ with data → Streaming, Rental, Purchase groups + logos
 ```
 
-### Alternativas descartadas
+### Rejected alternatives
 
-- **Carga asíncrona con placeholder «Cargando…»**: Se descartó porque la llamada a TMDB es rápida (<500ms) y añadir un placeholder para luego re-renderizar la sección añade complejidad sin beneficio UX significativo. Se optó por esperar los datos (sync) como hace `openTvItem()` con las temporadas.
+- **Async loading with a "Loading…" placeholder**: Rejected because the call to TMDB is fast (<500ms) and adding a placeholder and then re-rendering the section adds complexity with no significant UX benefit. Waiting for the data (sync) was chosen, as `openTvItem()` does with the seasons.
 
-- **Selector de país interactivo en el modal**: Se pospuso para una iteración futura. De momento el país se detecta automáticamente. Ya está preparado el mecanismo de persistencia en `localStorage` para cuando se implemente el selector.
+- **Interactive country picker in the modal**: Postponed to a future iteration. For now the country is detected automatically. The `localStorage` persistence mechanism is already in place for when the picker is implemented.
 
-- **Almacenar providers en Firestore**: Se descartó porque los proveedores de streaming cambian con frecuencia (acuerdos de licencia, rotación de catálogo). Es mejor obtenerlos en vivo desde TMDB cada vez (con caché en memoria para la sesión). Además, esto evita inflar los documentos de Firestore con datos que pueden quedar obsoletos.
+- **Storing providers in Firestore**: Rejected because streaming providers change frequently (licensing agreements, catalog rotation). It is better to fetch them live from TMDB each time (with an in-memory cache for the session). This also avoids bloating Firestore documents with data that can become stale.
 
-- **Mostrar providers en las tarjetas de la biblioteca**: Se descartó porque el espacio en las tarjetas es limitado y la información de streaming es un complemento útil al abrir el detalle, no un dato crítico que deba verse en la cuadrícula.
+- **Showing providers on the library cards**: Rejected because card space is limited and streaming information is a useful complement when opening the detail, not critical data that must be visible in the grid.
 
-- **Persistencia de caché en localStorage**: Se consideró pero se descartó por ahora. La caché en memoria (24h TTL) es suficiente para la misma sesión del navegador. Si se cierra y reabre la aplicación, los datos se vuelven a obtener de TMDB, lo que garantiza que siempre estén actualizados.
+- **Cache persistence in localStorage**: Considered but rejected for now. The in-memory cache (24h TTL) is enough for the same browser session. If the application is closed and reopened, the data is fetched from TMDB again, which guarantees it is always up to date.
 
-- **Filtrado por tipo «free» o «ads»**: TMDB también soporta proveedores gratuitos con publicidad. Se decidió no incluirlos en esta primera iteración para mantener la UI simple, pero el campo `flatrate` de TMDB ya cubre estos casos si se quiere añadir soporte en el futuro.
+- **Filtering by "free" or "ads" type**: TMDB also supports free ad-supported providers. They were not included in this first iteration to keep the UI simple, but TMDB's `flatrate` field already covers these cases if support is added in the future.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- Los usuarios pueden ver rápidamente dónde está disponible cada título sin salir de la aplicación.
-- La información distingue entre streaming, alquiler y compra, ayudando a decidir qué plataforma usar.
-- Los logos de las plataformas facilitan la identificación visual.
-- El enlace a TMDB permite explorar más opciones si es necesario.
-- Funciona igual para películas y series.
-- La caché en memoria evita llamadas redundantes a TMDB.
-- La detección automática del país evita fricción al usuario.
-- No se almacenan datos adicionales en Firestore.
+### Positive
+- Users can quickly see where each title is available without leaving the application.
+- The information distinguishes between streaming, rental and purchase, helping decide which platform to use.
+- The platform logos make visual identification easier.
+- The link to TMDB allows exploring more options if needed.
+- Works the same for movies and series.
+- The in-memory cache avoids redundant calls to TMDB.
+- Automatic country detection avoids user friction.
+- No additional data is stored in Firestore.
 
-### Negativas
-- Los títulos sin `externalId` de TMDB (añadidos manualmente) nunca tendrán información de streaming.
-- Si TMDB no tiene proveedores para un título concreto, se muestra un mensaje informativo en lugar de nada.
-- La información depende de la cobertura de TMDB, que puede ser incompleta para títulos muy antiguos o de regions específicas.
-- Al abrir el modal, hay una espera adicional (mínima) mientras se obtienen los providers de TMDB.
+### Negative
+- Titles without a TMDB `externalId` (added manually) will never have streaming information.
+- If TMDB has no providers for a specific title, an informative message is shown instead of nothing.
+- The information depends on TMDB's coverage, which can be incomplete for very old titles or specific regions.
+- When opening the modal, there is a (minimal) extra wait while the providers are fetched from TMDB.
 
-### Neutras
-- La información de proveedores se obtiene en vivo al abrir el modal, no se persiste en Firestore.
-- La caché en memoria se invalida al recargar la página, garantizando datos frescos en cada sesión.
-- El campo `watchProviders` solo existe en el objeto `item` en memoria, no en Firestore.
-- La funcionalidad solo aplica a películas y series; libros no se ven afectados.
+### Neutral
+- Provider information is fetched live when opening the modal; it is not persisted in Firestore.
+- The in-memory cache is invalidated on page reload, guaranteeing fresh data in each session.
+- The `watchProviders` field only exists on the in-memory `item` object, not in Firestore.
+- The feature only applies to movies and series; books are not affected.
 
-## Archivos modificados
-- `js/api-movies.js` — Nueva función `getWatchProviders()`, sistema de caché (`providersCache`), función `normalizeProvider()`.
-- `js/ui.js` — Nuevas funciones `providersGroupHtml()` y `watchProvidersHtml()`; integradas en `openMovieModal()`, `openTvModal()` y `openReadOnlyModal()`.
-- `js/modal-handlers.js` — Nueva función `getUserCountry()`; modificadas `openMovieItem()` y `openTvItem()` para obtener watch providers antes de abrir el modal; actualizado import de `api-movies.js`.
-- `css/ocio.css` — Nuevas clases CSS para la sección `.watch-providers` y sus elementos internos.
+## Files modified
+- `js/api-movies.js` — New function `getWatchProviders()`, cache system (`providersCache`), function `normalizeProvider()`.
+- `js/ui.js` — New functions `providersGroupHtml()` and `watchProvidersHtml()`; integrated into `openMovieModal()`, `openTvModal()` and `openReadOnlyModal()`.
+- `js/modal-handlers.js` — New function `getUserCountry()`; modified `openMovieItem()` and `openTvItem()` to fetch watch providers before opening the modal; updated import from `api-movies.js`.
+- `css/ocio.css` — New CSS classes for the `.watch-providers` section and its inner elements.

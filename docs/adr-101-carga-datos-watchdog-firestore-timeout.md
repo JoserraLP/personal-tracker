@@ -1,212 +1,217 @@
-# ADR-101: Carga de datos robusta con watchdog y timeout de Firestore (issue #286)
+# ADR-101: Robust data loading with watchdog and Firestore timeout (issue #286)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-15
 
-## Contexto
+## Context
 
-La issue #286 («Carga de datos», type: bug) reporta que en ocasiones
-no cargan los datos al entrar en la web: a veces se queda
-indefinidamente el indicador **«Cargando…»**, otras veces no aparece
-nada, y no hay más remedio que recargar la página.
+Issue #286 («Carga de datos» [Data loading], type: bug) reports that
+sometimes data does not load when entering the web app: sometimes the
+**«Cargando…»** [Loading…] indicator stays up indefinitely, other times
+nothing appears at all, and the only option is to reload the page.
 
-El ADR-057 ya cubre los errores transitorios de las suscripciones
-(`subscribeWithRetry` con backoff 1 s/2 s/4 s y espera del evento
-«online»), pero solo reacciona ante `onError`: falta el caso de una
-suscripción **colgada** —ni error ni datos—, que deja el «Cargando…»
-eterno sin posibilidad de reintento.
+ADR-057 already covers transient errors in subscriptions
+(`subscribeWithRetry` with 1 s/2 s/4 s backoff and waiting for the
+«online» event), but it only reacts to `onError`: the case of a
+**hung** subscription —neither error nor data— is missing, which leaves
+the eternal «Cargando…» with no chance of a retry.
 
-Causas raíz identificadas:
+Root causes identified:
 
-1. **El service worker cacheaba las lecturas GET de Firestore** con
-   `networkFirst` sin timeout y con `cache.put` en la caché dinámica.
-   Una respuesta de Firestore es un stream de long-polling: el
-   `cache.put` de un stream abierto **no resuelve jamás**, así que la
-   petición queda colgada para siempre → en el SDK no llega ni
-   `onChange` ni `onError` → el wrapper de ADR-057 nunca se entera →
-   spinner eterno. Además, los protobufs de Firestore no deberían
-   servirse nunca desde la caché dinámica (stale).
-2. **`subscribeWithRetry` solo reaccionaba a errores** del listener;
-   una suscripción que ni falla ni entrega datos no disparaba ningún
-   reintento.
-3. **Tras agotar los reintentos** (el `onError` final que muestra el
-   toast), el marcador `.panel-loading` permanecía para siempre.
-4. **El fetch del partial de cada pestaña** (`loadOcioPartial`) tampoco
-   tenía timeout: una red colgada dejaba el panel sin contenido
-   («no aparece nada»).
+1. **The service worker cached Firestore GET reads** with `networkFirst`
+   without a timeout and with `cache.put` into the dynamic cache. A
+   Firestore response is a long-polling stream: the `cache.put` of an
+   open stream **never resolves**, so the request hangs forever → the
+   SDK never receives `onChange` or `onError` → the ADR-057 wrapper
+   never finds out → eternal spinner. Additionally, Firestore protobufs
+   should never be served from the dynamic (stale) cache.
+2. **`subscribeWithRetry` only reacted to listener errors**; a
+   subscription that neither fails nor delivers data triggered no
+   retry.
+3. **After exhausting the retries** (the final `onError` that shows the
+   toast), the `.panel-loading` marker remained forever.
+4. **The fetch of each tab's partial** (`loadOcioPartial`) had no
+   timeout either: a hung network left the panel without content
+   («nothing appears»).
 
 Related issue: #286 — https://github.com/gonzalitojh/Registro-personal/issues/286
 
-## Decisión
+## Decision
 
-### 1. Watchdog de primer snapshot en `subscribeWithRetry` (`js/retry.js`)
+### 1. First-snapshot watchdog in `subscribeWithRetry` (`js/retry.js`)
 
-Cada intento de suscripción se vigila con un timer: si no llega ningún
-snapshot con éxito en `initialTimeoutMs` (nuevo parámetro opcional,
-default **12000 ms**, `0` lo desactiva), el intento se trata como
-**fallo transitorio** y entra en el flujo de reintento existente
-(backoff 1/2/4 s o espera del evento «online»). El timer se arma en
-cada `start()` y solo vigila el primer snapshot de ese intento, con 5
-puntos de limpieza: armado con limpieza previa en `start()`, y limpieza
-en el `onChange` de éxito, en `handleError` (el error real llega antes
-que el watchdog — no hay error final doble), en `retry()` (el timer del
-intento N no debe disparar a mitad del intento N+1) y en `cancel()`.
+Each subscription attempt is watched with a timer: if no successful
+snapshot arrives within `initialTimeoutMs` (new optional parameter,
+default **12000 ms**, `0` disables it), the attempt is treated as a
+**transient failure** and enters the existing retry flow (1/2/4 s
+backoff or waiting for the «online» event). The timer is armed on each
+`start()` and only watches the first snapshot of that attempt, with 5
+cleanup points: armed with prior cleanup in `start()`, and cleaned up
+in the successful `onChange`, in `handleError` (the real error arrives
+before the watchdog — there is no double final error), in `retry()`
+(the timer for attempt N must not fire in the middle of attempt N+1)
+and in `cancel()`.
 
-Además, `handleError` hace ahora `clearOnlineHandler()` **antes** de
-registrar el listener «online»: dos `handleError` seguidos estando
-offline (p. ej. watchdog + error real del stream) ya no apilan dos
-listeners «online» idénticos que re-suscribirían dos veces por cada
-reconexión.
+Additionally, `handleError` now calls `clearOnlineHandler()` **before**
+registering the «online» listener: two consecutive `handleError` calls
+while offline (e.g. watchdog + real stream error) no longer stack two
+identical «online» listeners that would re-subscribe twice on every
+reconnection.
 
-### 2. Estado final de error en los paneles de Ocio (`js/app.js`)
+### 2. Final error state in the Leisure panels (`js/app.js`)
 
-- `showPanelLoadError(groupKey, message, { force = false })`: estado
-  final de error que retira el `.panel-loading`, respeta el guard
-  `groupReady[groupKey]` (si el snapshot llegó tarde, los datos ya se
-  pintan y el error de la suscripción no tiene sentido) salvo `force`
-  (vía del partial: sin el HTML del panel no hay nada que pintar), e
-  inserta un `.panel-error` con el mensaje y un botón **«Reintentar»**
-  (reutiliza `.btn--small`). Es idempotente (limpia errores previos
-  antes de pintar).
-- `retryPanelLoad(groupKey)`: re-arranca la carga desde el estado de
-  error. Cancela y anula `unsubscribeItems[groupKey]` (**requerido**:
-  si no, el guard de `subscribeGroup` ignora la nueva suscripción),
-  borra el id del panel de `loadedPartials` (**requerido**: si no,
-  `loadOcioPartial` no re-fetcha el HTML), restaura el marcador de
-  carga y lanza de nuevo el fetch del partial + `ensureGroupSubscribed`.
-- El `onError` **final** de `subscribeGroup` conserva el toast
-  existente y añade `showPanelLoadError`. `renderLibraryFor` y el bucle
-  de logout retiran también el `.panel-error` (el logout restaura el
-  marcador de carga al volver a entrar).
+- `showPanelLoadError(groupKey, message, { force = false })`: final
+  error state that removes the `.panel-loading`, respects the
+  `groupReady[groupKey]` guard (if the snapshot arrived late, the data
+  is already painted and the subscription error makes no sense) except
+  with `force` (partial path: without the panel HTML there is nothing
+  to paint), and inserts a `.panel-error` with the message and a
+  **«Reintentar»** [Retry] button (reuses `.btn--small`). It is
+  idempotent (clears previous errors before painting).
+- `retryPanelLoad(groupKey)`: restarts loading from the error state.
+  It cancels and nulls `unsubscribeItems[groupKey]` (**required**:
+  otherwise the `subscribeGroup` guard ignores the new subscription),
+  deletes the panel id from `loadedPartials` (**required**: otherwise
+  `loadOcioPartial` does not re-fetch the HTML), restores the loading
+  marker and launches the partial fetch + `ensureGroupSubscribed`
+  again.
+- The **final** `onError` of `subscribeGroup` keeps the existing toast
+  and adds `showPanelLoadError`. `renderLibraryFor` and the logout loop
+  also remove the `.panel-error` (logout restores the loading marker
+  when logging back in).
 
-### 3. Timeout con `AbortController` en `loadOcioPartial` (`js/app.js`)
+### 3. `AbortController` timeout in `loadOcioPartial` (`js/app.js`)
 
-`PARTIAL_FETCH_TIMEOUT_MS = 8000`: el fetch del partial usa un
-`AbortController`; si la red se cuelga, se aborta y cae en el estado de
-error del panel con mensaje distinto según la causa: **«Esta sección
-tardó demasiado en cargarse.»** (`AbortError`) vs **«No se pudo cargar
-esta sección.»** (cualquier otro fallo). El id se retira de
-`loadedPartials` en ambos casos (reintentable con el botón o en la
-siguiente activación) y el timer se limpia en un `finally`.
+`PARTIAL_FETCH_TIMEOUT_MS = 8000`: the partial fetch uses an
+`AbortController`; if the network hangs, it is aborted and falls into
+the panel error state with a different message depending on the cause:
+**«Esta sección tardó demasiado en cargarse.»** [This section took too
+long to load.] (`AbortError`) vs **«No se pudo cargar esta sección.»**
+[This section could not be loaded.] (any other failure). The id is
+removed from `loadedPartials` in both cases (retryable with the button
+or on the next activation) and the timer is cleared in a `finally`.
 
-### 4. Service worker: Firestore en network-only con timeout (`service-worker.js`)
+### 4. Service worker: Firestore network-only with timeout (`service-worker.js`)
 
-- `offlineApiResponse()`: **fuente única** del 503 amigable
-  (`{ error: 'offline', message: 'No hay conexión' }`); lo usan
-  `networkFirst` (fallback de APIs) y `networkOnlyWithTimeout`.
-- `networkOnlyWithTimeout(request, ms = 8000)`: para las lecturas GET
-  de Firestore. `fetchWithTimeout` **sin** `cache.put` ni `cache.match`
-  (un stream abierto haría colgar el `put`, y los protobufs no se
-  sirven stale) y `catch` que devuelve el 503 **sin propagar el
-  rechazo**. El 503 sigue siendo el camino probado que dispara el
-  `onError` del SDK → reintentos del wrapper (ADR-057).
-- Cachés `mi-registro-v4-*` → `mi-registro-v5-*`.
+- `offlineApiResponse()`: **single source** of the friendly 503
+  (`{ error: 'offline', message: 'No hay conexión' }`); used by
+  `networkFirst` (API fallback) and `networkOnlyWithTimeout`.
+- `networkOnlyWithTimeout(request, ms = 8000)`: for Firestore GET
+  reads. `fetchWithTimeout` **without** `cache.put` or `cache.match`
+  (an open stream would hang the `put`, and protobufs are never served
+  stale) and a `catch` that returns the 503 **without propagating the
+  rejection**. The 503 remains the proven path that triggers the SDK's
+  `onError` → wrapper retries (ADR-057).
+- Caches `mi-registro-v4-*` → `mi-registro-v5-*`.
 
-### 5. Versionado
+### 5. Versioning
 
-`APP_VERSION` `20260929` → **`20261001`** en `js/config.js`, `index.html`
-(3 referencias `?v=`) y `service-worker.js` (7 referencias `?v=`).
-Nota: `20260930` **no** se usa porque la PR #284 (abierta) ya lo tomó.
+`APP_VERSION` `20260929` → **`20261001`** in `js/config.js`,
+`index.html` (3 `?v=` references) and `service-worker.js` (7 `?v=`
+references). Note: `20260930` is **not** used because PR #284 (open)
+already took it.
 
-### Relación con ADR-057
+### Relationship with ADR-057
 
-Modifica su **decisión 3** en la parte del service worker: las lecturas
-GET de Firestore pasan de `networkFirst` (con timeout opcional solo
-para navegación, sin timeout para APIs) a **network-only con timeout**
-y sin cachear. El resto del ADR-057 queda intacto: wrapper, backoff,
-espera del evento «online», toasts y versionado del propio ADR-057. El
-503 sigue siendo el camino que dispara el `onError` del SDK, ahora
-también para el colgado.
+Modifies its **decision 3** in the service worker part: Firestore GET
+reads go from `networkFirst` (with an optional timeout for navigation
+only, no timeout for APIs) to **network-only with timeout** and no
+caching. The rest of ADR-057 remains intact: wrapper, backoff, waiting
+for the «online» event, toasts and ADR-057's own versioning. The 503
+remains the path that triggers the SDK's `onError`, now also for the
+hung case.
 
-## Consideraciones
+## Considerations
 
-- **El watchdog es el backstop para los clientes con SW viejo (v4)**:
-  con el SW nuevo el colgado se convierte en 503 a los 8 s (timeout del
-  SW), antes que el watchdog (12 s); con un SW viejo la petición se
-  cuelga sin llegar a fallar y solo el watchdog la detecta.
-- **El watchdog solo vigila el primer snapshot del intento**: un stream
-  ya entregando datos en vivo no se corta (su `onChange` lo retira).
-- **Cambio visible para el usuario**: sí aplica la regla 3 de AGENTS.md
-  — `docs/manual-de-usuario.md` se actualiza en la misma tarea
-  (secciones 3, 18 y 21).
-- **Alcance**: el `.panel-error` con botón «Reintentar» es de los 4
-  paneles de Ocio (series, películas, libros, videojuegos); el resto de
-  suscripciones heredan solo el watchdog (ver Consecuencias neutras).
+- **The watchdog is the backstop for clients with an old SW (v4)**:
+  with the new SW the hang becomes a 503 after 8 s (SW timeout), before
+  the watchdog (12 s); with an old SW the request hangs without ever
+  failing and only the watchdog detects it.
+- **The watchdog only watches the first snapshot of the attempt**: a
+  stream already delivering live data is not cut (its `onChange`
+  removes the timer).
+- **Visible change for the user**: yes, AGENTS.md rule 3 applies —
+  `docs/manual-de-usuario.md` is updated in the same task (sections 3,
+  18 and 21).
+- **Scope**: the `.panel-error` with the «Reintentar» button applies to
+  the 4 Leisure panels (series, movies, books, video games); the rest
+  of the subscriptions only inherit the watchdog (see Neutral
+  Consequences).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Cachear las lecturas de Firestore con TTL (stale + streams)**:
-  descartado — las respuestas de Firestore son protobufs que no deben
-  servirse stale, y un stream de long-polling es imposible de guardar
-  en caché (el `cache.put` no resuelve).
-- **Reintento infinito**: descartado — temporizadores acumulados sin
-  salida clara para el usuario; el tope de reintentos con backoff y el
-  estado de error final siguen siendo la salida (ADR-057).
-- **Watchdog fuera del wrapper, en `app.js`**: descartado — duplicaría
-  la lógica por cada suscripción y no cubriría las que no pasan por
-  `app.js` (notificaciones, recetas, menú, gimnasio).
-- **Estado de error sin botón «Reintentar»**: descartado — obligaría a
-  recargar la página, que es exactamente el síntoma que reporta la
+- **Caching Firestore reads with TTL (stale + streams)**: rejected —
+  Firestore responses are protobufs that must not be served stale, and
+  a long-polling stream is impossible to cache (`cache.put` never
+  resolves).
+- **Infinite retry**: rejected — accumulating timers with no clear
+  outcome for the user; the retry cap with backoff and the final error
+  state remain the outcome (ADR-057).
+- **Watchdog outside the wrapper, in `app.js`**: rejected — it would
+  duplicate the logic per subscription and would not cover those that
+  do not go through `app.js` (notifications, recipes, menu, gym).
+- **Error state without a «Reintentar» button**: rejected — it would
+  force reloading the page, which is exactly the symptom reported by
   issue #286.
-- **Solo watchdog en el cliente, sin timeout en el SW**: descartado —
-  el colgado del `cache.put` deja la petición de red viva e imposible
-  de reintentar; el timeout del SW es la cura de la causa raíz y el
-  watchdog queda como backstop para clientes con SW viejo.
+- **Watchdog only in the client, no SW timeout**: rejected — the
+  `cache.put` hang leaves the network request alive and impossible to
+  retry; the SW timeout is the cure for the root cause and the watchdog
+  remains as a backstop for clients with an old SW.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Fin del «Cargando…» eterno (issue #286)**: una suscripción colgada
-  se detecta (SW: 8 s; watchdog: 12 s) y se trata como fallo
-  transitorio con reintento automático.
-- **Recuperación automática**: con el SW nuevo, el colgado se convierte
-  en 503 → `onError` del SDK → reintentos del wrapper → los datos
-  cargan sin recargar la página.
-- **Botón «Reintentar»**: si se agotan los reintentos, hay una vía
-  manual inmediata sin recargar la página (y el panel queda en un
-  estado final claro en vez del spinner eterno).
-- **Backstop para SW viejos**: los clientes que aún corran la caché v4
-  se recuperan igualmente gracias al watchdog del wrapper.
+- **End of the eternal «Cargando…» (issue #286)**: a hung subscription
+  is detected (SW: 8 s; watchdog: 12 s) and treated as a transient
+  failure with automatic retry.
+- **Automatic recovery**: with the new SW, the hang becomes a 503 →
+  SDK `onError` → wrapper retries → data loads without reloading the
+  page.
+- **«Reintentar» button**: if retries are exhausted, there is an
+  immediate manual path without reloading the page (and the panel ends
+  in a clear final state instead of the eternal spinner).
+- **Backstop for old SWs**: clients still running the v4 cache recover
+  anyway thanks to the wrapper watchdog.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Espera hasta el estado final de error**: en el peor caso ~43 s con
-  SW viejo (4 intentos cortados por el watchdog de 12 s más los
-  backoffs) y ~16 s con SW nuevo (timeout del SW de 8 s + backoffs)
-  hasta mostrar el `.panel-error`. Aceptado: es el coste de agotar los
-  reintentos antes de rendirse.
-- **Toast final a veces con datos visibles**: si el snapshot tardío
-  llega justo antes del `onError` final, el guard `groupReady` evita el
-  `.panel-error` pero el toast («No se pudieron cargar…») se muestra
-  igual, aunque la biblioteca ya tenga contenido. Aviso cosmético,
-  aceptado.
+- **Wait until the final error state**: in the worst case ~43 s with an
+  old SW (4 attempts cut by the 12 s watchdog plus the backoffs) and
+  ~16 s with the new SW (8 s SW timeout + backoffs) until the
+  `.panel-error` is shown. Accepted: it is the cost of exhausting the
+  retries before giving up.
+- **Final toast sometimes with visible data**: if the late snapshot
+  arrives just before the final `onError`, the `groupReady` guard
+  prevents the `.panel-error` but the toast («No se pudieron cargar…»
+  [Could not load…]) still shows, even though the library already has
+  content. Cosmetic warning, accepted.
 
-### Neutras
+### Neutral
 
-- **Las demás suscripciones heredan el watchdog sin cambios**: el
-  parámetro `initialTimeoutMs` tiene default; notificaciones, recetas,
-  menú y gimnasio se benefician de él sin tocar su código.
-- **Recetas, menú y gimnasio siguen toast-only**: el `.panel-error`
-  con botón «Reintentar» solo se añade a los 4 paneles de Ocio.
-- **Las notificaciones siguen reintentando en silencio** (`onError:
-  () => {}`), también cuando el watchdog corta un intento.
-- **Cachés del SW v4 → v5**: los navegadores con la v4 la purgan en el
-  siguiente `activate` (mecanismo ya existente del SW).
+- **Other subscriptions inherit the watchdog unchanged**: the
+  `initialTimeoutMs` parameter has a default; notifications, recipes,
+  menu and gym benefit from it without touching their code.
+- **Recipes, menu and gym remain toast-only**: the `.panel-error` with
+  the «Reintentar» button is only added to the 4 Leisure panels.
+- **Notifications keep retrying silently** (`onError: () => {}`), also
+  when the watchdog cuts an attempt.
+- **SW caches v4 → v5**: browsers with v4 purge it on the next
+  `activate` (existing SW mechanism).
 
-## Archivos creados/modificados
+## Files created/modified
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/retry.js` | **Modificado**: watchdog de primer snapshot `initialTimeoutMs` (default 12000 ms, `0` lo desactiva) en `subscribeWithRetry` — timer por intento que trata como fallo transitorio una suscripción que no entrega ningún snapshot con éxito en ese tiempo, con 5 puntos de limpieza (armado en `start()`; limpieza en `onChange` de éxito, `handleError`, `retry()` y `cancel()`); `clearOnlineHandler()` antes de registrar el listener «online» en `handleError` (evita listeners duplicados estando offline) |
-| `js/app.js` | **Modificado**: `showPanelLoadError(groupKey, message, {force})` — estado final de error de los paneles de Ocio (retira `.panel-loading`, guard `groupReady` salvo `force`, inserta `.panel-error` con mensaje y botón «Reintentar», idempotente); `retryPanelLoad(groupKey)` — cancela y anula `unsubscribeItems[groupKey]` (guard de `subscribeGroup`), borra de `loadedPartials` (guard de `loadOcioPartial`), restaura el marcador de carga y re-lanza partial + suscripción; `onError` final de `subscribeGroup` conserva el toast y añade el error de panel; `renderLibraryFor` y el bucle de logout retiran `.panel-error`; `loadOcioPartial` con `AbortController` (`PARTIAL_FETCH_TIMEOUT_MS = 8000`) y mensajes distintos para `AbortError` vs resto; nuevo mapa `GROUP_TO_PANEL` |
-| `css/styles.css` | **Modificado**: `.panel-error` y `.panel-error__message` — mismo patrón que `.panel-loading`, solo con variables de tema (`--ink-soft`), `overflow-wrap: break-word`; botón «Reintentar» reutiliza `.btn--small` |
-| `service-worker.js` | **Modificado**: `offlineApiResponse()` como fuente única del 503 amigable; `networkOnlyWithTimeout(request, ms = 8000)` para las lecturas GET de Firestore — `fetchWithTimeout` sin `cache.put` ni `cache.match`, `catch` → 503 sin propagar el rechazo; cachés `mi-registro-v4-*` → `mi-registro-v5-*` |
-| `js/config.js` | **Modificado**: `APP_VERSION` `20260929` → `20261001` (20260930 no se usa: la PR #284 ya lo tomó) |
-| `index.html` | **Modificado**: `?v=20260929` → `?v=20261001` en `css/styles.css`, `ocio/ocio.css` y `js/app.js` |
-| `docs/manual-de-usuario.md` | **Modificado**: secciones 3, 18 y 21 — si los datos no llegan en unos segundos la web ya lo ha intentado varias veces y muestra un aviso con botón «Reintentar»; también reintenta si la conexión se queda «colgada» (regla 3 de AGENTS.md) |
+| `js/retry.js` | **Modified**: first-snapshot watchdog `initialTimeoutMs` (default 12000 ms, `0` disables it) in `subscribeWithRetry` — a timer per attempt that treats a subscription delivering no successful snapshot within that time as a transient failure, with 5 cleanup points (armed in `start()`; cleaned in the successful `onChange`, `handleError`, `retry()` and `cancel()`); `clearOnlineHandler()` before registering the «online» listener in `handleError` (avoids duplicate listeners while offline) |
+| `js/app.js` | **Modified**: `showPanelLoadError(groupKey, message, {force})` — final error state of the Leisure panels (removes `.panel-loading`, `groupReady` guard except with `force`, inserts `.panel-error` with message and «Reintentar» button, idempotent); `retryPanelLoad(groupKey)` — cancels and nulls `unsubscribeItems[groupKey]` (`subscribeGroup` guard), removes it from `loadedPartials` (`loadOcioPartial` guard), restores the loading marker and relaunches partial + subscription; final `onError` of `subscribeGroup` keeps the toast and adds the panel error; `renderLibraryFor` and the logout loop remove `.panel-error`; `loadOcioPartial` with `AbortController` (`PARTIAL_FETCH_TIMEOUT_MS = 8000`) and different messages for `AbortError` vs the rest; new `GROUP_TO_PANEL` map |
+| `css/styles.css` | **Modified**: `.panel-error` and `.panel-error__message` — same pattern as `.panel-loading`, only with theme variables (`--ink-soft`), `overflow-wrap: break-word`; the «Reintentar» button reuses `.btn--small` |
+| `service-worker.js` | **Modified**: `offlineApiResponse()` as the single source of the friendly 503; `networkOnlyWithTimeout(request, ms = 8000)` for Firestore GET reads — `fetchWithTimeout` without `cache.put` or `cache.match`, `catch` → 503 without propagating the rejection; caches `mi-registro-v4-*` → `mi-registro-v5-*` |
+| `js/config.js` | **Modified**: `APP_VERSION` `20260929` → `20261001` (20260930 is not used: PR #284 already took it) |
+| `index.html` | **Modified**: `?v=20260929` → `?v=20261001` in `css/styles.css`, `ocio/ocio.css` and `js/app.js` |
+| `docs/manual-de-usuario.md` | **Modified**: sections 3, 18 and 21 — if the data does not arrive within a few seconds the app has already tried several times and shows a notice with a «Reintentar» button; it also retries if the connection hangs (AGENTS.md rule 3) |
 
 Related issue: #286 — https://github.com/gonzalitojh/Registro-personal/issues/286

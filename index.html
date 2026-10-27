@@ -25,10 +25,10 @@
 </head>
 <body>
 
-  <!-- Skip link: salto al contenido principal -->
+  <!-- Skip link: jumps to the main content -->
   <a href="#main-content" class="skip-link" id="skip-link">Saltar al contenido principal</a>
 
-  <!-- Pantalla de acceso -->
+  <!-- Sign-in screen -->
   <section id="auth-screen" class="auth-screen">
     <div class="library-card">
       <p class="library-card__eyebrow">Ficha de socio</p>
@@ -43,12 +43,12 @@
     </div>
   </section>
 
-  <!-- Barra lateral de navegación (issue #46): drawer fijo a la
-       izquierda que se abre con el botón hamburguesa de la cabecera.
-       Las entradas se renderizan desde el array SECTIONS de
-       js/sidebar.js para poder añadir secciones futuras; las marcadas
-       como `pinned` (p. ej. «Ajustes», issue #75) van al footer
-       inferior #app-sidebar-footer, que también rellena sidebar.js. -->
+  <!-- Navigation sidebar (issue #46): fixed left drawer opened
+       with the header's hamburger button. Entries are rendered from
+       the SECTIONS array of js/sidebar.js so future sections can be
+       added; the ones marked as `pinned` (e.g. "Settings", issue #75)
+       go to the bottom footer #app-sidebar-footer, also filled by
+       sidebar.js. -->
   <aside id="app-sidebar" class="app-sidebar" aria-label="Menú de navegación" aria-hidden="true">
     <div class="app-sidebar__header">
       <span class="app-sidebar__title">Mi Registro</span>
@@ -59,10 +59,10 @@
   </aside>
   <div id="app-sidebar-backdrop" class="app-sidebar-backdrop hidden"></div>
 
-  <!-- Cabecera global (issue #206): barra lateral, búsqueda y botón de
-       perfil disponibles en TODAS las secciones (Ocio, Recetas y Perfil).
-       Vive fuera de #app, que se oculta en las vistas de primer nivel;
-       sale oculta en la pantalla de acceso y la muestra ui.showApp(). -->
+  <!-- Global header (issue #206): sidebar, search and profile button
+       available in ALL sections (Ocio, Recipes and Profile).
+       It lives outside #app, which is hidden in first-level views;
+       it starts hidden on the sign-in screen and ui.showApp() shows it. -->
   <header id="app-header" class="app-header hidden">
     <div class="app-header__top">
       <button type="button" class="icon-btn" id="btn-sidebar-toggle"
@@ -75,10 +75,10 @@
         </svg>
       </button>
 
-      <!-- Botón engranaje (issue #97): sustituye a la barra lateral
-           ☰ cuando solo hay una sección visible (decide sidebar.js).
-           Abre Ajustes directamente, como la entrada pinned de la
-           barra lateral. Sale oculto por defecto. -->
+      <!-- Gear button (issue #97): replaces the ☰ sidebar when only one
+           section is visible (decided by sidebar.js). Opens Settings
+           directly, like the pinned entry of the sidebar. Hidden by
+           default. -->
       <button type="button" class="icon-btn hidden" id="btn-header-settings"
               aria-label="Abrir ajustes">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
@@ -88,10 +88,10 @@
         </svg>
       </button>
 
-      <!-- Búsqueda global: input en la cabecera + dropdown de resultados
-           anclado bajo la barra (js/global-search.js). Busca SOLO dentro
-           de la sección activa (issue #206): Ocio (colecciones y
-           catálogo) o Recetas (recetas). -->
+      <!-- Global search: input in the header + results dropdown anchored
+           below the bar (js/global-search.js). Searches ONLY within
+           the active section (issue #206): Ocio (collections and
+           catalog) or Recipes (recipes). -->
       <div class="search-bar-wrap">
         <input
           id="global-search-input"
@@ -150,14 +150,14 @@
     </div>
   </header>
 
-  <!-- Aplicación -->
+  <!-- Application -->
   <div id="app" class="app hidden">
 
     <main id="main-content" tabindex="-1">
-      <!-- El contenido de cada pestaña vive en ocio/*.html y lo
-           inyecta app.js con fetch() bajo demanda (lazy, issue #178)
-           dentro de estas cuatro secciones. El marcador .panel-loading
-           se muestra mientras el panel no tiene datos pintados. -->
+      <!-- The content of each tab lives in ocio/*.html and is
+           injected by app.js with fetch() on demand (lazy, issue #178)
+           inside these four sections. The .panel-loading placeholder
+           is shown while the panel has no painted data. -->
       <section id="panel-tv" class="panel" role="tabpanel" aria-labelledby="tab-tv" data-type-group="tv" data-ocio-src="ocio/series.html" aria-live="polite" aria-atomic="true">
         <div class="panel-loading" role="status" aria-live="polite">
           <span class="spinner" aria-hidden="true"></span>
@@ -186,11 +186,11 @@
         </div>
       </section>
 
-      <!-- Pestaña Compras (lista de deseos): cosas que comprar con
-           precio, descripción, URL, foto (por URL) y si está
-           comprado. Lista PRIVADA del usuario (firestore.rules),
-           independiente del registro de ocio. El esqueleto vive en
-           ocio/compras.html; el contenido lo renderiza
+      <!-- Shopping tab (wishlist): things to buy with price,
+           description, URL, photo (by URL) and whether it is
+           purchased. The user's PRIVATE list (firestore.rules),
+           independent of the ocio registry. The skeleton lives in
+           ocio/compras.html; content is rendered by
            js/wishlist.js. -->
       <section id="panel-wishlist" class="panel hidden" role="tabpanel" aria-labelledby="tab-wishlist" data-type-group="wishlist" data-ocio-src="ocio/compras.html" aria-live="polite" aria-atomic="true">
         <div class="panel-loading" role="status" aria-live="polite">
@@ -200,12 +200,11 @@
       </section>
     </main>
 
-    <!-- Barra de pestañas fija (issue #79): Series, Películas, Libros
-         y Videojuegos. En móvil (≤768px) fija en la parte baja de la
-         pantalla; en PC y tablet (≥768px) fija bajo la cabecera
-         superior. En ambos casos el scroll solo mueve el contenido
-         de cada panel. Cada pestaña tiene su propio color de
-         acento. -->
+    <!-- Fixed tabs bar (issue #79): Series, Movies, Books and Videogames.
+         On mobile (≤768px) fixed at the bottom of the screen; on PC and
+         tablet (≥768px) fixed below the top header. In both cases the
+         scroll only moves each panel's content. Each tab has its own
+         accent color. -->
     <nav class="tabs--bar" aria-label="Secciones">
       <div class="tabs" role="tablist" aria-label="Secciones">
         <button class="tab tab--tv is-active" id="tab-tv" role="tab" aria-selected="true" data-panel="panel-tv" aria-controls="panel-tv">
@@ -255,11 +254,10 @@
     </footer>
   </div>
 
-  <!-- Vista de perfil / estadísticas / ajustes (issue #206, iteración
-       2026-08-11: en el perfil NO se muestra la cabecera global —el
-       usuario prefiere la flecha de volver y las pestañas en la misma
-       fila, como antes—; la cabecera global solo aparece en Ocio y
-       Recetas) -->
+  <!-- Profile / statistics / settings view (issue #206, 2026-08-11
+       iteration: the global header is NOT shown on the profile — the
+       user prefers the back arrow and the tabs on the same row, as
+       before; the global header only appears in Ocio and Recipes) -->
   <div id="profile-view" class="profile-view hidden" role="main" aria-label="Vista de perfil">
     <div class="profile-view__header">
       <button type="button" class="icon-btn" id="btn-close-profile" aria-label="Volver">
@@ -427,13 +425,13 @@
     </div>
   </div>
 
-  <!-- Vista de recetas (issue #64): registra recetas, planifica el
-       menú semanal y genera la lista de la compra. Hermana de
-       profile-view: vista de primer nivel, fuera de #app. Sin botón de
-       volver ni título (issue #206): la navegación vive en la cabecera
-       global. Barra de pestañas propia tipo Ocio (issue #208): fija
-       abajo en móvil y bajo la cabecera global en ≥768px, con la misma
-       estructura que las pestañas de Ocio (ocultables en Ajustes). -->
+  <!-- Recipes view (issue #64): record recipes, plan the weekly
+       menu and generate the shopping list. Sibling of profile-view:
+       first-level view, outside #app. No back button nor title
+       (issue #206): navigation lives in the global header. Own tabs
+       bar in Ocio style (issue #208): fixed at the bottom on mobile
+       and below the global header at ≥768px, with the same structure
+       as the Ocio tabs (hideable in Settings). -->
   <div id="recipes-view" class="recipes-view hidden" role="main" aria-label="Vista de recetas">
     <nav class="tabs--bar" aria-label="Secciones de recetas">
       <div class="tabs" role="tablist" aria-label="Secciones de recetas">
@@ -485,10 +483,10 @@
     </nav>
 
     <div class="recipes-view__body">
-      <!-- Pestaña Recetas (issue #209): únicamente el botón de nueva
-           receta. La búsqueda de recetas vive solo en la cabecera
-           global y el catálogo de ingredientes en su propia pestaña.
-           El contenido lo renderiza js/recipes.js. -->
+      <!-- Recipes tab (issue #209): only the new recipe button.
+           Recipe search lives only in the global header and the
+           ingredients catalog in its own tab.
+           Content is rendered by js/recipes.js. -->
       <section id="panel-recipes-tab" role="tabpanel" aria-labelledby="panel-recipes-tab-heading">
         <h2 id="panel-recipes-tab-heading" class="visually-hidden">Recetas</h2>
         <div class="recipes-toolbar">
@@ -521,11 +519,11 @@
         <div id="recipes-list" aria-live="polite"></div>
       </section>
 
-      <!-- Pestaña Ingredientes (issue #209): catálogo de ingredientes,
-           extraído de la pestaña Recetas. Estética tipo Ocio (issue
-           #218): barra de herramientas con alta manual y filtro por
-           categorías (multiselección, todas por defecto); el contenido
-           lo renderiza js/recipes.js (renderIngredientsCatalog). -->
+      <!-- Ingredients tab (issue #209): ingredients catalog,
+           extracted from the Recipes tab. Ocio-like look (issue
+           #218): toolbar with manual entry and category filter
+           (multi-select, all by default); content is rendered by
+           js/recipes.js (renderIngredientsCatalog). -->
       <section id="panel-ingredients-tab" class="hidden" role="tabpanel" aria-labelledby="panel-ingredients-tab-heading">
         <h2 id="panel-ingredients-tab-heading" class="visually-hidden">Ingredientes</h2>
         <div class="ingredients-toolbar">
@@ -547,8 +545,8 @@
         <div id="ingredients-catalog" class="ingredients-catalog"></div>
       </section>
 
-      <!-- Pestaña Menú semanal: rejilla día × comida, comensales y
-           recetas a la semana. El contenido lo renderiza js/menu.js. -->
+      <!-- Weekly menu tab: day × meal grid, diners and recipes of
+           the week. Content is rendered by js/menu.js. -->
       <section id="panel-menu-tab" class="hidden" role="tabpanel" aria-labelledby="panel-menu-tab-heading">
         <h2 id="panel-menu-tab-heading" class="visually-hidden">Menú semanal</h2>
         <div class="menu-toolbar">
@@ -575,9 +573,9 @@
         </div>
       </section>
 
-      <!-- Pestaña Compra (lista de la compra): cálculo automático desde el
-           menú (varias semanas seleccionables, issue #225) + ítems
-           extra manuales. js/shopping-list.js. -->
+      <!-- Shopping tab (shopping list): automatic calculation from
+           the menu (several selectable weeks, issue #225) + extra
+           manual items. js/shopping-list.js. -->
       <section id="panel-shopping-tab" class="hidden" role="tabpanel" aria-labelledby="panel-shopping-tab-heading">
         <h2 id="panel-shopping-tab-heading" class="visually-hidden">Compra</h2>
         <div class="shopping-toolbar">
@@ -594,15 +592,15 @@
     </div>
   </div>
 
-  <!-- Vista de gimnasio (issue #62): pestañas Resumen, Entrenos y
-       Ejercicios. Resumen (issue #269) agrega totales y desglose por
-       ejercicio de un periodo elegido; Entrenos registra entrenos
-       (fecha, ejercicios, series con peso y repeticiones) y Ejercicios
-       es el catálogo. Hermana de recipes-view: vista de primer nivel,
-       fuera de #app, sin botón de volver ni título (issue #206): la
-       navegación vive en la cabecera global. Barra de pestañas propia
-       tipo Ocio (issue #208), ocultables en Ajustes, con el selector
-       de unidad de peso (kg/lbs) bajo las pestañas. -->
+  <!-- Gym view (issue #62): Summary, Workouts and Exercises tabs.
+       Summary (issue #269) aggregates totals and per-exercise
+       breakdown for a chosen period; Workouts records workouts
+       (date, exercises, sets with weight and reps) and Exercises is
+       the catalog. Sibling of recipes-view: first-level view,
+       outside #app, no back button nor title (issue #206): the
+       navigation lives in the global header. Own tabs bar in Ocio
+       style (issue #208), hideable in Settings, with the weight
+       unit selector (kg/lbs) under the tabs. -->
   <div id="gym-view" class="gym-view hidden" role="main" aria-label="Vista de gimnasio">
     <nav class="tabs--bar" aria-label="Secciones de gimnasio">
       <div class="tabs" role="tablist" aria-label="Secciones de gimnasio">
@@ -649,14 +647,13 @@
     </div>
 
     <div class="gym-view__body">
-      <!-- Pestaña Resumen (issue #269): totales y desglose por
-           ejercicio de los entrenos de un periodo elegido (semana en
-           curso, mes en curso o rango libre desde/hasta). El
-           contenido lo renderiza js/gym.js. Iteración 3: el rango se
-           elige en un ÚNICO recuadro (#gym-summary-range) con un
-           calendario propio: primer click = desde, segundo click =
-           hasta (nada de dos inputs de fecha independientes). El
-           recuadro solo se muestra con la opción «Rango» activa. -->
+      <!-- Summary tab (issue #269): totals and per-exercise breakdown
+           of the workouts of a chosen period (current week, current
+           month or free from/to range). Content is rendered by
+           js/gym.js. Iteration 3: the range is picked in a SINGLE box
+           (#gym-summary-range) with its own calendar: first click =
+           from, second click = to (no two standalone date inputs).
+           The box only shows with the "Range" option active. -->
       <section id="panel-gym-summary-tab" role="tabpanel" aria-labelledby="panel-gym-summary-tab-heading">
         <h2 id="panel-gym-summary-tab-heading" class="visually-hidden">Resumen</h2>
         <div class="gym-summary-selector" role="group" aria-label="Periodo del resumen">
@@ -688,8 +685,8 @@
         <div id="gym-summary-data" aria-live="polite"></div>
       </section>
 
-      <!-- Pestaña Entrenos: listado de entrenos ordenados por fecha
-           (desc). El contenido lo renderiza js/gym.js. -->
+      <!-- Workouts tab: workout list sorted by date (desc).
+           Content is rendered by js/gym.js. -->
       <section id="panel-gym-workouts-tab" class="hidden" role="tabpanel" aria-labelledby="panel-gym-workouts-tab-heading">
         <h2 id="panel-gym-workouts-tab-heading" class="visually-hidden">Entrenos</h2>
         <div class="gym-toolbar">
@@ -700,8 +697,8 @@
         <div id="gym-workouts-list" aria-live="polite"></div>
       </section>
 
-      <!-- Pestaña Ejercicios: catálogo de ejercicios con su grupo
-           muscular. El contenido lo renderiza js/gym.js. -->
+      <!-- Exercises tab: exercise catalog with its muscle group.
+           Content is rendered by js/gym.js. -->
       <section id="panel-gym-exercises-tab" class="hidden" role="tabpanel" aria-labelledby="panel-gym-exercises-tab-heading">
         <h2 id="panel-gym-exercises-tab-heading" class="visually-hidden">Ejercicios</h2>
         <div class="gym-toolbar">
@@ -714,8 +711,8 @@
     </div>
   </div>
 
-  <!-- Modal de receta (issue #64): alta / edición / importación
-       desde URL. El contenido lo renderiza js/recipes.js. -->
+  <!-- Recipe modal (issue #64): entry / editing / import from
+       URL. Content is rendered by js/recipes.js. -->
   <div id="recipe-modal" class="modal hidden">
     <div class="modal__backdrop" id="recipe-modal-backdrop"></div>
     <div class="modal__card modal__card--wide" role="dialog" aria-modal="true" aria-label="Receta">
@@ -724,10 +721,10 @@
     </div>
   </div>
 
-  <!-- Modal del buscador de recetas del menú (issue #242): sustituye
-       al desplegable de «+ Receta»; lista de tarjetas con foto,
-       nombre y etiquetas, con buscador y filtros por alérgenos y tipo
-       de plato. El contenido lo renderiza js/menu.js. -->
+  <!-- Menu recipe-picker modal (issue #242): replaces the
+       "+ Recipe" dropdown; list of cards with photo, name and tags,
+       with text search and allergen / dish-type filters.
+       Content is rendered by js/menu.js. -->
   <div id="recipe-picker-modal" class="modal hidden">
     <div class="modal__backdrop" id="recipe-picker-backdrop"></div>
     <div class="modal__card modal__card--wide" role="dialog" aria-modal="true" aria-label="Añadir receta al menú">
@@ -736,10 +733,10 @@
     </div>
   </div>
 
-  <!-- Modal de detalle / alta manual de ingrediente (issue #218):
-       ventana con la información ampliada al pulsar una tarjeta del
-       catálogo y alta manual con «+ Nuevo ingrediente». El contenido
-       lo renderiza js/recipes.js. -->
+  <!-- Ingredient detail / manual entry modal (issue #218):
+       window with extended info when pressing a catalog card and
+       manual entry with "New ingredient".
+       Content is rendered by js/recipes.js. -->
   <div id="ingredient-modal" class="modal hidden">
     <div class="modal__backdrop" id="ingredient-modal-backdrop"></div>
     <div class="modal__card" role="dialog" aria-modal="true" aria-label="Ingrediente">
@@ -748,10 +745,10 @@
     </div>
   </div>
 
-  <!-- Modal de entreno (issue #62): lectura (con Editar/Eliminar) y
-       alta/edición con fecha, nombre, nota y constructor de ejercicios
-       (select del catálogo + filas de serie peso/reps). El contenido
-       lo renderiza js/gym.js. -->
+  <!-- Workout modal (issue #62): read view (with Edit/Delete) and
+       entry/editing with date, name, note and exercise builder
+       (catalog select + set rows weight/reps).
+       Content is rendered by js/gym.js. -->
   <div id="gym-workout-modal" class="modal hidden">
     <div class="modal__backdrop" id="gym-workout-modal-backdrop"></div>
     <div class="modal__card modal__card--wide" role="dialog" aria-modal="true" aria-label="Entreno">
@@ -760,9 +757,9 @@
     </div>
   </div>
 
-  <!-- Modal de ejercicio (issue #62): lectura (nombre/grupo/notas con
-       Editar/Eliminar) y alta/edición con nombre requerido, grupo
-       muscular presets + «Otro» y notas. El contenido lo renderiza
+  <!-- Exercise modal (issue #62): read view (name/group/notes with
+       Edit/Delete) and entry/editing with required name, preset
+       muscle groups + "Other" and notes. Content is rendered by
        js/gym.js. -->
   <div id="gym-exercise-modal" class="modal hidden">
     <div class="modal__backdrop" id="gym-exercise-modal-backdrop"></div>
@@ -772,7 +769,7 @@
     </div>
   </div>
 
-  <!-- Modal de detalle / edición / alta manual -->
+  <!-- Detail / editing / manual entry modal -->
   <div id="item-modal" class="modal hidden">
     <div class="modal__backdrop" id="modal-backdrop"></div>
     <div class="modal__card" role="dialog" aria-modal="true">
@@ -781,7 +778,7 @@
     </div>
   </div>
 
-  <!-- Ventana de valoración emergente (issue #21) -->
+  <!-- Rating popup window (issue #21) -->
   <div id="rating-modal" class="modal modal--top hidden">
     <div class="modal__backdrop" id="rating-modal-backdrop"></div>
     <div class="modal__card modal__card--small" role="dialog" aria-modal="true" aria-label="Valorar ítem">
@@ -790,7 +787,7 @@
     </div>
   </div>
 
-  <!-- Diálogo de acciones de un episodio ya visto (issue #133) -->
+  <!-- Actions dialog of a watched episode (issue #133) -->
   <div id="episode-actions-modal" class="modal modal--top hidden">
     <div class="modal__backdrop" id="episode-actions-modal-backdrop"></div>
     <div class="modal__card modal__card--small" role="dialog" aria-modal="true" aria-label="Episodio ya visto">
@@ -799,15 +796,15 @@
     </div>
   </div>
 
-  <!-- Buscador global: el input vive en la cabecera (search-bar-wrap) y
-       los resultados se muestran en el dropdown #global-search-results
-       anclado bajo la barra (js/global-search.js). -->
+  <!-- Global search: the input lives in the header (search-bar-wrap) and
+       results show in the #global-search-results dropdown anchored
+       below the bar (js/global-search.js). -->
 
   <div id="toast" class="toast hidden" role="alert" aria-live="assertive"></div>
 
-  <!-- Botón flotante "Volver arriba" (issue #137): aparece centrado
-       arriba cuando los filtros de la lista quedan fuera de vista y la
-       navegación (cabecera y pestañas) está oculta. Lo gestiona
+  <!-- Floating "Back to top" button (issue #137): appears centered
+       at the top when the list filters go out of view and the
+       navigation (header and tabs) is hidden. Managed by
        js/auto-hide-nav.js. -->
   <button type="button" id="btn-back-to-top" class="back-to-top" aria-label="Volver arriba">↑ <span>Volver arriba</span></button>
 

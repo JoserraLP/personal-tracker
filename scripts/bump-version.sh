@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
-# bump-version.sh — Actualiza la versión de despliegue/caché de la PWA.
+# bump-version.sh — Updates the PWA deployment/cache version.
 #
-# Cada deploy debería subir este número para invalidar las cachés del
-# service worker (CACHE_STATIC v2) y del navegador. El script actualiza:
-#   1. Las refs de assets con ?v=<vieja> → ?v=<nueva> en index.html.
-#   2. APP_VERSION = '<vieja>' → APP_VERSION = '<nueva>' en js/config.js.
-#   3. Las entradas versionadas ?v=<vieja> → ?v=<nueva> en STATIC_ASSETS
-#      de service-worker.js.
-#   4. Verifica que los tres archivos quedaron coherentes con el nuevo valor.
+# Every deploy should bump this number to invalidate the caches of
+# the service worker (CACHE_STATIC v2) and the browser. The script updates:
+#   1. Asset refs from ?v=<old> → ?v=<new> in index.html.
+#   2. APP_VERSION = '<old>' → APP_VERSION = '<new>' in js/config.js.
+#   3. Versioned entries ?v=<old> → ?v=<new> in STATIC_ASSETS
+#      of service-worker.js.
+#   4. Verifies that the three files ended up coherent with the new value.
 #
 # Uso:
 #   scripts/bump-version.sh <version>
@@ -22,7 +22,7 @@ usage() {
 }
 
 # -----------------------------------------------------------------------------
-# Validación del argumento
+# Argument validation
 # -----------------------------------------------------------------------------
 if [[ $# -ne 1 ]]; then
   echo "ERROR: se espera un argumento: <version>" >&2
@@ -36,7 +36,7 @@ if [[ ! "$VERSION" =~ ^[0-9A-Za-z]+$ ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Rutas
+# Paths
 # -----------------------------------------------------------------------------
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INDEX_HTML="$ROOT/index.html"
@@ -48,14 +48,14 @@ for f in "$INDEX_HTML" "$CONFIG_JS" "$SERVICE_WORKER"; do
 done
 
 # -----------------------------------------------------------------------------
-# Sustituciones
+# Substitutions
 # -----------------------------------------------------------------------------
 sed -i -E "s/\?v=[0-9A-Za-z]+/?v=$VERSION/g" "$INDEX_HTML"
 sed -i -E "s/APP_VERSION = '[0-9A-Za-z]+'/APP_VERSION = '$VERSION'/" "$CONFIG_JS"
 sed -i -E "s/\?v=[0-9A-Za-z]+/?v=$VERSION/g" "$SERVICE_WORKER"
 
 # -----------------------------------------------------------------------------
-# Verificación de coherencia
+# Coherence check
 # -----------------------------------------------------------------------------
 ok=1
 

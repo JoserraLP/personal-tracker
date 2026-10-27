@@ -1,119 +1,279 @@
-# ADR-090: Fix de dos ReferenceErrors — modal de ingrediente roto y comprobación diaria abortada (issue #243)
+# ADR-090: Fix of two ReferenceErrors — a broken ingredient modal and an aborted daily check (issue #243)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #243 reporta dos errores de consola que rompen funciones
-independientes de la web:
+Issue #243 reports two console
+errors that break
+ independent
+ functions of the
+ web:
 
 1. **`recipes.js:912 Uncaught ReferenceError: edit is not defined at
-   openIngredientModal`** — al pulsar «Añadir ingrediente» (botón de la
-   pestaña Ingredientes) o **cualquier ingrediente del catálogo**, el
-   modal no se abre. Causa raíz: una **regresión de fusión**. El merge
-   `e30f073` (rama de la issue #240, ADR-089) resolvió el conflicto de
-   `openIngredientModal` quedándose con la firma de la issue #240
-   (`{ onCreated = null }`) pero dejando en el cuerpo las referencias a
-   la opción `edit` de la issue #232 (ADR-088): `ingredientEditMode =
-   edit;` y el guard `if (!ingredient || edit)` seguían presentes sin
-   que `edit` existiera en scope, y la rama condicional del render
-   (`edit ? ingredientEditHtml(...) : ingredientDetailHtml(...)`) se
-   perdió (quedaba siempre `ingredientDetailHtml`). La issue #232
-   (ADR-088-ventana-ingrediente) había añadido el modo edición del
-   modal; la issue #240 (ADR-089) añadió el `onCreated` del alta desde
-   el formulario de receta. Ambas opciones conviven en la misma firma y
-   el merge las rompió.
+   openIngredientModal`** — when
+   pressing
+   "Add ingredient" (the
+   Ingredients
+   tab's
+   button) or
+   **any
+   catalog ingredient**, the
+   modal does not open. The
+   root cause: a
+   **merge
+   regression**. The
+   merge
+   `e30f073` (the
+   issue #240 branch,
+   ADR-089) resolved the
+   `openIngredientModal`
+   conflict by
+   keeping
+   issue #240's
+   signature
+   (`{ onCreated = null }`) but
+   leaving in
+   the
+   body references to
+   issue #232's
+   `edit` option (ADR-088): the
+   `ingredientEditMode = edit;`
+   and the
+   `if (!ingredient || edit)`
+   guard remained present without an
+  `edit` in
+  scope, and the conditional render branch (the
+   `edit ? ingredientEditHtml(...) :
+   ingredientDetailHtml(...)`)
+   was lost
+   (it always
+   went through the
+   `ingredientDetailHtml`). Issue #232
+   (an
+   ADR-088 ingredient window)
+   had added the
+  modal's edit
+   mode; the
+  issue #240
+   (ADR-089)
+   added the
+   recipe-form's
+   `onCreated` of the other
+   (creation). Both options
+   coexist on the
+   same
+   signature and the merge broke them.
+2. **`daily-check.js:440 ReferenceError: getItemsByGroup is not
+   defined at
+   checkForUpdates`** — the
+   daily check
+   failed entirely: the
+   error fired on the
+   video games block and aborted the whole
+  run, including the
+  `lastReleaseCheckAt`
+   stamping (the next
+  run retried the next
+  day with the same
+  failure). The
+   root cause: issue #178
+   (lazy
+   loading, ADR-069) replaced
+   in the
+   `daily-check.js` the
+   destructuring and the reads by
+   `getItemsByGroup` with one-off reads via
+   the
+   `getItemsOnce`
+   for movies/tv/books, but the video
+   games block (issue
+   #175, the release
+   notice, ADR-071) stayed calling
+   the
+   `getItemsByGroup("games")`, a
+   helper that no longer exists in
+   scope since
+   that change.
 
-2. **`daily-check.js:440 ReferenceError: getItemsByGroup is not defined
-   at checkForUpdates`** — la comprobación diaria fallaba entera: el
-   error se lanzaba en el bloque de videojuegos y abortaba toda la
-   pasada, incluido el estampado de `lastReleaseCheckAt` (la próxima
-   pasada se reintentaba al día siguiente con el mismo fallo). Causa
-   raíz: la issue #178 (lazy loading, ADR-069) sustituyó en
-   `daily-check.js` el destructuring y las lecturas por
-   `getItemsByGroup` por lecturas puntuales con `getItemsOnce` para
-   movies/tv/books, pero el bloque de videojuegos (issue #175, aviso de
-   lanzamiento, ADR-071) quedó llamando a `getItemsByGroup("games")`,
-   helper que ya no existe en scope desde ese cambio.
+Flow note (the
+ same exception as
+ ADR-083, ADR-085,
+ ADR-087, ADR-088
+ and ADR-089):
+ the work's base
+ is the
+ `content/issue-64-seccion-recetas` branch;
+ the work branch
+ (the
+ `wip/issue-243`) is created from there and the
+ PR goes
+ **also to that branch,
+ not to
+ the
+ `dev`**. The
+ ADR is numbered
+ **090** (the
+ highest existing was the
+ 089).
 
-Nota del flujo (misma excepción que ADR-083, ADR-085, ADR-087, ADR-088
-y ADR-089): la base de trabajo es la rama `content/issue-64-seccion-recetas`;
-la rama de trabajo (`wip/issue-243`) se crea desde ahí y la PR va
-**también a esa rama, no a `dev`**. El ADR se numera **090** (el más
-alto existente era el 089).
+## Decision
 
-## Decisión
+### 1. The ingredient modal: restoring the
+ `edit` option
+ (js/recipes.js)
 
-### 1. Modal de ingrediente: restaurar la opción `edit` (js/recipes.js)
+- **The signature**: the
+   `openIngredientModal(id, { edit = false, onCreated = null } = {})`
+   — the
+   `edit` is restored with its
+   default
+   value
+   `false`, alongside
+   the
+   issue #240's
+   `onCreated`. By default the
+   detail opens
+   in reading mode (issue #232); with an
+   `edit:` true it opens directly to
+   the edit view.
+   The
+   `openIngredientModal(ingredient.id, { edit: true })`
+   call of the
+   catalog
+   card (issue
+   #232's "✏️ Editar"
+   row) works again.
+- **The conditional render**: the
+   `content.innerHTML = ingredient ? (edit ?
+   ingredientEditHtml(ingredient) :
+   ingredientDetailHtml(ingredient)) :
+   ingredientNewHtml()`
+   — the edition
+   branch lost on the merge is restored.
+- **The focus guard**: the
+   `if (!ingredient || edit)` is active again: on the manual high and
+   entering
+   edition the focus goes directly to the
+  `#ing-modal-nombre` input on the second
+  rAF (after the trapFocus's, which
+  focuses
+  the ✕).
+- **The code
+  documentation**: the
+   function's
+   JSDoc updates
+   to describe
+   both
+   parameters and the issues
+   #232/#240 that introduced them.
 
-- **Firma**: `openIngredientModal(id, { edit = false, onCreated = null } = {})`
-  — `edit` se restaura con su valor por defecto `false`, junto a
-  `onCreated` de la issue #240. Por defecto el detalle se abre en modo
-  lectura (issue #232); con `edit: true` se abre directamente la vista
-  de edición. La llamada `openIngredientModal(ingredient.id, { edit: true })`
-  de la tarjeta del catálogo (fila «✏️ Editar» de la issue #232) vuelve
-  a funcionar.
-- **Render condicional**: `content.innerHTML = ingredient ? (edit ?
-  ingredientEditHtml(ingredient) : ingredientDetailHtml(ingredient)) :
-  ingredientNewHtml()` — la rama de edición perdida en el merge se
-  restaura.
-- **Guard de foco**: `if (!ingredient || edit)` vuelve a estar activo:
-  en el alta manual y al entrar en edición el foco va directo al input
-  `#ing-modal-nombre` en el segundo rAF (tras el de `trapFocus`, que
-  enfoca la ✕).
-- **Documentación del código**: el JSDoc de la función se actualiza
-  para describir ambos parámetros y las issues #232/#240 que los
-  introdujeron.
+### 2. The daily check:
+the video games via the
+ `getItemsOnce` (js/daily-check.js)
 
-### 2. Comprobación diaria: videojuegos vía `getItemsOnce` (js/daily-check.js)
+- A
+   `getItemsOnce(user.uid, "game")`
+   is added to the one-off reads' `Promise.all`
+   (already containing movie/tv/book since
+   issue #178), as the
+   fourth
+  `allGames` entry.
+- The release-notice block
+   (issue #175) goes
+   from
+   the
+   `getItemsByGroup("games")`
+   to the
+   `allGames.filter((g) => !g.manual)`,
+  with the same
+  manual-games filter and the same fail-open pattern
+  (a write error does not
+   abort the run).
+- The video games **do not refresh metadata** on the run (IGDB is not
+   queried, ADR-067/ADR-071's same rate-limit
+  restriction): they only
+   participate in the release notice comparing the
+   `releaseDate`
+   with the current date. The code comment is corrected
+   to reflect it
+   (it said «the video games do not participate in the
+daily run»).
 
-- Se añade `getItemsOnce(user.uid, "game")` al `Promise.all` de
-  lecturas puntuales (que ya contenía movie/tv/book desde la issue
-  #178), como cuarta entrada `allGames`.
-- El bloque de aviso de lanzamiento (issue #175) pasa de
-  `getItemsByGroup("games")` a `allGames.filter((g) => !g.manual)`,
-  con el mismo filtro de juegos manuales y el mismo patrón fail-open
-  (un error de escritura no aborta la pasada).
-- Los videojuegos **no refrescan metadatos** en la pasada (IGDB no se
-  consulta, misma restricción de rate limit del ADR-067/ADR-071): solo
-  participan en el aviso de lanzamiento comparando `releaseDate` con la
-  fecha actual. El comentario del código se corrige para reflejarlo
-  (decía «los videojuegos no participan en la pasada diaria»).
+## Consequences
 
-## Consecuencias
+- **Positive**: the Ingredients tab's
+  buttons work again ("Add
+  ingredient" opens the empty creation form; pressing an
+  ingredient opens its detail
+   in reading mode and
+   the "✏️ Editar" opens the edition form, issue #232's
+  behaviors); the
+   recipe-form's
+  add
+  (the
+  issue #240's
+  `onCreated`) stays
+  intact; the daily check completes its
+  run without
+  errors and stamps the
+  `lastReleaseCheckAt` again; the video
+  games keep
+  generating
+  the release
+  notice (issue
+  #175) without querying IGDB.
+- **Neutral**: the daily run now makes an extra
+  Firestore read
+  (the
+  `games`) that it did not before, in line with issue #178's
+  one-off-reads
+  pattern; without a PWA
+  bump (the
+  `daily-check.js` change does not
+  affect the UI's precached
+  assets).
+- **Negative**: none
+  known. QA validated the
+  (without
+  ReferenceErrors on the console when pressing "Add ingredient" or
+  any
+  ingredient, a modal in edit mode
+  with existing
+  data
+  and empty
+  on creation, a complete daily check
+  without errors) and the security scan finished in PASS;
+  a
+  `node --check`
+  of
+  the
+  `js/recipes.js` and the
+  `js/daily-check.js`
+  OK.
 
-- **Positivas**: los botones de la pestaña Ingredientes vuelven a
-  funcionar («Añadir ingrediente» abre el alta vacía; pulsar un
-  ingrediente abre su detalle en modo lectura y «✏️ Editar» abre la
-  edición, comportamientos de la issue #232); el alta desde el
-  formulario de receta (issue #240, `onCreated`) sigue intacta; la
-  comprobación diaria completa su ejecución sin errores y vuelve a
-  estampar `lastReleaseCheckAt`; los videojuegos siguen generando el
-  aviso de lanzamiento (issue #175) sin consultar IGDB.
-- **Neutras**: la pasada diaria ahora hace una lectura adicional de
-  Firestore (`game`) que antes no hacía, en línea con el patrón de
-  lecturas puntuales de la issue #178; sin bump PWA (el cambio de
-  `daily-check.js` no altera assets precacheados de la UI).
-- **Negativas**: ninguna conocida. QA validó los criterios de
-  aceptación (sin ReferenceErrors en consola al pulsar «Añadir
-  ingrediente» o cualquier ingrediente, modal en modo edición con datos
-  existentes y vacío en creación, comprobación diaria completa sin
-  errores) y el escaneo de seguridad terminó en PASS; `node --check`
-  de `js/recipes.js` y `js/daily-check.js` OK.
+## References
 
-## Referencias
-
-- Issue #232 (ADR-088-ventana-ingrediente): modo edición del modal de
-  ingrediente, origen de la opción `edit`.
-- Issue #240 (ADR-089): `onCreated` del alta de ingrediente desde el
-  formulario de receta, origen de la firma que sobrevivió al merge.
-- Issue #178 (ADR-069): lazy loading por pestaña, origen de
-  `getItemsOnce` en `daily-check.js`.
-- Issue #175 (ADR-071): aviso de lanzamiento de videojuegos en la
-  pasada diaria, bloque que quedó llamando a `getItemsByGroup`.
+- Issue #232 (an
+  ADR-088 ingredient window): the ingredient modal's
+  edit mode, the origin of the
+  `edit` option.
+- Issue #240 (ADR-089): the ingredient high's
+  `onCreated` from the
+   recipe form, the origin of the
+   signature that survived the merge.
+- Issue #178 (ADR-069): per-tab lazy loading,
+  the origin of the
+  `getItemsOnce` in the
+  `daily-check.js`.
+- Issue #175 (ADR-071): the video games' release notice in the
+  daily
+  run, the block
+  left calling the
+  `getItemsByGroup`.
 
 Related issue: #243 — https://github.com/gonzalitojh/Registro-personal/issues/243

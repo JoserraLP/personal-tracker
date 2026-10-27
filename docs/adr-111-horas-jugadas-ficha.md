@@ -1,29 +1,29 @@
-# ADR-111: Horas jugadas totales en la ficha de videojuego
+# ADR-111: Total played hours on the video game card
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-10-26
 
-## Contexto
-El usuario pidió que el detalle de videojuegos muestre cuántas horas
-se han jugado. La web ya registra sesiones (`playLog`) con horas
-opcionales, y Steam puede aportar un total (`steamPlaytimeHours`,
-backfill del ADR-107/108) cuando no hay sesiones registradas.
+## Context
+The user asked for the video game detail to show how many hours have
+been played. The web app already records sessions (`playLog`) with
+optional hours, and Steam can provide a total (`steamPlaytimeHours`,
+backfill from ADR-107/108) when there are no recorded sessions.
 
-## Decisión
-Helper puro `totalPlayHours(item)` en `js/game-log.js`:
+## Decision
+Pure helper `totalPlayHours(item)` in `js/game-log.js`:
 
-- **Suma de playLog** (fuente de verdad), redondeada a 1 decimal,
-  ignorando sesiones sin horas (sesión en curso, hours null).
-- Si no hay sesión con horas, **usa `steamPlaytimeHours`**.
-- Devuelve null si no hay nada computable y no se pinta la línea.
+- **Sum of playLog** (source of truth), rounded to 1 decimal, ignoring
+  sessions without hours (session in progress, hours null).
+- If there is no session with hours, **uses `steamPlaytimeHours`**.
+- Returns null when nothing is computable and the line is not painted.
 
-La ficha lo muestra debajo del título: «X h jugadas»
-(`steamHoursLabel`, formato es-ES con 1 decimal).
+The card shows it below the title: «X h jugadas» [X h played]
+(`steamHoursLabel`, es-ES format with 1 decimal).
 
-## Consecuencias
-- Las horas de Steam actúan como valor provisional hasta que el
-  usuario registra sesiones; con sesiones ganan siempre.
-- 5 tests nuevos en `tests/game-hours.test.js`.
+## Consequences
+- Steam hours act as a provisional value until the user records
+  sessions; with sessions, the latter always win.
+- 5 new tests in `tests/game-hours.test.js`.

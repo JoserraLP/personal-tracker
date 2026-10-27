@@ -1,48 +1,48 @@
 #!/usr/bin/env python3
 # =============================================================================
-# dump-session-transcript.py — Vuelca/transmite la transcripción de una sesión
-# de opencode desde su base de datos local, INCLUIDOS los mensajes de los
-# subagentes (issue #145, iteración 2).
+# dump-session-transcript.py — Iterates/streams the transcript of an opencode
+# session from its local database, INCLUDING the messages of the subagents
+# (issue #145, iteration 2).
 #
-# opencode run (--format default/json) no expone el contenido de los
-# subagentes en el stream: solo muestra el inicio/fin de cada subagente.
-# Sin embargo, opencode guarda TODOS los mensajes (sesión primaria y
-# sesiones hijas enlazadas por parent_id) en su base de datos SQLite local
-# (tablas session/message/part). Este script ofrece tres modos:
+# opencode run (--format default/json) doesn't expose subagent content in the
+# stream: it only shows the start/end of each subagent. However, opencode
+# stores ALL messages (primary session and nested sessions linked by
+# parent_id) in its local SQLite database (tables session/message/part).
+# This script offers three modes:
 #
-#   - MODO DUMP (por defecto): reconstruye el log completo de la sesión
-#     después de que termine (éxito o fallo):
-#       * Sesión primaria: se busca por título exacto y momento de creación
-#         (>= START_MS - 60000, la más reciente, parent_id IS NULL).
-#       * Sesiones hijas: CTE recursiva sobre session.parent_id.
-#       * Por cada mensaje assistant, en orden temporal: cabecera con hora,
-#         agente y marca [subagente] si procede, y el texto de los parts
-#         type=text completados (time.end). Los parts type=tool con
-#         state.status=error imprimen el error del tool.
+#   - DUMP MODE (default): rebuilds the full session log after it ends
+#     (success or failure):
+#       * Primary session: looked up by exact title and creation time
+#         (>= START_MS - 60000, the most recent, parent_id IS NULL).
+#       * Nested sessions: recursive CTE over session.parent_id.
+#       * For each assistant message, in temporal order: header with time,
+#         agent and [subagent] marker if applicable, plus the text of the
+#         completed parts type=text (time.end). Parts type=tool with
+#         state.status=error print the tool error.
 #
-#   - MODO --watch [poll_sec]: STREAMING EN VIVO de los subagentes. Hace
-#     polling de la BD cada poll_sec (default 5) e imprime en stdout los
-#     mensajes assistant COMPLETADOS de las sesiones hijas (nunca de la
-#     primaria: su output ya sale en el stream de opencode) a medida que
-#     aparecen, con el mismo formato que el modo dump. Se lanza en
-#     background desde run-sdd-session.sh y termina limpio con SIGTERM.
+#   - MODE --watch [poll_sec]: LIVE STREAMING of the subagents. Polls the DB
+#     every poll_sec (default 5) and prints to stdout the COMPLETED assistant
+#     messages of the nested sessions (never of the primary: its output
+#     already appears in the opencode stream) as they appear, in the same
+#     format as dump mode. Launched in background by run-sdd-session.sh and
+#     ends cleanly with SIGTERM.
 #
-#   - MODO --activity: sonda para el watchdog. Imprime el epoch_ms del
-#     último activity (MAX(time_updated) sobre message y part de TODAS las
-#     sesiones del árbol, primaria + hijas) o "0" si la sesión primaria
-#     aún no existe en la BD. Exit 0 siempre que la consulta sea válida;
-#     exit 1 si la BD no está disponible o falla la consulta (el shell
-#     distingue: "0" ≠ fallo).
+#   - MODE --activity: probe for the watchdog. Prints the epoch_ms of the
+#     latest activity (MAX(time_updated) over message and part of ALL the
+#     sessions of the tree, primary + nested) or "0" if the primary session
+#     doesn't exist in the DB yet. Exit 0 whenever the query is valid;
+#     exit 1 if the DB is unavailable or the query fails (the shell
+#     distinguishes: "0" ≠ failure).
 #
-# Uso:
-#   dump-session-transcript.py <titulo-sesion> [start_epoch_ms]
-#   dump-session-transcript.py --watch <titulo-sesion> [start_epoch_ms] [poll_sec]
-#   dump-session-transcript.py --activity <titulo-sesion> [start_epoch_ms]
+# Usage:
+#   dump-session-transcript.py <session-title> [start_epoch_ms]
+#   dump-session-transcript.py --watch <session-title> [start_epoch_ms] [poll_sec]
+#   dump-session-transcript.py --activity <session-title> [start_epoch_ms]
 #
-# Best-effort: ante cualquier problema imprime un aviso en stderr y sale 0
-# (nunca debe hacer fallar el workflow por un diagnóstico). EXCEPCIÓN: el
-# modo --activity devuelve exit 1 en fallo real de BD/consulta para que el
-# watchdog pueda detectar la degradación.
+# Best-effort: on any problem it prints a warning to stderr and exits 0
+# (it must never make the workflow fail because of a diagnostic). EXCEPTION:
+# the --activity mode returns exit 1 on a real DB/query failure so the
+# watchdog can detect the degradation.
 # =============================================================================
 import json
 import os
@@ -53,7 +53,7 @@ import time
 
 
 def find_db():
-    """Localiza la base de datos local de opencode (best-effort)."""
+    """Locates the local opencode database (best-effort)."""
     candidates = []
     xdg = os.environ.get("XDG_DATA_HOME")
     if xdg:
@@ -72,7 +72,7 @@ def find_db():
 
 
 def open_db():
-    """Abre la BD en modo read-only; devuelve conexión o None."""
+    """Opens the DB in read-only mode; returns a connection or None."""
     db = find_db()
     if not db:
         return None
@@ -99,8 +99,8 @@ def fmt_time(epoch_ms):
 
 
 def find_primary(conn, title, start_ms):
-    """Sesión raíz del run: título exacto, creada tras el arranque (margen
-    60 s), la más reciente y con parent_id IS NULL (nunca un subagente)."""
+    """Root session of the run: exact title, created after the start (60 s
+    margin), the most recent and with parent_id IS NULL (never a subagent)."""
     cur = conn.cursor()
     cur.execute(
         "SELECT id, agent, title FROM session "
@@ -112,8 +112,8 @@ def find_primary(conn, title, start_ms):
 
 
 def session_tree(conn, primary_id):
-    """Dict {id: row} con la sesión primaria y TODOS sus descendientes
-    (CTE recursiva por parent_id)."""
+    """Dict {id: row} with the primary session and ALL its descendants
+    (recursive CTE over parent_id)."""
     cur = conn.cursor()
     cur.execute(
         "WITH RECURSIVE chain(id) AS ("
@@ -128,7 +128,7 @@ def session_tree(conn, primary_id):
 
 
 def message_parts(conn, message_id):
-    """Parts de un mensaje (listas de dicts ya parseadas)."""
+    """Parts of a message (lists of already-parsed dicts)."""
     try:
         cur = conn.cursor()
         cur.execute(
@@ -141,9 +141,9 @@ def message_parts(conn, message_id):
 
 
 def message_completed(parts):
-    """Un mensaje está 'completado' cuando todos sus parts con time tienen
-    time.end y hay al menos uno. Sirve para el modo --watch: no se imprime
-    texto a medio generar."""
+    """A message is 'completed' when all its parts with time have
+    time.end and there is at least one. Used for the --watch mode: never
+    print half-generated text."""
     timed = [p for p in parts if p.get("time")]
     if not timed:
         return False
@@ -151,8 +151,8 @@ def message_completed(parts):
 
 
 def print_message(conn, msg, sess):
-    """Imprime la cabecera y el contenido de un mensaje assistant.
-    Devuelve True si imprimió algo."""
+    """Prints the header and content of an assistant message.
+    Returns True if something was printed."""
     data = load_json(msg["data"])
     if not data or data.get("role") != "assistant":
         return False
@@ -180,7 +180,7 @@ def print_message(conn, msg, sess):
 
 
 # ---------------------------------------------------------------------------
-# MODO DUMP — transcripción completa (éxito o fallo)
+# DUMP MODE — full transcript (success or failure)
 # ---------------------------------------------------------------------------
 def cmd_dump(title, start_ms):
     conn = open_db()
@@ -242,7 +242,7 @@ def cmd_dump(title, start_ms):
 
 
 # ---------------------------------------------------------------------------
-# MODO --watch — streaming en vivo de los subagentes
+# MODE --watch — live streaming of the subagents
 # ---------------------------------------------------------------------------
 def cmd_watch(title, start_ms, poll_sec):
     def _term(_signum, _frame):
@@ -251,7 +251,7 @@ def cmd_watch(title, start_ms, poll_sec):
     signal.signal(signal.SIGTERM, _term)
 
     printed_ids = set()
-    grace_until = time.time() + 60  # margen para que la sesión aparezca en BD
+    grace_until = time.time() + 60  # margin for the session to appear in the DB
 
     while True:
         conn = open_db()
@@ -292,7 +292,7 @@ def cmd_watch(title, start_ms, poll_sec):
                     continue
                 parts = message_parts(conn, msg["id"])
                 if not message_completed(parts):
-                    continue  # aún en curso; se reintenta en el próximo ciclo
+                    continue  # still in progress; retried on the next cycle
                 if print_message(conn, msg, subs.get(msg["session_id"])):
                     sys.stdout.flush()
                 printed_ids.add(msg["id"])
@@ -305,7 +305,7 @@ def cmd_watch(title, start_ms, poll_sec):
 
 
 # ---------------------------------------------------------------------------
-# MODO --activity — sonda de actividad para el watchdog
+# MODE --activity — activity probe for the watchdog
 # ---------------------------------------------------------------------------
 def cmd_activity(title, start_ms):
     conn = open_db()
@@ -316,7 +316,7 @@ def cmd_activity(title, start_ms):
     try:
         primary = find_primary(conn, title, start_ms)
         if primary is None:
-            print("0")  # la sesión aún no existe en BD: sin actividad (válido)
+            print("0")  # session not in the DB yet: no activity (valid)
             conn.close()
             return 0
         sessions = session_tree(conn, primary["id"])
@@ -367,7 +367,7 @@ def main():
             return 1
         return cmd_activity(title, start_ms)
 
-    # Modo dump por defecto (compatibilidad con la iteración 1).
+    # Dump mode by default (compatibility with iteration 1).
     title = args[0]
     start_ms = int(args[1]) if len(args) > 1 else 0
     return cmd_dump(title, start_ms)

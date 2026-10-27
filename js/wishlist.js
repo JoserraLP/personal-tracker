@@ -1,14 +1,14 @@
 // =============================================================
-// Lista de deseos («Compras», en Ocio): cosas que comprar con
-// título, descripción, precio (opcional), URL del producto
-// (opcional), foto por URL (opcional) y si ya está comprada.
+// Wish list («Compras», in Ocio): things to buy with title,
+// description, price (optional), product URL (optional), photo by
+// URL (optional) and whether it is already bought.
 //
-// El módulo recibe el contexto de la app (ctx) con las funciones
-// de acceso a datos (patrón del repo: no habla con Firebase
-// directamente) y renderiza en la pestaña (el HTML del esqueleto
-// vive en ocio/compras.html, cargado como partial). Las partes
-// puras (validación y formato) están separadas para poder
-// testearlas sin DOM.
+// The module receives the app context (ctx) with the data access
+// functions (repo pattern: it does not talk to Firebase directly)
+// and renders inside the tab (the skeleton HTML lives in
+// ocio/compras.html, loaded as a partial). The pure parts
+// (validation and formatting) are separated so they can be tested
+// without the DOM.
 // =============================================================
 
 import * as ui from "./ui.js";
@@ -21,13 +21,13 @@ const PLACEHOLDER_PHOTO =
   );
 
 // -------------------------------------------------------------
-// Partes puras (testeables sin DOM)
+// Pure parts (testable without DOM)
 // -------------------------------------------------------------
 
-// Valida el borrador del formulario. Devuelve { ok, errors: [] }:
-// el título es el único obligatorio; el precio, si viene, debe ser
-// un número razonable (≥ 0); la URL y la foto, si vienen, deben
-// ser una URL válida (http/https, con dominio).
+// Validates the form draft. Returns { ok, errors: [] }:
+// the title is the only required field; the price, if provided, must
+// be a reasonable number (≥ 0); the URL and the photo, if provided,
+// must be a valid URL (http/https, with domain).
 export function validateWishlistDraft(title, priceText, url, photoUrl) {
   const errors = [];
   const titleTrimmed = (title || "").trim();
@@ -64,9 +64,9 @@ export function validateWishlistDraft(title, priceText, url, photoUrl) {
   };
 }
 
-// Normaliza URLs del usuario: si escribió dominio sin esquema
-// ("www.dominio.com/xxx" o "dominio.com/xxx"), anteponemos https://.
-// Cualquier otra cosa que no tenga pinta de URL devuelve null.
+// Normalizes user URLs: if they typed a domain without scheme
+// ("www.dominio.com/xxx" or "dominio.com/xxx"), we prepend https://.
+// Anything else that does not look like a URL returns null.
 export function sanitizeUrl(value) {
   const v = (value || "").trim();
   if (!v) return null;
@@ -83,9 +83,9 @@ function sanitizeLooseUrl(value) {
   return null;
 }
 
-// Formato del precio para la tarjeta: "12,50 €" (si hay precio) o
-// cadena vacía. Los precios negativos quedan sin presentar (la
-// validación ya los filtra a la entrada).
+// Price format for the card: "12,50 €" (if there is a price) or
+// empty string. Negative prices stay unpresented (validation
+// already filters them on input).
 export function formatWishlistPrice(price) {
   const p = Number(price);
   if (!Number.isFinite(p) || p <= 0) return "";
@@ -102,7 +102,7 @@ function escapeHtml(str) {
 }
 
 // -------------------------------------------------------------
-// Estado y render (el panel ya está en el DOM: lo cargó el partial)
+// State and render (the panel is already in the DOM: the partial loaded it)
 // -------------------------------------------------------------
 
 let ctxRef = null;
@@ -160,8 +160,8 @@ function renderWishlist() {
     )
     .join("");
 
-  // Wiring por tarjeta. El grid se repinta entero en cada snapshot,
-  // así que los listeners son efímeros (mismo patrón que el resto).
+  // Wiring per card. The grid is repainted entirely on each snapshot,
+  // so the listeners are ephemeral (same pattern as the rest).
   gridEl.querySelectorAll("[data-wishlist-index]").forEach((btn) => {
     btn.addEventListener("click", () => openWishlistForm(items[Number(btn.dataset.wishlistIndex)]));
   });
@@ -169,8 +169,8 @@ function renderWishlist() {
     input.addEventListener("change", () => {
       const item = items[Number(input.dataset.wishlistCheck)];
       const changes = { purchased: input.checked };
-      // Al marcar: fecha de compra la primera vez; al desmarcar: se
-      // limpia (totales prestados).
+      // When checked: purchase date the first time; when unchecked: it
+      // is cleared (even totals).
       if (input.checked) {
         if (!item.purchasedAt) changes.purchasedAt = new Date().toISOString();
       } else {
@@ -190,7 +190,7 @@ function renderWishlist() {
 }
 
 // -------------------------------------------------------------
-// Formulario (ventana genérica #item-modal)
+// Form (generic window #item-modal)
 // -------------------------------------------------------------
 
 function wishlistFormHtml(item) {
@@ -253,8 +253,8 @@ export function openWishlistForm(item) {
     const data = { ...draft.data, description: content.querySelector("#wishlist-desc").value.trim() };
     try {
       if (item?.id) {
-        // Si el usuario borra la foto, se guarda null y la tarjeta
-        // vuelve al placeholder.
+        // If the user removes the photo, null is saved and the card
+        // goes back to the placeholder.
         await ctxRef.updateWishlistItem(ctxRef.getCurrentUser().uid, item.id, data);
       } else {
         await ctxRef.addWishlistItem(ctxRef.getCurrentUser().uid, {
@@ -280,7 +280,7 @@ export function openWishlistForm(item) {
 }
 
 // -------------------------------------------------------------
-// Chips de filtro (delegación en la barra del partial)
+// Filter chips (delegation in the partial's bar)
 // -------------------------------------------------------------
 
 function wireChips() {
@@ -300,27 +300,27 @@ function wireChips() {
 }
 
 // -------------------------------------------------------------
-// Setup (lo llama app.js una vez por snapshot del grupo)
+// Setup (called by app.js once per group snapshot)
 // -------------------------------------------------------------
 
 /**
- * Conecta la lista de deseos con la app: wiring del botón «Añadir»,
- * chips y estado de datos. Lo usa app.js.
- * @param {Object} ctx - Contexto de la aplicación (ctx de app.js).
+ * Connects the wish list to the app: wiring of the «Añadir» button,
+ * chips and data state. Used by app.js.
+ * @param {Object} ctx - Application context (ctx from app.js).
  * @returns {{ setWishlistItems: Function }}
  */
 export function setupWishlist(ctx) {
   ctxRef = ctx;
 
   return {
-    // Lo llama app.js en cada snapshot del grupo wishlist.
+    // Called by app.js on each snapshot of the wishlist group.
     setWishlistItems: (items) => {
       wishlistItems = items || [];
       renderWishlist();
     },
-    // Lo llama loadOcioPartial de app.js cuando el partial con el
-    // botón «Añadir» y los chips ya está en el DOM (lazy loading:
-    // el markup no existe hasta entonces).
+    // Called by loadOcioPartial of app.js when the partial with the
+    // «Añadir» button and the chips is already in the DOM (lazy
+    // loading: the markup does not exist until then).
     wireControls: wireControls,
   };
 }

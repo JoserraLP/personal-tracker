@@ -1,478 +1,477 @@
-# ADR-098: Pestaña «Resumen» de la sección de Gimnasio (issue #269)
+# ADR-098: The Gym section's «Resumen» (Summary) tab (issue #269)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #269 pide una **pestaña «Resumen»** como **PRIMERA pestaña de
-la sección de Gimnasio** (issue #62, ADR-095): un resumen de los
-ejercicios hechos en un periodo elegido, con tres opciones — **semana
-en curso** (de lunes a hoy), **mes en curso** (del día 1 del mes a
-hoy) y **rango libre** (fechas desde/hasta).
+Issue #269 asks for a
+**«Resumen» (Summary)
+tab** as the **FIRST tab of the Gym section** (issue
+#62, ADR-095): a summary of the
+exercises done on a chosen period, with three options — the
+**current week** (from Monday to today), the
+**current month** (from the month's 1st to today) and a
+**free range** (from/to dates).
 
-Contexto de ramificación: igual que ADR-096 y ADR-097, esta tarea nace
-de `feat/issue-62-seccion-gimnasio` (la sección y el ADR-095 aún no
-están en `dev`; PR #262 pendiente de integración). La rama de la #269
-se fusionará en esa rama intermedia, de modo que este ADR llegará a
-`dev` junto con la sección completa; por eso el número de serie
-continúa tras ADR-097 (en el repo existen duplicados históricos de
-ADR, por eso el siguiente número se calcula como el máximo existente
+Branch
+context: like
+the
+ADR-096 and the
+ADR-097, this task
+is born
+from
+`feat/issue-62-seccion-gimnasio` (the section and the
+ADR-095 are not yet in the
+`dev`; the
+PR #262 pending integration). The #269's branch merges into that intermediate branch, so this ADR arrives at the
+`dev` together with the whole section; that's why the
+serial number continues after the
+ADR-097 (on the repo there are historical ADR duplicates, so the next
+number gets calculated as the existing maximum
 + 1).
 
-La implementación está validada (**QA PASS**: sandbox 20/20 de lógica
-y 11/11 de router; revisión estática de las reglas 2 y 4 de
-AGENTS.md) con **una iteración de QA** que detectó dos defectos,
-corregidos en el commit `7d2982b`:
+The implementation is validated (a
+**QA PASS**: a logic sandbox
+20/20 and an
+11/11 router; a
+static
+review of the AGENTS.md's rules 2 and 4) with a QA iteration that detected two defects, fixed on commit `7d2982b`:
 
-1. **Inputs de fecha del selector invisibles en Negro puro**: el
-   patrón de tema dejaba los `input[type="date"]` del rango libre sin
-   contraste sobre el fondo negro; fix con el override agrupado
-   `[data-theme="black"] .gym-summary-selector input[type="date"]`.
-2. **Guard de series sin ejercicio**: una entrada de entreno sin
-   `ejercicioId` ni nombre (datos corruptos/legacy extremos) contaba
-   sus series en el total sin haber ejercicio al que atribuirlas; fix
-   con el guard de agrupación (la entrada se ignora).
+1. **Invisible date inputs on the selector in Pure black**: the
+   theme pattern left the
+   free range's `input[type="date"]`s with no contrast against the black background; a
+   fix with the
+   `[data-theme="black"] .gym-summary-selector input[type="date"]`
+   grouped override.
+2. **A no-exercise sets guard**: a workout entry with neither
+   an
+   `ejercicioId` nor a name (an extreme corrupt/legacy data) counted its sets on
+   the total with no exercise to attribute them to; a fix with the
+   grouping guard (the entry gets ignored).
 
-Escaneo de seguridad sin hallazgos. El manual de usuario se actualiza
-en esta misma tarea (regla 3 de AGENTS.md, §9.1). Este ADR documenta
-la decisión a posteriori, como los recientes (ADR-093, ADR-094,
-ADR-095, ADR-096, ADR-097).
+A security scan with no findings. The user manual updates in this very task (the
+AGENTS.md's rule 3, the
+§9.1). This ADR documents the decision retrospectively, like the recent ones (the
+ADR-093, the
+ADR-094, the
+ADR-095, the
+ADR-096, the
+ADR-097).
 
-### Iteración (segundo comentario de 2026-08-13)
+### An iteration (a second comment from 2026-08-13)
 
-El usuario dejó un segundo comentario en la issue con tres peticiones
-nuevas, incorporadas en la misma PR:
+The user left a second comment on the issue with three new requests, incorporated on the same PR:
 
-1. **Los selectores de fecha deben estar ocultos salvo con la opción
-   «Rango» activa**: en la versión primera los dos `input[type="date"]`
-   (desde/hasta) estaban siempre visibles junto a los chips. Ahora
-   viven dentro de un **único recuadro** (`<details
-   id="gym-summary-range">`) que solo se muestra al activar el chip
-   «Rango» (atributo `hidden` controlado por
-   `syncSummaryPeriodUI()`); con «Semana en curso» o «Mes en curso»
-   el recuadro permanece oculto para no estorbar.
-2. **Fusionar las dos fechas en un único recuadro**: el `<details>`
-   nace **abierto** al pulsar «Rango» y muestra las dos fechas dentro;
-   su cabecera (sin marcador nativo, `list-style: none`) resume el
-   rango ya elegido («desde – hasta», o «sin límite» en los extremos
-   vacíos) vía `updateSummaryRangeSummary()`, que se repinta también
-   al cambiar cualquier fecha.
-3. **Cambiar los totales: nada de sumatorios de series,
-   repeticiones o volumen**: las tarjetas pasan a **nº de entrenos** y
-   **nº de ejercicios distintos** del periodo; se añade un desglose
-   **«Por grupos musculares»** (ejercicios distintos y entrenos por
-   grupo) y la tabla por ejercicio se simplifica a **ejercicio +
-   veces** (entrenos en que aparece). La agregación
-   (`summarizeWorkouts()`) ya no acumula reps/volumen ni peso máximo
-   (la iteración 3 añadirá después los extremos de peso por
-   ejercicio, mín/máx, en la tabla); los grupos se resuelven como
-   antes (grupo de la entrada, del catálogo por id o por nombre
-   normalizado). Las entradas sin grupo muscular siguen contando en
-   los totales pero no en el desglose por grupos.
+1. **The date selectors must be hidden unless the "Range" option is active**: on the first version the two
+   `input[type="date"]`s (the from/to) were always visible next to the chips. Now they live inside a **single box** (a
+   `<details id="gym-summary-range">`) that only shows when activating the
+   "Range" chip (the
+   `hidden` attribute controlled by the
+   `syncSummaryPeriodUI()`); with the
+   "Current week" or the
+   "Current month" the box stays hidden to not get in the way.
+2. **Merging the two dates into a single box**: the `<details>` is born **open** when pressing "Range" and shows both dates inside; its header (with no native marker, the
+   `list-style: none`) summarizes the already chosen range ("from – to", or
+   "no bound" on the empty ends) via the
+   `updateSummaryRangeSummary()`, which also repaints when changing any date.
+3. **Changing the totals: no set, rep or volume sums**: the cards become the period's **workouts count** and the
+   **different exercises count**; a
+   **"By muscle groups"** breakdown gets added (the different exercises and workouts per group) and the per-exercise table simplifies to
+   **exercise + times** (the workouts it appears on). The aggregation (the
+   `summarizeWorkouts()`) no longer accumulates reps/volume nor the max weight (the iteration 3 will later add the per-exercise weight extremes, the min/max, on the table); the groups resolve like before (the entry's group, the catalog's by id or by normalized name). The entries with no muscle group keep counting on the totals but not on the groups' breakdown.
 
-Revalidado en esta iteración: sandbox de lógica 42/42 (agregación por
-ejercicio y por grupos, rangos con límites abiertos e intercambio
-`from > to`, cambios del selector con el recuadro oculto/visible y su
-resumen de fechas) y revisión estática de las reglas 2 y 4 de
-AGENTS.md (360/768/1280 px sin scroll horizontal y cuatro modos de
-tema); escaneo de seguridad sin hallazgos.
+Revalidated on this iteration: a logic sandbox 42/42 (the per-exercise and per-groups aggregation, the ranges with open bounds and the
+`from > to` swap, the selector changes with the box hidden/visible and its dates' summary) and a static review of the AGENTS.md's rules 2 and 4 (the
+360/768/1280 px with no horizontal scroll and the four theme modes); a security scan with no findings.
 
-### Iteración 3 (tercer comentario de 2026-08-13)
+### The iteration 3 (a third comment from 2026-08-13)
 
-El usuario dejó un tercer comentario con dos peticiones, incorporadas
-en la misma PR:
+The user left a third comment with two requests, incorporated on the same PR:
 
-1. **El rango en un único recuadro para elegir desde y hasta a la
-   vez**: "el rango para elegir sigue separado en dos recuadros en
-   lugar de solo uno". Los dos `input[type="date"]` (desde/hasta)
-   dentro del `<details>` se sustituyen por un **único recuadro** con
-   **calendario propio** (`div#gym-summary-range` + popover con
-   rejilla de 42 días, lunes primero): el **primer click fija
-   «desde»** y el **segundo «hasta»** (intercambiando los extremos si
-   el segundo es anterior al primero); con el rango completo, un
-   click empieza otro rango. El calendario navega por meses (‹ ›),
-   ofrece **Borrar** (vuelve a los límites abiertos) y **Listo**, y se
-   cierra con **Escape** o al hacer click fuera; el trigger lleva
-   `aria-expanded`/`aria-controls`, el popover `role="dialog"` y el
-   foco vuelve al trigger al cerrar. En pantallas **≤767 px** el
-   popover pasa a flujo normal: con el posicionamiento absoluto la
-   banda 540–680 px desbordaba el borde derecho de la página
-   (medido con Chromium headless).
-2. **Aumento de peso por ejercicio**: "añade en el resumen de cada
-   ejercicio el aumento de peso que ha habido. El menor registrado en
-   el periodo y el mayor". La tabla «Por ejercicio» añade **Peso
-   mín**, **Peso máx** y **Aumento** (máx − mín) en la unidad de
-   presentación activa. `summarizeWorkouts()` agrega los extremos en
-   **kg canónicos** (conversión única al pintar, sin deriva de
-   redondeo); las **series sin peso registrado (null o ≤ 0, p. ej. a
-   peso corporal) no pueden ser extremos**, y un ejercicio sin ningún
-   peso en el periodo muestra «—».
+1. **The range on a single box to choose from and to at the same time**: "the choosing range is still split in two boxes instead of just one". The two
+   `input[type="date"]`s (the from/to) inside the `<details>` get replaced by a **single box** with its **own calendar** (a
+   `div#gym-summary-range` + a popover with a 42-day grid, Monday first): the **first click fixes the "from"** and the **second the "to"** (swapping the ends if the second is earlier than the first); with the full range, a click starts another range. The calendar navigates months (‹ ›), offers
+   **Clear** (it returns to the open bounds) and
+   **Done**, and closes with the **Escape** or when clicking outside; the trigger carries the
+   `aria-expanded`/`aria-controls`, the popover a
+   `role="dialog"` and the focus returns to the trigger when closing. On ≤767 px screens the popover becomes normal flow: with the absolute positioning the 540–680 px band overflowed the page's right edge (measured with a headless Chromium).
+2. **The per-exercise weight increase**: "add to each exercise's summary the weight increase there's been. The lowest registered on the period and the highest". The "By exercise" table adds
+   **Min weight**, **Max weight** and **Increase** (the max − the min) in the active presentation unit. The
+   `summarizeWorkouts()` aggregates the extremes in **canonical kg** (a single conversion when painting, with no rounding drift); the **sets with no registered weight (null or ≤ 0, e.g. bodyweight) cannot be extremes**, and an exercise with no weight at all on the period shows
+   "—".
 
-Revalidado en esta iteración: sandbox de lógica **46/46** (grid de 42
-celdas y bisiestos, navegación de mes entre años, máquina de estados
-del rango, límites abiertos, agregación con extremos de peso,
-exclusión de series sin peso, conversión única al pintar, entradas
-corruptas y 500 entrenos < 200 ms); **QA PASS** con medición real en
-Chromium headless de `scrollWidth <= innerWidth` en
-360/500/560/600/620/680/720/768/1280 px y contraste WCAG calculado de
-los elementos nuevos en los cuatro modos (la revalidación tras los
-fixes encontró y corrigió: weekday y bordes bajo AA en Oscuro, hover
-del día seleccionado que tapaba el extremo, y el desborde del popover
-citado arriba); escaneo de seguridad sin hallazgos HIGH.
+Revalidated on this iteration: a logic sandbox **46/46** (the 42-cell grid and the leap years, the month navigation across years, the range's state machine, the open bounds, the aggregation with weight extremes, the no-weight sets' exclusion, the single painting conversion, the corrupt entries and 500 workouts in < 200 ms); a **QA PASS** with a real headless-Chromium measurement of the
+`scrollWidth <= innerWidth` at the
+360/500/560/600/620/680/720/768/1280 px and a calculated WCAG contrast of the new elements on the four modes (the post-fixes revalidation found and fixed: the weekday and the borders below AA on
+Dark, the selected day's hover covering the extreme, and the cited
+popover's overflow); a security scan with no HIGH findings.
 
-### Iteración 4 (cuarto comentario de 2026-08-13)
+### The iteration 4 (a fourth comment from 2026-08-13)
 
-El usuario dejó un cuarto comentario con dos peticiones, incorporadas
-en la misma PR (que se actualiza, no se crea otra):
+The user left a fourth comment with two requests, incorporated on the same PR (which gets updated, no new one gets created):
 
-1. **El calendario del rango no debe cerrarse al elegir la primera
-   fecha**: "cuando seleccionas un rango de fechas, el calendario se
-   cierra solo al elegir la primera fecha y no te deja elegir la
-   segunda". Causa raíz encontrada con Chromium headless: el primer
-   click en un día **cerraba** el popover porque
-   `onSummaryRangeDayClick()` re-renderiza la rejilla y **detacha el
-   botón pulsado** antes de que el handler de click-outside de
-   `document` (fase burbuja) corriera; `e.target.closest("#gym-summary-range")`
-   fallaba sobre el nodo descolgado y cerraba el calendario con solo
-   «desde» elegido. Fix: un listener en **fase de captura** sobre
-   `#gym-summary-range` marca `e.__summaryRangeInside = true`, y el
-   handler de click-outside exige `!e.__summaryRangeInside` (además de
-   no nacer en `.gym-summary-chip`) para cerrar. El calendario
-   permanece abierto **hasta que las dos fechas están elegidas**; el
-   cierre al completar el rango lo sigue haciendo
-   `onSummaryRangeDayClick()`, y **Esc / «Listo» / click fuera real**
-   siguen cerrando igual (revalidado en el sandbox).
-2. **La tabla por ejercicio solo con la diferencia de peso**: "no
-   muestres el peso mínimo ni el máximo, sino la diferencia: el peso
-   más antiguo y el más nuevo. Es decir, aparezca en negativo o en
-   positivo según haya habido aumento o disminución". Las columnas
-   **Peso mín** y **Peso máx** de la iteración 3 se **eliminan**; la
-   columna pasa a llamarse **«Diferencia»** y muestra
-   `pesoNuevo − pesoAntiguo` con **signo explícito** (`+` si subió,
-   `−` si bajó, `0` sin signo, «—» sin ningún peso en el periodo).
-   `summarizeWorkouts()` agrega ahora **extremos cronológicos**, no
-   extremos de valor: como la lista llega **desc por `fechaISO`**
-   (suscripción de `db.js`, ADR-095), la **primera vez** que se ve un
-   ejercicio fija su **peso más nuevo** (última serie con peso del
-   entreno más reciente del periodo) y cada entreno posterior
-   sobrescribe el **peso más antiguo** hasta quedarse con la primera
-   serie con peso del entreno más remoto; dentro de un entreno, la
-   **primera serie con peso** es la antigua y la **última** la nueva.
-   Se mantienen los kg canónicos con conversión única al pintar y la
-   exclusión de series sin peso (null o ≤ 0).
+1. **The range calendar must not close when choosing the first date**: "when selecting a date range, the calendar closes by itself when choosing the first date and does not let you choose the second". A root cause found with a headless Chromium: the first click on a day **closed** the popover because the
+   `onSummaryRangeDayClick()` re-renders the grid and **detaches the pressed button** before the
+   document's click-outside handler (the bubble
+   phase) ran; the
+   `e.target.closest("#gym-summary-range")`
+   failed over the detached node and closed the calendar with just the
+   "from" chosen. A fix: a
+   listener on the **capture
+   phase** over the
+   `#gym-summary-range`
+   marks
+   the
+   `e.__summaryRangeInside = true`, and the click-outside handler requires
+   a
+   `!e.__summaryRangeInside`
+   (besides
+   not
+   being born on the
+   `.gym-summary-chip`) to close
+   . The calendar stays open **until both dates are chosen**; the closing when completing the range is still
+   done by the
+   `onSummaryRangeDayClick()`, and **the Escape / the "Done" / a real
+   outside click** keep closing the same (revalidated on the sandbox).
+2. **The per-exercise table only with the weight difference**: "don't
+   show
+   the min nor the max weight, but the
+   difference: the oldest weight and the newest. I.e., it appears
+   negative or positive depending on whether it increased or decreased". The
+   iteration 3's **Min weight** and
+   **Max weight** columns get **removed**; the column gets renamed to
+   **"Difference"** and shows the
+   `newWeight − oldWeight` with an **explicit sign** (a
+   `+` if it went up, a
+   `−` if it went down, a
+   `0` with no sign, a "—" with no weight at all on the period).
+   The
+   `summarizeWorkouts()` now aggregates **chronological extremes**, not value extremes: as the list arrives **desc by the
+   `fechaISO`** (the `db.js`'s subscription, the
+   ADR-095), the **first time** an exercise gets seen fixes its **newest weight** (the most recent period workout's last weighed set) and each later workout overwrites the
+   **oldest weight** until keeping
+   the most remote workout's first weighed set; inside a workout, the **first weighed set** is the old one and the **last** the new one. The canonical kg with the single painting conversion and the no-weight sets' exclusion (the
+   null or the ≤ 0) stay
+   .
 
-Revalidado en esta iteración: **QA PASS** con el sandbox de
-Chromium headless actualizado (el calendario sigue abierto tras el
-primer día, se cierra al completar el rango, y Esc/«Listo»/click
-fuera siguen cerrando; la tabla por ejercicio muestra solo
-«Diferencia» con signo — `+5`, `−2.5`, `0` y «—» — sobre datos con
-aumento, disminución, dato único y sin pesos); escaneo de seguridad
-sin hallazgos HIGH.
+Revalidated on this iteration: a **QA PASS** with the
+headless-Chromium sandbox updated (the calendar stays open after the first day, it closes when completing the range, and the
+Escape/the "Done"/the outside click keep closing; the per-exercise table shows just
+"Difference" with
+the sign — the
+`+5`, the
+`−2.5`, the
+`0` and the
+"—" — over data with an increase, a decrease, a
+single piece of data and no weights); a security scan with no HIGH findings.
 
-### Iteración 5 (quinto comentario de 2026-08-13)
+### The iteration 5 (a fifth comment from 2026-08-13)
 
-El usuario dejó un quinto comentario con una petición, incorporada en
-la misma PR:
+The user left a fifth comment with one request, incorporated on the same PR:
 
-1. **Color semántico en la diferencia de peso**: "la diferencia de
-   peso en la tabla de ejercicios de la pestaña Resumen, si es
-   negativa debe ser roja, si es cero blanco como está ahora y si es
-   positivo verde". La celda «Diferencia» de la tabla por ejercicio se
-   pinta con una **clase por signo** (`gym-summary-table__diff--up` /
-   `--down`); el cero (y «—») no llevan clase y heredan el color
-   normal de la celda. Los matices siguen el **patrón documentado de
-   `.shopping-line__pkgreset` (issue #225)**: en la familia oscura los
-   acentos base no llegan a AA 4.5:1 sobre `--ink` (`--stamp` #a63b2e
-   ≈ 2.85:1 y `--teal-reel` #2b6459 ≈ 2.66:1), así que se hardcodean
-   variantes claras con el contraste anotado en el propio CSS —
-   verde `#4f9c8e` (≈ 5.6:1 sobre `--ink`, ≈ 6.5:1 sobre #000) y rojo
-   `#d16a59` (≈ 5.1:1 sobre `--ink`, ≈ 5.9:1 sobre #000), ambos AA en
-   Oscuro y Negro puro —; la familia clara usa los acentos base
-   (`--teal-reel` ≈ 6.0:1 y `--stamp` ≈ 5.6:1 sobre `--paper-dim`),
-   ambos AA en Claro y Blanco puro. No se altera el signo `+`/`−` de
-   la iteración 4: el color es un refuerzo visual, no el único canal
-   de información (el texto lleva el signo explícito).
+1. **A semantic color on the weight difference**: "the Resumen tab's exercise table's weight difference, if negative it must be red, if zero white as it is now and if positive green". The per-exercise table's "Difference" cell paints with a **per-sign class** (the
+   `gym-summary-table__diff--up` / the
+   `--down`); the zero (and the "—") carry no class and inherit the cell's
+   normal color. The hues follow the
+   **`.shopping-line__pkgreset` documented pattern (issue #225)**: on the
+   dark family the base accents don't reach an AA 4.5:1 against the
+   `--ink` (the `--stamp`
+   being
+   #a63b2e ≈ 2.85:1 and the
+   `--teal-reel`
+   being
+   #2b6459 ≈ 2.66:1), so light variants get hardcoded with the
+   contrast annotated on the CSS itself — a
+   green
+   `#4f9c8e` (≈ 5.6:1 against the
+   `--ink`, ≈ 6.5:1 against the
+   #000) and a
+   red
+   `#d16a59` (≈ 5.1:1 against the
+   `--ink`, ≈ 5.9:1 against the
+   #000), both AA on
+   Dark and Pure
+   black —; the
+   light
+   family uses the base accents (the
+   `--teal-reel` ≈ 6.0:1 and the
+   `--stamp` ≈ 5.6:1 against the
+   `--paper-dim`), both AA on
+   Light
+   and Pure
+   white. The iteration 4's `+`/`−` sign is not altered: the color is a visual reinforcement, not the only
+   information channel (the text carries the explicit sign).
 
-Revalidado en esta iteración: **QA PASS** — verificación de contraste
-WCAG calculado de los dos matices en los cuatro modos de tema
-(listado arriba, todos AA 4.5:1), confirmación de que el cero y «—»
-heredan el color de celda sin clase, y revisión estática del patrón
-de selectores agrupados (una sola fuente de verdad por regla, regla 4
-de AGENTS.md); escaneo de seguridad sin hallazgos HIGH.
+Revalidated on this iteration: a **QA PASS** — a calculated WCAG contrast verification of the
+two hues on
+the
+four theme modes (listed above, all an AA 4.5:1), a
+confirmation that the zero and the "—" inherit the
+cell's color with no class, and a
+static review of the grouped-selectors pattern (a single source of truth per rule, the
+AGENTS.md's rule 4); a security scan with no HIGH findings.
 
 Related issue: #269 — https://github.com/gonzalitojh/Registro-personal/issues/269
 
-## Decisión
+## Decision
 
-### 1. «Resumen» como primera pestaña y default de la sección
+### 1. The «Resumen» as the section's first tab and default
 
-- Token de ruta **`resumen`**, panel **`#panel-gym-summary-tab`**
-  (primer panel de `#gym-view`, con su `h2` oculto, el selector de
-  periodo y el contenedor `#gym-summary-data` con `aria-live`).
-- Al ser la **primera pestaña** pasa a ser el **default** de la
-  sección: `GYM_DEFAULT_TAB = "resumen"`, coherente con la convención
-  del repo (**primera pestaña = default**): `#/gimnasio` canoniza sin
-  segmento y **`#/gimnasio/resumen` no es canónico** — el router lo
-  normaliza a `#/gimnasio` (`invalid: true`), mismo patrón que ya
-  aplicaba con la primera pestaña en Ocio y Recetas.
-- `lastGymTab` y `openGym()` arrancan en `"resumen"`; el dispatch de
-  renders por pestaña añade `resumen: renderSummary` (mismo patrón
-  que `entrenos`/`ejercicios`).
+- The
+  **`resumen`** route token, the
+  **`#panel-gym-summary-tab`**
+  panel (the `#gym-view`'s first panel, with its hidden `h2`, the period selector and the
+  `aria-live`-carrying
+  `#gym-summary-data` container).
+- Being the **first tab** it becomes the section's **default**:
+  the
+  `GYM_DEFAULT_TAB = "resumen"`, coherent with the repo's convention (**the first tab = the default**): the
+  `#/gimnasio` canonicalizes with no segment and **the
+  `#/gimnasio/resumen` is not canonical** — the router normalizes it to
+  the
+  `#/gimnasio` (the
+  `invalid: true`), the same pattern it already applied with the first tab on
+  Ocio and Recipes.
+- The
+  `lastGymTab` and the
+  `openGym()` start on the
+  `"resumen"`; the per-tab renders'
+  dispatch adds the
+  `resumen: renderSummary` (the
+  `entrenos`/the
+  `ejercicios`' same pattern).
 
-### 2. Registro en `SECTION_REGISTRY` y ocultación desde Ajustes
+### 2. The `SECTION_REGISTRY` registration and the hiding from Settings
 
-- `resumen` se registra como **primera clave** de
-  `SECTION_REGISTRY.gimnasio.tabs` y se añade
-  `visibleTabs.resumen: true` a `DEFAULT_SETTINGS`: la pestaña se
-  puede **ocultar desde Ajustes como las demás** (issues #97/#208,
-  ADR-067, ADR-095).
-- **`sanitizeVisibility()` cubre a usuarios con ajustes antiguos**:
-  las claves que no están en el registro se ignoran y las válidas se
-  rellenan con `true`, así que los ajustes guardados antes de la #269
-  (sin `resumen`) muestran la pestaña visible sin intervención del
-  usuario.
+- The
+  `resumen` registers as the **first key** of the
+  `SECTION_REGISTRY.gym.tabs` and the
+  `visibleTabs.resumen: true` gets added to the
+  `DEFAULT_SETTINGS`: the tab can get **hidden from Settings like the others** (the
+  issues #97/#208, the
+  ADR-067, the
+  ADR-095).
+- **The
+  `sanitizeVisibility()` covers the users with old settings**: the keys not in the registry get ignored and the valid ones get filled with the
+  `true`, so the settings saved before the
+  #269 (with no
+  `summary`) show the tab visible with no user intervention.
 
-### 3. Acento violeta de la paleta existente
+### 3. The existing palette's violet accent
 
-- La pestaña usa el acento **`--games`** (violeta, ya existente en la
-  paleta — es el color de Videojuegos — y que Gimnasio no usaba
-  hasta ahora), con **`--games-dark`** para el sello de la pestaña
-  activa en Negro puro (`[data-theme="black"]
-  .tab--gym-summary.is-active`), siguiendo el patrón de selectores
-  agrupados con una sola fuente de verdad por regla (regla 4 de
-  AGENTS.md).
+- The tab uses the
+  **`--games`** accent (a violet, already existing on the palette — it's the
+  Video games'
+  color — and which the Gym
+  hadn't used until now), with the
+  **`--games-dark`** for the active tab's stamp on Pure black (the
+  `[data-theme="black"] .tab--gym-summary.is-active`), following the grouped-selectors pattern with a single source of truth per rule (the
+  AGENTS.md's rule 4).
 
-### 4. Cálculo en cliente, sin queries nuevas a Firestore
+### 4. The client-side calculation, with no new Firestore queries
 
-El resumen se calcula **íntegramente en el cliente** con los datos ya
-suscritos (patrón del pre-relleno de ADR-097: sin coste de lectura ni
-latencia):
+The summary gets calculated **entirely on the client** with the already subscribed data (the ADR-097's pre-fill pattern: with no read cost nor latency):
 
-- **Fuentes**: `workouts` (ya ordenado desc por `fechaISO` de la
-  suscripción de `db.js`, ADR-095) y `exercises` (catálogo, para
-  resolver el nombre y el grupo muscular al pintar).
-- **Filtro por rango**: comparación **lexicográfica** de `fechaISO`
-  (`YYYY-MM-DD`); `from`/`to` nulos = límite abierto.
-- **Agregación por ejercicio**: la clave es el **`ejercicioId` si
-  sigue en el catálogo**; si no — ejercicio borrado del catálogo o
-  datos legacy sin id — se agrupa por el **nombre snapshot
-  normalizado** (trim + minúsculas). Los ejercicios borrados del
-  catálogo conservan así su nombre en el resumen.
-- **Pesos SIEMPRE en kg canónicos** (`pesoKg`), convertidos con
-  `kgToDisplay` **solo al pintar** (1 decimal, mismo helper del resto
-  de la sección): la diferencia por ejercicio (peso más nuevo − peso
-  más antiguo) se calcula en kg y se convierte **una sola vez** al
-  pintar, así que alternar kg/lbs no introduce deriva de redondeo ni
-  cambia lo agregado.
-- **Las series sin peso registrado (null o ≤ 0) no participan en los
-  extremos cronológicos** (no pueden ser ni el más antiguo ni el más
-  nuevo); una entrada sin id ni nombre no agrupa ni cuenta (guard del
-  fix de QA).
-- **Salida**: ya no hay sumatorios de series, repeticiones ni
-  volumen. Las tarjetas son **nº de entrenos** y **nº de ejercicios
-  distintos** del periodo; el desglose **«Por grupos musculares»** da
-  ejercicios distintos y entrenos por grupo; la tabla **«Por
-  ejercicio»** muestra **veces** (entrenos distintos en que aparece),
-  ordenada por frecuencia desc (tie-break alfabético) y, desde la
-  **iteración 4**, la **diferencia de peso** del periodo por ejercicio
-  — **peso más nuevo − peso más antiguo**, con signo (`+` aumento,
-  `−` disminución) — en la unidad de presentación activa («—» si no
-  hay ningún peso en el periodo). Los grupos se resuelven del mismo
-  modo que antes (entrada → catálogo por id → por nombre
-  normalizado); sin grupo muscular, la entrada solo cuenta en los
-  totales.
+- **The sources**: the
+  `workouts` (already sorted desc by the
+  `db.js`'s subscription `fechaISO`, the
+  ADR-095) and the
+  `exercises` (the catalog, to resolve the name and the muscle group when painting).
+- **The range filter**: the
+  `fechaISO`'s (**YYYY-MM-DD**)
+  lexicographic comparison; the
+  null `from`/`to` = an open bound.
+- **The per-exercise aggregation**: the key is the
+  **`ejercicioId` if it still is in the catalog**; if not — an exercise deleted from the catalog or the legacy no-id data — it groups by the
+  **normalized snapshot name** (the trim + the lowercase). The catalog's deleted exercises thus keep their name in the summary.
+- **The weights ALWAYS in canonical kg** (the
+  `pesoKg`), converted with the
+  `kgToDisplay` **only when painting** (1 decimal, the section's rest's same helper): the per-exercise difference (the newest weight − the oldest) gets calculated in kg and converted **once** when painting, so toggling the kg/lbs introduces no rounding drift nor changes anything aggregated.
+- **The sets with no registered weight (null or ≤ 0) don't participate in the chronological extremes** (they can't be neither the oldest nor the newest); an entry with no id nor name groups or counts nothing (the QA fix's guard).
+- **The output**: there are no set, rep nor volume sums anymore. The cards are the period's **workouts count** and the
+  **different exercises count**; the **"By muscle groups"** breakdown gives the per-group different exercises and workouts; the **"By exercise"** table shows the
+  **times** (the different workouts it appears on), sorted by a desc frequency (an alphabetical tie-break) and, since the
+  **iteration 4**, the per-exercise **period's weight difference** — the **newest weight − the oldest**, with a sign (the
+  `+` meaning an increase, the
+  `−` a decrease) — in the active presentation unit (a "—" if there is no weight at all on the period). The groups resolve the same way as before (the entry → the catalog by id → by the normalized name); with no muscle group, the entry only counts on the totals.
 
-### 5. Selector de periodo: chips en el DOM y rango con calendario único
+### 5. The period selector: the DOM chips and the unique-calendar range
 
-- Tres chips (**«Semana en curso»**, **«Mes en curso»**, **«Rango»**)
-  con `aria-pressed`; el **chip activo es la fuente de verdad del
-  periodo** en cada render (`summaryPeriodRange()`: semana/mes se
-  recalculan con el patrón UTC de `ctx.todayISO()` en cada lectura).
-- El **rango libre** se elige en un **único recuadro** (iteración 3):
-  `div#gym-summary-range`, oculto salvo con la opción «Rango»
-  (`hidden` controlado por `syncSummaryPeriodUI()`, que al activarlo
-  abre el calendario y al salir a semana/mes lo cierra). El trigger
-  resume el rango ya elegido («desde – hasta», o «sin límite» en los
-  extremos vacíos) y abre el popover del **calendario único**: un
-  click fija «desde», el segundo «hasta» (intercambio automático si
-  es anterior), los días intermedios se marcan, se navega por meses
-  y «Borrar»/«Listo» gestionan el estado. El rango
-  (`summaryRange {from, to}`, null = límite abierto) es **estado de
-  módulo** (el calendario es su interfaz de edición; no hay inputs
-  nativos que leer) y `resetGymData()` lo limpia al cerrar sesión.
-- El rango es **inclusivo**, **intercambia `from > to`** (defensivo;
-  el calendario ya evita el orden inverso al elegir) y trata los
-  **extremos vacíos como límite abierto**.
-- El click en un chip sincroniza la UI (`is-active`/`aria-pressed`,
-  visibilidad y apertura del recuadro) y re-renderiza solo si el
-  periodo cambió; los días del calendario re-renderizan el resumen en
-  directo (también al fijar solo el «desde», con el «hasta» abierto).
+- Three chips (**«Semana en curso»**, **«Mes en curso»**, **«Rango»**) with an
+  `aria-pressed`; the **active chip is the period's source of truth** on each render (the
+  `summaryPeriodRange()`: the week/month
+  get recalculated with the
+  `ctx.todayISO()`'s UTC pattern on each read).
+- The **free range** gets chosen on a **single box** (the
+  iteration 3): the
+  `div#gym-summary-range`, hidden unless the "Range" option (the `hidden` controlled by the
+  `syncSummaryPeriodUI()`, which when activating it
+  opens the calendar and when exiting to week/month closes it). The trigger summarizes the already chosen range ("from – to", or "no bound" on the empty ends) and opens the **unique calendar's** popover: a click fixes the "from", the second the "to" (an automatic swap if it's earlier), the in-between days get marked, it navigates months and the "Clear"/"Done" manage the state. The range (the
+  `summaryRange {from, to}`, the null = an open bound) is a **module state** (the calendar is its editing interface; there are no native inputs to read) and the
+  `resetGymData()` clears it on
+  logout.
+- The range is **inclusive**, **swaps the `from > to`** (a defensive move; the calendar already avoids the inverse order when choosing) and treats the **empty ends as an open bound**.
+- Clicking a chip syncs the UI (the
+  `is-active`/the
+  `aria-pressed`, the visibility and the box's opening) and re-renders only if the period changed; the calendar's days re-render the summary live (also when fixing just the "from", with the "to" open).
 
-### 6. Re-render en tiempo real y seguridad de salida
+### 6. The realtime re-render and the output security
 
-- **`subscribeGymData` repinta el resumen** al llegar snapshots de
-  `workouts` Y de `exercises` (el catálogo afecta a los nombres y
-  grupos musculares de la tabla), siempre que la pestaña activa sea
-  `resumen`.
-- **`renderAllWithUnit` repinta el resumen al cambiar kg/lbs**: tras
-  la iteración del segundo comentario el resumen dejó de mostrar
-  volúmenes, pero desde la **iteración 4** vuelve a mostrar pesos
-  (diferencia por ejercicio); el repintado refresca las columnas
-  a la unidad nueva (la diferencia se calcula en kg, la conversión
-  ocurre al pintar).
-- **Todos los valores pintados pasan por `escapeHtml`** (nombres,
-  fechas, unidades y cifras), patrón del resto de la sección; el
-  contenedor del resumen usa `aria-live="polite"`.
+- **The
+  `subscribeGymData` repaints the summary** when the
+  `workouts` and the
+  `exercises` snapshots arrive (the catalog affects the table's names and muscle groups), whenever the active tab is the
+  `summary`.
+- **The
+  `renderAllWithUnit` repaints the summary when changing the kg/lbs**: after the second comment's iteration the summary stopped showing volumes, but since the
+  **iteration 4** it shows weights again (the per-exercise difference); the repaint refreshes the columns to the new unit (the difference gets calculated in kg, the conversion happens when painting).
+- **All the painted values go through the
+  `escapeHtml`** (the names, the dates, the units and the figures), the section's rest's pattern; the summary's container uses a
+  `aria-live="polite"`.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Consulta nueva a Firestore por rango de fechas**: descartado —
-  `workouts` ya está suscrito y ordenado desc por `fechaISO`; filtrar
-  y agregar en memoria es instantáneo y no añade lecturas ni estado
-  asíncrono (mismo criterio que el pre-relleno de ADR-097).
-- **Persistir el periodo elegido** (estado de módulo o
-  localStorage): descartado — el resumen es una vista de consulta; el
-  chip activo vive en el DOM y el rango libre de la iteración 3 (estado
-  de módulo volátil, sin persistencia) se descarta al recargar o al
-  cerrar sesión, sin estado que sincronizar entre dispositivos.
-- **Añadir «Resumen» como tercera pestaña manteniendo Entrenos como
-  default**: descartado — la issue pide el Resumen como PRIMERA
-  pestaña; la convención del repo (primera pestaña = default) lo
-  convierte automáticamente en la vista de entrada, que además es la
-  más informativa de la sección.
-- **Conservar los sumatorios de series, repeticiones y volumen en el
-  resumen**: descartado — el segundo comentario de la issue los pide
-  explícitamente fuera («no me sirven de nada») a favor del nº de
-  entrenos, ejercicios totales y el desglose por grupos musculares;
-  eliminarlos simplifica además la agregación (una pasada sin
-  acumulados por serie).
-- **Conservar los dos `input[type="date"]` nativos (desde/hasta) en
-  el recuadro**: descartado — el tercer comentario lo pide
-  explícitamente («sigue separado en dos recuadros en lugar de solo
-  uno para elegir fecha de inicio y fin a la vez»); el calendario
-  único muestra además el rango de un vistazo (extremos e intermedios
-  marcados) y evita abrir el picker nativo dos veces.
-- **Picker de rango nativo o librería externa**: descartado — el
-  navegador no ofrece un control de rango nativo y la sección no usa
-  librerías; el calendario propio (grid 42 celdas, lunes primero,
-  sin dependencias) mantiene el proyecto autónomo y offline-first con
-  el patrón visual de la sección.
-- **Tratar el rango `from > to` como inválido (error)**: descartado —
-  pedir al usuario que corrija el orden añade fricción sin beneficio;
-  intercambiar los límites devuelve exactamente el mismo rango
-  (inclusivo), como hace cualquier hoja de cálculo.
+- **A new Firestore query per date range**: rejected — the
+  `workouts` is already subscribed and sorted desc by the
+  `fechaISO`; filtering and aggregating in memory is instant and adds no reads nor async state (the ADR-097's pre-fill's same criterion).
+- **Persisting the chosen period** (a module state or the
+  localStorage): rejected — the summary is a query view; the active chip lives on the DOM and the iteration 3's free range (a volatile module state, with no persistence) gets discarded on reload or logout, with no state to sync between devices.
+- **Adding the "Summary" as a third tab keeping the Workouts as the default**: rejected — the issue asks for the Summary as the FIRST tab; the repo's convention (the first tab = the default) automatically makes it the entry view, which is also the section's most informative one.
+- **Keeping the sets, reps and volume sums on the summary**: rejected — the issue's second comment explicitly asks them out ("they're of no use to me") in favor of the workouts count, the total exercises and the muscle-groups breakdown; removing them also simplifies the aggregation (a single pass with no per-set accumulations).
+- **Keeping the two native `input[type="date"]`s (the from/to) on the box**: rejected — the third comment explicitly asks about it ("it's still split in two boxes instead of just one to choose the start and end date at once"); the unique calendar also shows the range at a glance (the ends and the in-betweens marked) and avoids opening the native picker twice.
+- **A native or external-library range picker**: rejected — the browser offers no native range control and the section uses no libraries; the own calendar (a 42-cell grid, Monday first, with no dependencies) keeps the project autonomous and offline-first with the section's visual pattern.
+- **Treating the `from > to` range as invalid (an error)**: rejected — asking the user to correct the order adds friction with no benefit; swapping the bounds returns exactly the same range (inclusive), like any spreadsheet does.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **La sección gana una vista de síntesis**: «¿qué he entrenado esta
-  semana/mes/rango?» se responde sin abrir entreno por entreno, con
-  la misma calidad de datos (pesos canónicos en kg).
-- **Default coherente con la convención del repo**: `#/gimnasio`
-  aterriza en el Resumen y las rutas compartidas
-  (`#/gimnasio/entrenos`, `#/gimnasio/ejercicios`) siguen
-  funcionando; `#/gimnasio/resumen` se normaliza, sin rutas
-  duplicadas ni ambigüedad.
-- **Cero coste de datos y offline-first**: sin queries nuevas; el
-  resumen vive de las suscripciones existentes y se actualiza en
-  tiempo real al añadir, editar o borrar entrenos o ejercicios.
-- **Resumen centrado en lo que pide el usuario** (iteración del
-  segundo comentario): las tarjetas de entrenos y ejercicios totales
-  y el desglose por grupos musculares responden «¿cuánto y qué he
-  entrenado?» sin ruido de sumatorios que al usuario no le aportan;
-  el selector de periodo queda más limpio al ocultar el recuadro del
-  rango salvo cuando se usa.
-- **El rango se elige en un único recuadro** (iteración 3): el
-  calendario propio elimina la fricción de dos pickers nativos
-  separados y muestra el rango de un vistazo (extremos e intermedios
-  marcados); desde la **iteración 4** además no se cierra al elegir
-  solo la primera fecha (se mantiene abierto hasta completar el rango,
-  con Esc/«Listo»/click fuera real para cerrar), y la **diferencia de
-  peso por ejercicio** (peso más nuevo − más antiguo, con signo `+`/
-  `−` en la unidad activa) responde «¿cuánto he subido o bajado de
-  peso en el periodo?» directamente desde el resumen.
+- **The section gains a synthesis view**: "what did I train this week/month/range?" gets answered without opening workout after workout, with the same data quality (the canonical kg weights).
+- **A default coherent with the repo's convention**: the
+  `#/gimnasio` lands on the Summary and the shared routes (the
+  `#/gimnasio/entrenos`, the
+  `#/gimnasio/ejercicios`) keep working; the
+  `#/gimnasio/resumen` gets normalized, with no duplicate routes nor ambiguity.
+- **Zero data cost and offline-first**: with no new queries; the summary lives from the existing subscriptions and updates realtime when adding, editing or deleting workouts or exercises.
+- **A summary focused on what the user asks** (the second comment's iteration): the workouts and total exercises' cards and the muscle-groups breakdown answer "how much and what did I train?" with no noise from the sums that bring the user nothing; the period selector gets cleaner when hiding the range box except when in use.
+- **The range gets chosen on a single box** (the iteration 3): the own calendar removes the two separate native pickers' friction and shows the range at a glance (the ends and the in-betweens marked); since the **iteration 4** it also doesn't close when choosing just the first date (it stays open until completing the range, with the
+  Escape/the "Done"/a real outside click to close), and the **per-exercise weight difference** (the newest weight − the oldest, with a
+  `+`/`−` sign in the active unit) answers "how much weight did I gain or lose on the period?" directly from the summary.
 
-### Neutras
+### Neutral
 
-- **Los ejercicios borrados del catálogo agrupan por nombre
-  snapshot**: si un ejercicio se renombró tras guardarse entrenos, el
-  resumen puede mostrar dos filas (canónica + legacy) para lo que en
-  realidad es el mismo ejercicio; comportamiento degradado, no
-  erróneo — el catálogo es la referencia (ADR-095).
-- **El periodo no se recuerda entre visitas**: cada apertura de la
-  sección empieza en «Semana en curso»; el usuario vuelve a elegir si
-  quiere otro periodo (el rango libre tampoco persiste: es estado de
-  módulo volátil desde la iteración 3).
-- **El rango libre se pierde al salir de la sección**: al ser estado
-  de módulo (iteración 3), navegar a otra sección y volver reinicia
-  el recuadro en «sin límite – sin límite»; coherente con la política
-  de no persistir el periodo.
-- **Revalidado en iteración** (tercer comentario de 2026-08-13): QA
-  PASS — sandbox 46/46 (grid y navegación del calendario, máquina de
-  estados del rango, agregación con extremos de peso y conversión
-  única al pintar, exclusión de series sin peso, entradas corruptas,
-  rendimiento), `scrollWidth <= innerWidth` medido con Chromium
-  headless en 360–1280 px (incluida la banda 540–680 px que
-  desbordaba con el popover absoluto y se corrigió con flujo estático
-  ≤767 px) y contraste WCAG en los cuatro modos (fixes de Oscuro:
-  weekday y bordes de `--today`/trigger abierto pasan a `--games` o
-  `--ink`; hover del día seleccionado conserva el extremo); escaneo
-  de seguridad sin hallazgos.
-- **Revalidado en iteración** (cuarto comentario de 2026-08-13): QA
-  PASS — sandbox de Chromium headless (el calendario permanece abierto
-  tras el primer día y se cierra al completar el rango; Esc/«Listo»/
-  click fuera real siguen cerrando; tabla por ejercicio solo con
-  Diferencia con signo — `+5`/`−2.5`/`0`/«—» —, calculada desde pesos
-  cronológicos desc), scroll sin desbordes en los anchos de la
-  iteración previa y contraste de los elementos nuevos en los cuatro
-  modos; escaneo de seguridad sin hallazgos.
-- **Manual de usuario actualizado** (§9.1 «Tu resumen», regla 3 de
-  AGENTS.md): selector de periodo con el recuadro del rango oculto
-  salvo en «Rango» (calendario único: primer click = desde, segundo =
-  hasta, permanece abierto hasta elegir las dos fechas, navegación de
-  mes, Borrar/Listo, Esc/click fuera), tarjetas de entrenos/
-  ejercicios, desgloses por grupos musculares y por ejercicio con la
-  diferencia de peso con signo, y aviso de periodo vacío documentados
-  en lenguaje no técnico.
+- **The catalog's deleted exercises group by the snapshot name**: if an exercise got renamed after workouts got stored, the summary may show two rows (the canonical + the legacy) for what's really the same exercise; a degraded behavior, not an erroneous one — the catalog is the reference (the ADR-095).
+- **The period is not remembered between visits**: each section's opening starts on "Current week"; the user chooses again if they want another period (the free range doesn't persist either: it's a volatile module state since the iteration 3).
+- **The free range gets lost when leaving the section**: being a module state (the iteration 3), navigating to another section and coming back resets the box to "no bound – no bound"; coherent with the period's non-persistence policy.
+- **Revalidated on iteration** (the third comment from 2026-08-13): a QA PASS — a 46/46 sandbox (the calendar's grid and navigation, the range's state machine, the aggregation with weight extremes and the single painting conversion, the no-weight sets' exclusion, the corrupt entries, the performance), the `scrollWidth <= innerWidth` measured with a headless Chromium at the 360–1280 px (including the 540–680 px band that overflowed with the absolute popover and got fixed with a static flow at ≤767 px) and the WCAG contrast on the four modes (the Dark fixes: the weekday and the --today/the-open-trigger borders go to the
+  `--games` or the
+  `--ink`; the selected day's hover keeps the extreme); a security scan with no findings.
+- **Revalidated on iteration** (the fourth comment from 2026-08-13): a QA PASS — a headless-Chromium sandbox (the calendar stays open after the first day and closes when completing the range; the Escape/the "Done"/a real outside click keep closing; the per-exercise table just with the signed Difference — the `+5`/the `−2.5`/the `0`/the "—" — calculated from the chronological desc weights), a scroll with no overflows on the previous iteration's widths and the new elements' contrast on the four modes; a security scan with no findings.
+- **The user manual updated** (the §9.1 "Your summary", the
+  AGENTS.md's rule 3): the period selector with the range box hidden except on "Range" (a unique calendar: the first click = the from, the second = the to, it stays open until choosing both dates, the month navigation, the Clear/Done, the Escape/the outside click), the workouts/exercises' cards, the muscle-groups and per-exercise breakdowns with the signed weight difference, and the empty-period notice documented in non-technical language.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **La agregación recorre todos los entrenos en memoria en cada
-  render del resumen**: con los volúmenes reales de uso es
-  instantánea (las mismas cargas que el resto de vistas de la
-  sección; medido: 500 entrenos × 6 ejercicios en < 200 ms); si el
-  histórico creciera mucho cabría cachear por periodo, pero no hace
-  falta en v1.
-- **El calendario del rango es un componente propio sin librería**:
-  asume las convenciones es-ES (semana empezando en lunes, meses en
-  español, formato DD/MM/YYYY), igual que el resto del resumen; un
-  cambio de idioma futuro tendría que tocar `summaryWeekdayLabelsFn`
-  y `summaryRangeMonthLabel`.
-- **Ninguna otra conocida.** Validado en las iteraciones del tercer y
-  cuarto comentario: QA PASS (sandbox 46/46 de lógica; sandbox de
-  Chromium headless del calendario abierto hasta las dos fechas y de
-  la tabla con diferencia con signo; medición real de scroll en
-  Chromium headless y contraste de los cuatro modos) y escaneo de
-  seguridad sin hallazgos HIGH; todos los valores pintados pasan por
-  `escapeHtml`, continuando el patrón de validación y seguridad del
-  resto de la sección (ADR-095, ADR-097).
+- **The aggregation walks all the workouts in memory on each summary render**: with the real usage volumes it is instant (the section's other views' same loads; measured: 500 workouts × 6 exercises in < 200 ms); if the history grew a lot caching per period could make sense, but it's not needed on v1.
+- **The range calendar is an own component with no library**: it assumes the es-ES conventions (a week starting on Monday, the months in Spanish, the DD/MM/YYYY format), like the summary's rest; a future language change would have to touch the
+  `summaryWeekdayLabelsFn` and the
+  `summaryRangeMonthLabel`.
+- **No other known ones.** Validated on the third and the fourth comment's iterations: a QA PASS (a 46/46 logic sandbox; a headless-Chromium sandbox of the calendar open until both dates and of the signed-difference table; a real Chromium headless scroll measurement and the four modes' contrast) and a security scan with no HIGH findings; all the painted values go through the
+  `escapeHtml`, continuing the section's rest's validation and security pattern (the
+  ADR-095, the
+  ADR-097).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `index.html` | **Modificado**: panel `#panel-gym-summary-tab` como primer panel de `#gym-view` (pestaña `tab--gym-summary` como primera, selector de periodo con chips y recuadro del rango, tarjetas de totales y desgloses); **iteración 2**: las dos fechas dentro del `<details id="gym-summary-range">` (única caja, `hidden` salvo con «Rango»); **iteración 3**: el `<details>` se sustituye por el recuadro único con calendario (`#gym-summary-range-trigger` con `aria-expanded`/`aria-controls` + popover `role="dialog"` con navegación de mes, rejilla `#gym-summary-range-days` y footer Borrar/Listo) |
-| `js/gym.js` | **Modificado**: `renderSummary()` / `summarizeWorkouts()` / `summaryPeriodRange()` / `summaryExerciseKey()` / `summaryGroupFor()` (agregación en cliente, filtro lexicográfico por `fechaISO`, clave por `ejercicioId` o nombre snapshot, tabla ordenada por frecuencia desc), selector de periodo con el chip en el DOM, dispatch de renders por pestaña con `resumen`, re-render desde `subscribeGymData` y `renderAllWithUnit`, `escapeHtml` en todos los valores pintados; **iteración 1**: guard de series sin ejercicio (entrada sin id ni nombre excluida); **iteración 2**: `summarizeWorkouts()` sin sumatorios (totales entrenos/ejercicios distintos + `perGroup` por grupos musculares), tarjetas y desgloses nuevos, `syncSummaryPeriodUI()` oculta/muestra el recuadro del rango; **iteración 3**: estado `summaryRange`/`summaryRangeMonth` en el módulo, calendario propio (`summaryRangeDayGrid` 42 celdas lunes primero, `summaryWeekdayLabelsFn`, `summaryRangeMonthLabel`, `shiftSummaryRangeMonth`, `onSummaryRangeDayClick`, `renderSummaryRangeCalendar`, `open/closeSummaryRangePopover` con retorno de foco), `summarizeWorkouts()` agrega `pesoMin`/`pesoMax` (kg canónicos, excluye series null/≤0), tabla con columnas Peso mín/Peso máx/Aumento (conversión única al pintar), `resetGymData()` limpia el estado del rango; **iteración 4**: listener en captura que marca `__summaryRangeInside` (el click fuera no cierra el calendario tras el primer día — el re-render detachaba el botón pulsado y `closest()` fallaba —, solo Esc/«Listo»/click fuera real o las dos fechas), `summarizeWorkouts()` agrega `pesoAntiguo`/`pesoNuevo` cronológicos (lista desc: primer entreno fija el nuevo, los posteriores el antiguo; dentro del entreno primera/última serie con peso), tabla solo con columna «Diferencia» con signo (`+`/`−`) y conversión única al pintar; **iteración 5**: `diffClass()` asigna `gym-summary-table__diff--up`/`--down` a la celda de la diferencia según el signo (cero y «—» sin clase) |
-| `js/router.js` | **Modificado**: `GYM_TAB_TO_PANEL` con `resumen` como primera clave, `GYM_DEFAULT_TAB = "resumen"`, canonización de `#/gimnasio` (normaliza `#/gimnasio/resumen` con `invalid: true`), `lastGymTab` arranca en `"resumen"` |
-| `js/settings.js` | **Modificado**: `visibleTabs.resumen: true` en `DEFAULT_SETTINGS` y `resumen` como primera clave de `SECTION_REGISTRY.gimnasio.tabs` (ocultable desde Ajustes; `sanitizeVisibility` cubre a usuarios con ajustes antiguos) |
-| `css/styles.css` | **Modificado**: estilos del resumen (`.gym-summary-selector`, chips `.gym-summary-chip`, `.gym-summary-grid`/`.gym-summary-card`, `.gym-summary-table` con `overflow-x: auto`, `.gym-summary-section-title`), `.tab--gym-summary` con acento `--games` y overrides agrupados de las cuatro familias; **iteración 1**: override de los inputs de fecha en Negro puro; **iteración 2**: estilos del recuadro único `.gym-summary-range` (summary sin marcador, campos en fila) y overrides de Negro puro del recuadro y sus textos; **iteración 3**: estilos del trigger y el calendario (`.gym-summary-range__trigger/__popover/__cal-*/__day` con estados `--today`/`--selected`/`--in-range`), flujo estático del popover en ≤767 px, overrides de Negro puro agrupados (superficies invertidas, selección con `--games-dark`, hover que conserva el extremo) y fixes de contraste AA en Oscuro (weekday con `--ink`, bordes con `--games`); **iteración 5**: clases de color semántico de la diferencia (`.gym-summary-table__diff--up`/`--down` con hex claros comentados para la familia oscura y overrides agrupados con `--teal-reel`/`--stamp` para la clara, patrón de `.shopping-line__pkgreset`) |
-| `tasks/task-issue-269.json` | **Nuevo**: task file de la issue #269 |
-| `docs/manual-de-usuario.md` | **Modificado**: §3 y §9 con la tercera pestaña de Gimnasio; nueva subsección **§9.1 «Tu resumen»** (renumeradas 9.2, 9.3 y 9.4); §17 Ajustes con las tres pestañas; **iteración 2**: §9.1 con el recuadro del rango (oculto salvo «Rango»), tarjetas de entrenos/ejercicios y desgloses por grupos musculares y por ejercicio; **iteración 3**: §9.1 con el calendario único (primer click = desde, segundo = hasta, flechas de mes, Borrar/Listo, Esc/click fuera) y las columnas Peso mín/Peso máx/Aumento con «—» sin peso; **iteración 4**: §9.1 con el calendario que permanece abierto hasta elegir las dos fechas, y la tabla por ejercicio solo con la diferencia de peso con signo (+/−) entre el más antiguo y el más nuevo |
-| `docs/adr-098-pestana-resumen-gimnasio.md` | **Nuevo**: este documento (iteraciones 2, 3 y 4 documentadas) |
+| `index.html` | **Modified**: the
+  `#panel-gym-summary-tab` panel as the
+  `#gym-view`'s first panel (the
+  `tab--gym-summary` tab as the first, the period selector with the chips and the range box, the totals' cards and the breakdowns); **the iteration 2**: the two dates inside the
+  `<details id="gym-summary-range">` (a single box, the `hidden` except with "Range"); **the iteration 3**: the
+  `<details>` gets replaced by the unique-calendar box (the
+  `#gym-summary-range-trigger` with the
+  `aria-expanded`/the
+  `aria-controls` + a
+  `role="dialog"` popover with the month navigation, the
+  `#gym-summary-range-days` grid and the Clear/Done footer) |
+| `js/gym.js` | **Modified**: the
+  `renderSummary()` / the
+  `summarizeWorkouts()` / the
+  `summaryPeriodRange()` / the
+  `summaryExerciseKey()` / the
+  `summaryGroupFor()` (a client-side aggregation, a lexicographic `fechaISO` filter, a key by the
+  `ejercicioId` or the snapshot name, a table sorted by a desc frequency), the period selector with the DOM chip, the per-tab renders' dispatch with the
+  `resumen`, the re-render from the
+  `subscribeGymData` and the
+  `renderAllWithUnit`, the
+  `escapeHtml` on all the painted values; **the iteration 1**: the no-exercise sets' guard (an entry with no id nor name being excluded); **the iteration 2**: the
+  `summarizeWorkouts()` with no sums (the totals of the workouts/the different exercises + the
+  `perGroup` by muscle groups), new cards and breakdowns, the
+  `syncSummaryPeriodUI()` hiding/showing the range box; **the iteration 3**: the
+  `summaryRange`/the
+  `summaryRangeMonth` state on the module, the own calendar (the
+  42-cell Monday-first `summaryRangeDayGrid`, the
+  `summaryWeekdayLabelsFn`, the
+  `summaryRangeMonthLabel`, the
+  `shiftSummaryRangeMonth`, the
+  `onSummaryRangeDayClick`, the
+  `renderSummaryRangeCalendar`, the
+  `open/closeSummaryRangePopover` with a focus return), the
+  `summarizeWorkouts()` aggregating the `pesoMin`/the `pesoMax` (the canonical kg, it excludes null/≤0 sets), a table with the Min weight/the Max weight/the Increase columns (a single painting conversion), the
+  `resetGymData()` clearing the range's state; **the iteration 4**: a capture-phase listener marking the
+  `__summaryRangeInside` (the outside click does not close the calendar after the first day — the re-render detached the pressed button and the
+  `closest()` failed —, only the Escape/the "Done"/a real outside click or both dates), the
+  `summarizeWorkouts()` aggregating the chronological `oldWeight`/the `newWeight` (a desc list: the first workout fixes the new, the later ones the old; inside the workout the first/the last weighed set), a table just with the signed (`+`/`−`) "Difference" column and a single painting conversion; **the iteration 5**: the
+  `diffClass()` assigns the
+  `gym-summary-table__diff--up`/the
+  `--down` to the difference's cell per its sign (the zero and the "—" classless) |
+| `js/router.js` | **Modified**: the
+  `GYM_TAB_TO_PANEL` with the
+  `resumen` as the first key, the
+  `GYM_DEFAULT_TAB = "resumen"`, the `#/gimnasio`'s canonicalization (it normalizes the
+  `#/gimnasio/resumen` with the
+  `invalid: true`), the
+  `lastGymTab` starting on the
+  `"resumen"` |
+| `js/settings.js` | **Modified**: the
+  `visibleTabs.resumen: true` on the
+  `DEFAULT_SETTINGS` and the
+  `resumen` as the first key of the
+  `SECTION_REGISTRY.gym.tabs` (hideable from Settings; the
+  `sanitizeVisibility` covers the users with old settings) |
+| `css/styles.css` | **Modified**: the summary's styles (the
+  `.gym-summary-selector`, the
+  `.gym-summary-chip` chips, the
+  `.gym-summary-grid`/the
+  `.gym-summary-card`, the
+  `overflow-x: auto`-carrying
+  `.gym-summary-table`, the
+  `.gym-summary-section-title`), the
+  `--games`-accented
+  `.tab--gym-summary` and the four families' grouped overrides; **the iteration 1**: the date inputs' override on Pure black; **the iteration 2**: the unique
+  `.gym-summary-range`
+  box's styles (a marker-less summary, the fields on a row) and the box's and its texts' Pure-black overrides; **the iteration 3**: the
+  trigger's and the calendar's styles (the
+  `.gym-summary-range__trigger/__popover/__cal-*/__day` with the
+  `--today`/the
+  `--selected`/the
+  `--in-range` states), the popover's static flow at ≤767 px, the grouped Pure-black overrides (the inverted surfaces, the
+  `--games-dark` selection, the extreme-keeping hover) and the AA contrast fixes on Dark (the weekday with the
+  `--ink`, the borders with the
+  `--games`); **the iteration 5**: the difference's semantic color classes (the
+  `.gym-summary-table__diff--up`/the
+  `--down` with commented light hexes for the dark family and the
+  `--teal-reel`/the
+  `--stamp`-based grouped overrides for the light one, the
+  `.shopping-line__pkgreset`'s pattern) |
+| `tasks/task-issue-269.json` | **New**: the issue #269's task file |
+| `docs/manual-de-usuario.md` | **Modified**: the §3 and §9 with the Gym's third tab; a new subsection **§9.1 "Your summary"** (the 9.2, the 9.3 and the 9.4 renumbered); the §17 Settings with the three tabs; **the iteration 2**: the §9.1 with the range box (hidden except on "Range"), the workouts/exercises' cards and the muscle-groups and per-exercise breakdowns; **the iteration 3**: the §9.1 with the unique calendar (the first click = the from, the second = the to, the month arrows, the Clear/Done, the Escape/the outside click) and the Min weight/Max weight/Increase columns with the "—" when weightless; **the iteration 4**: the §9.1 with the calendar staying open until choosing both dates, and the per-exercise table just with the signed (+/−) weight difference between the oldest and the newest |
+| `docs/adr-098-pestana-resumen-gimnasio.md` | **New**: this document (the iterations 2, 3 and 4 documented) |
 
 Related issue: #269 — https://github.com/gonzalitojh/Registro-personal/issues/269

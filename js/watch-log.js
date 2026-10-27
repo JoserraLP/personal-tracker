@@ -1,7 +1,7 @@
 // =============================================================
-// Historial de visionados de una película: un simple array de
-// fechas (una por cada vez que la has visto), para poder
-// registrar revisionados sin perder los anteriores.
+// Movie watch history: a simple array of dates (one for each
+// time you have watched it), so you can log rewatches without
+// losing the previous ones.
 // =============================================================
 
 export function addWatch(watchLog, date) {

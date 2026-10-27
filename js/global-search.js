@@ -1,24 +1,24 @@
 // =============================================================
-// Buscador Global — busca SOLO dentro de la sección activa
-// (issue #206): en Ocio busca en películas, series, libros y
-// videojuegos (colección + catálogo API); en Perfil, en los amigos;
-// en Recetas, en las recetas. La barra de búsqueda vive en la
-// cabecera global (#global-search-input dentro de .search-bar-wrap)
-// y los resultados se muestran en un dropdown anclado bajo ella
-// (#global-search-results). Se abre al hacer focus/click en el
-// input, o con Ctrl+K / "/".
+// Global Search — searches ONLY inside the active section
+// (issue #206): in Leisure it searches movies, TV series, books and
+// videogames (collection + API catalog); in Profile, friends;
+// in Recipes, the recipes. The search bar lives in the global
+// header (#global-search-input inside .search-bar-wrap)
+// and the results are shown in a dropdown anchored below it
+// (#global-search-results). It opens on focus/click in the
+// input, or with Ctrl+K / "/".
 //
-// NOTA (issue #46): el dropdown NO usa trapFocus. Sigue el patrón del
-// dropdown de notificaciones (cierre con Escape, clic fuera del
-// contenedor): atrapar el foco en un dropdown no modal rompería la
-// navegación normal con Tab dentro del documento, que es la metáfora
-// de una barra de búsqueda tipo Gmail.
+// NOTE (issue #46): the dropdown does NOT use trapFocus. It follows the
+// pattern of the notifications dropdown (close with Escape, click outside the
+// container): trapping focus in a non-modal dropdown would break the
+// normal Tab navigation inside the document, which is the metaphor
+// of a Gmail-like search bar.
 //
-// Issue #82: la búsqueda de nuevos títulos (catálogo de TMDB/Google
-// Books) se unifica en este dropdown. La parte alta del dropdown
-// tiene tres botones de tipo (Serie / Película / Libro); al pulsar
-// uno se busca en el catálogo y se muestra una sección "Catálogo · X"
-// con la fila «Añadir manualmente» al final. Solo visible en Ocio.
+// Issue #82: the search for new titles (catalog of TMDB/Google
+// Books) is unified in this dropdown. The upper part of the dropdown
+// has three type buttons (Serie / Película / Libro); when pressing
+// one it searches the catalog and shows a "Catálogo · X" section
+// with the «Add manually» row at the end. Only visible in Leisure.
 // =============================================================
 
 import { openItem } from "./modal-handlers.js";
@@ -36,7 +36,7 @@ import {
   isBookAlreadyAdded,
 } from "./search.js";
 import { MEDIA_ICONS, seenActionLabels } from "./constants.js";
-// ---- Estado interno ----
+// ---- Internal state ----
 
 let isOpen = false;
 let highlightedIndex = -1;
@@ -44,35 +44,35 @@ let flatResults = [];
 
 let searchCtx = null;
 
-// Contador de focus suprimidos (issue #206): al abrir el modal de una
-// receta desde el dropdown se arma con 2 — uno para el focus
-// programático de navigateTo y otro para el reenfoque que hace
-// closeRecipeModal al cerrar el modal — para que el dropdown no se
-// reabra solo en ninguno de los dos momentos. El contador llega a 0
-// con los dos focus y la barra vuelve a abrirse con el siguiente
-// focus manual.
+// Counter of suppressed focuses (issue #206): when opening the modal of a
+// recipe from the dropdown it is armed with 2 — one for the programmatic focus
+// of navigateTo and another for the refocus made by
+// closeRecipeModal when closing the modal — so the dropdown does not
+// reopen on its own at either moment. The counter reaches 0
+// with the two focuses and the bar opens again with the next
+// manual focus.
 let suppressFocusCount = 0;
 
-// Estado de la búsqueda externa (catálogo API), por grupo.
-// externalCache[group] = { query, items, source } | null (solo si la
-// última búsqueda de ese grupo terminó con éxito).
-// inFlight[group] = hay una búsqueda en curso.
-// externalError[group] = { query, message } | null (último fallo).
-// externalQuery[group] = query de la búsqueda en curso.
-// searchSeq: contador monotónico para descartar respuestas obsoletas
-// (cambia con cada búsqueda y al cerrar el dropdown).
+// State of the external search (API catalog), per group.
+// externalCache[group] = { query, items, source } | null (only if the
+// last search of that group finished successfully).
+// inFlight[group] = a search is in progress.
+// externalError[group] = { query, message } | null (last failure).
+// externalQuery[group] = query of the search in progress.
+// searchSeq: monotonic counter to discard obsolete responses
+// (it changes with each search and when closing the dropdown).
 const externalCache = { movies: null, tv: null, books: null, games: null };
 const inFlight = { movies: false, tv: false, books: false, games: false };
 const externalError = { movies: null, tv: null, books: null, games: null };
 const externalQuery = { movies: "", tv: "", books: "", games: "" };
 let searchSeq = 0;
 
-// Grupo de tipo pulsado en los botones superiores (null = ninguno).
+// Type group pressed in the top buttons (null = none).
 let activeGroup = null;
 
-// Información de cada grupo para las secciones del catálogo.
-// Los iconos son los SVGs de MEDIA_ICONS (los mismos de las pestañas,
-// con su color vía CSS --type-accent / --group-accent, issue #134).
+// Information about each group for the catalog sections.
+// The icons are the SVGs of MEDIA_ICONS (the same ones as the tabs,
+// with their color via CSS --type-accent / --group-accent, issue #134).
 const GROUPS = [
   { key: "tv", label: "Serie", icon: MEDIA_ICONS.tv, itemLabel: "serie", manualText: "¿No la encuentras? Añadir manualmente una serie", type: "tv", accent: "" },
   { key: "movies", label: "Película", icon: MEDIA_ICONS.movies, itemLabel: "película", manualText: "¿No la encuentras? Añadir manualmente una película", type: "movie", accent: "" },
@@ -80,18 +80,18 @@ const GROUPS = [
   { key: "games", label: "Videojuego", icon: MEDIA_ICONS.games, itemLabel: "videojuego", manualText: "¿No lo encuentras? Añadir manualmente un videojuego", type: "game", accent: " global-search__item-add--games" },
 ];
 
-// ---- Referencias DOM (se asignan en setup) ----
+// ---- DOM references (assigned in setup) ----
 
 let wrap, input, resultsEl, clearBtn;
 
-// Botón hamburguesa de la cabecera (issue #253): con la búsqueda
-// abierta se convierte en una ✕ (clase is-search-open) que al pulsarla
-// cierra la búsqueda. Se resuelve en setup; el optional chaining cubre
-// el caso de que falte el elemento.
+// Hamburger button of the header (issue #253): with the search
+// open it becomes a ✕ (class is-search-open) that when pressed
+// closes the search. It is resolved in setup; the optional chaining covers
+// the case of the element missing.
 let toggleBtn = null;
 const TOGGLE_ARIA_LABEL = "Abrir menú de navegación";
 
-// ---- Utilidades ----
+// ---- Utilities ----
 
 function escapeHtml(str) {
   if (!str) return "";
@@ -102,10 +102,10 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
-// Portada segura para el atributo src: solo se aceptan URLs https o
-// data:image/ (defensa en profundidad, mismo patrón que rating-modal.js).
-// Cualquier otro esquema (javascript:, data:text/html...) o URL inválida
-// cae al placeholder de ui.js.
+// Safe cover for the src attribute: only https URLs or
+// data:image/ are accepted (defense in depth, same pattern as rating-modal.js).
+// Any other scheme (javascript:, data:text/html...) or invalid URL
+// falls back to ui.js's placeholder.
 function safeCoverUrl(url) {
   if (!url) return ui.PLACEHOLDER_COVER;
   try {
@@ -117,7 +117,7 @@ function safeCoverUrl(url) {
       return url;
     }
   } catch {
-    // URL no parseable → placeholder
+    // Unparseable URL → placeholder
   }
   return ui.PLACEHOLDER_COVER;
 }
@@ -126,10 +126,10 @@ function groupInfo(group) {
   return GROUPS.find((g) => g.key === group) || GROUPS[0];
 }
 
-// ---- Búsqueda ----
+// ---- Search ----
 
-// Sección activa (issue #206): ocio | perfil | recetas. La búsqueda
-// superior se acota a ella; por defecto (o ante errores) ocio.
+// Active section (issue #206): leisure | profile | recipes. The top search
+// is scoped to it; by default (or on errors) leisure.
 function currentSection() {
   try {
     return parseHash().section || "ocio";
@@ -139,7 +139,7 @@ function currentSection() {
 }
 
 function getSearchableText(item) {
-  // Para libros, también buscar por autor
+  // For books, also search by author
   const author = item.author || "";
   return `${item.title} ${author}`.toLowerCase();
 }
@@ -168,14 +168,14 @@ function filterItems(items, query) {
     .map((r) => r.item);
 }
 
-// Resultados de la sección activa (issue #206):
-// - ocio    → colección (películas/series/libros/videojuegos del
-//             usuario), sin amigos: el buscador ya no es global.
-// - recetas → solo recetas (filtro local, searchRecipes de recipes.js).
-// - gimnasio → sin resultados aún (issue #62, v1: sin scope de
-//             búsqueda propia; devolver vacío evita caer a la rama
-//             de Ocio y mezclar colecciones ajenas).
-// Síncrono: lo usan performSearch, runExternalSearch y
+// Results of the active section (issue #206):
+// - leisure   → collection (user's movies/TV series/books/videogames),
+//               no friends: the search bar is no longer global.
+// - recipes   → only recipes (local filter, searchRecipes of recipes.js).
+// - gym       → no results yet (issue #62, v1: no search scope of
+//               its own; returning empty avoids falling into the Leisure
+//               branch and mixing foreign collections).
+// Synchronous: used by performSearch, runExternalSearch and
 // refreshExternalResults.
 function collectionResults(trimmed) {
   if (!searchCtx) {
@@ -197,7 +197,7 @@ function collectionResults(trimmed) {
   };
 }
 
-// ---- Renderizado ----
+// ---- Rendering ----
 
 function statusClass(status) {
   const map = {
@@ -210,12 +210,12 @@ function statusClass(status) {
   return map[status] || "";
 }
 
-// Fila superior del dropdown con los botones de tipo (SIEMPRE visible
-// en Ocio; en Perfil y Recetas la búsqueda no usa catálogo externo y
-// no se renderizan, issue #206).
-// Cada botón lleva el icono SVG de su tipo (mismos SVGs que las pestañas)
-// y una clase modificadora --<key> que el CSS usa para colorear con el
-// acento de cada tipo (issue #134).
+// Top row of the dropdown with the type buttons (ALWAYS visible
+// in Leisure; in Profile and Recipes the search does not use the external catalog
+// and they are not rendered, issue #206).
+// Each button carries the SVG icon of its type (same SVGs as the tabs)
+// and a --<key> modifier class that the CSS uses to color with the
+// accent of each type (issue #134).
 function renderTypeButtons() {
   if (currentSection() !== "ocio") return "";
   return `<div class="global-search__type-buttons">
@@ -225,7 +225,7 @@ function renderTypeButtons() {
   </div>`;
 }
 
-// Texto del hint según la sección activa (issue #206).
+// Hint text depending on the active section (issue #206).
 function sectionHintText() {
   if (currentSection() === "recetas") {
     return "Escribe al menos 2 caracteres para buscar en tus recetas.";
@@ -247,8 +247,8 @@ function renderHint() {
   highlightedIndex = -1;
 }
 
-// Fila «Añadir manualmente» que cierra cada sección del catálogo.
-// Añade la fila a flatResults para que sea navegable con teclado.
+// «Add manually» row that closes each catalog section.
+// It adds the row to flatResults so it is keyboard-navigable.
 function manualRowHtml(group) {
   const g = groupInfo(group);
   const index = flatResults.length;
@@ -256,9 +256,9 @@ function manualRowHtml(group) {
   return `<button type="button" class="global-search__manual-add" data-global-idx="${index}">${g.manualText}</button>`;
 }
 
-// Sección del catálogo (fuente externa) para un grupo.
-// Estados: caché válida → resultados + fila manual; error → mensaje +
-// fila manual; vacía → mensaje + fila manual.
+// Catalog section (external source) of a group.
+// States: valid cache → results + manual row; error → message +
+// manual row; empty → message + manual row.
 function renderExternalSection(group, query) {
   const g = groupInfo(group);
   const cache = externalCache[group];
@@ -326,10 +326,10 @@ function renderResults(results, query) {
     return;
   }
 
-  // ¿Hay alguna sección externa (carga, error o caché válida) para la
-  // query actual y el grupo activo? Decide si se muestra el mensaje de
-  // "sin resultados". (Comentario issue #82: selección única — solo el
-  // catálogo del grupo pulsado.)
+  // Is there any external section (loading, error or valid cache) for the
+  // current query and the active group? It decides whether the "no results"
+  // message is shown. (Comment issue #82: single selection — only the
+  // catalog of the pressed group.)
   const active = activeGroup;
   const hasExternalSection = active
     ? (inFlight[active] && externalQuery[active] === trimmed) ||
@@ -353,9 +353,9 @@ function renderResults(results, query) {
     recipes: "Recetas",
   };
 
-  // Iconos de grupo: series/películas/libros/videojuegos usan los
-  // mismos SVGs que las pestañas (MEDIA_ICONS, coloreados por CSS con
-  // --<key>) y recetas su plato (issue #206).
+  // Group icons: TV series/movies/books/videogames use the
+  // same SVGs as the tabs (MEDIA_ICONS, colored by CSS with
+  // --<key>) and recipes use their dish (issue #206).
   const groupIcons = {
     movies: MEDIA_ICONS.movies,
     tv: MEDIA_ICONS.tv,
@@ -364,7 +364,7 @@ function renderResults(results, query) {
     recipes: "🍽️",
   };
 
-  // Solo los grupos de la sección activa (issue #206)
+  // Only the groups of the active section (issue #206)
   const section = currentSection();
   const groupKeys =
     section === "recetas" ? ["recipes"] : ["movies", "tv", "books", "games"];
@@ -376,7 +376,7 @@ function renderResults(results, query) {
     const items = results[key];
     if (!items || !items.length) continue;
 
-    // Solo los grupos de medio llevan modificador de color; recipes no
+    // Only the media groups carry the color modifier; recipes does not
     // (issue #206).
     html += `<div class="global-search__group-title${key === "recipes" ? "" : ` global-search__group-title--${key}`}">
       <span>${groupIcons[key]}</span>
@@ -386,9 +386,9 @@ function renderResults(results, query) {
 
     for (const entry of items) {
       if (key === "recipes") {
-        // Resultado de receta (issue #206): abre el modal de la receta
-        // en modo solo lectura. La portada pasa por safeCoverUrl como
-        // la de los ítems de ocio (placeholder si falta o es inválida).
+        // Recipe result (issue #206): opens the recipe modal in
+        // read-only mode. The cover goes through safeCoverUrl like
+        // the leisure items' one (placeholder if missing or invalid).
         const cover = safeCoverUrl(entry.fotoUrl);
         const metaParts = [];
         if (Number(entry.porciones)) {
@@ -407,7 +407,7 @@ function renderResults(results, query) {
         </div>`;
         newFlat.push({ kind: "recipe", type: "recipe", item: entry, group: key });
       } else {
-        // Resultado de item (movie/tv/book/game)
+        // Item result (movie/tv/book/game)
         const cover = entry.coverUrl || "";
         const title = entry.title || "Sin título";
         const author = entry.author || "";
@@ -432,11 +432,11 @@ function renderResults(results, query) {
     }
   }
 
-  // Sección externa (catálogo API): SOLO la del grupo activo. Si se
-  // pulsa otro botón de tipo, los resultados del catálogo anterior se
-  // ocultan (comentario issue #82, opción selección única); la
-  // colección no se ve afectada. El estado (carga/error/caché) se
-  // conserva por grupo para poder volver sin re-buscar.
+  // External section (API catalog): ONLY the one of the active group. If another
+  // type button is pressed, the previous catalog results are
+  // hidden (comment issue #82, single-selection option); the
+  // collection is not affected. The state (loading/error/cache) is
+  // kept per group to be able to come back without re-searching.
   flatResults = newFlat;
   if (activeGroup) {
     const g = groupInfo(activeGroup);
@@ -453,7 +453,7 @@ function renderResults(results, query) {
   resultsEl.innerHTML = html;
   highlightedIndex = -1;
 
-  // Conectar eventos de click y teclado en cada resultado
+  // Connect click and keyboard events on each result
   resultsEl.querySelectorAll("[data-global-idx]").forEach((el) => {
     el.addEventListener("click", () => {
       const idx = parseInt(el.dataset.globalIdx, 10);
@@ -462,10 +462,10 @@ function renderResults(results, query) {
       }
     });
 
-    // Enter y Space para activar el resultado. Si el foco está en un
-    // botón de la fila (Añadir / Marcar visto/leído/jugado), se deja
-    // pasar el evento para que sea el botón quien active su propia
-    // acción (issue #115).
+    // Enter and Space to activate the result. If the focus is on a
+    // button of the row (Añadir / Marcar visto/leído/jugado), the event
+    // is let through so the button activates its own
+    // action (issue #115).
     el.addEventListener("keydown", (e) => {
       if (e.target !== el) return;
       if (e.key === "Enter" || e.key === " ") {
@@ -478,7 +478,7 @@ function renderResults(results, query) {
     });
   });
 
-  // Botones «Añadir» de los resultados del catálogo
+  // «Añadir» buttons of the catalog results
   resultsEl.querySelectorAll(".global-search__item-add").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -494,11 +494,11 @@ function renderResults(results, query) {
     });
   });
 
-  // Botones «Marcar visto»/«Marcar leído»/«Marcar jugado» de los
-  // resultados del catálogo (issues #115 y #177): alta directa como
-  // completado + valoración al momento. Durante el flujo se
-  // deshabilita también el «Añadir» de la fila para evitar dobles
-  // altas; si el flujo se aborta o se deshace, ambos se restauran.
+  // «Marcar visto»/«Marcar leído»/«Marcar jugado» buttons of the
+  // catalog results (issues #115 and #177): direct creation as
+  // completed + rating on the spot. During the flow the
+  // «Añadir» of the row is also disabled to avoid double
+  // creations; if the flow is aborted or undone, both are restored.
   resultsEl.querySelectorAll(".global-search__item-seen").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -526,8 +526,8 @@ function renderResults(results, query) {
   });
 }
 
-// Sección del catálogo en estado "cargando": solo el título y el aviso,
-// más la fila de alta manual (disponible también durante la carga).
+// Catalog section in the "loading" state: only the title and the notice,
+// plus the manual-add row (available also during loading).
 function externalSectionLoadingHtml(g) {
   const index = flatResults.length;
   flatResults.push({ kind: "manual", type: g.type, group: g.key, item: null });
@@ -539,23 +539,23 @@ function externalSectionLoadingHtml(g) {
   <button type="button" class="global-search__manual-add" data-global-idx="${index}">${g.manualText}</button>`;
 }
 
-// ---- Botones de tipo (búsqueda en el catálogo) ----
+// ---- Type buttons (catalog search) ----
 
 function handleTypeClick(group) {
   activeGroup = group;
   const query = input.value.trim();
   if (query.length < 2) {
-    // Hint con los botones de tipo encima (renderTypeButtons ya marca
-    // el grupo pulsado como activo).
+    // Hint with the type buttons on top (renderTypeButtons already marks
+    // the pressed group as active).
     resultsEl.innerHTML = renderTypeButtons() +
       `<p class="global-search__hint">Escribe al menos 2 caracteres para buscar en el catálogo.</p>`;
     flatResults = [];
     highlightedIndex = -1;
     return;
   }
-  // Selección única: si el grupo pulsado ya tiene resultados cacheados
-  // para esta query, solo se muestra (sin re-llamar a la API); en caso
-  // contrario se busca.
+  // Single selection: if the pressed group already has cached results
+  // for this query, they are just shown (without re-calling the API); otherwise
+  // it searches.
   const cache = externalCache[group];
   if (cache && cache.query === query && !inFlight[group]) {
     renderResults(collectionResults(query), query);
@@ -564,9 +564,9 @@ function handleTypeClick(group) {
   runExternalSearch(group, query);
 }
 
-// Busca en el catálogo un grupo y re-renderiza su sección. Captura el
-// seq actual y descarta el resultado si cambió (nueva búsqueda o cierre
-// del dropdown). Sin paginación: solo la primera página, cap de 5.
+// Searches a group in the catalog and re-renders its section. It captures the
+// current seq and discards the result if it changed (new search or closing
+// the dropdown). No pagination: only the first page, cap of 5.
 async function runExternalSearch(group, query) {
   const seq = ++searchSeq;
   inFlight[group] = true;
@@ -602,9 +602,9 @@ async function runExternalSearch(group, query) {
   renderResults(collectionResults(input.value.trim()), input.value.trim());
 }
 
-// Re-renderiza las secciones externas desde la caché con el estado
-// actual de la colección (lo llama app.js tras cada snapshot de
-// Firestore para actualizar los botones «Añadir»/«Añadido»).
+// Re-renders the external sections from the cache with the current
+// collection state (app.js calls it after each Firestore
+// snapshot to update the «Añadir»/«Añadido» buttons).
 export function refreshExternalResults(ctx) {
   if (!isOpen) return;
   const query = input.value.trim();
@@ -613,26 +613,26 @@ export function refreshExternalResults(ctx) {
   renderResults(collectionResults(query), query);
 }
 
-// ---- Navegación ----
+// ---- Navigation ----
 
 function navigateTo(result) {
-  // Resultado del catálogo: vista previa sin cerrar el dropdown.
+  // Catalog result: preview without closing the dropdown.
   if (result.kind === "external") {
     openSearchPreviewFromResults(result.item, false, searchCtx);
     return;
   }
 
-  // Fila «Añadir manualmente»: abre el formulario sin cerrar el dropdown.
+  // «Add manually» row: opens the form without closing the dropdown.
   if (result.kind === "manual") {
     const type = result.type;
     ui.openManualAddModal(type, (data) => handleManualAdd(type, data, searchCtx));
     return;
   }
 
-  // Resultado de receta (issue #206): abre el modal de la receta en
-  // modo solo lectura. Se arma el contador de focus suprimidos: el
-  // focus programático y el reenfoque de cierre del modal no deben
-  // reabrir el dropdown.
+  // Recipe result (issue #206): opens the recipe modal in
+  // read-only mode. The counter of suppressed focuses is armed: the
+  // programmatic focus and the modal's closing refocus must not
+  // reopen the dropdown.
   if (result.kind === "recipe") {
     closeGlobalSearch();
     suppressFocusCount = 2;
@@ -641,43 +641,43 @@ function navigateTo(result) {
     return;
   }
 
-  // Es un item de la colección (movie/tv/book/game)
+  // It is an item of the collection (movie/tv/book/game)
   const item = result.item;
   if (!searchCtx) {
     ui.showToast("Error: contexto no disponible.");
     return;
   }
   closeGlobalSearch();
-  // Pequeño delay para que el cierre del dropdown no interfiera
+  // Small delay so the dropdown closing doesn't interfere
   setTimeout(() => {
     openItem(item, searchCtx);
   }, 150);
 }
 
-// ---- Abrir / Cerrar ----
+// ---- Open / Close ----
 
 function openGlobalSearch() {
   if (isOpen) return;
 
-  // En el perfil la cabecera global está oculta (issue #206, iteración
-  // 2026-08-11): la búsqueda superior no está disponible allí. El
-  // guard evita que los atajos de teclado (Ctrl+K, "/") abran un
-  // dropdown huérfano bajo una cabecera invisible.
+  // In the profile the global header is hidden (issue #206, iteration
+  // 2026-08-11): the top search is not available there. The
+  // guard avoids the keyboard shortcuts (Ctrl+K, "/") opening an
+  // orphan dropdown under an invisible header.
   if (currentSection() === "perfil") return;
 
   isOpen = true;
 
-  // Issue #253: la hamburguesa ☰ de la cabecera se convierte en una ✕
-  // (con animación CSS) que cierra la búsqueda al pulsarla. La clase y
-  // el aria-label se aplican ANTES de cerrar la barra lateral: si el
-  // drawer está abierto, el toggle.click() de abajo lo cierra y el
-  // icono queda ya en modo ✕.
+  // Issue #253: the header's ☰ hamburger becomes a ✕
+  // (with CSS animation) that closes the search when pressed. The class and
+  // the aria-label are applied BEFORE closing the side bar: if the
+  // drawer is open, the toggle.click() below closes it and the
+  // icon is already in ✕ mode.
   toggleBtn?.classList.add("is-search-open");
   toggleBtn?.setAttribute("aria-label", "Cerrar búsqueda");
 
-  // Si el drawer lateral está abierto, cerrarlo primero: su backdrop
-  // (z-index 55) taparía el dropdown de resultados (z-index 40).
-  // El click en el toggle dispara closeSidebar() de js/sidebar.js.
+  // If the side drawer is open, close it first: its backdrop
+  // (z-index 55) would cover the results dropdown (z-index 40).
+  // The click on the toggle triggers closeSidebar() of js/sidebar.js.
   const sidebar = document.getElementById("app-sidebar");
   if (sidebar && sidebar.classList.contains("is-open")) {
     if (toggleBtn) toggleBtn.click();
@@ -692,18 +692,18 @@ function openGlobalSearch() {
     flatResults = [];
     highlightedIndex = -1;
   } else {
-    // Ya hay texto: repetir la búsqueda para mostrar resultados
+    // There is already text: repeat the search to show results
     performSearch(searchCtx);
   }
 
-  // Al abrir con atajo de teclado (Ctrl+K, "/"), llevar el foco al
-  // input; si ya estaba enfocado, el focus event no se repite.
+  // When opening with a keyboard shortcut (Ctrl+K, "/"), move the focus to
+  // the input; if it was already focused, the focus event is not repeated.
   if (document.activeElement !== input) input.focus();
 }
 
-// Consulta de estado para otros módulos (issue #253): sidebar.js la
-// usa para que el botón ☰/✕ cierre la búsqueda en vez de abrir la
-// barra lateral mientras el dropdown está abierto.
+// State query for other modules (issue #253): sidebar.js uses it
+// so the ☰/✕ button closes the search instead of opening the
+// side bar while the dropdown is open.
 export function isGlobalSearchOpen() {
   return isOpen;
 }
@@ -712,12 +712,12 @@ export function closeGlobalSearch() {
   if (!isOpen) return;
   isOpen = false;
 
-  // Issue #253: la hamburguesa ☰ de la cabecera deja de ser la ✕ que
-  // cierra la búsqueda y recupera su icono y su aria-label de menú.
+  // Issue #253: the header's ☰ hamburger stops being the ✕ that
+  // closes the search and regains its icon and its menu aria-label.
   toggleBtn?.classList.remove("is-search-open");
   toggleBtn?.setAttribute("aria-label", TOGGLE_ARIA_LABEL);
 
-  // Invalidar búsquedas externas en curso y limpiar su estado
+  // Invalidate external searches in progress and clear their state
   searchSeq++;
   activeGroup = null;
   externalCache.movies = null;
@@ -743,11 +743,11 @@ export function closeGlobalSearch() {
   highlightedIndex = -1;
   clearBtn.hidden = true;
 
-  // No se limpia el texto del input ni se mueve el foco: el usuario
-  // puede volver a pulsar la barra y retomar donde estaba (Gmail).
+  // The input text is not cleared nor is the focus moved: the user
+  // can press the bar again and resume where they were (Gmail).
 }
 
-// ---- Navegación por teclado ----
+// ---- Keyboard navigation ----
 
 function highlightNext() {
   if (!flatResults.length) return;
@@ -762,7 +762,7 @@ function highlightPrev() {
 }
 
 function setHighlight(idx) {
-  // Quitar highlight anterior
+  // Remove previous highlight
   resultsEl.querySelector(".global-search__item--highlighted")?.classList.remove("global-search__item--highlighted");
 
   highlightedIndex = idx;
@@ -780,12 +780,12 @@ function activateHighlight() {
   }
 }
 
-// ---- Inicialización ----
+// ---- Initialization ----
 
 /**
- * Inicializa el buscador global (dropdown anclado a la barra de la
- * cabecera).
- * @param {Object} ctx - Contexto de la aplicación (con getAllItems, etc.)
+ * Initializes the global search bar (dropdown anchored to the header
+ * bar).
+ * @param {Object} ctx - Application context (with getAllItems, etc.)
  */
 export function setupGlobalSearch(ctx) {
   wrap = document.querySelector(".search-bar-wrap");
@@ -795,20 +795,20 @@ export function setupGlobalSearch(ctx) {
   toggleBtn = document.getElementById("btn-sidebar-toggle");
 
   if (!wrap || !input || !resultsEl || !clearBtn) {
-    console.warn("global-search: elementos DOM no encontrados");
+    console.warn("global-search: DOM elements not found");
     return;
   }
 
-  // Guardamos ctx para usarlo en navigateTo
+  // We store ctx to use it in navigateTo
   searchCtx = ctx;
 
-  // ---- Eventos ----
+  // ---- Events ----
 
-  // Abrir al hacer focus o click en el input (el click cubre el caso
-  // de volver a pulsar una barra ya enfocada). Si quedan focus
-  // suprimidos (issue #206: focus programático y reenfoque tras
-  // cerrar el modal de una receta), el focus event solo consume el
-  // contador y no reabre el dropdown.
+  // Open on focus or click in the input (the click covers the case
+  // of pressing again an already focused bar). If there are suppressed
+  // focuses left (issue #206: programmatic focus and refocus after
+  // closing a recipe's modal), the focus event only consumes the
+  // counter and doesn't reopen the dropdown.
   input.addEventListener("focus", () => {
     if (suppressFocusCount > 0) {
       suppressFocusCount -= 1;
@@ -818,20 +818,20 @@ export function setupGlobalSearch(ctx) {
   });
   input.addEventListener("click", openGlobalSearch);
 
-  // Input con debounce
+  // Input with debounce
   let debounceTimer = null;
   input.addEventListener("input", () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => performSearch(ctx), 200);
   });
 
-  // Teclas dentro del input
+  // Keys inside the input
   input.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       e.preventDefault();
-      // Solo atrapamos el Escape si el dropdown está abierto: si está
-      // cerrado (p. ej. con un modal de ítem encima), debe propagar
-      // al handler global de modal-handlers.js.
+      // We only trap the Escape if the dropdown is open: if it is
+      // closed (e.g. with an item modal on top), it must propagate
+      // to the global handler of modal-handlers.js.
       if (isOpen) e.stopPropagation();
       closeGlobalSearch();
       return;
@@ -851,26 +851,26 @@ export function setupGlobalSearch(ctx) {
       activateHighlight();
       return;
     }
-    // Permitir Ctrl+A, Ctrl+C, etc. sin interferir
+    // Allow Ctrl+A, Ctrl+C, etc. without interfering
   });
 
-  // Botón de limpiar/cerrar de la barra
+  // Clear/close button of the bar
   clearBtn.addEventListener("click", () => {
     input.value = "";
     closeGlobalSearch();
     input.focus();
   });
 
-  // Clic fuera del wrap → cerrar el dropdown
+  // Click outside the wrap → close the dropdown
   document.addEventListener("click", (e) => {
     if (isOpen && !wrap.contains(e.target)) {
       closeGlobalSearch();
     }
   });
 
-  // Botones de tipo (Serie / Película / Libro): delegación en el
-  // contenedor del dropdown porque se re-renderiza en cada búsqueda
-  // (también en el hint con query corta).
+  // Type buttons (Serie / Película / Libro): delegation on the
+  // dropdown container because it is re-rendered on each search
+  // (also in the hint with a short query).
   resultsEl.addEventListener("click", (e) => {
     const typeBtn = e.target.closest(".global-search__type-btn");
     if (typeBtn) {
@@ -879,11 +879,11 @@ export function setupGlobalSearch(ctx) {
     }
   });
 
-  // Issue #149: portadas de la colección (p. ej. fbcdn.net) y avatares
-  // pueden fallar (403/404 por hotlinking bloqueado). El evento "error"
-  // NO burbujea, pero los listeners en fase de CAPTURA del contenedor
-  // sí reciben el error de cualquier <img> descendiente, incluidas las
-  // que se re-renderizan con innerHTML (el contenedor persiste).
+  // Issue #149: covers of the collection (e.g. fbcdn.net) and avatars
+  // can fail (403/404 due to blocked hotlinking). The "error" event
+  // does NOT bubble, but listeners in the CAPTURE phase of the container
+  // do receive the error of any descendant <img>, including the
+  // ones re-rendered with innerHTML (the container persists).
   resultsEl.addEventListener(
     "error",
     (e) => {
@@ -892,16 +892,16 @@ export function setupGlobalSearch(ctx) {
       if (!img.classList.contains("global-search__item-cover")) {
         return;
       }
-      // Evitar bucle: si ya es el placeholder (data URI), no reasignar.
+      // Avoid loop: if it is already the placeholder (data URI), don't reassign.
       if (img.src === ui.PLACEHOLDER_COVER) return;
       img.src = ui.PLACEHOLDER_COVER;
     },
-    true // capture: el evento "error" no burbujea
+    true // capture: the "error" event doesn't bubble
   );
 
-  // Escape con el foco fuera del input (p. ej. sobre un resultado):
-  // el keydown del input ya cierra con stopPropagation, así que esto
-  // solo actúa cuando el foco está en otra parte del documento.
+  // Escape with focus outside the input (e.g. on a result):
+  // the input's keydown already closes with stopPropagation, so this
+  // only acts when the focus is elsewhere in the document.
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && isOpen && document.activeElement !== input) {
       e.preventDefault();
@@ -909,7 +909,7 @@ export function setupGlobalSearch(ctx) {
     }
   });
 
-  // ---- Atajos globales de teclado ----
+  // ---- Global keyboard shortcuts ----
   document.addEventListener("keydown", (e) => {
     // Ctrl+K / Cmd+K
     if ((e.ctrlKey || e.metaKey) && e.key === "k") {
@@ -922,7 +922,7 @@ export function setupGlobalSearch(ctx) {
       return;
     }
 
-    // Tecla "/" para abrir (solo si no hay input enfocado)
+    // "/" key to open (only if no input is focused)
     if (e.key === "/" && !isOpen && !["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) {
       e.preventDefault();
       openGlobalSearch();
@@ -931,29 +931,29 @@ export function setupGlobalSearch(ctx) {
   });
 }
 
-// ---- Búsqueda (se llama con debounce) ----
+// ---- Search (called with debounce) ----
 
 async function performSearch(ctx) {
   const query = input.value;
   const trimmed = query.trim();
 
   if (!trimmed || trimmed.length < 2) {
-    // Issue #149: al borrar el texto se desmarca el catálogo activo para
-    // que el usuario vuelva a elegir botón de tipo (renderTypeButtons
-    // marca is-active comparando con activeGroup).
+    // Issue #149: when clearing the text the active catalog is deselected so
+    // the user picks a type button again (renderTypeButtons
+    // marks is-active by comparing with activeGroup).
     activeGroup = null;
     renderHint();
     return;
   }
 
-  // Nueva búsqueda: invalidar búsquedas externas en curso
+  // New search: invalidate external searches in progress
   searchSeq++;
 
-  // Issue #149: si hay un catálogo activo y la query actual no tiene
-  // estado (vuelo/caché/error) para esta query exacta, relanzar la
-  // búsqueda externa automáticamente. runExternalSearch hace su propio
-  // renderResults (muestra «Buscando en el catálogo…» y luego el
-  // resultado); por eso hacemos return y no renderizamos dos veces.
+  // Issue #149: if there is an active catalog and the current query has no
+  // state (flight/cache/error) for this exact query, relaunch the
+  // external search automatically. runExternalSearch does its own
+  // renderResults (it shows «Buscando en el catálogo…» and then the
+  // result); that's why we return and don't render twice.
   const group = activeGroup;
   if (group) {
     const sameQueryInFlight = inFlight[group] && externalQuery[group] === trimmed;

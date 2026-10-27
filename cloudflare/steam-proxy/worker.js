@@ -1,24 +1,24 @@
 // =============================================================
-// Proxy de Steam Web API para la app Registro-personal.
+// Steam Web API proxy for the Registro-personal app.
 //
-// La API de Steam (api.steampowered.com) exige una STEAM_API_KEY
-// que NO puede exponerse en una SPA, y sus respuestas NO llevan los
-// CORS que exige el navegador. Este Worker (mismo patrón que
+// The Steam API (api.steampowered.com) requires a STEAM_API_KEY
+// that CANNOT be exposed in a SPA, and its responses DO NOT carry the
+// CORS the browser requires. This Worker (same pattern as
 // cloudflare/igdb-proxy):
-//   1. Guarda STEAM_API_KEY como secreto de Cloudflare.
-//   2. Expone GET /owned?steamid=<id64> que consulta
-//      IPlayerService/GetOwnedGames (juegos poseídos + minutos de
-//      juego + último día jugado) y devuelve una lista normalizada
-//      con CORS.
-//   3. No guarda nada: solo caché en memoria del resultado por
-//      aislamiento (los cambios en las horas/cuentas van llegando
-//      en la siguiente petición del aislamiento).
+//   1. Stores STEAM_API_KEY as a Cloudflare secret.
+//   2. Exposes GET /owned?steamid=<id64> which queries
+//      IPlayerService/GetOwnedGames (owned games + playtime
+//      minutes + last played day) and returns a normalized list
+//      with CORS.
+//   3. Stores nothing: only in-memory caching of the result per
+//      isolation (changes in hours/accounts arrive on the next
+//      request of the isolation).
 //
-// La app solo conoce la URL pública (STEAM_PROXY_URL en
-// js/config.js), nunca la clave de la API.
+// The app only knows the public URL (STEAM_PROXY_URL in
+// js/config.js), never the API key.
 //
-// Documentación de Steam: https://steamcommunity.com/dev
-// (obtención de la clave) y
+// Steam documentation: https://steamcommunity.com/dev
+// (getting the key) and
 // https://developer.valvesoftware.com/wiki/Steam_Web_API
 // =============================================================
 
@@ -27,28 +27,28 @@ const STEAM_OPENID = "https://steamcommunity.com/openid/login";
 const OPENID_NS = "http://specs.openid.net/auth/2.0";
 
 // -------------------------------------------------------------
-// OpenID 2.0 de Steam (login "Sign in through Steam", ADR-108)
+// Steam OpenID 2.0 ("Sign in through Steam" login, ADR-108)
 // -------------------------------------------------------------
-// Es el modo estándar de Steam para que una web sepa QUÉ usuario es:
-// el navegador salta a Steam, el usuario inicia sesión TU cuenta de
-// Steam y Steam redirige de vuelta con la identidad firmada al
-// callback del Worker, que la VERIFICA servidor-a-servidor
-// (check_authentication) antes de aceptarla. El Worker no guarda
-// cuentas ni cookies: solo traduce el ida y vuelta y devuelve el
-// SteamID64 a la app por URL.
+// It is Steam's standard way for a website to know WHICH user it is:
+// the browser jumps to Steam, the user signs in with THEIR Steam
+// account and Steam redirects back with the signed identity to the
+// Worker's callback, which VERIFIES it server-to-server
+// (check_authentication) before accepting it. The Worker stores no
+// accounts nor cookies: it only translates the round trip and returns
+// the SteamID64 to the app via URL.
 
 /**
- * URL de /callback del worker (la que Steam usa como return_to).
+ * URL of the worker's /callback (the one Steam uses as return_to).
  */
 export function callbackUrl(workerOrigin) {
   return `${workerOrigin.replace(/\/+$/, "")}/callback`;
 }
 
 /**
- * Construye la URL [auth-request de Steam con return_to hacia el callback
- * del worker y recall final de la app. Puro, testeable.
- * @param {string} workerOrigin - Origen del propio worker (https://…).
- * @param {string} returnTo - URL de la app a la que volver DRM terminar el login.
+ * Builds the Steam [auth-request URL with return_to pointing to the worker's
+ * callback and final recall of the app. Pure, testable.
+ * @param {string} workerOrigin - Origin of the worker itself (https://…).
+ * @param {string} returnTo - URL of the app to return to once the login finishes.
  */
 export function buildLoginRedirect(workerOrigin, returnTo) {
   const params = new URLSearchParams({
@@ -63,9 +63,9 @@ export function buildLoginRedirect(workerOrigin, returnTo) {
 }
 
 /**
- * Valida el return_to (la app a la que devolver el steamid): solo https
- * y, si el worker define ALLOWED_ORIGIN, debe coincidir con su host.
- * Devuelve el origin de la app (sin path:hz que docstreamulaş) o null.
+ * Validates the return_to (the app to return the steamid to): https only,
+ * and if the worker defines ALLOWED_ORIGIN it must match its host.
+ * Returns the app's origin (path kept so the doc URL is not lost) or null.
  */
 export function validateReturnTo(returnTo, env) {
   if (!returnTo) return null;
@@ -84,15 +84,15 @@ export function validateReturnTo(returnTo, env) {
       return null;
     }
   }
-  // Devuelve la URL COMPLETA (origin + path): el callback redirige a
-  // esta misma URL con #/steam-callback. Devolver solo el origin
-  // perdía el subdirectorio del deploy en GitHub Pages
-  // (/personal-tracker/) y caía en un 404 del dominio raíz.
+  // Returns the FULL URL (origin + path): the callback redirects to
+  // this same URL with #/steam-callback. Returning only the origin
+  // lost the GitHub Pages deploy subdirectory
+  // (/personal-tracker/) and landed on a 404 of the root domain.
   return parsed.origin + parsed.pathname;
 }
 
 /**
- * Extrae el SteamID64 de una identidad OpenID verificada
+ * Extracts the SteamID64 from a verified OpenID identity
  * ("https://steamcommunity.com/openid/id/7656119...").
  */
 export function steamidFromIdentity(identity) {
@@ -101,7 +101,7 @@ export function steamidFromIdentity(identity) {
 }
 
 // -------------------------------------------------------------
-// CORS (idéntico patrón que el igdb-proxy)
+// CORS (identical pattern to the igdb-proxy)
 // -------------------------------------------------------------
 
 function corsHeaders(env, request) {
@@ -126,14 +126,14 @@ function isAllowedOrigin(env, request) {
 }
 
 // -------------------------------------------------------------
-// Normalización
+// Normalization
 // -------------------------------------------------------------
 
 /**
- * Convierte la respuesta de GetOwnedGames en una lista lista para la
+ * Converts the GetOwnedGames response into a list ready for the
  * app: { games: [{ appid, name, playtimeHours, lastPlayedAt }] }.
- * Exportada para poder testearla sin Cloudflare (el worker se compila
-   * como módulo ESM y vitest la importa).
+ * Exported so it can be tested without Cloudflare (the worker is
+ * compiled as an ESM module and vitest imports it).
  */
 export function normalizeOwnedGames(data) {
   const games = Array.isArray(data?.response?.games) ? data.response.games : [];
@@ -144,9 +144,9 @@ export function normalizeOwnedGames(data) {
       .map((g) => ({
         appid: g.appid,
         name: g.name || `App ${g.appid}`,
-        // Los minutos de Steam → horas con 1 decimal ("134,7 h").
+        // Steam's minutes → hours with 1 decimal ("134,7 h").
         playtimeHours: Math.round((Number(g.playtime_forever) || 0) / 60 * 10) / 10,
-        // rtime_last_played: epoch seconds; null si nunca se jugó.
+        // rtime_last_played: epoch seconds; null if never played.
         lastPlayedAt:
           g.rtime_last_played && g.rtime_last_played > 0
             ? new Date(g.rtime_last_played * 1000).toISOString().slice(0, 10)
@@ -157,7 +157,7 @@ export function normalizeOwnedGames(data) {
 }
 
 // -------------------------------------------------------------
-// Handler principal
+// Main handler
 // -------------------------------------------------------------
 
 export default {
@@ -175,7 +175,7 @@ export default {
 
     const url = new URL(request.url);
 
-    // GET / — verificación del despliegue (paso 4 del README).
+    // GET / — deployment verification (step 4 of the README).
     if (request.method === "GET" && url.pathname === "/") {
       const secretsConfigured = Boolean(env.STEAM_API_KEY);
       return new Response(
@@ -201,8 +201,8 @@ export default {
       );
     }
 
-    // GET /login?return_to=<url de la app>: arranca el login OpenID
-    // de Steam (redirige 302 a steamcommunity.com).
+    // GET /login?return_to=<app url>: starts the OpenID login
+    // of Steam (302 redirect to steamcommunity.com).
     if (request.method === "GET" && url.pathname === "/login") {
       const returnTo = validateReturnTo(url.searchParams.get("return_to"), env);
       if (!returnTo) {
@@ -220,9 +220,9 @@ export default {
       });
     }
 
-    // GET /callback?return_to=<app>&openid.* → verificación
-    // check_authentication contra Steam y devolución del SteamID64
-    // a la app por fragmento (#/steam-callback?steamid=...).
+    // GET /callback?return_to=<app>&openid.* → check_authentication
+    // verification against Steam and return of the SteamID64
+    // to the app via fragment (#/steam-callback?steamid=...).
     if (request.method === "GET" && url.pathname === "/callback") {
       const returnTo = validateReturnTo(url.searchParams.get("return_to"), env);
       if (!returnTo) {
@@ -232,8 +232,8 @@ export default {
         );
       }
       try {
-        // check_authentication: Steam exige reenviar TODOS los parámetros
-        // openid.* con mode=check_authentication por POST.
+        // check_authentication: Steam requires re-sending ALL the openid.*
+        // params with mode=check_authentication via POST.
         const params = new URLSearchParams();
         for (const [k, v] of url.searchParams) {
           if (k.startsWith("openid.")) params.set(k, v);
@@ -250,7 +250,7 @@ export default {
         const steamid = isValid ? steamidFromIdentity(identity) : null;
 
         if (!steamid) {
-          // Sin verificación válida: volver a la app con error.
+          // Without valid verification: back to the app with an error.
           return Response.redirect(`${returnTo}#/steam-callback?error=verify`, 302);
         }
         return Response.redirect(
@@ -297,8 +297,8 @@ export default {
         }
         const parsed = normalizeOwnedGames(await res.json());
         if (parsed.total === 0) {
-          // Steam devuelve sin error si el perfil es privado o no tiene
-          // juegos: se informa sin fallo para que el UI lo presente.
+          // Steam returns without an error if the profile is private or it
+          // has no games: reported without failure so the UI can present it.
           return new Response(
             JSON.stringify({
               games: [],

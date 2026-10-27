@@ -1,6 +1,6 @@
 // =============================================================
-// Ajustes (Settings). Maneja la UI de configuración y la
-// persistencia de preferencias en localStorage + Firestore.
+// Settings. Handles the settings UI and the persistence of
+// preferences in localStorage + Firestore.
 // =============================================================
 
 import { syncNow, isSyncRunning } from "./daily-check.js";
@@ -22,24 +22,24 @@ const DEFAULT_SETTINGS = {
     game_release: true,
     device_push: false,
   },
-  // Unidad de peso de la sección de Gimnasio (issue #62): "kg" | "lbs".
-  // El peso canónico en Firestore es SIEMPRE kg; esta preferencia solo
-  // cambia la presentación (y las entradas) en la interfaz.
+  // Weight unit of the Gimnasio section (issue #62): "kg" | "lbs".
+  // The canonical weight in Firestore is ALWAYS kg; this preference
+  // only changes the presentation (and the inputs) in the interface.
   unidadPeso: "kg",
-  // SteamID64 guardado para la integración de Steam (ADR-107): se
-  // recuerda para no estar poniéndolo en cada uso.
+  // Stored SteamID64 for the Steam integration (ADR-107): it is
+  // remembered so you do not have to type it every time.
   steamId: "",
   visibleSections: { ocio: true, recetas: true, gimnasio: true },
   visibleTabs: { resumen: true, series: true, peliculas: true, libros: true, compras: true, recetas: true, ingredientes: true, menu: true, compra: true, entrenos: true, ejercicios: true },
 };
 
-// Registro central de secciones y pestañas de la web (issue #97).
-// El orden de las claves es el orden de la barra lateral y el de la
-// «primera visible» de cada sección. Añadir una sección futura solo
-// requiere añadir una entrada aquí: { id: { label, tabs } }, con
-// cada pestaña { label, panelId } (panelId = id del panel en
-// index.html). El resto del módulo (helpers, guardas y render de la
-// card de Ajustes) se adapta solo.
+// Central registry of sections and tabs of the site (issue #97).
+// The key order is the sidebar order and the «first visible» order
+// of each section. Adding a future section only requires adding an
+// entry here: { id: { label, tabs } }, with each tab
+// { label, panelId } (panelId = panel id in index.html). The rest
+// of the module (helpers, guards and the Settings card render)
+// adapts by itself.
 export const SECTION_REGISTRY = {
   ocio: {
     label: "Ocio",
@@ -63,7 +63,7 @@ export const SECTION_REGISTRY = {
   gimnasio: {
     label: "Gimnasio",
     tabs: {
-      // Primera pestaña = pestaña por defecto de la sección (#269).
+      // First tab = default tab of the section (#269).
       resumen: { label: "Resumen", panelId: "panel-gym-summary-tab" },
       entrenos: { label: "Entrenos", panelId: "panel-gym-workouts-tab" },
       ejercicios: { label: "Ejercicios", panelId: "panel-gym-exercises-tab" },
@@ -85,13 +85,13 @@ function deepMerge(defaults, overrides) {
   return result;
 }
 
-// Sanitiza las invariantes de visibilidad de secciones/pestañas
-// (issue #97) tras leer localStorage o el fallback sin guardar:
-//   (a) si ninguna sección quedó visible, se activan todas;
-//   (b) si una sección se quedó sin pestañas visibles, se activan todas
-//       sus pestañas;
-//   (c) las claves que no estén en el registro se ignoran (tolerante
-//       ante ajustes antiguos o de secciones futuras ya retiradas).
+// Sanitizes the section/tab visibility invariants (issue #97) after
+// reading localStorage or the unsaved fallback:
+//   (a) if no section ended up visible, all are enabled;
+//   (b) if a section ended up with no visible tabs, all its tabs are
+//       enabled;
+//   (c) keys not in the registry are ignored (tolerant to old
+//       settings or removed future sections).
 function sanitizeVisibility(settings) {
   const validSectionIds = Object.keys(SECTION_REGISTRY);
   const validTabKeys = Object.values(SECTION_REGISTRY).flatMap((s) => Object.keys(s.tabs));
@@ -177,7 +177,7 @@ function scheduleFirestoreSync(ctx) {
   }, DEBOUNCE_MS);
 }
 
-/** Limpia el temporizador pendiente (útil al cerrar sesión). */
+/** Clears the pending timer (useful on logout). */
 export function cleanupSettings() {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = null;
@@ -186,7 +186,7 @@ export function cleanupSettings() {
 
 // ---- UI Rendering ----
 
-// Valores válidos para el select de tema (Ajustes → Apariencia).
+// Valid values for the theme select (Settings → Appearance).
 const VALID_THEMES = ["dark", "black", "light", "white"];
 
 export function renderSettings(ctx) {
@@ -194,16 +194,16 @@ export function renderSettings(ctx) {
 
   const themeSelect = document.getElementById("settings-theme-select");
   if (themeSelect) {
-    // Defensivo: un valor antiguo o inválido cae al modo oscuro.
+    // Defensive: an old or invalid value falls back to dark mode.
     themeSelect.value = VALID_THEMES.includes(settings.theme) ? settings.theme : "dark";
   }
 
-  // Idioma (ADR-110): el select refleja el idioma activo.
+  // Language (ADR-110): the select mirrors the active language.
   const langSelect = document.getElementById("settings-lang-select");
   if (langSelect) langSelect.value = getLang();
 
-  // Mientras haya una sincronización en curso, el botón de sincronizar
-  // permanece deshabilitado (también lo cubre el flag durante el clic).
+  // While a sync is running, the sync button stays disabled (the flag
+  // also covers it during the click).
   const syncBtn = document.getElementById("btn-sync-now");
   if (syncBtn) syncBtn.disabled = isSyncRunning();
 
@@ -220,11 +220,11 @@ export function renderSettings(ctx) {
     if (el) el.checked = settings.notifications[key] !== false;
   });
 
-  // El toggle de notificaciones en el dispositivo requiere soporte de
-  // la API y un permiso no denegado; si el permiso está denegado se
-  // muestra desmarcado y deshabilitado (la preferencia guardada se
-  // conserva: si el usuario re-permite en el navegador, el toggle
-  // vuelve a aparecer marcado al abrir Ajustes).
+  // The on-device notifications toggle requires API support and a
+  // permission not denied; if the permission is denied it shows
+  // unchecked and disabled (the saved preference is kept: if the
+  // user re-allows in the browser, the toggle shows checked again
+  // when opening Settings).
   const devEl = document.getElementById("notif-device");
   if (devEl) {
     const permission = isNotificationSupported() ? getPermission() : "denied";
@@ -234,7 +234,7 @@ export function renderSettings(ctx) {
     devEl.disabled = permission === "denied";
   }
 
-  // Card «Secciones y pestañas»: render dinámico desde el registro.
+  // Card «Secciones y pestañas»: dynamic render from the registry.
   renderSectionsCard(settings);
 
   // Card «Integración de Steam» (ADR-107).
@@ -243,9 +243,9 @@ export function renderSettings(ctx) {
 
 // ---- Card «Secciones y pestañas» (issue #97) ----
 
-// Render de la card desde el registro: una fila por sección (con sus
-// pestañas anidadas en un .settings-group). Los ids son literales
-// controlados por este módulo (sin datos de usuario).
+// Render of the card from the registry: one row per section (with
+// its tabs nested in a .settings-group). The ids are literals
+// controlled by this module (no user data).
 function renderSectionsCard(settings) {
   const container = document.getElementById("sections-visibility-list");
   if (container) container.innerHTML = buildSectionsHTML(settings);
@@ -253,8 +253,8 @@ function renderSectionsCard(settings) {
 
 function buildSectionsHTML(settings) {
   const visibleSectionIds = Object.keys(SECTION_REGISTRY).filter((id) => settings.visibleSections[id] !== false);
-  // Si solo queda una sección visible, su switch se deshabilita: se
-  // mantiene siempre al menos una sección a la vista.
+  // If only one section remains visible, its switch is disabled: at
+  // least one section is always kept on screen.
   const onlyOneSection = visibleSectionIds.length <= 1;
 
   return Object.entries(SECTION_REGISTRY)
@@ -280,8 +280,8 @@ function buildSectionsHTML(settings) {
       const tabsGroup = Object.entries(section.tabs)
         .map(([tabKey, tab]) => {
           const tabVisible = settings.visibleTabs[tabKey] !== false;
-          // La última pestaña visible de la sección no se puede
-          // ocultar: se mantiene siempre al menos una a la vista.
+          // The last visible tab of the section cannot be
+          // hidden: at least one is always kept on screen.
           const tabLocked = tabVisible && visibleTabKeys.length <= 1;
           const hint = tabLocked ? `No puedes ocultar la última pestaña visible de ${section.label}.` : "";
           return `
@@ -314,7 +314,7 @@ function renderSteamCard(settings) {
   const linked = sanitizeSteamId(settings.steamId);
   if (input) {
     input.value = linked || "";
-    // Persistencia del steamId con el mismo patrón del tema.
+    // Persistence of the steamId with the same pattern as the theme.
     if (!input.dataset.steamWired) {
       input.dataset.steamWired = "1";
       input.addEventListener("change", () => {
@@ -348,8 +348,8 @@ function renderSteamCard(settings) {
       });
     }
   }
-  // Recargar resultados: si el grupo ya está en memoria se repinta
-  // limpio (los juegos nuevos los trae el botón de buscar).
+  // Reload results: if the group is already in memory it repaints
+  // clean (the new games are brought by the search button).
   clearSteamResults();
 }
 
@@ -361,10 +361,10 @@ function clearSteamResults() {
   }
 }
 
-// Lista de resultados de Steam dentro de la card: nombre, horas
-// jugadas, día del último juego y botón de alta en el registro.
-// (Sin portada: la app no descarga assets de Steam; el alta es un
-// ítem manual.)
+// List of Steam results inside the card: name, played hours, day of
+// the last session and add-to-record button.
+// (No cover: the app does not download Steam assets; the add is a
+// manual item.)
 function renderSteamResults(games, appIdToAdded) {
   const box = document.getElementById("steam-results");
   if (!box) return;
@@ -405,7 +405,7 @@ function wireSteamIntegration(ctx) {
         ctx.showToast(result.hint || "Steam no devolvió ningún juego.");
         return;
       }
-      // Duplicados: los juegos ya añadidos desde Steam.
+      // Duplicates: games already added from Steam.
       const addedIds = new Set(
         (await ctx.getGroupItemsResolved("games"))
           .filter((item) => item.steamAppId)
@@ -416,7 +416,7 @@ function wireSteamIntegration(ctx) {
         if (addedIds.has(g.appid)) appIdToAdded[g.appid] = true;
       });
       renderSteamResults(result.games, appIdToAdded);
-      // Conectar altos:
+      // Connect adds:
       wireSteamAddButtons(ctx, result.games);
     } catch (err) {
       ctx.showToast("No se pudo consultar Steam: " + (err.message || err));
@@ -427,11 +427,11 @@ function wireSteamIntegration(ctx) {
   });
 }
 
-// Alta de un juego de Steam en el registro: ítem manual con UNA
-// sesión de juego con las horas de Steam (suman a la estadística de
-// "horas jugadas" del perfil; la fecha es la del último juego o hoy).
-// La sesión lleva source: "steam" para que la pasada diaria la
-// reconozca y refresque sus horas. Exportado para tests.
+// Add of a Steam game to the record: manual item with ONE play
+// session with the Steam hours (they add to the "hours played"
+// profile statistic; the date is the last played day or today).
+// The session carries source: "steam" so the daily pass recognizes
+// it and refreshes its hours. Exported for tests.
 export function steamGameDraft(g) {
   const day = g.lastPlayedAt || todayISO();
   const hours = g.playtimeHours > 0 ? g.playtimeHours : null;
@@ -476,11 +476,11 @@ async function wireSteamAddButtons(ctx, games) {
 
 // ---- Event Wiring ----
 
-// Botón "Comprobar estrenos" (issue #200): la pasada mínima A5-a
-// ya no cura metadatos, solo revisa estrenos/episodios pendientes.
-// Lanza syncNow (daily-check.js) con cooldown de 30 minutos y
-// feedback vía toast. Restaura el botón en finally para que nunca
-// quede bloqueado si algo falla.
+// Button "Comprobar estrenos" (issue #200): the minimal pass A5-a
+// no longer curates metadata, it only reviews pending releases/
+// episodes. It calls syncNow (daily-check.js) with a 30 minute
+// cooldown and toast feedback. It restores the button in finally so
+// it never stays blocked if something fails.
 function wireSyncButton(ctx) {
   const btn = document.getElementById("btn-sync-now");
   if (!btn) return;
@@ -543,11 +543,11 @@ function wireNotificationToggles(ctx) {
     });
   });
 
-  // Toggle de notificaciones en el dispositivo: wiring propio (fuera
-  // del bucle genérico) porque al activarlo hay que pedir primero el
-  // permiso al navegador. La primera instrucción del handler es el
-  // requestPermission: así el gesto del usuario cuenta como
-  // "user gesture" para la API.
+  // On-device notifications toggle: its own wiring (outside the
+  // generic loop) because enabling it requires asking the browser for
+  // permission first. The first instruction of the handler is the
+  // requestPermission: that way the user gesture counts as a
+  // "user gesture" for the API.
   const devEl = document.getElementById("notif-device");
   if (devEl) {
     devEl.addEventListener("change", async () => {
@@ -569,9 +569,9 @@ function wireNotificationToggles(ctx) {
 
 // ---- Public API ----
 
-// Callback de módulo inyectado por app.js vía
-// setupSettings({ onVisibilityChange }): se invoca tras guardar un
-// cambio de visibilidad para que la navegación se refresque
+// Module callback injected by app.js via
+// setupSettings({ onVisibilityChange }): it is called after saving a
+// visibility change so the navigation refreshes
 // (applyTabVisibility + renderSidebar).
 let onVisibilityChange = null;
 
@@ -587,9 +587,9 @@ export function setupSettings(ctx, { onVisibilityChange: onChange = null } = {})
   wireSteamIntegration(ctx);
 }
 
-// Wiring del select de idioma (ADR-110): persiste y reaplica la traducción
-// a TODO el document (incluye partials de Ocio ya cargados). Toast en el
-// idioma destino.
+// Wiring of the language select (ADR-110): persists and re-applies the
+// translation to the WHOLE document (includes already-loaded Ocio
+// partials). Toast in the target language.
 function wireLangSelect(ctx) {
   const select = document.getElementById("settings-lang-select");
   if (!select) return;
@@ -600,15 +600,15 @@ function wireLangSelect(ctx) {
   });
 }
 
-// Contexto de la app capturado en setupSettings: lo usan setUnit y
-// setTheme para sincronizar con Firestore (patrón de scheduleFirestoreSync).
+// App context captured in setupSettings: used by setUnit and
+// setTheme to sync with Firestore (pattern of scheduleFirestoreSync).
 let appCtx = null;
-// Contexto para la card de Steam (tokens/toast) — vuelve a null al
-// desuscribirse (mismo ciclo de vida).
+// Context for the Steam card (tokens/toast) — it goes back to null
+// when unsubscribing (same life cycle).
 let ctxForSteam = null;
 
-// Guarda el SteamID vinculado (localStorage) — lo usan el flujo de
-// vinculación OpenID y el ajuste manual. Devuelve el settings guardado.
+// Saves the linked SteamID (localStorage) — used by the OpenID link
+// flow and the manual setting. Returns the saved settings.
 export function saveSteamId(steamId) {
   const s = loadSettings();
   s.steamId = sanitizeSteamId(steamId);
@@ -617,12 +617,12 @@ export function saveSteamId(steamId) {
 }
 
 /**
- * Procesa un retorno del login de Steam (#/steam-callback?...):
- * guarda el steamid vinculado o informa del error. Lo llama app.js
- * en el arranque ANTES del enrutamiento; devuelve true si el hash
- * era de este flujo (la app debe ignorarlo y re-establecer el hash
- * limpio).
- * @param {string} hash - location.hash actual.
+ * Processes a return from the Steam login (#/steam-callback?...):
+ * saves the linked steamid or reports the error. app.js calls it on
+ * startup BEFORE routing; it returns true if the hash belonged to
+ * this flow (the app must ignore it and re-establish the clean
+ * hash).
+ * @param {string} hash - Current location.hash.
  * @returns {boolean}
  */
 export function applySteamCallback(hash) {
@@ -637,19 +637,19 @@ export function applySteamCallback(hash) {
   return true;
 }
 
-// ---- Unidad de peso de Gimnasio (issue #62) ----
+// ---- Weight unit of Gimnasio (issue #62) ----
 
-// Unidad de peso activa ("kg" | "lbs"), leída SIEMPRE fresco desde
-// localStorage (patrón de los helpers de visibilidad). Lo usa gym.js
-// en cada render: los valores guardados en Firestore no cambian al
-// alternar, solo la presentación.
+// Active weight unit ("kg" | "lbs"), ALWAYS read fresh from
+// localStorage (pattern of the visibility helpers). gym.js uses it
+// on each render: the values stored in Firestore do not change when
+// toggling, only the presentation.
 export function getUnit() {
   return loadSettings().unidadPeso === "lbs" ? "lbs" : "kg";
 }
 
-// Cambia la unidad de peso y la persiste (localStorage + sync a
-// Firestore preferences con el mismo debounce que el resto de
-// ajustes). Lo llama el select #gym-unit-select al cambiar.
+// Changes the weight unit and persists it (localStorage + sync to
+// Firestore preferences with the same debounce as the rest of the
+// settings). Called by #gym-unit-select on change.
 export function setUnit(unit) {
   if (unit !== "kg" && unit !== "lbs") return;
   const s = loadSettings();
@@ -658,10 +658,10 @@ export function setUnit(unit) {
   if (appCtx) scheduleFirestoreSync(appCtx);
 }
 
-// Toggles de visibilidad de la card «Secciones y pestañas» (issue
-// #97). La delegación de `change` vive en el contenedor (los checks
-// se re-renderizan tras cada cambio; el listener se registra UNA vez,
-// aquí, porque el contenedor nunca se reconstruye).
+// Visibility toggles of the card «Secciones y pestañas» (issue
+// #97). The `change` delegation lives in the container (the checks
+// are re-rendered after each change; the listener is registered ONCE,
+// here, because the container is never rebuilt).
 function wireVisibilityToggles(ctx) {
   const list = document.getElementById("sections-visibility-list");
   if (!list) return;
@@ -676,7 +676,7 @@ function wireVisibilityToggles(ctx) {
 
     if (input.dataset.visSection) {
       settings.visibleSections[componentKey] = input.checked;
-      // Defensa en profundidad: nunca puede quedar 0 secciones visibles.
+      // Defense in depth: 0 visible sections can never remain.
       const visibleCount = Object.keys(SECTION_REGISTRY).filter((id) => settings.visibleSections[id] !== false).length;
       if (visibleCount === 0) {
         input.checked = true;
@@ -684,8 +684,8 @@ function wireVisibilityToggles(ctx) {
       }
     } else {
       settings.visibleTabs[componentKey] = input.checked;
-      // Defensa en profundidad: nunca puede quedar 0 pestañas visibles
-      // en la sección afectada.
+      // Defense in depth: 0 visible tabs can never remain
+      // in the affected section.
       const sectionId = Object.keys(SECTION_REGISTRY).find((id) => SECTION_REGISTRY[id].tabs[componentKey]);
       if (sectionId) {
         const visibleTabs = Object.keys(SECTION_REGISTRY[sectionId].tabs).filter((k) => settings.visibleTabs[k] !== false);
@@ -698,11 +698,11 @@ function wireVisibilityToggles(ctx) {
 
     saveSettings(settings);
     scheduleFirestoreSync(ctx);
-    // Refrescar guardas y avisos: tras el cambio puede quedar otra
-    // fila como última visible (y quedar deshabilitada).
-    // El input en foco se reemplaza por el re-render: restaurar el
-    // foco al equivalente re-renderizado (los ids son deterministas:
-    // section-visible-<id> / tab-visible-<sección>-<pestaña>).
+    // Refresh guards and notices: after the change another row may
+    // become the last visible one (and end up disabled).
+    // The focused input is replaced by the re-render: restore focus
+    // to the re-rendered equivalent (ids are deterministic:
+    // section-visible-<id> / tab-visible-<section>-<tab>).
     const focusedId = document.activeElement instanceof HTMLInputElement ? document.activeElement.id : null;
     renderSectionsCard(loadSettings());
     if (focusedId) {
@@ -714,9 +714,9 @@ function wireVisibilityToggles(ctx) {
 }
 
 /**
- * Sincroniza el tema en la clave de localStorage de ajustes
- * cuando se cambia desde el toggle del header, para mantener
- * ambas claves consistentes.
+ * Syncs the theme into the localStorage settings key
+ * when it is changed from the header toggle, to keep
+ * both keys consistent.
  */
 export function syncThemeToSettings(theme) {
   const s = loadSettings();
@@ -725,46 +725,46 @@ export function syncThemeToSettings(theme) {
 }
 
 /**
- * Devuelve las preferencias de notificación actuales (síncrono,
- * desde localStorage). Lo usa daily-check.js para saber qué
- * notificaciones crear.
+ * Returns the current notification preferences (synchronous,
+ * from localStorage). daily-check.js uses it to know which
+ * notifications to create.
  */
 export function getNotificationPrefs() {
   const settings = loadSettings();
   return settings.notifications || {};
 }
 
-// ---- Visibilidad de secciones y pestañas (issue #97) ----
-// Los helpers leen loadSettings() fresco en cada llamada (nunca
-// mutan) para que reflejen siempre el estado guardado. Los usa
-// sidebar.js (vía inyección), app.js y profile.js.
+// ---- Visibility of sections and tabs (issue #97) ----
+// The helpers read loadSettings() fresh on each call (never
+// mutate) so they always reflect the saved state. Used by
+// sidebar.js (via injection), app.js and profile.js.
 
-// ¿Está visible la sección? También devuelve false si el id no
-// existe en el registro (sección futura retirada).
+// Is the section visible? It also returns false if the id does not
+// exist in the registry (removed future section).
 export function isSectionVisible(sectionId) {
   if (!SECTION_REGISTRY[sectionId]) return false;
   return loadSettings().visibleSections[sectionId] !== false;
 }
 
-// Ids de las secciones visibles, en el orden del registro (el orden
-// de la barra lateral y de la «primera visible»).
+// Ids of the visible sections, in registry order (the sidebar and
+// «first visible» order).
 export function getVisibleSectionIds() {
   return Object.keys(SECTION_REGISTRY).filter((id) => loadSettings().visibleSections[id] !== false);
 }
 
-// Número entero de secciones visibles (lo usa sidebar.js para
-// decidir entre barra lateral ☰ y botón de Ajustes).
+// Integer number of visible sections (sidebar.js uses it to
+// choose between sidebar ☰ and Settings button).
 export function countVisibleSections() {
   return getVisibleSectionIds().length;
 }
 
-// ¿Está visible la pestaña (clave global, p. ej. "series")?
+// Is the tab visible (global key, e.g. "series")?
 export function isTabVisible(tabKey) {
   return loadSettings().visibleTabs[tabKey] !== false;
 }
 
-// Primera clave visible de las pestañas de una sección, según el
-// registro; null si ninguna.
+// First visible key of a section's tabs, according to the
+// registry; null if none.
 export function getFirstVisibleTabKey(sectionId) {
   const section = SECTION_REGISTRY[sectionId];
   if (!section) return null;
@@ -773,17 +773,17 @@ export function getFirstVisibleTabKey(sectionId) {
   return key || null;
 }
 
-// panelId de la primera clave visible de la sección (o null).
+// panelId of the first visible key of the section (or null).
 export function getFirstVisibleTabPanel(sectionId) {
   const key = getFirstVisibleTabKey(sectionId);
   const section = SECTION_REGISTRY[sectionId];
   return key && section ? section.tabs[key].panelId : null;
 }
 
-// Normaliza una clave de pestaña: la devuelve si es conocida y
-// visible; si no, la primera visible de la sección. Lo usan los
-// flujos que navegan a una pestaña (entrada «Ocio», volver del
-// perfil) para que nunca aterricen en una oculta.
+// Normalizes a tab key: it returns it if known and visible; if not,
+// the first visible one of the section. Used by the flows that
+// navigate to a tab («Ocio» entry, back from the profile) so they
+// never land on a hidden one.
 export function normalizeTabKey(sectionId, key) {
   const section = SECTION_REGISTRY[sectionId];
   const settings = loadSettings();

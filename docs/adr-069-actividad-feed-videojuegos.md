@@ -1,149 +1,154 @@
-# ADR-069: Videojuegos en el feed de actividad (issue #173)
+# ADR-069: Video games in the activity feed (issue #173)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-10
 
-## Contexto
+## Context
 
-El **feed de actividad** de la sección **Actividad** del perfil (ADR-015,
-issue #27) muestra en orden cronológico lo que han hecho los amigos:
-películas, series y libros. El feed es **generado 100 % en cliente**
-(`js/activity-feed.js`): no existen colecciones de eventos en Firestore;
-cada vez que se abre la pestaña Actividad se leen los datos actuales de
-todos los amigos (`loadActivityFeed` en `js/profile.js`) y `buildGlobalFeed`
-/ `buildFriendFeed` reconstruyen los eventos con `maybePushDateEvent`.
+The **Actividad** section's **activity feed** (ADR-015,
+issue #27) shows in chronological order what friends have been doing:
+movies, series and books. The feed is **generated 100 % on the client**
+(`js/activity-feed.js`): there are no event collections in Firestore;
+whenever the Actividad tab opens, the current data of all friends is
+read (`loadActivityFeed` in `js/profile.js`) and `buildGlobalFeed`
+/ `buildFriendFeed` rebuild the events with `maybePushDateEvent`.
 
-Los **videojuegos** son una categoría propia del producto desde la issue
-#47 (colección `games` en Firestore, pestaña en Ocio con
-`ocio/videojuegos.html`, estados Pendiente / Jugando / Jugado / Standby /
-Abandonado y un `playLog` por juego con `startedAt`/`finishedAt`), y el
-detalle de amigo ya los muestra desde la issue #172 (ADR-068, pestaña
-«Videojuegos» con `openReadOnlyModal` soportando items de tipo `game`:
-`gamePlatformsHtml` y `statusLabel`). Sin embargo, el feed de actividad
-aún no generaba eventos de videojuegos: «Está jugando…» y «Terminó de
-jugar…» no aparecían entre las actividades de los amigos.
+**Video games** have been a product category of their own since issue
+#47 (the `games` collection in Firestore, a tab in Ocio with
+`ocio/videojuegos.html`, statuses Pendiente / Jugando / Jugado /
+Standby / Abandonado and a per-game `playLog` with
+`startedAt`/`finishedAt`), and the friend detail has shown them since
+issue #172 (ADR-068, the «Videojuegos» tab with `openReadOnlyModal`
+supporting items of type `game`:
+`gamePlatformsHtml` and `statusLabel`). However, the activity feed still
+did not generate video game events: «Está jugando…» and «Terminó de
+jugar…» did not appear among the friends' activities.
 
-La issue #173 pide incluir la actividad de videojuegos en el feed.
+Issue #173 asks to include video game activity in the feed.
 
 Related issue: #173 — https://github.com/gonzalitojh/Registro-personal/issues/173
 
-## Decisión
+## Decision
 
-Ampliar la generación de eventos del feed para incluir videojuegos,
-replicando el patrón del ADR-015 (todo en cliente, sin tocar Firestore ni
-CSS):
+Expand the feed's event generation to include video games,
+replicating ADR-015's pattern (all on the client, without touching Firestore
+nor CSS):
 
-### 1. Nuevos tipos de evento (activity-feed.js)
+### 1. New event types (activity-feed.js)
 
-Se añaden dos constantes a `EVENT_TYPES`:
+Two constants are added to `EVENT_TYPES`:
 
-| Evento           | Constante        | Label               | Condición de disparo                                   |
+| Event                 | Constant         | Label               | Trigger condition                                       |
 |------------------|------------------|---------------------|--------------------------------------------------------|
-| Empezó a jugar   | `GAME_STARTED`   | «Está jugando»      | Entrada en `playLog` con `startedAt` y sin `finishedAt` |
-| Terminó de jugar | `GAME_FINISHED`  | «Terminó de jugar»  | Entrada en `playLog` con `finishedAt`                  |
+| Started playing   | `GAME_STARTED`   | «Está jugando»      | A `playLog` entry with `startedAt` and no `finishedAt` |
+| Finished playing  | `GAME_FINISHED`  | «Terminó de jugar»  | A `playLog` entry with `finishedAt`                    |
 
-### 2. `buildFriendFeed` con 5.º parámetro `games`
+### 2. `buildFriendFeed` with a 5th parameter `games`
 
-- La firma pasa a ser `buildFriendFeed(friendName, movies, series, books,
-  games = [])`; el parámetro tiene valor por defecto `[]` para no romper
-  llamadas que no pasen la categoría.
-- Por cada juego, se recorren las entradas de su `playLog`:
-  - Entrada con `startedAt` y sin `finishedAt` → evento `game_started`
-    «Está jugando» con la fecha `startedAt`.
-  - Entrada con `finishedAt` → evento `game_finished` «Terminó de jugar»
-    con la fecha `finishedAt`.
-- **Fallback**: juego con `status === "completado"` y sin entradas en
-  `playLog` → evento `game_finished` «Terminó de jugar» con `updatedAt`,
-  cubriendo juegos completados antes de existir el `playLog` o importados
-  sin historial.
+- The signature becomes `buildFriendFeed(friendName, movies, series, books,
+  games = [])`; the parameter defaults to `[]` to not break
+  calls that do not pass the category.
+- Per game, its `playLog`'s entries are walked:
+  - An entry with `startedAt` and no `finishedAt` → a `game_started`
+    event, «Está jugando» with the `startedAt` date.
+  - An entry with `finishedAt` → a `game_finished` event, «Terminó de
+    jugar» with the `finishedAt` date.
+- **Fallback**: a game with `status === "completado"` and no
+  `playLog` entries → a `game_finished` event, «Terminó de jugar» with
+  `updatedAt`, covering games completed before the `playLog` existed or
+  imported without history.
 
-### 3. `buildGlobalFeed` reenvía `games`
+### 3. `buildGlobalFeed` forwards `games`
 
-La desestructuración de cada amigo pasa de `{ profile, movies, series,
-books }` a `{ profile, movies, series, books, games }` y reenvía `games`
-a `buildFriendFeed`.
+Each friend's destructure goes from `{ profile, movies, series,
+books }` to `{ profile, movies, series, books, games }` and forwards `games`
+to `buildFriendFeed`.
 
-### 4. Carga en `loadActivityFeed` (profile.js)
+### 4. Loading in `loadActivityFeed` (profile.js)
 
-El `Promise.all` por amigo incluye la cuarta categoría:
-`ctx.getItemsOnce(profile.uid, "game")` (misma lectura puntual sin
-suscripción que las existentes; la lectura de `games` de otros usuarios
-ya está permitida por `firestore.rules` desde el ADR-068). El objeto
-devuelto por amigo pasa a ser `{ profile, movies, series, books, games }`.
+Each friend's `Promise.all` includes the fourth category:
+`ctx.getItemsOnce(profile.uid, "game")` (the same one-off read
+without a subscription as the existing ones; reading other users'
+`games` has been allowed by `firestore.rules` since ADR-068). The object
+returned per friend becomes `{ profile, movies, series, books, games }`.
 
-### 5. Iconos de evento (ui.js)
+### 5. Event icons (ui.js)
 
-`eventIcon` incorpora `game_started: "🎮"` y `game_finished: "🏆"`;
-cualquier evento desconocido sigue cayendo en el fallback `📌`.
+`eventIcon` incorporates `game_started: "🎮"` and
+`game_finished: "🏆"`; any unknown event keeps falling to the
+`📌` fallback.
 
-### 6. Sin cambios estructurales
+### 6. No structural changes
 
-No se tocan Firestore ni CSS: el feed sigue generándose 100 % en cliente
-(patrón ADR-015) y el modal de solo lectura ya soportaba items `game`
-desde el ADR-068 (issue #172).
+Neither Firestore nor CSS are touched: the feed keeps being
+generated 100 % on the client (ADR-015's pattern) and the read-only
+modal already supported `game` items since ADR-068 (issue
+#172).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Persistir eventos de videojuegos en Firestore**: descartada por el
-  principio del ADR-015 — el feed se reconstruye en cliente desde el
-  estado actual; persistir eventos añadiría colecciones nuevas sin
-  beneficio.
-- **Dedup de `startedAt` y `finishedAt` en una sola entrada de
-  `playLog`**: una misma partida puede generar ambos eventos (empezó y
-  terminó), igual que ocurre con libros (`book_started` + `book_finished`);
-  no se introdujo lógica nueva de supresión.
-- **Reutilizar el icono genérico 📌**: descartado por consistencia con el
-  resto de categorías, que tienen icono propio en `eventIcon`.
+- **Persisting video game events in Firestore**: rejected following
+  ADR-015's principle — the feed is rebuilt on the client from the
+  current state; persisting events would add new collections
+  without benefit.
+- **Deduping `startedAt` and `finishedAt` into a single
+  `playLog` entry**: the same session can generate both events
+  (started and finished), as happens with books (`book_started` +
+  `book_finished`); no new suppression logic was introduced.
+- **Reusing the generic 📌 icon**: rejected for consistency with the
+  rest of the categories, which have their own icon in `eventIcon`.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- El feed de actividad queda completo: además de películas/series/libros,
-  muestra «Está jugando…» y «Terminó de jugar…» con los iconos 🎮 y 🏆.
-- Cero cambios en Firestore y CSS; una sola lectura puntual más por amigo,
-  en paralelo con las existentes.
-- La visualización es coherente con el resto del producto: los chips,
-  estados y la ficha del juego ya estaban alineados desde el ADR-068.
+- The activity feed is complete: besides movies/series/books, it shows
+  «Está jugando…» and «Terminó de jugar…» with the 🎮 and 🏆 icons.
+- Zero Firestore and CSS changes; one extra one-off read per friend,
+  in parallel with the existing ones.
+- The display is coherent with the rest of the product: the chips,
+  statuses and the game's profile were already aligned since
+  ADR-068.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- La carga de la pestaña Actividad ahora hace 4 lecturas en paralelo por
-  amigo en lugar de 3 (mismo coste por lectura puntual que las
-  existentes).
-- El fallback de `status === "completado"` sin `playLog` usa `updatedAt`,
-  que puede no reflejar la fecha real de finalización en juegos antiguos;
-  es el único dato disponible en ese caso.
+- The Actividad tab's load now makes 4 parallel reads per
+  friend instead of 3 (the same one-off read cost as the existing
+  ones).
+- The `status === "completado"` fallback without a `playLog` uses
+  `updatedAt`, which may not reflect the real completion date of old
+  games; it is the only available datum in that case.
 
-### Neutras
+### Neutral
 
-- `docs/manual-de-usuario.md` actualizado (sección 14.3 Actividad): el
-  listado de actividades incluye «Está jugando…» y «Terminó de jugar…»
-  (regla 3 de AGENTS.md).
+- `docs/manual-de-usuario.md` updated (section 14.3 Actividad): the
+  activities list includes «Está jugando…» and «Terminó de jugar…»
+  (AGENTS.md's rule 3).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/activity-feed.js` | **Modificado**: `EVENT_TYPES` con `game_started`/`game_finished`; `buildFriendFeed` acepta 5.º parámetro `games = []` y genera eventos desde `playLog` (y fallback `completado` sin `playLog` con `updatedAt`); `buildGlobalFeed` desestructura y reenvía `games` |
-| `js/profile.js` | **Modificado**: `loadActivityFeed` carga `ctx.getItemsOnce(profile.uid, "game")` en el mismo `Promise.all` y devuelve `{ profile, movies, series, books, games }` |
-| `js/ui.js` | **Modificado**: `eventIcon` añade `game_started: "🎮"` y `game_finished: "🏆"` |
-| `docs/manual-de-usuario.md` | **Modificado**: sección 14.3 — nuevas actividades «Está jugando…» y «Terminó de jugar…» |
-| `docs/adr-069-actividad-feed-videojuegos.md` | **Nuevo**: este documento |
+| `js/activity-feed.js` | **Modified**: `EVENT_TYPES` with `game_started`/`game_finished`; `buildFriendFeed` accepts a 5th parameter `games = []` and generates events from `playLog` (and the `completado` fallback without a `playLog` with `updatedAt`); `buildGlobalFeed` destructures and forwards `games` |
+| `js/profile.js` | **Modified**: `loadActivityFeed` loads `ctx.getItemsOnce(profile.uid, "game")` in the same `Promise.all` and returns `{ profile, movies, series, books, games }` |
+| `js/ui.js` | **Modified**: `eventIcon` adds `game_started: "🎮"` and `game_finished: "🏆"` |
+| `docs/manual-de-usuario.md` | **Modified**: section 14.3 — the new activities «Está jugando…» and «Terminó de jugar…» |
+| `docs/adr-069-actividad-feed-videojuegos.md` | **New**: this document |
 
-## Verificación
+## Verification
 
-- Revisión QA: PASS — eventos `game_started`/`game_finished` generados
-  desde `playLog`, fallback de `completado` sin historial, reenvío en
-  `buildGlobalFeed`, carga de la 4.ª categoría en `loadActivityFeed`,
-  iconos 🎮/🏆 y manual sección 14.3 actualizado.
-- Sin cambios en Firestore ni CSS: el feed sigue el patrón 100 % cliente
-  del ADR-015; `openReadOnlyModal` ya soportaba `games` desde el ADR-068
-  (issue #172).
-- Escaneo de seguridad: PASS sin hallazgos (patrón solo-lectura
-  preexistente, sin secretos ni PII).
+- QA review: PASS — the `game_started`/`game_finished` events generated
+  from `playLog`, the `completado` fallback without history, the
+  forwarding in `buildGlobalFeed`, the 4th category's load in
+  `loadActivityFeed`, the 🎮/🏆 icons and the updated manual section
+  14.3.
+- No Firestore nor CSS changes: the feed follows ADR-015's
+  100 % client pattern; `openReadOnlyModal` already supported `games`
+  since ADR-068 (issue #172).
+- Security scan: PASS with no findings (a pre-existing read-only
+  pattern, no secrets nor PII).
 
 Related issue: #173 — https://github.com/gonzalitojh/Registro-personal/issues/173

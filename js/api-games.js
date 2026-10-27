@@ -1,19 +1,18 @@
 // =============================================================
-// Búsqueda de videojuegos y datos ampliados (géneros, plataformas,
-// desarrolladores, editores, clasificación ESRB, nota de la
-// comunidad...) en IGDB (Twitch), a través de un Cloudflare Worker
-// que actúa de proxy (IGDB no tiene CORS y su Client Secret no
-// puede exponerse en una SPA). Ver cloudflare/igdb-proxy/README.md.
-// Documentación de IGDB: https://api-docs.igdb.com/
+// Videogame search and extended data (genres, platforms,
+// developers, publishers, ESRB rating, community score...) in IGDB (Twitch),
+// through a Cloudflare Worker that acts as a proxy (IGDB has no CORS and
+// its Client Secret cannot be exposed in an SPA). See cloudflare/igdb-proxy/README.md.
+// IGDB documentation: https://api-docs.igdb.com/
 // =============================================================
 
 import { IGDB_PROXY_URL } from "./config.js";
 
 const PROXY_BASE = (IGDB_PROXY_URL || "").replace(/\/+$/, "");
 
-// El proxy no es un secreto (es la URL pública del Worker), pero si
-// está vacío la búsqueda no puede funcionar: se avisa con un error
-// claro indicando dónde configurarlo.
+// The proxy is not a secret (it is the Worker's public URL), but if
+// it is empty the search cannot work: a clear error
+// indicates where to configure it.
 function requireProxy() {
   if (!PROXY_BASE) {
     throw new Error(
@@ -22,29 +21,29 @@ function requireProxy() {
   }
 }
 
-// IGDB limita a 4 peticiones por segundo (cloudflare/igdb-proxy/README.md).
-// Con el almacenamiento mínimo los detalles de la ficha se piden bajo
-// demanda (issue #200), así que varias fichas seguidas podrían encadenar
-// peticiones: se serializan con un intervalo mínimo de 250 ms entre cada
-// una (equivalente a un semáforo ≤ 4 req/s), reutilizando la disciplina
-// del pool de la pasada diaria (mapConcurrent en daily-check.js).
+// IGDB limits to 4 requests per second (cloudflare/igdb-proxy/README.md).
+// With minimal storage the details are requested on
+// demand (issue #200), so several details opened in a row could chain
+// requests: they are serialized with a minimum interval of 250 ms between each
+// one (equivalent to a semaphore ≤ 4 req/s), reusing the discipline
+// of the daily pass pool (mapConcurrent in daily-check.js).
 const IGDB_MIN_INTERVAL_MS = 250;
 let igdbLastRequestAt = 0;
 
 async function igdbThrottle() {
   const now = Date.now();
   const wait = Math.max(0, igdbLastRequestAt + IGDB_MIN_INTERVAL_MS - now);
-  igdbLastRequestAt = now + wait; // reserva el hueco para la siguiente
+  igdbLastRequestAt = now + wait; // reserves the slot for the next one
   if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
 }
 
-// Petición POST al proxy, que la reenvía a api.igdb.com/v4 con las
-// cabeceras Client-ID y Authorization ya puestas. Normaliza los
-// errores de transporte (red caída, proxy inalcanzable, CORS
-// bloqueado) y de parseo a un mensaje en español claro, igual que
-// hacen el resto de clientes de API (fetchJson), y reintenta una vez
-// los fallos de transporte (los fallos del proxy suelen ser
-// transitorios; el límite de IGDB es 4 req/s, un reintento es seguro).
+// POST request to the proxy, which forwards it to api.igdb.com/v4 with the
+// Client-ID and Authorization headers already set. Normalizes
+// transport errors (network down, unreachable proxy, CORS
+// blocked) and parsing errors into a clear Spanish message, just like
+// the other API clients do (fetchJson), and retries once
+// transport failures (proxy failures are usually
+// transient; IGDB's limit is 4 req/s, one retry is safe).
 async function igdbPost(endpoint, body) {
   requireProxy();
   await igdbThrottle();
@@ -59,18 +58,18 @@ async function igdbPost(endpoint, body) {
     res = await doFetch();
   } catch {
     try {
-      res = await doFetch(); // un solo reintento ante fallos transitorios
+      res = await doFetch(); // a single retry on transient failures
     } catch {
-      // Red caída, proxy inalcanzable o CORS bloqueado: no hay
-      // respuesta HTTP que inspeccionar.
+      // Network down, unreachable proxy or CORS blocked: there is no
+      // HTTP response to inspect.
       throw new Error("No se pudo conectar con IGDB. Inténtalo de nuevo.");
     }
   }
   if (!res.ok) {
-    // HTTP 401/403 = credenciales de Twitch inválidas o token
-    // caducado; 403 puede ser también "origen no permitido" del
-    // proxy. Cualquier otro fallo (5xx...) es temporal y conviene
-    // distinguirlo del error de credenciales.
+    // HTTP 401/403 = invalid Twitch credentials or expired
+    // token; 403 can also be the proxy's "origin not allowed".
+    // Any other failure (5xx...) is temporary and it is worth
+    // distinguishing it from the credentials error.
     if (res.status === 401 || res.status === 403) {
       throw new Error(
         "IGDB rechazó la petición. Revisa las credenciales del proxy (cloudflare/igdb-proxy/README.md)."
@@ -81,7 +80,7 @@ async function igdbPost(endpoint, body) {
   try {
     return await res.json();
   } catch {
-    // Cuerpo no JSON (p. ej. página de error HTML del host).
+    // Non-JSON body (e.g. HTML error page from the host).
     throw new Error("No se pudo conectar con IGDB. Inténtalo de nuevo.");
   }
 }
@@ -113,16 +112,16 @@ const DETAIL_FIELDS = [
   "age_ratings.category",
 ].join(", ");
 
-// Campos del endpoint game_videos de IGDB (tráiler de YouTube).
+// Fields of IGDB's game_videos endpoint (YouTube trailer).
 const GAME_VIDEO_FIELDS = ["video_id", "name"].join(", ");
 
-// Clasificaciones por edades de IGDB: category 1 = ESRB.
+// IGDB age ratings: category 1 = ESRB.
 const ESRB_RATINGS = {
   1: "RP", 2: "EC", 3: "E", 4: "E10+", 5: "T", 6: "M", 7: "AO",
 };
 
-// IGDB puntúa 0–100; la app muestra la nota de la comunidad en la
-// misma escala 0–10 que TMDB (ver manual de usuario §10).
+// IGDB scores 0–100; the app shows the community score on the
+// same 0–10 scale as TMDB (see user manual §10).
 function toCommunityRating(r) {
   const value = r.total_rating ?? r.aggregated_rating;
   if (value == null || value <= 0) return null;
@@ -135,9 +134,9 @@ function yearFromTimestamp(ts) {
   return Number.isNaN(d.getTime()) ? "" : String(d.getFullYear());
 }
 
-// Fecha de lanzamiento en formato canónico "YYYY-MM-DD" con partes de
-// fecha LOCALES: toISOString() usaría UTC y desviaría un día cerca de
-// medianoche (mismo criterio local que yearFromTimestamp).
+// Release date in the canonical "YYYY-MM-DD" format with LOCAL date
+// parts: toISOString() would use UTC and shift the day near
+// midnight (same local criterion as yearFromTimestamp).
 function dateFromTimestamp(ts) {
   if (!ts) return null;
   const d = new Date(ts * 1000);
@@ -169,27 +168,27 @@ function mapGameResult(r) {
     overview: r.summary || "",
     genres: (r.genres || []).map((g) => g.name),
     platforms: (r.platforms || []).map((p) => p.name),
-    metacritic: null, // IGDB no tiene Metacritic
+    metacritic: null, // IGDB has no Metacritic
     communityRating: toCommunityRating(r),
     esrbName: esrbName(r),
   };
 }
 
-// Búsqueda paginada en el catálogo de IGDB (vía proxy).
+// Paginated search in the IGDB catalog (via proxy).
 export async function searchGames(searchTerm, page = 1) {
   const offset = (page - 1) * 20;
   const body = `search "${searchTerm.replace(/"/g, '\\"')}"; fields ${SEARCH_FIELDS}; limit 20; offset ${offset};`;
   const data = await igdbPost("games", body);
   const items = Array.isArray(data) ? data.map(mapGameResult) : [];
-  // IGDB no devuelve "hay más" explícitamente: si vienen 20
-  // resultados (el máximo pedido), muy probablemente hay más.
+  // IGDB doesn't explicitly return "has more": if 20
+  // results come back (the maximum requested), there are most likely more.
   return { items, hasMore: items.length === 20 };
 }
 
-// Extrae la URL del tráiler de YouTube a partir de la respuesta del
-// endpoint game_videos de IGDB. Prioriza el vídeo con "trailer" en el
-// nombre; si no, el primero con video_id no vacío. null si no hay
-// ninguno (mismo patrón que _extractTrailerUrl de api-movies.js).
+// Extracts the YouTube trailer URL from the response of the
+// game_videos endpoint of IGDB. Prioritizes the video with "trailer" in the
+// name; otherwise, the first one with a non-empty video_id. null if there
+// is none (same pattern as _extractTrailerUrl from api-movies.js).
 function extractTrailerUrl(videos) {
   if (!Array.isArray(videos) || !videos.length) return null;
   const withId = videos.filter((v) => v && v.video_id);
@@ -200,8 +199,8 @@ function extractTrailerUrl(videos) {
   return `https://www.youtube.com/watch?v=${best.video_id}`;
 }
 
-// URL del tráiler del juego (o null). El tráiler es un extra no
-// crítico: nunca lanza, cualquier fallo devuelve null.
+// Trailer URL of the game (or null). The trailer is a non-critical
+// extra: it never throws, any failure returns null.
 async function getGameTrailerUrl(id) {
   try {
     const body = `fields ${GAME_VIDEO_FIELDS}; where game = ${Number(id)}; limit 5;`;
@@ -212,10 +211,10 @@ async function getGameTrailerUrl(id) {
   }
 }
 
-// Datos ampliados de un juego: sinopsis completa, géneros,
-// plataformas, desarrolladores, editores, clasificación ESRB,
-// nota de la comunidad y tráiler. Se piden una sola vez, al
-// añadirlo (y para enriquecer la vista previa del catálogo).
+// Extended data of a game: full synopsis, genres,
+// platforms, developers, publishers, ESRB rating,
+// community score and trailer. They are requested once,
+// when adding it (and to enrich the catalog preview).
 export async function getGameDetails(id) {
   const body = `fields ${DETAIL_FIELDS}; where id = ${Number(id)};`;
   const data = await igdbPost("games", body);
@@ -234,7 +233,7 @@ export async function getGameDetails(id) {
       .filter((c) => c.publisher && c.company)
       .map((c) => c.company.name),
     metacritic: null,
-    playtime: null, // IGDB no tiene duración media jugada
+    playtime: null, // IGDB has no average playtime
     esrbName: esrbName(r),
     communityRating: toCommunityRating(r),
     coverUrl: coverUrl(r.cover && r.cover.image_id),

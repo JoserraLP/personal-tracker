@@ -1,272 +1,272 @@
-# ADR-060: Ocultar la navegación al desplazar y botón flotante «Volver arriba» (issue #137)
+# ADR-060: Hide navigation on scroll and floating «Volver arriba» button (issue #137)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-09
 
-## Contexto
+## Context
 
-La issue #137 (type: style) pide que al desplazar **hacia abajo** en
-las listas de ocio (series, películas o libros — y cualquier pestaña
-futura) se oculten las **pestañas** y la **barra de búsqueda superior**;
-en cuanto se desplace hacia arriba, ambos deben reaparecer, con una
-animación sencilla «como si surgiesen del borde de la pantalla». Como
-añadido, tan pronto como se baje más allá de los filtros de la lista
-(queden fuera de vista), debe mostrarse un botón **arriba, en el
-centro**, para volver al principio; el botón **no debe ocupar una línea
-entera**, sino flotar sobre la lista de ítems.
+Issue #137 (type: style) asks that when scrolling **down** in the
+ocio lists (series, movies or books — and any future tab) the
+**tabs** and the **top search bar** hide; as soon as one scrolls up,
+both must reappear, with a simple animation "as if they emerged from
+the screen's edge". As an addition, as soon as one scrolls past the
+list's filters (out of view), a button **at the top, in the
+center**, must appear to return to the beginning; the button **must not
+take up a whole line**, but float over the item list.
 
-Desde ADR-040 (issue #79) la cabecera y las pestañas son fijas y
-**siempre visibles**:
+Since ADR-040 (issue #79) the header and the tabs are fixed and
+**always visible**:
 
 - `.app-header` (`index.html`): `position: fixed; top: 0; z-index: 46`,
-  contiene la búsqueda global `#global-search-input` y los botones
-  (hamburguesa, campana `#btn-notifications`, perfil
-  `#btn-open-profile`). Altura `--header-h` (3.5rem).
-- `.tabs--bar`: `position: fixed; z-index: 45`, **abajo** (`bottom: 0`)
-  en móvil (≤768px) y **bajo la cabecera** (`top: var(--header-h)`) en
-  ≥768px (ADR-040, iteración 4).
-- Los dropdowns `#notif-dropdown`, `#profile-dropdown` y
-  `.global-search__results` viven **dentro de** `.app-header`
-  (`index.html`) y en móvil (≤600px) pasan a `position: fixed` (patrón
-  de ADR-027).
-- `.app` reserva espacio con `padding-top: calc(var(--header-h) +
-  var(--tabs-bar-h) + 1rem)` en ≥768px (ADR-040); el contenido vive en
+  contains the global search `#global-search-input` and the buttons
+  (hamburger, bell `#btn-notifications`, profile
+  `#btn-open-profile`). Height `--header-h` (3.5rem).
+- `.tabs--bar`: `position: fixed; z-index: 45`, at the
+  **bottom** (`bottom: 0`) on mobile (≤768px) and **under the header**
+  (`top: var(--header-h)`) at ≥768px (ADR-040, iteration 4).
+- The dropdowns `#notif-dropdown`, `#profile-dropdown` and
+  `.global-search__results` live **inside** `.app-header`
+  (`index.html`) and on mobile (≤600px) become `position: fixed` (the
+  ADR-027 pattern).
+- `.app` reserves space with `padding-top: calc(var(--header-h) +
+  var(--tabs-bar-h) + 1rem)` at ≥768px (ADR-040); the content lives in
   `#main-content`.
-- Los filtros de cada pestaña están en `.library-controls` dentro del
-  `.panel` activo (`ocio/*.html`).
+- Each tab's filters are in `.library-controls` inside the active
+  `.panel` (`ocio/*.html`).
 
-El problema: en listas largas la navegación fija ocupa de forma
-permanente ~`--header-h` + `--tabs-bar-h` de alto vertical que no se
-aprovecha para leer, y el «Volver arriba» requería scroll manual largo
-cuando la lista es muy extensa.
+The problem: in long lists the fixed navigation permanently takes up
+~`--header-h` + `--tabs-bar-h` of vertical height not used for reading, and
+"Back to top" required a long manual scroll when the list is very
+extensive.
 
-La implementación está validada (QA PASS, 9/9 criterios de aceptación) y
-escaneada (seguridad PASS, 0 hallazgos); el manual de usuario se
-actualizó en la misma tarea (regla 3 de AGENTS.md). Re-validada en la
-revisión de la PR #158 (QA 9/9, seguridad PASS; se endureció la
-envuelta de los listeners de clic/foco). Este ADR documenta la decisión
-a posteriori, como los recientes (ADR-059).
+The implementation is validated (QA PASS, 9/9 acceptance criteria) and
+scanned (security PASS, 0 findings); the user manual was updated in the
+same task (AGENTS.md's rule 3). Re-validated in the
+review of PR #158 (QA 9/9, security PASS; the wrapping of the click/focus
+listeners was hardened). This ADR documents the decision
+retrospectively, like the recent ones (ADR-059).
 
 Related issue: #137 — https://github.com/gonzalitojh/Registro-personal/issues/137
 
-## Decisión
+## Decision
 
-Crear el módulo **`js/auto-hide-nav.js`** (ES module, integrado en
-`js/app.js` vía `initAutoHideNav()` dentro de `init()`) que decide el
-estado de la navegación según la dirección del scroll, y reflejarlo en
-**clases de `<body>`**: `is-nav-hidden` e `is-back-to-top-visible`. El
-CSS hace el resto con **transforms sobre elementos fixed** — no se toca
-el flujo del documento, no hay reflows del contenido.
+Create the module **`js/auto-hide-nav.js`** (ES module, integrated in
+`js/app.js` via `initAutoHideNav()` inside `init()`) that decides the
+navigation's state based on the scroll's direction, reflecting it in
+**`<body>` classes**: `is-nav-hidden` and `is-back-to-top-visible`. The
+CSS does the rest with **transforms on fixed elements** — the document
+flow is untouched, no content reflows.
 
-### 1. CSS (`css/styles.css`, bloque «Ocultar navegación al desplazar»)
+### 1. CSS (`css/styles.css`, «Ocultar navegación al desplazar» block)
 
 - `body.is-nav-hidden .app-header { transform: translateY(-100%);
   visibility: hidden; transition: transform 0.25s ease, visibility 0s
-  0.25s; }` — la cabecera sale por el **borde superior**;
-  `translateY(-100%)` cubre su altura completa aunque varíe. El
-  `visibility` se retrasa (`0s 0.25s`) para que el deslizamiento se vea
-  completo y solo entonces el elemento salga del árbol de
-  accesibilidad/foco; al reaparecer (clase quitada) la transición
-  desaparece y `visibility` vuelve al instante.
-- `body.is-nav-hidden .tabs--bar`: **móvil** `transform: translateY(100%)`
-  (sale por el **borde inferior**, donde cuelga); **≥768px**
-  `transform: translateY(calc(-100% - var(--header-h)))` (sube con la
-  cabecera hasta el borde superior del viewport).
-- Transiciones de `transform` de **0.25s** en ambos casos; con
-  `prefers-reduced-motion` la media query global existente anula
-  transiciones y el cambio es instantáneo.
-- **Botón `.back-to-top`** (`#btn-back-to-top` en `index.html`, con
-  `aria-label="Volver arriba"` y contenido `↑ Volver arriba`):
+  0.25s; }` — the header exits through the **top edge**;
+  `translateY(-100%)` covers its full height even if it varies.
+  The `visibility` is delayed (`0s 0.25s`) so the sliding is fully
+  visible and only then does the element leave the accessibility/focus
+  tree; when reappearing (class removed) the transition is gone and
+  `visibility` returns instantly.
+- `body.is-nav-hidden .tabs--bar`: **mobile** `transform: translateY(100%)`
+  (exits through the **bottom edge**, where it hangs); **≥768px**
+  `transform: translateY(calc(-100% - var(--header-h)))` (rises with the
+  header to the viewport's top edge).
+- `transform` transitions of **0.25s** in both cases; with
+  `prefers-reduced-motion` the existing global media query cancels
+  transitions and the change is instant.
+- **`.back-to-top` button** (`#btn-back-to-top` in `index.html`, with
+  `aria-label="Volver arriba"` and content `↑ Volver arriba`):
   `position: fixed; top: 0.75rem; left: 50%; transform: translateX(-50%)`,
-  píldora flotante sobre la lista (no ocupa línea), `z-index: 44` — por
-  **debajo** de cabecera (46) y pestañas (45) para no taparlas cuando
-  reaparecen, pero por encima del contenido. Base con
-  `opacity: 0; visibility: hidden; pointer-events: none` y
-  `body.is-back-to-top-visible .back-to-top` con
-  `opacity: 1; visibility: visible; pointer-events: auto` (fade de
-  0.2s con retardo de 0.15s a la entrada); `:focus-visible` con outline
-  `--teal-reel`.
+  a floating pill over the list (no whole line), `z-index: 44` —
+  **below** the header (46) and tabs (45) so it does not cover them when
+  they reappear, and above the content. Base with
+  `opacity: 0; visibility: hidden; pointer-events: none` and
+  `body.is-back-to-top-visible .back-to-top` with
+  `opacity: 1; visibility: visible; pointer-events: auto` (a 0.2s
+  fade with a 0.15s delay on entry); `:focus-visible` with a
+  `--teal-reel` outline.
 
-### 2. `js/auto-hide-nav.js`: lógica y umbrales
+### 2. `js/auto-hide-nav.js`: logic and thresholds
 
 - `CONFIG = { hideThreshold: 80, deltaThreshold: 8 }`:
-  - **`hideThreshold: 80`**: por debajo de 80px de `scrollY` la
-    navegación **nunca** se oculta (no esconderla nada más empezar a
-    desplazarse).
-  - **`deltaThreshold: 8`**: la dirección se decide solo si el delta de
-    scroll supera ±8px; con deltas menores se **conserva el estado
-    anterior** (la inercia o un trackpad lento no hacen parpadear la
-    navegación).
-- El **delta se calcula en el listener de `scroll`** (no dentro del
-  rAF): el evento `scroll` se despacha antes que el rAF del mismo frame,
-  así que dentro del rAF `window.scrollY` ya coincide con `lastY` y el
-  delta sería siempre 0 (corregido en la revisión QA, commit `ac6d594`).
-  El listener es `passive` y se **throttlea con rAF** (una evaluación
-  por frame).
+  - **`hideThreshold: 80`**: below 80px of `scrollY` the navigation
+    is **never** hidden (do not hide it right when scrolling
+    starts).
+  - **`deltaThreshold: 8`**: the direction is decided only if the scroll
+    delta exceeds ±8px; with smaller deltas the **previous state is
+    kept** (inertia or a slow trackpad do not make the navigation flicker).
+- **The delta is computed in the `scroll` listener** (not inside the
+  rAF): the `scroll` event dispatches before the same frame's rAF,
+  so inside the rAF `window.scrollY` already matches `lastY` and the
+  delta would always be 0 (fixed in the QA review, commit `ac6d594`).
+  The listener is `passive` and is **throttled with rAF** (one
+  evaluation per frame).
 - `evaluate(delta)`:
-  1. Si `isInteracting()` o `scrollY < hideThreshold` → mostrar.
-  2. Si `delta > deltaThreshold` → ocultar.
-  3. Si `delta < -deltaThreshold` → mostrar.
-  4. En cualquier caso, re-evaluar el botón «Volver arriba»
-     (`updateBackToTop()`): la posición de los filtros cambia en el
-     mismo descenso en el que se oculta la navegación, no solo cuando
-     cambia el estado o en `resize`.
-- `setNavHidden(hidden)`: solo actúa si el estado cambia (evita trabajos
-  y reflows innecesarios) y mantiene el botón sincronizado.
-- **Guards `isInteracting()`** — la navegación NUNCA se oculta mientras
-  el usuario interactúa con ella o hay superposición:
-  - Foco dentro de `.app-header, .tabs--bar` (p. ej. escribiendo en la
-    búsqueda).
-  - Dropdowns anclados a la cabecera abiertos: `#notif-dropdown`,
-    `#profile-dropdown`, `.global-search__results` sin `.hidden`.
-  - Drawer lateral `.app-sidebar.is-open`.
-  - Modal abierto `.modal:not(.hidden)`.
-  - App oculta (`#app.hidden`, pantalla de acceso) o **sin panel de
-    lista activo** (`activePanel()` → `#app:not(.hidden) .panel:not(.hidden)`,
-    p. ej. perfil/ajustes): la ocultación por scroll **solo aplica a
-    las listas de ocio**.
-- **Botón «Volver arriba»**: visible solo si `navHidden` Y los filtros
-  de la lista activa quedaron **totalmente fuera de vista**
-  (`controls.getBoundingClientRect().bottom <= 0` sobre `.library-controls`
-  del panel activo). Al pulsarlo: `setNavHidden(false)` +
+  1. If `isInteracting()` or `scrollY < hideThreshold` → show.
+  2. If `delta > deltaThreshold` → hide.
+  3. If `delta < -deltaThreshold` → show.
+  4. In any case, re-evaluate the «Back to top» button
+     (`updateBackToTop()`): the filters' position changes in the same
+     descent that hides the navigation, not only when the state changes
+     or on `resize`.
+- `setNavHidden(hidden)`: only acts if the state changes (avoids
+  unnecessary work and reflows) and keeps the button synced.
+- **`isInteracting()` guards** — the navigation is NEVER hidden while
+  the user interacts with it or there is overlap:
+  - Focus inside `.app-header, .tabs--bar` (e.g. typing in the
+    search).
+  - Header-anchored dropdowns open: `#notif-dropdown`,
+    `#profile-dropdown`, `.global-search__results` without `.hidden`.
+  - Side drawer `.app-sidebar.is-open`.
+  - Open modal `.modal:not(.hidden)`.
+  - Hidden app (`#app.hidden`, access screen) or **no active list
+    panel** (`activePanel()` → `#app:not(.hidden) .panel:not(.hidden)`,
+    e.g. profile/settings): scroll hiding **only applies to the ocio
+    lists**.
+- **«Back to top» button**: visible only if `navHidden` AND the
+  active list's filters went **completely out of view**
+  (`controls.getBoundingClientRect().bottom <= 0` over the active
+  panel's `.library-controls`). On press: `setNavHidden(false)` +
   `window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" })` —
-  con `prefers-reduced-motion` el salto es instantáneo.
-- **Reactividad**: `MutationObserver` (atributo `class`, `subtree`) sobre
+  with `prefers-reduced-motion` the jump is instant.
+- **Reactivity**: a `MutationObserver` (attribute `class`, `subtree`) over
   `.panel, .modal, .app-sidebar, #notif-dropdown, #profile-dropdown,
-  .global-search__results, #app, body` (los cambios del propio `<body>`
-  son inofensivos: `setNavHidden` es no-op si el estado no cambia);
-  `focusin` en cabecera/pestañas; clics en `#btn-notifications` y
-  `#btn-open-profile`; `focus` en `#global-search-input` (los tres
-  envueltos en `() => evaluate()`: pasar el Event como delta coaccionaría
-  a NaN y conservaría el estado por accidente); `resize` del
-  viewport; y `evaluate()` inicial al cargar.
+  .global-search__results, #app, body` (the `<body>`'s own changes
+  are harmless: `setNavHidden` is a no-op if the state does not change);
+  `focusin` on header/tabs; clicks on `#btn-notifications` and
+  `#btn-open-profile`; `focus` on `#global-search-input` (all three
+  wrapped in `() => evaluate()`: passing the Event as a delta would
+  coerce to NaN and keep the state by accident); the viewport's
+  `resize`; and an initial `evaluate()` on load.
 
-### 3. Integración, manual y PWA
+### 3. Integration, manual and PWA
 
-- `js/app.js`: `import { initAutoHideNav }` + llamada en `init()`.
-- `index.html`: botón `#btn-back-to-top` antes de los scripts; bump
+- `js/app.js`: `import { initAutoHideNav }` + call in `init()`.
+- `index.html`: `#btn-back-to-top` button before the scripts; bump
   `?v=20260832` → `?v=20260833` (×3).
-- **Manual** (`docs/manual-de-usuario.md`): §3 corregida (la cabecera ya
-  no es «siempre visible») y nueva §3.2 «La cabecera y las pestañas al
-  hacer scroll» (ocultación al bajar, botón «Volver arriba» flotando
-  sobre la lista, nunca se oculta mientras se usa la navegación).
-- **Bump PWA** `20260832` → `20260833` (un bump por PR que toca assets,
-  cf. ADR-049): `js/config.js` (`APP_VERSION`), `index.html` (`?v=`
-  ×3), `service-worker.js` (`?v=` ×6 en `STATIC_ASSETS` + **precache
-  del nuevo módulo** `./js/auto-hide-nav.js`, sin `?v`: el módulo se
-  invalida vía el cache-busting de `app.js?v=20260833`), aplicado con
+- **Manual** (`docs/manual-de-usuario.md`): §3 corrected (the header is no
+  longer «always visible») and new §3.2 «La cabecera y las pestañas al
+  hacer scroll» (hiding on scroll down, the floating «Volver arriba»
+  button, never hidden while the navigation is in use).
+- **PWA bump** `20260832` → `20260833` (one bump per PR touching
+  assets, cf. ADR-049): `js/config.js` (`APP_VERSION`), `index.html`
+  (`?v=` ×3), `service-worker.js` (`?v=` ×6 in `STATIC_ASSETS` +
+  **precache of the new module** `./js/auto-hide-nav.js`, no `?v`: the
+  module is invalidated via `app.js?v=20260833`'s cache busting), applied with
   `scripts/bump-version.sh`.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Ocultar solo la cabecera** (dejar las pestañas siempre visibles):
-  descartado — la issue pide explícitamente ocultar «las pestañas y la
-  barra de búsqueda superior»; además, en ≥768px las pestañas cuelgan
-  bajo la cabecera y en móvil la barra inferior seguiría robando
-  `--tabs-bar-h` de alto en listas largas.
-- **Animación por JS directo** (estilos inline o classList sobre los
-  elementos, sin clases en `body`): descartado — acopla el JS al layout
-  concreto y duplica lógica que ya vive en CSS (transiciones,
-  `prefers-reduced-motion`); las clases en `body` dejan la animación en
-  una sola capa (CSS) y el estado es inspeccionable.
-- **Botón «Volver arriba» como línea entera** (elemento en el flujo
-  entre los filtros y la lista): descartado — la issue pide
-  explícitamente que **no ocupe una línea entera** y que flote sobre la
-  lista; un elemento en flujo además empujaría los ítems al aparecer.
-- **Sin botón «Volver arriba»**: descartado — es un añadido explícito
-  de la issue: con la navegación oculta y los filtros fuera de vista no
-  quedaría forma de volver al principio sin scroll manual largo.
-- **Extender la ocultación a toda la app** (acceso, perfil, ajustes):
-  descartado — son pantallas sin listas largas ni barra de búsqueda
-  relevante; ocultar la navegación allí sorprendería y complicaría los
-  guards (los paneles de perfil no tienen `.library-controls`).
-- **Ocultar también con `scrollY` pequeño** (sin `hideThreshold`):
-  descartado — la navegación parpadearía nada más empezar a desplazarse;
-  los 80px de margen la estabilizan al inicio del scroll.
+- **Hiding only the header** (keeping the tabs always visible):
+  rejected — the issue explicitly asks to hide «las pestañas y la barra
+  de búsqueda superior»; besides, at ≥768px the tabs hang under the
+  header and on mobile the bottom bar would keep stealing
+  `--tabs-bar-h` of height in long lists.
+- **JS-driven animation** (inline styles or classList on the
+  elements, without classes on `body`): rejected — it couples the JS to
+  the concrete layout and duplicates logic already living in CSS
+  (transitions, `prefers-reduced-motion`); the `body` classes keep the
+  animation in a single layer (CSS) and the state is inspectable.
+- **"Back to top" button as a whole line** (an in-flow element
+  between the filters and the list): rejected — the issue explicitly
+  asks it to **not take a whole line** and to float over the list; an
+  in-flow element would also push the items when appearing.
+- **Without a «Back to top» button**: rejected — it is the issue's
+  explicit addition: with the navigation hidden and the filters out of
+  view, there would be no way back to the start without a long manual
+  scroll.
+- **Extending the hiding to the whole app** (access, profile,
+  settings): rejected — they are screens without long lists nor a
+  relevant search bar; hiding the navigation there would surprise and
+  complicate the guards (the profile's panels have no
+  `.library-controls`).
+- **Hiding also with a small `scrollY`** (without `hideThreshold`):
+  rejected — the navigation would flicker right when scrolling starts;
+  the 80px margin stabilizes it at the scroll's start.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Más espacio vertical de lectura**: en listas largas cabecera y
-  pestañas salen de la pantalla y la lista ocupa todo el alto; vuelven
-  al instante al subir o al interactuar.
-- **Animación barata y aislada**: solo transforms de 2 elementos fixed
-  (trabajo del compositor), sin tocar el flujo del documento ni el
-  padding reservado de `.app`; `prefers-reduced-motion` respetado.
-- **Guards de interacción robustos**: foco en búsqueda, dropdowns
-  abiertos, modal, drawer y pantallas no-ocio — criterio 7 de la issue
-  cumplido; los dropdowns anclados a la cabecera nunca quedan
-  descuelgados.
-- **Accesibilidad**: `visibility` retardado permite ver el deslizamiento
-  y luego saca cabecera/pestañas (y el botón oculto) del árbol de foco;
-  el botón tiene `aria-label` y `:focus-visible`; con
-  `prefers-reduced-motion` el cambio es instantáneo y el salto al top es
+- **More vertical reading space**: in long lists header and tabs leave
+  the screen and the list takes the full height; they return instantly
+  on scrolling up or interacting.
+- **Cheap and isolated animation**: only 2 fixed elements' transforms
+  (compositor work), without touching the document flow nor `.app`'s
+  reserved padding; `prefers-reduced-motion` respected.
+- **Robust interaction guards**: focus in the search, open dropdowns,
+  modal, drawer and non-ocio screens — issue criterion 7 met; the
+  header-anchored dropdowns are never left orphaned.
+- **Accessibility**: delayed `visibility` shows the sliding and then
+  takes header/tabs (and the hidden button) out of the focus tree;
+  the button has an `aria-label` and `:focus-visible`; with
+  `prefers-reduced-motion` the change is instant and the top jump is
   `auto`.
-- **Botón flotante con `z-index: 44`**: por debajo de cabecera/pestañas
-  (46/45) — al reaparecer la navegación nunca queda tapada ni el botón
-  la pisa; por encima del contenido de la lista.
-- **Estado centralizado en `body`**: las clases `is-nav-hidden` e
-  `is-back-to-top-visible` hacen el estado inspeccionable desde
-  DevTools y reutilizable por futuras features.
-- **Manual al día**: regla 3 de AGENTS.md cumplida en la misma tarea
-  (§3 y §3.2), y QA/seguridad PASS antes de documentar.
+- **Floating button with `z-index: 44`**: below header/tabs
+  (46/45) — when the navigation reappears it is never covered nor the
+  button steps on it; above the list's content.
+- **State centralized in `body`**: the `is-nav-hidden` and
+  `is-back-to-top-visible` classes make the state inspectable from
+  DevTools and reusable by future features.
+- **Manual up to date**: AGENTS.md's rule 3 met in the same task
+  (§3 and §3.2), and QA/security PASS before documenting.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Dropdowns `fixed` bajo un ancestro con transform**: los dropdowns
-  viven dentro de `.app-header`; con `transform` activo el header pasa a
-  ser el containing block de sus `position: fixed` (móvil ≤600px). El
-  riesgo queda **mitigado por los guards** (`isInteracting()` + listener
-  de apertura): la cabecera nunca se oculta con un dropdown abierto, y
-  el `MutationObserver` reevalúa al cerrarse. Si en el futuro se añade
-  un dropdown que no pase por esos guards, habrá que revisarlo.
-- **`visibility` con retardo**: durante la transición de salida el
-  elemento sigue visible (0.25s); un vaivén muy rápido de scroll puede
-  percibirse como parpadeo residual. Aceptado para que el deslizamiento
-  se vea completo; el `deltaThreshold` de 8px amortigua los cambios
-  rápidos de dirección.
-- **Umbrales empíricos (80/8 px)**: el comportamiento de parpadeo
-  depende del dispositivo, trackpad o ratón; si algún dispositivo lo
-  nota, se ajustan en `CONFIG` del módulo.
-- **Alcance limitado a ocio**: la ocultación no aplica en perfil,
-  ajustes ni acceso. Es el alcance pedido (y cualquier pestaña futura
-  con `.panel` y `.library-controls` la hereda), pero una sección nueva
-  con listas largas fuera de ese patrón necesitaría ampliar los guards.
-- **El observer reacciona a sus propias clases en `body`**: reevaluación
-  inofensiva (no-op si el estado no cambia) y con coste despreciable.
+- **`fixed` dropdowns under an ancestor with a transform**: the dropdowns
+  live inside `.app-header`; with an active `transform` the header becomes
+  their `position: fixed`'s containing block (mobile ≤600px). The risk is
+  **mitigated by the guards** (`isInteracting()` + opening listener): the
+  header is never hidden with an open dropdown, and
+  the `MutationObserver` re-evaluates when it closes. If a future
+  dropdown does not go through those guards, it would have to be
+  reviewed.
+- **`visibility` with delay**: during the exit transition the element
+  stays visible (0.25s); a very fast scroll swing can be perceived as
+  residual flicker. Accepted so the sliding is fully visible; the 8
+  px `deltaThreshold` dampens fast direction changes.
+- **Empirical thresholds (80/8 px)**: the flicker behavior depends on the
+  device, trackpad or mouse; if a device notices it, they are adjusted in
+  the module's `CONFIG`.
+- **Scope limited to ocio**: the hiding does not apply on profile,
+  settings nor access. It is the requested scope (and any future tab
+  with `.panel` and `.library-controls` inherits it), but a new section
+  with long lists outside that pattern would need expanding the guards.
+- **The observer reacts to its own `body` classes**: a harmless
+  re-evaluation (a no-op if the state does not change) with negligible
+  cost.
 
-### Neutras
+### Neutral
 
-- **Bump PWA de rutina**: `20260832` → `20260833` (un bump por PR,
-  ADR-049) con `scripts/bump-version.sh`; `js/auto-hide-nav.js` entra en
-  el precache del service worker.
-- **ADR-040 sigue vigente como registro histórico**: documentaba la
-  navegación «siempre visible»; este ADR describe su evolución, no lo
-  modifica. Los ADRs de dropdowns (ADR-027, ADR-035, ADR-038) tampoco se
-  tocan.
-- **Rama `feat/issue-137-auto-hide-nav`** (base `dev`): commits
-  `3541d29` (index.html: botón + bump), `ffccffd` (styles.css: bloque de
-  ocultación + botón), `a77d68b` (js/auto-hide-nav.js), `0df13f7`
-  (app.js: integración), `f8de71d` (manual §3.2), `ac6d594` (fix delta
-  en listener y conservación de estado), `9fe9dac` (bump PWA +
-  precache), y `9f7900c` (ADR-060) + revisión de PR #158 (envuelta de
-  listeners `() => evaluate()` para no pasar el Event como delta).
+- **Routine PWA bump**: `20260832` → `20260833` (one bump per PR,
+  ADR-049) with `scripts/bump-version.sh`; `js/auto-hide-nav.js` enters
+  the service worker's precache.
+- **ADR-040 remains in force as a historical record**: it documented the
+  «always visible» navigation; this ADR describes its evolution, not a
+  modification. The dropdowns' ADRs (ADR-027, ADR-035, ADR-038) are also
+  untouched.
+- **Branch `feat/issue-137-auto-hide-nav`** (base `dev`): commits
+  `3541d29` (index.html: button + bump), `ffccffd` (styles.css: hiding
+  block + button), `a77d68b` (js/auto-hide-nav.js), `0df13f7`
+  (app.js: integration), `f8de71d` (manual §3.2), `ac6d594` (delta fix
+  in the listener and state keeping), `9fe9dac` (PWA bump +
+  precache), and `9f7900c` (ADR-060) + the review of PR #158 (listeners
+  wrapped in `() => evaluate()` to not pass the Event as a delta).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/auto-hide-nav.js` | **Nuevo**: módulo ES con `initAutoHideNav()` — `CONFIG { hideThreshold: 80, deltaThreshold: 8 }`; `activePanel()` (`#app:not(.hidden) .panel:not(.hidden)`), `isInteracting()` (foco en cabecera/pestañas, dropdowns, drawer, modal, app oculta o sin panel), `setNavHidden()` (clase `body.is-nav-hidden`), `updateBackToTop()` (`body.is-back-to-top-visible` solo con nav oculta y `.library-controls` con `bottom <= 0`), `evaluate(delta)`; listener `scroll` passive con delta calculado en el listener + throttle rAF; `focusin`, clics en `#btn-notifications`/`#btn-open-profile`, `focus` en `#global-search-input`, `MutationObserver` de clase en subtree, `resize`, click de `#btn-back-to-top` (scroll `smooth`, `auto` con `prefers-reduced-motion`) y evaluación inicial |
-| `css/styles.css` | **Modificado**: bloque «Ocultar navegación al desplazar (issue #137)» — `body.is-nav-hidden .app-header` con `transform: translateY(-100%)` + `visibility` retardado; `.tabs--bar` con `translateY(100%)` en móvil y `translateY(calc(-100% - var(--header-h)))` en ≥768px; transiciones `transform 0.25s ease, visibility 0s 0.25s`; `.back-to-top` (fixed, centrado, `top: 0.75rem`, `z-index: 44`, píldora) con `body.is-back-to-top-visible` (opacity/visibility/pointer-events, fade 0.2s con retardo 0.15s) y `:focus-visible` con `--teal-reel` |
-| `index.html` | **Modificado**: botón `#btn-back-to-top` (`.back-to-top`, `aria-label="Volver arriba"`, `↑ Volver arriba`) antes de los scripts; bump `?v=20260832` → `?v=20260833` (×3) |
-| `js/app.js` | **Modificado**: `import { initAutoHideNav }` e `initAutoHideNav()` en `init()` (issue #137) |
-| `js/config.js` | **Modificado**: `APP_VERSION` `20260832` → `20260833` |
-| `service-worker.js` | **Modificado**: bump `?v=20260833` en los 6 assets de `STATIC_ASSETS` y **precache nuevo** `./js/auto-hide-nav.js` (vía `scripts/bump-version.sh`) |
-| `docs/manual-de-usuario.md` | **Modificado**: §3 (la cabecera y las pestañas «se ocultan al bajar y vuelven al subir», ya no «siempre visibles») y nueva §3.2 «La cabecera y las pestañas al hacer scroll» (ocultación al bajar, botón flotante «Volver arriba», la navegación nunca se oculta mientras se usa) — regla 3 de AGENTS.md |
-| `docs/adr-060-ocultar-navegacion-al-desplazar.md` | **Nuevo**: este documento |
+| `js/auto-hide-nav.js` | **New**: ES module with `initAutoHideNav()` — `CONFIG { hideThreshold: 80, deltaThreshold: 8 }`; `activePanel()` (`#app:not(.hidden) .panel:not(.hidden)`), `isInteracting()` (focus in header/tabs, dropdowns, drawer, modal, hidden app or no panel), `setNavHidden()` (`body.is-nav-hidden` class), `updateBackToTop()` (`body.is-back-to-top-visible` only with the nav hidden and `.library-controls` with `bottom <= 0`), `evaluate(delta)`; passive `scroll` listener with the delta computed in the listener + rAF throttle; `focusin`, clicks on `#btn-notifications`/`#btn-open-profile`, `focus` on `#global-search-input`, `MutationObserver` of class in subtree, `resize`, `#btn-back-to-top`'s click (scroll `smooth`, `auto` with `prefers-reduced-motion`) and initial evaluation |
+| `css/styles.css` | **Modified**: «Ocultar navegación al desplazar (issue #137)» block — `body.is-nav-hidden .app-header` with `transform: translateY(-100%)` + delayed `visibility`; `.tabs--bar` with `translateY(100%)` on mobile and `translateY(calc(-100% - var(--header-h)))` at ≥768px; transitions `transform 0.25s ease, visibility 0s 0.25s`; `.back-to-top` (fixed, centered, `top: 0.75rem`, `z-index: 44`, pill) with `body.is-back-to-top-visible` (opacity/visibility/pointer-events, 0.2s fade with a 0.15s delay) and `:focus-visible` with `--teal-reel` |
+| `index.html` | **Modified**: `#btn-back-to-top` button (`.back-to-top`, `aria-label="Volver arriba"`, `↑ Volver arriba`) before the scripts; bump `?v=20260832` → `?v=20260833` (×3) |
+| `js/app.js` | **Modified**: `import { initAutoHideNav }` and `initAutoHideNav()` in `init()` (issue #137) |
+| `js/config.js` | **Modified**: `APP_VERSION` `20260832` → `20260833` |
+| `service-worker.js` | **Modified**: bump `?v=20260833` on the 6 assets of `STATIC_ASSETS` and a **new precache** `./js/auto-hide-nav.js` (via `scripts/bump-version.sh`) |
+| `docs/manual-de-usuario.md` | **Modified**: §3 (the header and tabs "hide on scrolling down and return on scrolling up", no longer «always visible») and new §3.2 «La cabecera y las pestañas al hacer scroll» (hiding on scrolling down, the floating «Volver arriba» button, the navigation is never hidden while in use) — AGENTS.md's rule 3 |
+| `docs/adr-060-ocultar-navegacion-al-desplazar.md` | **New**: this document |
 
 Related issue: #137 — https://github.com/gonzalitojh/Registro-personal/issues/137

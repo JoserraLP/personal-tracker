@@ -1,13 +1,13 @@
 // =============================================================
-// Constantes compartidas entre módulos. Centraliza las etiquetas
-// de estado, los mapeos de tipo y otros valores que se usan en
-// varios sitios (app.js, ui.js, profile.js, etc.) para evitar
-// duplicación.
+// Constants shared between modules. It centralizes the status
+// labels, the type mappings and other values used in
+// several places (app.js, ui.js, profile.js, etc.) to avoid
+// duplication.
 // =============================================================
 
-// Etiquetas de estado con contexto (para mostrar en la UI).
-// "media" cubre películas y series; "book" es para libros;
-// "game" cubre videojuegos.
+// Status labels with context (to display in the UI).
+// "media" covers movies and TV series; "book" is for books;
+// "game" covers videogames.
 export const STATUS_LABELS = {
   media: {
     pendiente: "Pendiente",
@@ -32,8 +32,8 @@ export const STATUS_LABELS = {
   },
 };
 
-// Etiquetas neutrales de estado (sin contexto de tipo).
-// Se usan en las gráficas de estadísticas del perfil.
+// Neutral status labels (without type context).
+// They are used in the profile's statistics charts.
 export const STATUS_LABELS_NEUTRAL = {
   pendiente: "Pendiente",
   en_curso: "En curso",
@@ -42,35 +42,35 @@ export const STATUS_LABELS_NEUTRAL = {
   abandonado: "Abandonado",
 };
 
-// Textos de la acción «marcar como completado» según el tipo (issue #177):
-// el término varía por tipo — películas/series «visto», libros «leído»,
-// videojuegos «jugado». Se usan en el botón del catálogo (issue #115)
-// y en sus estados final/restauración.
+// Texts of the «mark as completed» action depending on the type (issue #177):
+// the term varies by type — movies/series «visto», books «leído»,
+// videogames «jugado». They are used in the catalog button (issue #115)
+// and in its done/restore states.
 export const SEEN_ACTION_LABELS = {
   media: { action: "Marcar visto", done: "Visto" },
   book: { action: "Marcar leído", done: "Leído" },
   game: { action: "Marcar jugado", done: "Jugado" },
 };
 
-// Textos de «marcar como completado» para el tipo de ítem dado
-// (misma familia de alcance que STATUS_LABELS, issue #177).
+// Texts of «mark as completed» for the given item type
+// (same family of scopes as STATUS_LABELS, issue #177).
 export function seenActionLabels(type) {
   const scope = type === "book" ? "book" : type === "game" ? "game" : "media";
   return SEEN_ACTION_LABELS[scope];
 }
 
-// Mapeo de nombre de grupo ("movies", "tv", "books", "games") a tipo de
-// ítem ("movie", "tv", "book", "game") que se guarda en Firestore.
+// Mapping of group name ("movies", "tv", "books", "games") to the item type
+// ("movie", "tv", "book", "game") saved in Firestore.
 export const TYPE_BY_GROUP = { movies: "movie", tv: "tv", books: "book", games: "game" };
 
-// Campos de ficha servidos BAJO DEMANDA (almacenamiento mínimo A2,
-// estudio de la issue #183, sección 8.2): con el almacenamiento
-// mínimo no se persisten en Firestore; se piden a la API al abrir la
-// ficha (con caché en memoria de 24 h) y la limpieza migratoria
-// (js/migration.js) los elimina de los documentos existentes.
-// Excepción: los libros conservan `description` (sección 8.1: la
-// tarjeta y la ficha de libro lo pintan al instante, y no hay llamada
-// de detalle que lo recupere sin coste).
+// Detail fields served ON DEMAND (minimal storage A2,
+// study of issue #183, section 8.2): with minimal
+// storage they are not persisted in Firestore; they are requested from the
+// API when opening the detail view (with a 24 h in-memory cache) and the
+// migration cleanup (js/migration.js) removes them from existing documents.
+// Exception: books keep `description` (section 8.1: the
+// book card and detail view paint it instantly, and there is no
+// detail call that retrieves it without cost).
 export const ON_DEMAND_DETAIL_FIELDS = [
   "runtime",
   "episodeRuntime",
@@ -92,9 +92,9 @@ export const ON_DEMAND_DETAIL_FIELDS = [
   "playtime",
 ];
 
-// Iconos SVG de los tipos de medio: MISMO markup que las pestañas de
-// index.html (tab--tv / tab--movies / tab--books, líneas 155-177) —
-// fuente canónica: si cambian las pestañas, actualizar aquí (issue #134).
+// SVG icons of the media types: SAME markup as the tabs of
+// index.html (tab--tv / tab--movies / tab--books, lines 155-177) —
+// canonical source: if the tabs change, update here (issue #134).
 export const MEDIA_ICONS = {
   tv: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <rect x="2" y="7" width="20" height="15" rx="2" ry="2" />

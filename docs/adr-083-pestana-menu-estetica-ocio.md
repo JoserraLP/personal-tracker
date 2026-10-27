@@ -1,144 +1,320 @@
-# ADR-083: Estética tipo Ocio de la pestaña de Menú — botones píldora y controles coherentes (issue #220)
+# ADR-083: Ocio-like aesthetics on the Menú tab — pill buttons and coherent controls (issue #220)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-11
 
-## Contexto
+## Context
 
-La issue #220 pide mejorar la estética de la pestaña **«Menú»** de la
-sección de Recetas (issue #64): sus botones tenían una estética
-**completamente diferente** al resto de la web (sección Ocio y pestañas
-de Recetas/Ingredientes). El objetivo es que sigan el mismo lenguaje
-visual: botones **píldora** estilo `.sort-select` /
-`.ingredients-filter__btn` de Ocio, `.btn--primary` para las acciones
-principales, `danger` coherente para las destructivas y selects
-consistentes.
+Issue #220 asks to improve the
+Recipes section's **«Menú»** tab's aesthetics
+(issue #64): its buttons had an aesthetics
+**completely different** from the web's rest
+(the Ocio section and the Recipes/Ingredients tabs). The goal is for
+them to follow the same visual language: `.sort-select` /
+`.ingredients-filter__btn`-style **pill** buttons of
+Ocio, `.btn--primary` for primary actions, a
+`danger` coherent look for destructive ones and
+consistent selects.
 
-Estado previo (construido en ADR-076/ADR-081, issues #214/#215): la
-barra de herramientas del menú usaba `btn--small` para la navegación de
-semanas (`menu-prev-week`/`menu-next-week`), «Borrar semana»
-(`menu-delete-week`) y «+ Añadir receta a la semana»
-(`btn-add-weekly-recipe`); los selects de `.menu-meal__picker` y
-`.menu-weekly__addrow` eran nativos sin estilizar y el input de
-comensales no seguía ningún patrón de la web.
+Previous state (built in ADR-076/ADR-081, issues #214/#215): the
+menu's toolbar used `btn--small` for the weeks'
+navigation (`menu-prev-week`/`menu-next-week`), "Borrar
+semana" (`menu-delete-week`) and
+«+ Añadir receta a la semana» (`btn-add-weekly-recipe`); the
+selects of `.menu-meal__picker` and
+`.menu-weekly__addrow` were unstyled
+ natives and
+ the diners'
+input followed
+ no pattern of
+ the web.
 
-Nota del flujo: la base de trabajo es la rama
-`content/issue-64-seccion-recetas`; la rama de trabajo se crea desde ahí
-y la PR va **también a esa rama, no a `dev`** — excepción puntual a la
-regla de PRs contra `dev` de AGENTS.md §1, pedida explícitamente por el
-usuario en la issue.
+Flow note: the work's base
+ is the
+ `content/issue-64-seccion-recetas` branch; the work
+ branch is
+ created from there and the
+ PR goes
+ **also to that branch, not to
+ `dev`** — a
+ one-off
+ exception to
+ AGENTS.md §1's PRs-against-`dev` rule, explicitly requested
+ by the
+ user in the
+ issue.
 
-Decisiones clave del rediseño:
+The redesign's key decisions:
 
-1. **Clase píldora nueva `.btn--pill`**: reutiliza las métricas exactas
-   de `.sort-select` / `.ingredients-filter__btn` de Ocio (fondo
-   `--ink-raised`, texto `--paper`, borde 1px `--paper-alpha-30`, radio
-   999px, padding 0.3rem 0.75rem, font-size 1rem, hover
-   `--paper-alpha-10`). Se declara **antes** de `.btn--danger` para que
-   la combinación `.btn--pill.btn--danger` conserve el color de peligro
-   (`--stamp`) y su hover: la píldora aporta radio/padding y el danger
-   fondo/borde/color.
-2. **Jerarquía de acciones**: navegación de semana (←/→) y «Borrar
-   semana» pasan a píldora; la destructiva se combina con
-   `.btn--danger`; «+ Añadir receta a la semana» pasa a
-   `.btn--primary btn--small` por ser la acción principal.
-3. **Controles de la pestaña uniformados**: `.menu-week-label`
-   (font-size 0.95rem + color `--ink-soft`), `.menu-comensales input`
-   (píldora: radio 999px, borde `--paper-alpha-30`, padding, font-size
-   1rem, text-align center, + `:focus-visible` con outline
-   `--teal-reel`), `.menu-meal__add` (radio 999px, borde
-   `--paper-alpha-30`, hover `--paper-alpha-10`) y los selects de
-   `.menu-meal__picker` y `.menu-weekly__addrow` (fondo
-   `--ink-raised`, píldora, + `:focus-visible`).
-4. **Cuatro temas**: overrides **agrupados** de la familia clara
-   (`[data-theme="light"/"white"] .btn--pill:not(.btn--danger)` → color
-   `--ink` y hover `--ink-alpha-10`; `.menu-meal__add:hover` →
-   `--ink-alpha-10`), siguiendo el patrón de selectores agrupados de
-   AGENTS.md §4. El **negro puro no necesita override**: queda
-   documentado con comentario en el CSS (—`--ink-raised` es #0a0a0a,
-   fondo casi negro, con texto `--paper` claro, borde
-   `--paper-alpha-30` y hover `--paper-alpha-10`—, y la píldora de
-   borrar usa `--stamp-dark`).
-5. **Botón dinámico coherente**: el botón recreado en JS
-   (`renderWeeklyRecipes` de `js/menu.js`) pasa a `btn--primary
-   btn--small`, igual que su homólogo estático, para que el flujo «+ Añadir
-   receta a la semana» nunca quede visualmente distinto.
+1. **A new pill
+   class `.btn--pill`**: it reuses
+   Ocio's `.sort-select` /
+   `.ingredients-filter__btn` exact metrics
+   (a
+   `--ink-raised` background, the
+   `--paper` text, a
+   1px `--paper-alpha-30` border,
+   radius
+   999px, padding
+   0.3rem 0.75rem, font-size
+   1rem, hover
+   `--paper-alpha-10`). It is declared
+   **before** `.btn--danger` so
+   the `.btn--pill.btn--danger` combination
+   keeps
+   the
+   danger
+   color (`--stamp`) and
+   hover: the
+   pill
+   contributes
+   radius/padding and
+   the
+   danger background/border/color.
+2. **The actions' hierarchy**: the weeks'
+   navigation (←/→)
+   and «Borrar
+   semana» become
+   pills;
+   the destructive one combines with
+   `.btn--danger`; «+ Añadir
+   receta a la semana» becomes
+   `.btn--primary btn--small` for
+   being
+   the
+   main
+   action.
+3. **The tab's controls uniformized**: `.menu-week-label`
+   (font-size
+   0.95rem + color
+   `--ink-soft`), `.menu-comensales input`
+   (a pill: radius
+   999px, a
+   `--paper-alpha-30` border, padding,
+   font-size
+   1rem, text-align
+   center, + a
+   `:focus-visible` with
+   an
+   outline
+   `--teal-reel`), `.menu-meal__add`
+   (radius
+   999px, a
+   `--paper-alpha-30`
+   border, hover
+   `--paper-alpha-10`) and the
+   selects of
+   `.menu-meal__picker` and
+   `.menu-weekly__addrow` (a
+   `--ink-raised` background,
+   pill,
+   + `:focus-visible`).
+4. **Four themes**: the
+   light family's
+   **grouped**
+   overrides
+   (`[data-theme="light"/"white"] .btn--pill:not(.btn--danger)`)
+   → color
+   `--ink` and
+   hover
+   `--ink-alpha-10`;
+   `.menu-meal__add:hover`
+   →
+   `--ink-alpha-10`,
+   following
+   AGENTS.md
+   §4's grouped-selectors pattern. **Pure
+   black needs no
+   override**: it is documented
+   with a
+   comment in the CSS (—`--ink-raised` is
+   #0a0a0a, an
+   almost-black
+   background, with
+   a
+   light
+   `--paper` text, border
+   `--paper-alpha-30` and
+   hover
+   `--paper-alpha-10`—, and
+   the
+   delete
+   pill uses
+   `--stamp-dark`).
+5. **A coherent dynamic
+   button**: the button recreated in
+   JS (`js/menu.js`'s
+   `renderWeeklyRecipes`) becomes
+   `btn--primary
+   btn--small`, the same as its static homolog, so the
+  "«+ Añadir receta a la semana»" flow is
+   never visually different.
 
-## Decisión
+## Decision
 
-1. **CSS** (`css/styles.css`): nueva clase `.btn--pill` (con su hover),
-   declarada **antes** de `.btn--danger` y con comentario explicando el
-   orden de cascada para `.btn--pill.btn--danger`. Se actualizan
-   `.menu-week-label`, `.menu-comensales input` (+`:focus-visible`),
-   `.menu-meal__add` (+hover), `.menu-meal__picker select` y
-   `.menu-weekly__addrow select` (+`:focus-visible`), y se añaden los
-   overrides agrupados de la familia clara
-   (`[data-theme="light"]`+`[data-theme="white"]`) para `.btn--pill` y
-   `.menu-meal__add`, junto al comentario que documenta por qué el modo
-   negro puro no necesita override.
-2. **HTML** (`index.html`): `menu-prev-week` y `menu-next-week` pasan de
-   `btn--small` a `btn--pill`; `menu-delete-week` pasa a
-   `btn--pill btn--danger`; `btn-add-weekly-recipe` pasa a
+1. **CSS** (`css/styles.css`): a new
+   `.btn--pill` class
+   (with its
+   hover), declared
+   **before** `.btn--danger`
+   and with a
+   comment explaining the
+   cascade order for
+   `.btn--pill.btn--danger`.
+   `.menu-week-label`,
+   `.menu-comensales input`
+   (+`:focus-visible`),
+   `.menu-meal__add`
+   (+hover), `.menu-meal__picker select`
+   and
+   `.menu-weekly__addrow select`
+   (+`:focus-visible`) are updated, and the
+   light family's
+   grouped overrides are added
+   (`[data-theme="light"]`+`[data-theme="white"]`)
+   for
+   `.btn--pill` and
+   `.menu-meal__add`, along with the
+   comment
+   documenting why pure black needs no
+   override.
+2. **HTML** (`index.html`): `menu-prev-week` and
+   `menu-next-week` go
+   from
+   `btn--small` to
+   `btn--pill`; `menu-delete-week` becomes
+   `btn--pill btn--danger`; `btn-add-weekly-recipe`
+   becomes
    `btn--primary btn--small`.
-3. **JS** (`js/menu.js`): el botón dinámico que reconstruye
-   `renderWeeklyRecipes` (cuando el picker consumió el estático) pasa a
-   `btn--primary btn--small`, coherente con el estático.
-4. **PWA**: bump de versión `20260911 → 20260912` en `index.html`
-   (`?v=`), `js/config.js` (`APP_VERSION`) y `service-worker.js`
-   (`STATIC_ASSETS`).
-5. **Manual de usuario**: sin cambios — la sección 8.3 describe solo
-   funcionalidad (navegar semanas, comensales, borrar, añadir recetas),
-   no estética; el cambio es puramente visual de botones y no altera
-   nada visible a nivel de comportamiento.
-6. **PR contra `content/issue-64-seccion-recetas`**: excepción puntual y
-   explícita a la regla de AGENTS.md §1 (PRs siempre contra `dev`),
-   solicitada por el usuario en la issue #220; la rama de trabajo
-   `wip/issue-220` se creó a partir de esa base.
+3. **JS** (`js/menu.js`): the
+   dynamic button that
+   `renderWeeklyRecipes`
+   rebuilds (when the
+   picker consumed the static one) becomes
+   `btn--primary btn--small`, coherent with the
+   static
+   one.
+4. **PWA**: the version bumps
+   `20260911 → 20260912` in `index.html`
+   (the `?v=`), `js/config.js` (`APP_VERSION`) and
+   `service-worker.js` (`STATIC_ASSETS`).
+5. **User manual**: without
+   changes — section
+   8.3 describes only
+   functionality (navigating weeks,
+   diners,
+   deleting, adding recipes), not
+   aesthetics; the
+   change is a purely visual
+   buttons change and
+   alters nothing visible at the behavior
+   level.
+6. **The PR against
+   `content/issue-64-seccion-recetas`**: a
+   one-off and
+   explicit
+   exception to
+   AGENTS.md §1's rule (PRs always against
+   `dev`), requested by
+   the
+   user in issue #220; the work
+   branch
+   `wip/issue-220` was
+   created from
+   that base.
 
-## Consecuencias
+## Consequences
 
-- **Positivas**: la pestaña «Menú» queda a la altura visual de Ocio y
-  de las pestañas Recetas/Ingredientes; la jerarquía de acciones es
-  legible (píldoras para navegación, danger para la destructiva,
-  primary para la acción principal); la clase `.btn--pill` queda
-  reutilizable para futuros controles; el botón dinámico y el estático
-  nunca divergen visualmente.
-- **Neutras**: bump de versión PWA (invalida la caché de `20260911`
-  para propagar el nuevo CSS); el botón dinámico vuelve a
-  `btn--primary btn--small` cuando `renderWeeklyRecipes` lo
-  reconstruye, pero el usuario no percibe cambio de comportamiento; el
-  modo negro puro no recibe override propio porque los valores base de
-  la píldora ya son correctos sobre fondo negro (decisión documentada
-  en el CSS).
-- **Negativas**: ninguna conocida. La funcionalidad queda intacta
-  (navegar semanas, comensales, borrar semana, «+ Receta» por comida,
-  recetas a la semana, quitar/eliminar). QA PASS: lenguaje visual
-  coherente, cuatro modos de tema con contraste WCAG AA (calculado por
-  tema) y responsividad en 360 / 768 / 1280 px sin scroll horizontal a
-  nivel de página (el scroll interno del grid del menú sigue permitido).
-  Seguridad PASS: sin hallazgos (las claves Firebase/TMDB/GB son
-  preexistentes y públicas por diseño).
+- **Positive**: the «Menú» tab reaches
+  Ocio's and the Recipes/Ingredients tabs' visual level; the
+  actions' hierarchy is
+  readable (pills for navigation, the
+  danger for the destructive one, the
+  primary for the main
+  action); the
+  `.btn--pill` class stays
+  reusable for future controls; the
+  dynamic and the static
+  button never diverge visually.
+- **Neutral**: the PWA's version bump
+  (invalidates the cache of `20260911`
+  to propagate the new CSS); the
+  dynamic button goes back to
+  `btn--primary btn--small` when
+  `renderWeeklyRecipes` reconstructs it, but the
+  user perceives no
+  behavior
+  change; pure black gets no
+  own override because
+  the pill's base values are already correct
+  over a black background (a
+  decision
+  documented in the CSS).
+- **Negative**: none known. The
+   functionality stays intact (navigating
+   weeks, diners,
+   deleting the week, «+ Receta» per
+   meal, recipes
+   for the week, removing). QA
+   PASS: a coherent visual language, four theme modes
+   with WCAG AA contrast (computed per
+   theme) and responsiveness at
+   360 / 768 / 1280 px with no page-level
+   horizontal scroll (the menu grid's internal
+   scroll stays
+   allowed). Security
+   PASS: no findings
+   (the Firebase/TMDB/GB keys are pre-existing and
+   public by design).
 
-## Actualización (iteración, comentario del 2026-08-11)
+## The update (iteration, the 2026-08-11 comment)
 
-La primera pasada dejó los botones «+ Receta» de cada comida con radio
-y borde de píldora pero **sin fondo ni color propio** (heredaban el del
-texto), por lo que se veían con estética distinta al resto de botones
-de la pestaña. El usuario pidió: *«los botones de añadir receta en cada
-día deberían tener los mismos colores que el resto de botones»*.
+The first pass left each meal's «+ Receta»
+buttons with
+the pill's radius
+and
+border but **without own background nor
+color** (they
+inherited the text's), so they looked with
+a different aesthetic from the rest of
+the tab's buttons. The user asked:
+*«the add-per-day recipe buttons
+should have the same colors as the other
+buttons»*.
 
-Decisión de esta iteración: `.menu-meal__add` adopta exactamente los
-colores de `.btn--pill` — fondo `--ink-raised`, texto `--paper`, borde
-1px `--paper-alpha-30`, hover `--paper-alpha-10` — y en la familia
-clara el texto pasa a `--ink` (con hover `--ink-alpha-10`) mediante el
-mismo patrón de overrides agrupados `[data-theme="light"/"white"]` ya
-usado para `.btn--pill` (en negro puro no hace falta override: los
-valores base ya son correctos). El tamaño se mantiene `btn--small`
-porque el resto de métricas (radio 999px, etc.) ya eran de píldora.
-Bump PWA `20260912 → 20260913` para propagar el nuevo CSS a los
-clientes con caché.
+This iteration's decision: `.menu-meal__add`
+adopts `.btn--pill`'s
+exact colors — a
+`--ink-raised` background, the
+`--paper` text, a
+1px `--paper-alpha-30` border,
+hover
+`--paper-alpha-10` — and in the
+light
+family the text becomes
+`--ink` (with
+hover
+`--ink-alpha-10`) through the
+same grouped
+override pattern
+`[data-theme="light"/"white"]`
+already used for `.btn--pill`
+(in pure
+black no
+override is needed: the
+base values are already
+correct). The size stays
+`btn--small`
+because
+the other metrics (radius
+999px, etc.) were already
+pill's. The PWA bumps
+`20260912 → 20260913` to
+propagate the new
+CSS to
+cache-carrying clients.
 
 Related issue: #220

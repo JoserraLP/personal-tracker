@@ -1,91 +1,91 @@
-# ADR-032: Manual de usuario — `docs/manual-de-usuario.md` en lenguaje no técnico y regla de mantenimiento obligatorio en `AGENTS.md` (issue #60)
+# ADR-032: User manual — `docs/manual-de-usuario.md` in non-technical language and mandatory maintenance rule in `AGENTS.md` (issue #60)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
-Agosto 2026
+## Date
+August 2026
 
-## Contexto
+## Context
 
-La web «Mi Registro» había crecido hasta acumular muchas funcionalidades —estados por tipo de ítem (series, películas y libros), gestión de episodios y lecturas, historiales, búsquedas (catálogo TMDB/Google Books/Open Library, lista propia y global con Ctrl+K), alta manual, organización (cuadrícula/lista, filtros, orden, colores), fichas de detalle con trailer/streaming/saga/recomendaciones, valoraciones, acciones rápidas (botón grande, swipe, deshacer borrado), notificaciones, perfil, ajustes, sincronización, privacidad, PWA, etc.— sin que existiera **ninguna documentación orientada a usuarios finales**. El conocimiento del comportamiento de la web vivía solo en el código y en los ADRs, redactados para desarrolladores y agentes, no para un usuario que quiere «ver la serie que sigue mañana» o saber por qué un libro no aparece en el catálogo.
+The web «Mi Registro» had grown to accumulate many features —statuses per item type (series, movies and books), episode and reading management, histories, searches (TMDB/Google Books/Open Library catalog, own list and global with Ctrl+K), manual creation, organization (grid/list, filters, order, colors), detail profiles with trailer/streaming/saga/recommendations, ratings, quick actions (big button, swipe, undo delete), notifications, profile, settings, sync, privacy, PWA, etc.— without **any end-user-facing documentation** existing. Knowledge of the web's behavior lived only in the code and in the ADRs, written for developers and agents, not for a user who wants to "watch the series they follow tomorrow" or know why a book does not appear in the catalog.
 
-La issue #60 pedía dos cosas concretas:
+Issue #60 asked for two concrete things:
 
-1. Un **manual de usuario completo**, en lenguaje no técnico, que cualquier usuario pudiera leer y entender: bien organizado, con secciones y subsecciones, cubriendo desde los diferentes estados y opciones de cada tipo de ítem, los ajustes y acciones, cada cuánto se actualizan los datos, cómo se busca, etc.
-2. Una **regla para el agente** que obligara a que, siempre que se hicieran cambios que afecten a lo que el usuario ve o hace, se incluyera la explicación pertinente en ese manual — de modo que el manual no quedara obsoleto a las pocas semanas de crearse.
+1. A **complete user manual**, in non-technical language, that any user could read and understand: well organized, with sections and subsections, covering the different statuses and options of each item type, the settings and actions, how often the data updates, how to search, etc.
+2. A **rule for the agent** that forces the relevant explanation to be included in that manual whenever changes affecting what the user sees or does are made — so the manual does not become obsolete a few weeks after its creation.
 
 Related issue: #60 — https://github.com/gonzalitojh/Registro-personal/issues/60
 
-## Decisión
+## Decision
 
-Crear `docs/manual-de-usuario.md`, un manual de usuario completo en español, redactado en lenguaje no técnico (paso a paso, sin tecnicismos) y pensado para cualquier usuario de la web, y añadir en `AGENTS.md` una regla general que obligue a mantenerlo al día. La decisión se organiza en dos partes.
+Create `docs/manual-de-usuario.md`, a complete user manual in Spanish, written in non-technical language (step by step, without technical jargon) and meant for any user of the web, and add a general rule to `AGENTS.md` requiring keeping it up to date. The decision is organized in two parts.
 
-### 1. Manual de usuario (`docs/manual-de-usuario.md`)
+### 1. User manual (`docs/manual-de-usuario.md`)
 
-Manual de 18 secciones (con subsecciones numeradas en las que lo requieren), que cubre todo lo que se puede hacer en la web:
+An 18-section manual (with numbered subsections where required), covering everything that can be done on the web:
 
-1. **Qué es Mi Registro**: propósito (registro privado de series, películas y libros), autocompletado de datos por la web, modelo de grupo de amigos con registros visibles en modo lectura.
-2. **Cómo entrar**: login con Google, lista de invitados (mensaje de error si el correo no está), creación automática de cuenta, botón «Salir».
-3. **La pantalla principal**: cabecera (campana, lupa, engranaje, sol/luna, foto/nombre, salir) y las tres pestañas Series/Películas/Libros; aterrizaje por defecto en Series con filtro «Viendo» y vista de lista.
-4. **Series**: estados (Pendiente/Viendo/Vista/Standby/Abandonada), añadir, ver y marcar episodios (con fechas), pausar/abandonar/retomar, volver a ver desde el principio, historial de visionados, editar y eliminar.
-5. **Películas**: estados, añadir, marcar como vista, historial de revisionados.
-6. **Libros**: estados, añadir, empezar y terminar lecturas, página actual, historial de lecturas, búsqueda solo en español.
-7. **Cómo buscar**: catálogo (TMDB para series/películas, Google Books y Open Library para libros), búsqueda en la lista propia, búsqueda global (Ctrl+K), alta manual de ítems.
-8. **Organizar y ordenar tu registro**: vista cuadrícula/lista, filtros, criterios de orden, colores.
-9. **La ficha de cada película, serie o libro**: trailer, plataformas de streaming, sagas, recomendaciones.
-10. **Valoraciones con estrellas**: valoración propia y nota de la comunidad.
-11. **Acciones rápidas**: botón grande de cada fila, deslizar (swipe) en móvil, deshacer un borrado.
-12. **Notificaciones**: qué avisos llegan y desde dónde se consultan.
-13. **Tu perfil**: estadísticas, amigos, actividad, datos, ajustes.
-14. **Ajustes**: tema, notificaciones, sincronizar ahora.
-15. **¿Cuándo se actualizan los datos?**: comprobación diaria, relleno de datos faltantes, cooldown de 30 minutos entre sincronizaciones.
-16. **Privacidad**: qué se guarda, quién lo ve.
-17. **Instalar la web en tu teléfono**: instalación PWA.
-18. **Problemas frecuentes**: solución de dudas habituales.
+1. **What Mi Registro is**: purpose (private log of series, movies and books), automatic data completion by the web, friend-group model with logs visible in read mode.
+2. **How to get in**: Google login, guest list (error message if the email is not on it), automatic account creation, «Salir» button.
+3. **The main screen**: header (bell, magnifying glass, gear, sun/moon, photo/name, salir) and the three Series/Movies/Books tabs; default landing on Series with the «Viendo» filter and list view.
+4. **Series**: statuses (Pendiente/Viendo/Vista/Standby/Abandonada), adding, watching and marking episodes (with dates), pausing/abandoning/resuming, re-watching from the beginning, watch history, editing and deleting.
+5. **Movies**: statuses, adding, marking as watched, re-watch history.
+6. **Books**: statuses, adding, starting and finishing readings, current page, reading history, search in Spanish only.
+7. **How to search**: catalog (TMDB for series/movies, Google Books and Open Library for books), search within your own list, global search (Ctrl+K), manual item creation.
+8. **Organizing and sorting your log**: grid/list view, filters, sorting criteria, colors.
+9. **Each movie's, series' or book's profile**: trailer, streaming platforms, sagas, recommendations.
+10. **Star ratings**: personal rating and the community score.
+11. **Quick actions**: each row's big button, swiping on mobile, undoing a delete.
+12. **Notifications**: which alerts arrive and where they are consulted.
+13. **Your profile**: statistics, friends, activity, data, settings.
+14. **Settings**: theme, notifications, sync now.
+15. **When does the data update?**: daily check, filling in of missing data, 30-minute cooldown between syncs.
+16. **Privacy**: what is stored, who sees it.
+17. **Installing the web on your phone**: PWA installation.
+18. **Frequent problems**: solutions to common doubts.
 
-Estilo del manual: lenguaje no técnico, instrucciones paso a paso, nombres de botones entre comillas o con negrita, referencias cruzadas entre secciones (p. ej. «más en [sección 12]»), y una tabla de contenido enlazada al inicio. Sin código, sin nombres de archivos internos y sin términos de desarrollo.
+The manual's style: non-technical language, step-by-step instructions, button names in quotes or bold, cross-references between sections (e.g. «more in [section 12]»), and a linked table of contents at the start. No code, no internal file names and no development terms.
 
-### 2. Regla general en `AGENTS.md` (regla 3: «Manual de usuario siempre actualizado»)
+### 2. General rule in `AGENTS.md` (rule 3: «Manual de usuario siempre actualizado»)
 
-Se añade `### 3. Manual de usuario siempre actualizado` a la sección `## Reglas generales` del `AGENTS.md` de la raíz (junto a las reglas 1 «Responsividad obligatoria», ADR-026, y 2 «PRs SIEMPRE contra dev»), con el siguiente alcance:
+`### 3. Manual de usuario siempre actualizado` is added to the `## Reglas generales` section of the root `AGENTS.md` (alongside rules 1 «Responsividad obligatoria», ADR-026, and 2 «PRs SIEMPRE contra dev»), with the following scope:
 
-- **Cualquier cambio que afecte a lo que el usuario ve o hace** (nuevas funciones, cambios de comportamiento, textos, estados, ajustes, frecuencias de actualización de datos...) **debe reflejarse en `docs/manual-de-usuario.md` en la misma tarea** que lo implementa: añadiendo, corrigiendo o eliminando la sección/subsección pertinente.
-- Los cambios **puramente internos** (refactors, optimizaciones, seguridad) que no alteren la experiencia del usuario **no requieren** tocar el manual.
-- El manual debe estar **siempre al día** con el comportamiento real de la web; una PR que cambie algo visible para el usuario sin actualizarlo queda incompleta.
+- **Any change that affects what the user sees or does** (new features, behavior changes, texts, statuses, settings, data refresh frequencies...) **must be reflected in `docs/manual-de-usuario.md` in the same task** that implements it: adding, correcting or removing the relevant section/subsection.
+- **Purely internal** changes (refactors, optimizations, security) that do not alter the user experience **do not require** touching the manual.
+- The manual must be **always up to date** with the web's real behavior; a PR that changes something visible to the user without updating it is incomplete.
 
-Al estar en `AGENTS.md` de la raíz, la regla se carga automáticamente en el contexto de todos los agentes de opencode (libre, subagentes y build/plan), igual que las reglas 1 y 2 (ADR-026), sin depender de qué agente se invoque.
+Being in the root `AGENTS.md`, the rule is automatically loaded into the context of all opencode agents (free, subagents and build/plan), just like rules 1 and 2 (ADR-026), without depending on which agent is invoked.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Documentar solo en los ADRs existentes**: descartado — los ADRs están redactados para desarrolladores y agentes (archivos, funciones, clases CSS); un usuario final no puede usarlos como guía, y no cubren el «cómo se usa» de la web.
-- **README como manual de usuario**: descartado — el README es documentación técnica/operativa del repositorio; mezclar el manual de usuario alargaría y confundiría ambos públicos.
-- **Manual sin regla de mantenimiento**: descartado — la issue #60 pedía explícitamente la regla; sin ella el manual quedaría obsoleto en pocas semanas y las PRs futuras no sabrían que deben actualizarlo.
-- **Regla de mantenimiento fuera de `AGENTS.md`** (p. ej. solo en el agente documentation-sync): descartado — las instrucciones de un agente concreto solo se cargan cuando ese agente se invoca; la regla debe aplicarse a *cualquier* tarea que toque funcionalidad visible, y `AGENTS.md` es el lugar único y automático para reglas transversales (misma decisión que ADR-026).
+- **Documenting only in the existing ADRs**: rejected — the ADRs are written for developers and agents (files, functions, CSS classes); an end user cannot use them as a guide, and they do not cover the "how it is used" of the web.
+- **README as user manual**: rejected — the README is technical/operational documentation of the repository; mixing in the user manual would lengthen and confuse both audiences.
+- **Manual without a maintenance rule**: rejected — issue #60 explicitly asked for the rule; without it the manual would become obsolete in a few weeks and future PRs would not know they must update it.
+- **Maintenance rule outside `AGENTS.md`** (e.g. only in the documentation-sync agent): rejected — a specific agent's instructions are only loaded when that agent is invoked; the rule must apply to *any* task touching visible functionality, and `AGENTS.md` is the single, automatic place for cross-cutting rules (same decision as ADR-026).
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **Issue #60 resuelta**: existe un manual completo, bien organizado y en lenguaje no técnico que cualquier usuario puede leer y entender, cubriendo todo lo que se puede hacer en la web (estados, acciones, ajustes, búsquedas, frecuencias de actualización, etc.).
-- **El manual se mantiene vivo**: la regla 3 de `AGENTS.md` obliga a actualizar `docs/manual-de-usuario.md` en la misma tarea que cambie algo visible para el usuario; una PR que lo omita queda incompleta, igual que ocurría con la responsividad (ADR-026).
-- **La regla llega a todos los agentes**: cualquier agente de opencode que trabaje en el proyecto tiene presente la obligación de sincronizar el manual, sin depender de qué agente se invoque.
-- **Clara separación de públicos**: el manual (usuarios finales), los ADRs (decisión técnica) y el README (operación del repo) cumplen cada uno su función sin solaparse.
+### Positive
+- **Issue #60 solved**: there is a complete, well-organized manual in non-technical language that any user can read and understand, covering everything that can be done on the web (statuses, actions, settings, searches, update frequencies, etc.).
+- **The manual stays alive**: `AGENTS.md`'s rule 3 forces `docs/manual-de-usuario.md` to be updated in the same task that changes something visible to the user; a PR skipping it is incomplete, as was already the case with responsiveness (ADR-026).
+- **The rule reaches all agents**: any opencode agent working on the project keeps the obligation to sync the manual present, without depending on which agent is invoked.
+- **Clear audience separation**: the manual (end users), the ADRs (technical decisions) and the README (repo operation) each serve their function without overlapping.
 
-### Negativas
-- **Coste por tarea**: cualquier tarea con impacto visible para el usuario añade el paso de actualizar el manual; es un coste intencionado, exigido por la issue #60 para evitar la obsolescencia.
-- **Riesgo de desincronización si la regla se ignora**: si un agente o el usuario modificara la web sin tocar el manual, la documentación quedaría desactualizada; mitigado porque la regla 3 lo declara PR incompleta.
+### Negative
+- **Cost per task**: any task with a visible impact on the user adds the step of updating the manual; it is an intentional cost, required by issue #60 to avoid obsolescence.
+- **Desync risk if the rule is ignored**: if an agent or the user modified the web without touching the manual, the documentation would become outdated; mitigated because rule 3 declares the PR incomplete.
 
-### Neutras
-- **Documento extenso a mantener**: `docs/manual-de-usuario.md` tiene 18 secciones y crecerá con cada funcionalidad nueva; su índice de contenidos enlazado facilita la navegación y la localización de la sección a actualizar.
-- **Sin impacto en código de la aplicación**: no se modificó HTML, CSS ni JS; la decisión es exclusivamente documentación y reglas de proceso.
-- **El manual convive con los ADRs**: los ADRs siguen documentando decisiones y detalles de implementación para desarrolladores y agentes; el manual aporta la capa de uso final que faltaba.
+### Neutral
+- **A long document to maintain**: `docs/manual-de-usuario.md` has 18 sections and will grow with each new feature; its linked table of contents makes navigation and locating the section to update easier.
+- **No impact on application code**: no HTML, CSS or JS was modified; the decision is documentation and process rules only.
+- **The manual coexists with the ADRs**: the ADRs keep documenting decisions and implementation details for developers and agents; the manual provides the missing end-use layer.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `docs/manual-de-usuario.md` | **Nuevo**: manual de usuario completo en español, lenguaje no técnico, 18 secciones con subsecciones (qué es, cómo entrar, pantalla principal, series, películas, libros, búsqueda, organización, ficha de detalle, valoraciones, acciones rápidas, notificaciones, perfil, ajustes, frecuencias de actualización, privacidad, instalación PWA y problemas frecuentes), con tabla de contenido enlazada |
-| `AGENTS.md` | Regla `### 3. Manual de usuario siempre actualizado` en `## Reglas generales`: cualquier cambio que afecte a lo que el usuario ve o hace debe reflejarse en `docs/manual-de-usuario.md` en la misma tarea; los cambios puramente internos no lo requieren |
-| `docs/adr-032-user-manual.md` | **Nuevo**: este documento |
+| `docs/manual-de-usuario.md` | **New**: complete user manual in Spanish, non-technical language, 18 sections with subsections (what it is, how to get in, main screen, series, movies, books, search, organization, detail profile, ratings, quick actions, notifications, profile, settings, update frequencies, privacy, PWA installation and frequent problems), with a linked table of contents |
+| `AGENTS.md` | Rule `### 3. Manual de usuario siempre actualizado` in `## Reglas generales`: any change affecting what the user sees or does must be reflected in `docs/manual-de-usuario.md` in the same task; purely internal changes do not require it |
+| `docs/adr-032-user-manual.md` | **New**: this document |
 
 Related issue: #60 — https://github.com/gonzalitojh/Registro-personal/issues/60

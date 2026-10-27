@@ -1,121 +1,121 @@
-# ADR-024: Tratamiento uniforme de ítems no estrenados en todos los niveles: rayas, relegación y badge unificados (issue #27, 2ª reapertura)
+# ADR-024: Uniform treatment of unreleased items at all levels: stripes, relegation and badge unified (issue #27, 2nd reopening)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
-Agosto 2026
+## Date
+August 2026
 
-**Nota (actualizada por ADR-025, 3ª reapertura):** la fase de confirmación TV en `release.js` que la "Decisión notable" de abajo descartó por el ciclo de imports ES modules quedó **implementada** en la 3ª reapertura de la issue #27: `unreleasedConfirmMessage(item, airInfo = null)` recibe `getNextEpisodeAirInfo` como **parámetro inyectado** desde el consumidor (`quick-actions.js`), de modo que `release.js` sigue importando solo `dates.js` y el ciclo se evita sin mover dependencias. Además, la historia de fuentes se extiende: el nuevo campo persistido `seasonAirDates` (mapa temporada → `air_date`, donde `null` = temporada sin estrenar, refrescado a diario y al abrir el modal) pasa a ser la **2ª fuente** en la precedencia de `getNextEpisodeAirInfo` (toAir > season > stored), por delante del backfill `nextEpisodeAirDate`; y `ensureNextEpisodeAirDate` y el bloque `releasedNoticedAt` de este ADR propagan el mapa fresco en sus spreads. Ver [adr-025-season-air-dates.md](adr-025-season-air-dates.md).
+**Note (updated by ADR-025, 3rd reopening):** the TV confirmation phase in `release.js` that the "Notable decision" below rejected due to the ES modules import cycle was **implemented** in the 3rd reopening of issue #27: `unreleasedConfirmMessage(item, airInfo = null)` receives `getNextEpisodeAirInfo` as an **injected parameter** from the consumer (`quick-actions.js`), so `release.js` still imports only `dates.js` and the cycle is avoided without moving dependencies. In addition, the sources story is extended: the new persisted field `seasonAirDates` (map season → `air_date`, where `null` = unaired season, refreshed daily and when opening the modal) becomes the **2nd source** in `getNextEpisodeAirInfo`'s precedence (toAir > season > stored), ahead of the `nextEpisodeAirDate` backfill; and `ensureNextEpisodeAirDate` and this ADR's `releasedNoticedAt` block propagate the fresh map in their spreads. See [adr-025-season-air-dates.md](adr-025-season-air-dates.md).
 
-## Contexto
+## Context
 
-La issue #27 (2ª reapertura) pedía que el tratamiento de "no estrenado" sea **uniforme en todos los niveles**: un ítem sin fecha de estreno debe tratarse exactamente igual que uno con fecha futura — mismo estilo de rayas en tarjeta y lista, misma relegación al final en la ordenación por actividad y misma etiqueta "Aún no estrenado/a".
+Issue #27 (2nd reopening) requested that the "not released" treatment be **uniform at all levels**: an item without a release date must be treated exactly the same as one with a future date — same stripe style in card and list, same relegation to the end in activity-based sorting and same "Aún no estrenado/a" label.
 
-Los fixes previos de la issue (ADR-020 / PR #33 y ADR-023 / PR #36) habían centralizado la lógica de confirmación y el badge de episodios, pero el tratamiento **visual y de ordenación** seguía siendo por tipo, con estas lagunas:
+The issue's previous fixes (ADR-020 / PR #33 and ADR-023 / PR #36) had centralized the confirmation logic and the episode badge, but the **visual and sorting** treatment was still per type, with these gaps:
 
-1. **Las rayas solo se aplicaban a series**: `renderGrid`/`renderList` usaban `isNextEpisodeUnreleased(item)`; las películas con `awaitingRelease` (sin fecha o con fecha futura) no recibían el estilo de rayas.
-2. **La ordenación por actividad solo relegaba series**: `compareByActivityDesc` usaba el mismo predicado por tipo, de modo que una película no estrenada no iba al final de la lista.
-3. **Serie entre temporadas sin dato persistido**: si `nextEpisodeAirDate` aún no se había guardado (ni expansión de temporada ni backfill con `next_episode_to_air` presente), la serie no mostraba etiqueta, rayas ni relegación, porque `getNextEpisodeAirInfo` no encontraba fuente.
-4. **El badge de película no tenía clase CSS de rayas**: `item-card__upcoming--episode` solo cubría el caso de episodio; el badge de película con `awaitingRelease` usaba la clase genérica sin estilo distintivo de rayas.
+1. **Stripes only applied to series**: `renderGrid`/`renderList` used `isNextEpisodeUnreleased(item)`; movies with `awaitingRelease` (without a date or with a future date) did not get the stripe style.
+2. **Activity-based sorting only relegated series**: `compareByActivityDesc` used the same per-type predicate, so an unreleased movie did not go to the end of the list.
+3. **Series between seasons without a persisted datum**: if `nextEpisodeAirDate` had not yet been saved (neither season expansion nor backfill with `next_episode_to_air` present), the series showed no label, stripes or relegation, because `getNextEpisodeAirInfo` found no source.
+4. **The movie badge had no stripes CSS class**: `item-card__upcoming--episode` only covered the episode case; the movie badge with `awaitingRelease` used the generic class without the distinctive stripe style.
 
 Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27
 
-## Decisión
+## Decision
 
-Unificar el criterio "no estrenado" en un único predicado (`isItemUnreleased`) consumido por la tarjeta, la lista, el badge y la ordenación, con clases CSS renombradas a un solo sufijo `--unreleased` (mismo gradiente de rayas), más un backfill diario que cierra el hueco de las series entre temporadas sin dato persistido y una limpieza idempotente de `awaitingRelease` al marcar como visto.
+Unify the "not released" criterion in a single predicate (`isItemUnreleased`) consumed by the card, the list, the badge and the sorting, with CSS classes renamed to a single suffix `--unreleased` (same stripe gradient), plus a daily backfill that closes the gap of series between seasons without a persisted datum and an idempotent cleanup of `awaitingRelease` when marking as watched.
 
-### 1. Predicado unificado `isItemUnreleased` (`js/sorting.js`)
+### 1. Unified predicate `isItemUnreleased` (`js/sorting.js`)
 
-Nuevo predicado que decide "sin estrenar" para cualquier ítem:
+New predicate that decides "not released" for any item:
 
-- **Manual** ⇒ `false` (las series manuales no tienen fechas reales de TMDB; se mantiene la exclusión histórica de ADR-020).
-- **Película** ⇒ `!(item.watchLog && item.watchLog.length) && isUnreleasedDate(item.releaseDate)` — sin fecha o fecha futura y no vista.
-- **Serie** ⇒ sin `nextEpisode` ⇒ `false` (completada, nunca "sin estrenar"); si no, `item.awaitingRelease === true || isNextEpisodeUnreleased(item)` — cubre tanto la premiere sin estrenar como la serie en curso con el próximo episodio sin estrenar.
+- **Manual** ⇒ `false` (manual series have no real TMDB dates; ADR-020's historical exclusion is kept).
+- **Movie** ⇒ `!(item.watchLog && item.watchLog.length) && isUnreleasedDate(item.releaseDate)` — without a date or a future date and not watched.
+- **Series** ⇒ without `nextEpisode` ⇒ `false` (completed, never "not released"); otherwise, `item.awaitingRelease === true || isNextEpisodeUnreleased(item)` — covers both the unaired premiere and the ongoing series with the next episode unaired.
 
-`compareByActivityDesc` pasa a usar `isItemUnreleased` (antes `isNextEpisodeUnreleased`), de modo que **todos** los ítems no estrenados —películas incluidas— se relegan al final. `isNextEpisodeUnreleased` se conserva: `isItemUnreleased` la usa internamente y `daily-check.js` la sigue usando para `wasEpisodeBlocked`.
+`compareByActivityDesc` now uses `isItemUnreleased` (previously `isNextEpisodeUnreleased`), so **all** unreleased items —movies included— are relegated to the end. `isNextEpisodeUnreleased` is kept: `isItemUnreleased` uses it internally and `daily-check.js` still uses it for `wasEpisodeBlocked`.
 
-### 2. Clases CSS unificadas en `renderGrid`/`renderList` y `upcomingBadge` (`js/ui.js`)
+### 2. Unified CSS classes in `renderGrid`/`renderList` and `upcomingBadge` (`js/ui.js`)
 
-- `renderGrid`/`renderList` aplican `item-card--unreleased` / `list-row--unreleased` vía `isItemUnreleased` (antes `item-card--episode-unreleased` / `list-row--episode-unreleased` vía `isNextEpisodeUnreleased`). Las películas no estrenadas reciben por fin las rayas.
-- `upcomingBadge` se reescribe con un **guard único** (`if (!isItemUnreleased(item)) return "";`) y una **clase unificada** `item-card__upcoming item-card__upcoming--unreleased` para los tres casos:
-  - **Película**: «Aún no estrenada» (+ fecha si existe).
-  - **Serie premiere sin estrenar** (`awaitingRelease && nextEpisode`): «Aún no estrenada» (+ `firstAirDate` si existe).
-  - **Serie en curso** con el próximo episodio sin estrenar: «Aún no estrenado · TSE» (+ fecha si existe), con **guard de seguridad**: si `getNextEpisodeAirInfo` devuelve `null` no se pinta el badge (en la práctica `isItemUnreleased` ya garantiza que hay info).
+- `renderGrid`/`renderList` apply `item-card--unreleased` / `list-row--unreleased` via `isItemUnreleased` (previously `item-card--episode-unreleased` / `list-row--episode-unreleased` via `isNextEpisodeUnreleased`). Unreleased movies finally get the stripes.
+- `upcomingBadge` is rewritten with a **single guard** (`if (!isItemUnreleased(item)) return "";`) and a **unified class** `item-card__upcoming item-card__upcoming--unreleased` for the three cases:
+  - **Movie**: «Aún no estrenada» (+ date if it exists).
+  - **Unaired series premiere** (`awaitingRelease && nextEpisode`): «Aún no estrenada» (+ `firstAirDate` if it exists).
+  - **Ongoing series** with the next episode unaired: «Aún no estrenado · TSE» (+ date if it exists), with a **safety guard**: if `getNextEpisodeAirInfo` returns `null`, the badge is not painted (in practice `isItemUnreleased` already guarantees there is info).
 
-### 3. Renombrado de clases en `ocio/ocio.css` (mismo gradiente)
+### 3. Class renaming in `ocio/ocio.css` (same gradient)
 
 - `.item-card--episode-unreleased` → `.item-card--unreleased`
 - `.list-row--episode-unreleased` → `.list-row--unreleased`
 - `.item-card__upcoming--episode` → `.item-card__upcoming--unreleased`
 
-El gradiente de rayas (`repeating-linear-gradient` entre los colores de "Viendo" y "Abandonada") es idéntico al anterior; solo cambia el alcance del selector (ahora cubre películas y series por igual). Comentarios actualizados.
+The stripe gradient (`repeating-linear-gradient` between the "Viendo" and "Abandonada" colors) is identical to the previous one; only the selector's scope changes (it now covers movies and series equally). Comments updated.
 
-### 4. Backfill diario `ensureNextEpisodeAirDate` (`js/daily-check.js`)
+### 4. Daily backfill `ensureNextEpisodeAirDate` (`js/daily-check.js`)
 
-Nuevo helper que rellena `updates.nextEpisodeAirDate` cuando **ni** `nextEpisodeToAir` **ni** el dato guardado coinciden con el siguiente episodio del usuario (serie entre temporadas, caso ADR-023 con dato aún sin persistir):
+New helper that fills `updates.nextEpisodeAirDate` when **neither** `nextEpisodeToAir` **nor** the stored datum matches the user's next episode (series between seasons, ADR-023 case with data not yet persisted):
 
-- `show.manual || !show.nextEpisode` ⇒ `null` (no aplica).
-- Si `getNextEpisodeAirInfo({ ...show, nextEpisodeToAir: fresh.nextEpisodeToAir })` ya resuelve, ⇒ `null` (ya hay fuente).
-- Si no, consulta `getSeasonEpisodes(show.externalId, show.nextEpisode.season)`, busca el episodio por `episodeNumber` y devuelve `{ season, episode, airDate: ep ? ep.airDate : null }` (airDate `null` = «sin fecha oficial»).
-- **Fail-open**: si la consulta falla, registra en consola y devuelve `null`; **no aborta la pasada ni incrementa `consecutiveFailures`** (a diferencia del resto de la pasada, que aborta por fallos encadenados según ADR-021).
+- `show.manual || !show.nextEpisode` ⇒ `null` (not applicable).
+- If `getNextEpisodeAirInfo({ ...show, nextEpisodeToAir: fresh.nextEpisodeToAir })` already resolves, ⇒ `null` (there is already a source).
+- Otherwise, it queries `getSeasonEpisodes(show.externalId, show.nextEpisode.season)`, searches the episode by `episodeNumber` and returns `{ season, episode, airDate: ep ? ep.airDate : null }` (`null` airDate = «no official date»).
+- **Fail-open**: if the query fails, it logs to the console and returns `null`; it **does not abort the run nor increment `consecutiveFailures`** (unlike the rest of the run, which aborts on chained failures per ADR-021).
 
-`checkForUpdates` la invoca por cada serie (con `getSeasonEpisodes` del `ctx`) y, si devuelve algo, lo añade a `updates.nextEpisodeAirDate`. Es la **cuarta vía de escritura** de `nextEpisodeAirDate` (ADR-023 documentaba tres: `quickMarkTv`, `buildTvUpdates` y la expansión de temporada del modal).
+`checkForUpdates` invokes it for each series (with `getSeasonEpisodes` from the `ctx`) and, if it returns something, adds it to `updates.nextEpisodeAirDate`. It is the **fourth write path** of `nextEpisodeAirDate` (ADR-023 documented three: `quickMarkTv`, `buildTvUpdates` and the modal's season expansion).
 
-### 5. Limpieza idempotente de `awaitingRelease` al marcar como visto (`js/modal-handlers.js`, `js/quick-actions.js`)
+### 5. Idempotent cleanup of `awaitingRelease` when marking as watched (`js/modal-handlers.js`, `js/quick-actions.js`)
 
-Los **4 caminos de marcado como visto** limpian ahora `awaitingRelease: false` —tanto en el payload de Firestore como en el objeto en memoria— de forma idempotente: un ítem ya visto no puede seguir "sin estrenar".
+The **4 mark-as-watched paths** now clear `awaitingRelease: false` —both in the Firestore payload and in the in-memory object— idempotently: an already-watched item cannot keep being "not released".
 
-- `persist` (modal de película, `js/modal-handlers.js`).
-- `persistWatched` (modal de serie, `js/modal-handlers.js`).
+- `persist` (movie modal, `js/modal-handlers.js`).
+- `persistWatched` (series modal, `js/modal-handlers.js`).
 - `quickMarkMovie` (`js/quick-actions.js`).
-- `saveTvProgress` (`js/quick-actions.js`, usado por `quickMarkTv` y el marcado de episodio).
+- `saveTvProgress` (`js/quick-actions.js`, used by `quickMarkTv` and episode marking).
 
-### Decisión notable: fase de confirmación TV en `release.js` NO aplicada
+### Notable decision: TV confirmation phase in `release.js` NOT applied
 
-Se evaluó ampliar `release.js` con un mensaje de confirmación TV basado en `getNextEpisodeAirInfo` (que unificaría el aviso de "no estrenado" también para series entre temporadas). **No se aplicó**: `release.js` es importado por `sorting.js` (que consume `isUnreleasedDate`), y la importación inversa (`release.js` → `sorting.js` para `getNextEpisodeAirInfo`) crearía un **ciclo de imports ES modules**. Sin impacto funcional: el caso `next_episode_to_air = null` en confirmaciones ya está cubierto por el PR #36 (backfill de `nextEpisodeAirDate` en `daily-check.js` + confirmaciones por episodio vía `episodeUnreleasedMessage` en la acción rápida, el checkbox individual y "Marcar todo").
+Extending `release.js` with a TV confirmation message based on `getNextEpisodeAirInfo` was evaluated (which would unify the "not released" warning also for series between seasons). **It was not applied**: `release.js` is imported by `sorting.js` (which consumes `isUnreleasedDate`), and the reverse import (`release.js` → `sorting.js` for `getNextEpisodeAirInfo`) would create an **ES modules import cycle**. No functional impact: the `next_episode_to_air = null` case in confirmations is already covered by PR #36 (`nextEpisodeAirDate` backfill in `daily-check.js` + per-episode confirmations via `episodeUnreleasedMessage` in the quick action, the individual checkbox and "Marcar todo").
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Mantener predicados por tipo (`isNextEpisodeUnreleased` para series + `awaitingRelease` para películas) y solo añadir rayas a películas**: descartado por tener dos fuentes de verdad con riesgo de divergencia entre tarjeta, lista, badge y ordenación; la issue pedía explícitamente tratamiento "todo igual".
-- **Badge por tipo (clase distinta para película, premiere y episodio)**: descartado: la clase unificada `item-card__upcoming--unreleased` reduce CSS y garantiza el mismo aspecto para los tres casos (requisito de la 2ª reapertura).
-- **Consulta síncrona de temporada en la UI** (`getSeasonEpisodes` en el render para conocer la fecha del siguiente episodio de series entre temporadas): descartado: bloquearía el render, añadiría llamadas a TMDB por cada renderizado y complicaría la caché; el backfill diario (`ensureNextEpisodeAirDate`) cubre el caso de forma asíncrona y fail-open.
-- **Fase de confirmación TV en `release.js` vía `getNextEpisodeAirInfo`**: descartado por el ciclo de imports ES modules descrito en la Decisión.
-- **Conservar los nombres antiguos de clases como alias**: descartado: las clases CSS son internas (sin consumidores externos) y el sufijo `--episode` ya no describe el alcance (ahora cubre cualquier ítem).
+- **Keeping per-type predicates (`isNextEpisodeUnreleased` for series + `awaitingRelease` for movies) and only adding stripes to movies**: rejected for having two sources of truth with the risk of divergence between card, list, badge and sorting; the issue explicitly requested "all the same" treatment.
+- **Badge per type (different class for movie, premiere and episode)**: rejected: the unified class `item-card__upcoming--unreleased` reduces CSS and guarantees the same look for the three cases (requirement of the 2nd reopening).
+- **Synchronous season query in the UI** (`getSeasonEpisodes` in the render to learn the next episode's date of series between seasons): rejected: it would block the render, add TMDB calls per rendering and complicate the cache; the daily backfill (`ensureNextEpisodeAirDate`) covers the case asynchronously and fail-open.
+- **TV confirmation phase in `release.js` via `getNextEpisodeAirInfo`**: rejected due to the ES modules import cycle described in the Decision.
+- **Keeping the old class names as aliases**: rejected: the CSS classes are internal (no external consumers) and the `--episode` suffix no longer describes the scope (it now covers any item).
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **Uniformidad en todos los niveles**: rayas, relegación al final y badge idénticos para ítems sin fecha y con fecha futura, en películas, premieres de serie y series en curso.
-- **Fuente única de verdad**: `isItemUnreleased` lo consumen `renderGrid`, `renderList`, `upcomingBadge` y `compareByActivityDesc`; no hay lógica "no estrenado" por tipo duplicada en la UI.
-- **Las películas no estrenadas ya son visibles**: reciben rayas, van al final y muestran el badge (lagunas 1 y 2 del Contexto cerradas).
-- **Series entre temporadas sin dato persistido quedan cubiertas**: el backfill diario rellena `nextEpisodeAirDate` en la siguiente pasada (laguna 3 cerrada), sin bloquear el render.
-- **`awaitingRelease` se limpia siempre al marcar como visto** en los 4 caminos (payload + memoria): un ítem visto no puede quedarse "sin estrenar" aunque la pasada diaria no haya llegado aún.
-- **QA aprobado**: 6/6 criterios de aceptación y 20/20 casos borde; hallazgos LOW no bloqueantes documentados a continuación.
+### Positive
+- **Uniformity at all levels**: stripes, relegation to the end and badge identical for items without a date and with a future date, in movies, series premieres and ongoing series.
+- **Single source of truth**: `isItemUnreleased` is consumed by `renderGrid`, `renderList`, `upcomingBadge` and `compareByActivityDesc`; there is no duplicated per-type "not released" logic in the UI.
+- **Unreleased movies are now visible**: they get stripes, go to the end and show the badge (gaps 1 and 2 of the Context closed).
+- **Series between seasons without a persisted datum are covered**: the daily backfill fills `nextEpisodeAirDate` in the next run (gap 3 closed), without blocking the render.
+- **`awaitingRelease` is always cleared when marking as watched** in the 4 paths (payload + memory): a watched item cannot remain "not released" even if the daily run has not arrived yet.
+- **QA approved**: 6/6 acceptance criteria and 20/20 edge cases; low non-blocking findings documented below.
 
-### Negativas
-- **Cambio visual para películas con `awaitingRelease`**: las películas sin fecha o con fecha futura muestran ahora las rayas (antes solo las series); es el comportamiento pedido, pero altera la apariencia previa.
-- **Una llamada TMDB adicional por serie en la pasada diaria** cuando ni `nextEpisodeToAir` ni el dato guardado coinciden con el siguiente episodio; mitigada por la caché en memoria de 24 h de `getSeasonEpisodes` (ADR-022).
-- **Hallazgos LOW (no bloqueantes, documentados en el QA)**:
-  - *Serie premiere sin `nextEpisode`* (el usuario no ha visto ningún episodio): `isItemUnreleased` devuelve `false` (guard `!item.nextEpisode`) y la serie no recibe rayas ni relegación; aceptado porque no hay episodio concreto que proteger y el guard evita falsos positivos en series completadas.
-  - *Pref `series_premiere` desactivado*: el bloque de la pasada diaria que limpia `awaitingRelease` al estrenarse la premiere está condicionado al pref (`prefs.series_premiere !== false`), de modo que con el pref desactivado el flag puede persistir transitoriamente en una serie ya estrenada (que seguirá con rayas) hasta que el usuario marque el primer episodio como visto, momento en que la limpieza idempotente del punto 5 la quita.
+### Negative
+- **Visual change for movies with `awaitingRelease`**: movies without a date or with a future date now show the stripes (before only series did); it is the requested behavior, but it alters the previous look.
+- **One additional TMDB call per series in the daily run** when neither `nextEpisodeToAir` nor the stored datum matches the next episode; mitigated by `getSeasonEpisodes`' 24 h in-memory cache (ADR-022).
+- **Low findings (non-blocking, documented in the QA)**:
+  - *Series premiere without `nextEpisode`* (the user has not watched any episode): `isItemUnreleased` returns `false` (`!item.nextEpisode` guard) and the series gets no stripes or relegation; accepted because there is no specific episode to protect and the guard avoids false positives in completed series.
+  - *`series_premiere` pref disabled*: the daily run block that clears `awaitingRelease` when the premiere is released is conditioned on the pref (`prefs.series_premiere !== false`), so with the pref disabled the flag can persist transiently on a series already released (which will keep the stripes) until the user marks the first episode as watched, at which point the idempotent cleanup of point 5 removes it.
 
-### Neutras
-- **`isNextEpisodeUnreleased` mantiene su contrato**: sigue en `sorting.js`, la consume `isItemUnreleased` internamente y `daily-check.js` la usa para `wasEpisodeBlocked`; el renombrado solo afecta al predicado de cara a la UI.
-- **El renombrado de clases CSS es interno**: no hay consumidores externos (el resto de selectores referenciados en HTML son los genéricos `item-card__upcoming`, etc., que no cambian).
-- **Sin cambios en `service-worker.js`**: no se crean módulos nuevos; los archivos tocados (`sorting.js`, `ui.js`, `daily-check.js`, `modal-handlers.js`, `quick-actions.js`) ya están precacheados (ADR-019).
-- **`ensureNextEpisodeAirDate` es fail-open por diseño**: un fallo de red no aborta la pasada (a diferencia del aborto por `MAX_CONSECUTIVE_FAILURES` de ADR-021) ni incrementa el contador de fallos.
+### Neutral
+- **`isNextEpisodeUnreleased` keeps its contract**: it remains in `sorting.js`, is consumed internally by `isItemUnreleased` and `daily-check.js` uses it for `wasEpisodeBlocked`; the renaming only affects the predicate facing the UI.
+- **The CSS class renaming is internal**: there are no external consumers (the other selectors referenced in HTML are the generic `item-card__upcoming`, etc., which do not change).
+- **No changes in `service-worker.js`**: no new modules are created; the touched files (`sorting.js`, `ui.js`, `daily-check.js`, `modal-handlers.js`, `quick-actions.js`) are already precached (ADR-019).
+- **`ensureNextEpisodeAirDate` is fail-open by design**: a network failure does not abort the run (unlike ADR-021's abort via `MAX_CONSECUTIVE_FAILURES`) nor increments the failure counter.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/sorting.js` | **Nuevo** `isItemUnreleased(item)`: predicado unificado (manual→`false`; película: no vista y `isUnreleasedDate(releaseDate)`; serie: `awaitingRelease === true \|\| isNextEpisodeUnreleased(item)`, `false` sin `nextEpisode`); `compareByActivityDesc` lo usa para relegar al final |
-| `js/ui.js` | `renderGrid`/`renderList`: clases `item-card--unreleased`/`list-row--unreleased` vía `isItemUnreleased`; `upcomingBadge` reescrito con guard único, clase unificada `item-card__upcoming--unreleased` y guard de seguridad si `getNextEpisodeAirInfo` devuelve `null` |
-| `ocio/ocio.css` | Renombrado de clases (`.item-card--episode-unreleased`→`.item-card--unreleased`, `.list-row--episode-unreleased`→`.list-row--unreleased`, `.item-card__upcoming--episode`→`.item-card__upcoming--unreleased`) con el mismo gradiente de rayas; comentarios actualizados |
-| `js/daily-check.js` | **Nuevo** `ensureNextEpisodeAirDate(show, fresh, getSeasonEpisodes)`: backfill de `nextEpisodeAirDate` cuando ni `nextEpisodeToAir` ni el dato guardado coinciden (fail-open, sin abortar la pasada ni tocar `consecutiveFailures`); `checkForUpdates` la invoca por serie y añade el resultado a `updates` |
-| `js/modal-handlers.js` | `persist` (película) y `persistWatched` (serie): limpieza idempotente `awaitingRelease: false` en el payload de Firestore y en el objeto en memoria |
-| `js/quick-actions.js` | `quickMarkMovie` y `saveTvProgress`: limpieza idempotente `awaitingRelease: false` en el payload de Firestore y en el objeto en memoria |
-| `docs/adr-024-unreleased-uniform-treatment.md` | **Nuevo**: este documento |
+| `js/sorting.js` | **New** `isItemUnreleased(item)`: unified predicate (manual→`false`; movie: not watched and `isUnreleasedDate(releaseDate)`; series: `awaitingRelease === true \|\| isNextEpisodeUnreleased(item)`, `false` without `nextEpisode`); `compareByActivityDesc` uses it to relegate to the end |
+| `js/ui.js` | `renderGrid`/`renderList`: classes `item-card--unreleased`/`list-row--unreleased` via `isItemUnreleased`; `upcomingBadge` rewritten with a single guard, unified class `item-card__upcoming--unreleased` and safety guard if `getNextEpisodeAirInfo` returns `null` |
+| `ocio/ocio.css` | Class renaming (`.item-card--episode-unreleased`→`.item-card--unreleased`, `.list-row--episode-unreleased`→`.list-row--unreleased`, `.item-card__upcoming--episode`→`.item-card__upcoming--unreleased`) with the same stripe gradient; comments updated |
+| `js/daily-check.js` | **New** `ensureNextEpisodeAirDate(show, fresh, getSeasonEpisodes)`: backfill of `nextEpisodeAirDate` when neither `nextEpisodeToAir` nor the stored datum matches (fail-open, without aborting the run nor touching `consecutiveFailures`); `checkForUpdates` invokes it per series and adds the result to `updates` |
+| `js/modal-handlers.js` | `persist` (movie) and `persistWatched` (series): idempotent cleanup `awaitingRelease: false` in the Firestore payload and in the in-memory object |
+| `js/quick-actions.js` | `quickMarkMovie` and `saveTvProgress`: idempotent cleanup `awaitingRelease: false` in the Firestore payload and in the in-memory object |
+| `docs/adr-024-unreleased-uniform-treatment.md` | **New**: this document |
 
 Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27

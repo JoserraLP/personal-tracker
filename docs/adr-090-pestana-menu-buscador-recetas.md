@@ -1,349 +1,1104 @@
-# ADR-090: Pestaña Menú — eliminación del desayuno, buscador de recetas con comensales por receta y botón único de añadir (issue #242)
+# ADR-090: The Menú tab — breakfast's removal, a recipe finder with per-recipe diners and a single add button (issue #242)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #242 pide cuatro cambios en la pestaña **Menú** (ADR-076,
-sección de recetas, issue #64):
+Issue #242 asks for four
+ changes on the
+ **Menú** tab (ADR-076, the recipes
+ section, issue #64):
 
-1. **Eliminar el desayuno** del menú: este pasa a cubrir solo
-   **Almuerzo** y **Cena**.
-2. Al añadir una receta a una comida, **sustituir el desplegable** por
-   una **ventana con tarjetas** de las recetas: foto (si la tiene) en
-   pequeño a la izquierda, nombre como título arriba a la derecha y
-   etiquetas de **alérgenos y tipos de plato** debajo.
-3. Ese buscador debe permitir **buscar por texto** y **filtrar por las
-   dos etiquetas** (alérgenos y tipo de plato).
-4. Al pulsar una receta se abre la **ventana de lectura** igual que la
-   de la pestaña Recetas (ADR-088, issue #236).
-5. Al añadir una receta se pueden elegir los **comensales de esa
-   receta** (no todos comen de todo); si no se indica ninguno, se usa
-   la **selección global del menú**.
+1. **Removing
+ the breakfast** from
+ the
+ menu: it now
+ covers
+ only
+ **Comida** and
+ **Cena
+**.
 
-Estado previo: `addRecipeToMeal` en js/menu.js mostraba un
-`<select>` inline bajo el botón «+ Receta» con las recetas aún no
-añadidas; las entradas de comida en el documento Firestore
-(`users/{uid}/menus`, `dias[day][meal]`) eran **strings** con el id de
-la receta; el menú tenía tres comidas fijas (`MEAL_KEYS` con
-`desayuno`, `almuerzo`, `cena`); «recetas a la semana»
-(`recetasPorSemana`) era un bloque aparte con su propio desplegable y
-**no** es objeto de esta issue.
+2. When adding a recipe to a
+ meal, **replacing
+ the
+ dropdown** with a
+ **window
+ with cards** of the
+ recipes: a
+ small photo (if it has
+ one)
+  on
+  the
+  left,
+ the
+ name as a
+  title
+  on
+  the
+  top
+  right and
+ the
+ **allergen and meal-type
+  tags**
+  below.
+3. That
+  finder must
+  allow
+  **searching
+  by
+  text** and
+  **filtering
+  by
+  the
+  two
+  tags**
+  (the
+  allergens and the meal type).
+4. Pressing
+  a
+  recipe opens
+  the
+  **reading window** just like the
+  Recipes tab's
+  (ADR-088, issue
+  #236).
+5. When adding a recipe, that
+  recipe's **diners**
+  can be chosen
+  (not everyone eats everything);
+  if none is given, the
+  menu's **global selection** is used.
 
-Nota del flujo (misma excepción que ADR-083, ADR-085, ADR-087,
-ADR-088 y ADR-089): la base de trabajo es la rama
-`content/issue-64-seccion-recetas`; la rama de trabajo se crea desde
-ahí y la PR va **también a `content/issue-64-seccion-recetas`, no a
-`dev`**. El ADR se numera **090**.
+Previous state:
+ `addRecipeToMeal` in
+  js/menu.js
+  showed an
+  inline
+  `<select>`
+  under
+  the
+  "+ Receta"
+  button with the
+  not-yet-added recipes;
+  meal entries in the
+  Firestore document (the
+  `users/{uid}/menus`, the
+  `dias[day][meal]`)
+  were
+  **strings** with the
+  recipe's
+  id;
+  the
+  menu had
+  three
+  fixed meals
+  (the
+  `MEAL_KEYS`
+  with
+  `desayuno`,
+  `almuerzo`,
+  `cena`);
+  the
+  "recipes
+  for
+  the
+  week"
+  (the
+  `weeklyRecipes`)
+  was a
+  separate block with its
+  own
+  dropdown and
+  **is** not the
+  object
+  of
+  this issue.
 
-## Decisión
+Flow note
+  (the
+  same exception as
+  ADR-083, ADR-085,
+  ADR-087, ADR-088
+  and
+  ADR-089): the
+  work's base
+  is the
+  `content/issue-64-seccion-recetas` branch; the work
+  branch is
+  created from there and the
+  PR goes
+  **also
+  to
+  `content/issue-64-seccion-recetas`, not to
+  `dev`**. The ADR is
+  numbered
+  **090**.
 
-1. **Menú de dos comidas**: `MEAL_KEYS`/`MEAL_LABELS` en
-   js/recipes-data.js pasan a `["almuerzo", "cena"]`. Los datos
-   antiguos `dias[day].desayuno` guardados en Firestore se ignoran
-   (rejilla y lista de la compra iteran solo las comidas actuales).
-   El tipo de plato «Desayunos» de `MEAL_TYPES` (etiqueta de recetas)
-   **se mantiene**: es una etiqueta de tipo de plato, no una comida
-   del menú. Se actualiza el hint de «Recetas a la semana» en
-   index.html (ya no se menciona el pan de los desayunos).
-2. **Ventana del buscador de recetas** (`recipe-picker-modal` en
-   index.html, render de `renderRecipePicker` en js/menu.js): un modal
-   con el mismo patrón que el de receta (`modal__card--wide`), cuyo
-   contenido es una **lista de tarjetas** `.recipe-pick__card`:
-   foto pequeña a la izquierda (solo si `fotoUrl`), nombre a la
-   derecha arriba y etiquetas de alérgenos / tipos debajo (las mismas
-   píldoras `.recipe-card__tag--alergeno/tipo` de la pestaña
-   Recetas). Cada tarjeta es pulsable (role button, tabindex 0) y
-   tiene su botón «+ Añadir».
-   - **Buscador y filtros**: campo de búsqueda en vivo (coincidencia
-     por nombre, ingrediente normalizado y etiquetas, mismo criterio
-     que la pestaña Recetas) y dos botones de filtro desplegables
-     (alérgenos y tipo de plato) que **reutilizan el patrón y las
-     clases `.recipes-filter__*`** de la pestaña Recetas (issue #234):
-     multiselección con «Todas» marcada por defecto, fuente de verdad
-     en Sets (`pickerAlergenoFilter`/`pickerTipoFilter`) y panel
-     pintado solo al abrir. Se abre con todas marcadas en cada
-     apertura; no hay flag de "tocado" (el estado del buscador es
-     efímero, se descarta al cerrar).
-   - **Lectura**: pulsar una tarjeta (click, Enter o Espacio) cierra
-     el buscador y abre `openRecipeModal(recipe, { readOnly: true,
-     onClose })`: la misma ventana de lectura de la pestaña Recetas.
-     Se añade un **callback `onClose`** a `openRecipeModal` (issue
-     #242) que se invoca una única vez al cerrar el modal y se
-     limpia; menu.js lo usa para **restaurar el buscador** (trap de
-     foco y foco al campo de búsqueda; el estado de búsqueda/filtros
-     se conserva porque la lista no se re-renderiza).
-3. **Comensales por receta**: las entradas de comida pasan de strings
-   a **objetos `{ recipeId, comensales }`** (`comensales` = número o
-   null si hereda el global). `mealEntryOf` normaliza ambos formatos
-   (string antiguo → `{ recipe, comensales: null }`) y se usa en
-   rejilla, alta, borrado y limpieza de recetas borradas
-   (`cleanupDeletedRecipe`), que antes comparaba el id contra la
-   entrada entera y no habría borrado las nuevas.
-   - En la tarjeta del buscador, «+ Añadir» despliega una **fila de
-     comensales** (número opcional con placeholder «Menú (N)») con
-     botones **Añadir** (confirma el alta) y **Cancelar** (repliega);
-     Enter en el número también confirma. Vacío/0 → `null` (hereda el
-     global del menú). La rejilla muestra el número como distintivo
-     pequeño junto al nombre (`.menu-meal__comensales`) y en el
+## Decision
+
+1. **A two-meal menu**: `MEAL_KEYS`/`MEAL_LABELS`
+   in js/recipes-data.js become
+   `["almuerzo", "cena"]`. The old
+   stored `dias[day].desayuno` data in
+   Firestore is ignored
+   (the grid
+   and
+   the
+   shopping
+   list iterate only the
+   current
+   meals).
+   The "Desayunos"
+   meal
+   type of
+   the
+   `MEAL_TYPES` (a
+   recipe
+   tag)
+   **stays**:
+   it is a
+   plate-type
+   tag, not a
+   menu
+   meal. The
+   hint of
+   the
+   weekly
+   recipes in index.html updates
+   (the
+   bread
+   no longer has
+   any
+   place to
+   go).
+2. **The recipe
+   finder's window** (the
+   `recipe-picker-modal`
+   in
+   index.html,
+   the
+   `renderRecipePicker`
+   render
+   in
+   js/menu.js):
+   a
+   modal with the
+   recipe's
+   same
+   pattern (a
+   `modal__card--wide`), whose content is
+   a
+   **card
+   list** of
+   `.recipe-pick__card`s:
+   a
+   small photo on
+   the
+   left
+   (only if there is a
+   `fotoUrl`), the
+   name on
+   the
+   top
+   right and
+   the
+   allergen / type
+   tags
+   below
+   (the
+   same
+   `.recipe-card__tag--alergen/tipo`
+   pills
+   as the
+   Recipes
+   tab). Each card is
+   pressable (a
+   role button,
+   a
+   tabindex
+   0) and
+   has
+   its
+   own
+   "+ Añadir"
+   button.
+   - **The search and the filters**: a
+     live search field (a
+     name, normalized-ingredient and tag
+     match, the
+     Recipes
+     tab's
+     criterion)
+     and two
+     dropdown
+     filter buttons (the
+     allergens and the
+     meal
+     type) that
+     **reuse the
+     pattern and
+     classes
+     `.recipes-filter__*`**
+     of the
+     Recipes
+     tab (issue
+     #234): multi-selection with "Todas"
+     checked by default, a
+     source of
+     truth in Sets (the
+     `pickerAlergenoFilter`/`pickerTipoFilter`)
+     and a
+     panel painted only when opened. It opens with
+     all checked on each opening; there is no "touched"
+     flag (the
+     finder's state is
+     ephemeral, it is discarded on close).
+   - **Reading**:
+     pressing a card
+     (click, Enter
+     or
+     Espacio) closes
+     the
+     finder and opens
+     the
+     `openRecipeModal(recipe, { readOnly: true,
+     onClose })`:
+     the
+     Recipes
+     tab's
+     same reading
+     window. An
+     **`onClose` callback**
+     is added to `openRecipeModal`
+     (issue
+     #242) which is
+     invoked
+     only
+     once when
+     closing the modal and is
+     cleared;
+     menu.js
+     uses it to **restore the finder**
+     (trap focus
+     and
+     focus
+     to
+     the
+     search field; the
+     search/filters'
+     state is kept because
+     the
+     list is not
+     re-rendered).
+3. **Per-recipe diners**: the meal entries go
+  from
+  strings
+  to
+  **objects `{ recipeId, diners }`**
+  (the
+  diners being a
+  number
+  or
+ null when they
+  inherit the
+  global).
+  The
+  `mealEntryOf` normalizes both
+  formats (an
+  old string →
+  `{ entry, diners: null }`)
+  and is
+  used on the grid, the add,
+  the delete and the cleanup of
+  deleted recipes
+  (the
+  `cleanupDeletedRecipe`),
+  which compared the
+  id
+  against the whole
+  entry and
+  would not have
+  deleted the
+  new
+  ones.
+   - On the
+     finder's card, the
+     "+ Add"
+     unfolds a
+     **diners row**
+     (an
+     optional number with
+     the
+     "Menu (N)"
+     placeholder) with
+      the
+      **Add**
+      button (confirming
+      the add) and
+      the
+      **Cancel**
+      (collapsing);
+     Enter on the number also confirms. Empty/0 →
+     null
+     (it
+     inherits the
+     menu's
+     global).
+     The
+     grid shows the number as a small badge next to
+     the
+     name (the
+     `.menu-meal__diners`) and on the
      tooltip.
-   - **Lista de la compra** (js/shopping-list.js, ADR-076): el
-     cálculo escala cada receta con sus **propios comensales** si los
-     tiene y con los **globales** si no: `factor = comensales ÷
-     porciones`. Compatible con entradas string antiguas.
-4. **Accesibilidad y listeners**: el modal usa `trapFocus` y
-   devuelve el foco al abrir; Escape cierra; los listeners globales de
-   documento (Escape y cierre de paneles al hacer click fuera) se
-   enlazan **una sola vez** (`pickerDocEventsBound`): el contenido del
-   modal se re-renderiza en cada apertura y de otro modo se
-   acumularían. El callback `onClose` de recetas se invoca en
-   `closeRecipeModal` **después** de restaurar el foco y de resetear
-   `editingRecipeId`/`modalReadOnly` (el guardado WIP previo dejó esas
-   líneas fuera de la función y rompía la carga del módulo).
-5. **Responsividad** (AGENTS.md §2): la tarjeta usa `flex-wrap`,
-   `min-width: 0` y `overflow-wrap: break-word`; el campo de búsqueda
-   es `flex: 1 1 200px` y los paneles de filtro se limitan a
-   `max-width: calc(100vw - 3.5rem)`. Sin scroll horizontal en
-   360 / 768 / 1280 px.
-6. **Cuatro modos de tema** (AGENTS.md §4): todos los estilos nuevos
-   usan solo variables de tema (`--ink-raised`/`--paper` en el chip,
-   `--paper-dim`/`--ink` en el input de comensales, `--ink-soft` en
-   textos secundarios, `--paper-alpha-*` en bordes); las píldoras de
-   etiquetas reutilizan los modificadores ya agrupados con sus
-   overrides por familia. Sin colores hardcodeados.
-7. **Manual de usuario**: §8.3 describe el menú de dos comidas, la
-   ventana de tarjetas con buscador/filtros, la lectura de receta y
-   los comensales por receta.
-8. **PWA**: bump `20260920 → 20260921` en js/config.js
-   (`APP_VERSION`), index.html (`?v=`) y service-worker.js
-   (`STATIC_ASSETS`).
+   - **The shopping list** (js/shopping-list.js,
+     ADR-076): the
+     calculation scales each recipe with
+     its
+     **own diners**
+     if it has
+     them, and with
+     the
+     **global**
+     ones
+     if not:
+     the
+     `factor = diners ÷
+     servings`. It is compatible with old
+     string
+     entries.
+4. **Accessibility and listeners**: the
+   modal uses
+   a
+   `trapFocus` and returns the
+   focus when
+   opened;
+   Escape closes;
+   the
+   document's
+   global listeners
+   (Escape and the
+   panels' closing on an
+   outside
+   click) wire
+   **only
+   once**
+   (the
+   `pickerDocEventsBound`): the
+   modal
+   new
+   content re-renders on each opening and otherwise they would
+   accumulate. The recipes' `onClose`
+   callback is
+   invoked
+   in
+   the
+   `closeRecipeModal`
+   **after** restoring the
+   focus and resetting the
+   `editingRecipeId`/`modalReadOnly`
+   (the
+   WIP save left
+   those lines outside the
+   function and broke the module's
+   load).
+5. **Responsiveness**
+   (AGENTS.md
+   §2): the
+   card uses
+   a
+   `flex-wrap`,
+   a
+   `min-width: 0`
+   and
+   an
+   `overflow-wrap: break-word`; the search field is
+   a
+   `flex: 1 1 200px` and the
+   filter panels
+   are
+   limited
+   to
+   the
+   `max-width: calc(100vw - 3.5rem)`. With no horizontal scroll at
+   360 / 768 / 1280
+   px.
+6. **Four theme modes**
+   (AGENTS.md
+   §4): all the new
+   styles use only
+   theme variables (the
+   `--ink-raised`/`--paper` on
+   the
+   chip, the
+   `--paper-dim`/`--ink`
+   on the
+   diners' input, the
+   `--ink-soft`
+   on
+   secondary
+   textes, the
+   `--paper-alpha-*`
+   on borders); the
+   tags' pills reuse the
+   modifiers already
+   grouped with their
+   per-family
+   overrides. With no hardcoded
+   colors.
+7. **User manual**:
+   §8.3 describes the two-meal menu, the cards'
+   window with search/filters, the recipe's
+   reading and the per-recipe
+   diners.
+8. **PWA**: the
+   bump `20260920 → 20260921`
+   in js/config.js (the
+   `APP_VERSION`), the
+   index.html (the
+   `?v=`) and the
+   service-worker.js (`STATIC_ASSETS`).
 
-## Iteración (2026-08-13): contraste del buscador en modo oscuro y negro puro
+## The iteration (2026-08-13): the finder's contrast in the dark and pure black modes
 
-Hallazgo del usuario tras la PR inicial: **el modo oscuro no se veía
-bien en la ventana de búsqueda de recetas**. Causa raíz: las tarjetas
-`.recipe-pick__card` y el mensaje vacío `.recipe-pick__empty` no
-declaraban color de texto explícito y **heredaban `--ink` del modal**
-(que en la familia oscura es papel claro con tinta oscura); sobre el
-chip `--ink-raised` de la tarjeta, la tinta daba ≈ **1.1:1**
-(invisible) y el mensaje con `--ink-soft` ≈ **2.84:1** (no AA).
+The user's finding
+   after the initial
+   PR: **the
+   dark
+   mode looked bad on the
+   recipe
+   search
+   window**. The
+   root
+   cause: the
+   `.recipe-pick__card`
+   cards and the
+   empty-message `.recipe-pick__empty` did not
+   declare an
+   explicit
+   text-color and **inherited the
+   modal's
+   `--ink`**
+   (which in the
+   dark
+   family is a
+   light paper with a
+   dark
+   ink); over the
+   card's
+   `--ink-raised`
+   chip, the
+   ink gave ≈ the
+   **1.1:1**
+   (invisible)
+   and the
+   message with the
+   `--ink-soft` ≈
+   the
+   **2.84:1**
+   (not
+   AA).
 
-Corrección aplicada (mismo patrón que `.recipes-filter__btn` y
-`.recipe-view__meta`, selectores agrupados con una sola fuente de
-verdad por regla):
+The applied correction
+   (the
+   `.recipes-filter__btn`
+   and
+   `.recipe-view__meta`'s same
+   pattern, grouped
+   selectors with
+   a
+   single
+   source of
+   truth per
+   rule):
 
-- `.recipe-pick__card`: `color: var(--paper)` explícito en la base
-  (familia oscura) y override agrupado
-  `[data-theme="light"]/[data-theme="white"]` a `--ink`.
-- `.recipe-pick__empty`: `--ink → --ink` (tinta del contenido, 15.2:1
-  sobre el modal papel) y override `[data-theme="black"]` a
-  `--paper` (en negro puro el modal es superficie oscura y `--ink` es
-  #000 invisible).
-- `.recipe-pick__search` en negro puro: override a
-  `--ink` + borde `--paper-alpha-20`, patrón de
-  `ingredient-modal__field` / `.recipe-pick__comensales input` — sin
-  él, el campo (base `--ink-raised`) compartiría el fondo con el modal
-  negro puro y no se distinguiría.
+- `.recipe-pick__card`: an
+   explicit
+   `color: var(--paper)` on
+   the
+   base
+   (the
+   dark
+   family)
+   and a
+   grouped
+   `[data-theme="light"]/[data-theme="white"]`
+   override to
+   the
+   `--ink`.
+- `.recipe-pick__empty`: `--ink → --ink` (the
+   heavy
+   content's
+   ink,
+   15.2:1
+   over the
+   modal's paper) and an
+   override
+   `[data-theme="black"]`
+   to
+   the
+   `--paper`
+   (in pure
+   black the
+   modal is a
+   dark
+   surface and the
+   `--ink` is
+   #000, invisible).
+- `.recipe-pick__search` in pure
+   black: an
+   override to
+   the
+   `--ink` +
+   a
+   `--paper-alpha-20`
+   border, the
+   `ingredient-modal__field` /
+   `.recipe-pick__diners`
+   input's pattern
+   —
+   without
+   it, the field
+   (the
+   base
+   `--ink-raised`) would share its
+   background with the
+   pure-black modal and not be
+   distinguishable.
 
-Contrastes resultantes: tarjeta 13.85:1 (oscuro) / 16.51:1 (negro
-puro) / 14.65:1 y 21:1 (claro y blanco puro); mensaje vacío 15.2:1 /
-16.51:1; placeholder del buscador 6.16:1 (negro puro, AA). Sin cambios
-de comportamiento, HTML ni JS: solo CSS de tema, por lo que el manual
-de usuario no requiere actualización.
+The resulting contrasts: the card 13.85:1
+   (dark)
+   /
+   16.51:1 (pure
+   black)
+   /
+   14.65:1 and
+   21:1
+   (light and pure
+   white); the empty
+   message 15.2:1
+   /
+   16.51:1; the
+   search's placeholder 6.16:1
+   (pure
+   black, AA). With no behavior,
+   HTML or
+   JS
+   changes:
+   only theme CSS, so the user's manual needs no update.
 
-## Iteración 2 (2026-08-13): AA del distintivo de comensales de la rejilla
+## Iteration 2 (2026-08-13): the grid's diners badge's AA
 
-Hallazgo de la re-validación QA de la iteración anterior: el distintivo
-`.menu-meal__comensales` (`· N` junto al nombre de la receta en la
-rejilla del menú, nuevo en esta PR) usaba `--ink-soft` y sobre el chip
-`.menu-meal__item` (`--paper-alpha-10` sobre la celda `--ink-raised`)
-daba ≈ **3.73:1** en el tema Oscuro — por debajo de AA 4.5:1 para
-texto de 0.68rem.
+The previous iteration's QA re-validation's finding: the
+     badge
+     `.menu-meal__diners`
+     (the
+     `· N` next to the
+     recipe's
+     name on the
+     menu
+     grid, new on this PR) used
+     the
+     `--ink-soft`
+     and over
+     the
+     `--paper-alpha-10` on the
+     `--ink-raised`
+     cell gave ≈ the
+     **3.73:1**
+     on the
+     Dark theme — under AA 4.5:1
+    for a 0.68rem text.
 
-Corrección aplicada (mismo patrón que `.recipe-pick__empty` de la
-iteración anterior): la base pasa a `--paper-alpha-92` sobre el chip
-oscuro (blend ≈ 9.24:1 en Oscuro, 12.2:1 en Negro puro) y la familia
-clara recupera `--ink-soft` en un override agrupado
-`[data-theme="light"]/[data-theme="white"]` (5.02:1 y 5.44:1, AA) — en
-esos temas el papel translúcido de la base es blanco y quedaría
-invisible sobre el chip claro. Sin cambios de comportamiento, HTML ni
-JS: solo CSS de tema.
+The applied correction (the previous iteration's
+     `.recipe-pick__empty`'s
+     same pattern): the base
+     becomes `--paper-alpha-92` over the dark chip (the
+     blend ≈
+     9.24:1 in Dark,
+     12.2:1 in pure black) and
+     the
+     light
+     family recovers
+     an
+     `--ink-soft` in a
+     grouped override
+     `[data-theme="light"]/[data-theme="white"]`
+     (5.02:1 and
+     5.44:1, AA)
+     — on
+     those themes the
+     base's translucent paper is white and would be invisible over the
+     light chip. With no behavior,
+     HTML nor
+     JS changes: only theme CSS.
 
-## Iteración 3 (2026-08-13): buscador en la familia clara dentro del modal papel y overrides de Negro puro completos
+## Iteration 3 (2026-08-13): the
+  finder in the
+  light family inside the paper
+  modal and full
+  pure-black
+  overrides
 
-Hallazgo del usuario tras la iteración 1: en el tema **Oscuro** la
-ventana del buscador (modal papel `--paper`) mostraba **tarjetas,
-campo de búsqueda y píldoras de filtro en chips oscuros**
-(`--ink-raised` con texto papel), un contraste interno que el usuario
-describía como feo, con el **nombre de la receta ilegible** (heredaba
-la tinta del modal, casi negra, sobre el chip oscuro). Pidió invertir
-los colores para adecuar la ventana al resto de la web.
+The user's finding after iteration
+  1: on the
+  **Dark** theme the finder's
+  window
+  (a
+  `--paper` paper
+  modal) showed **cards,
+  a search field and the filters' pills in dark chips** (the
+  `--ink-raised` with a paper
+  text), an internal contrast the user described as ugly,
+  with the
+  **recipe's
+  name unreadable** (it
+  inherited the modal's
+  ink, almost black, over the dark chip). They asked to invert
+  the colors to fit the window to the web's rest.
 
-Decisión: dentro del modal papel del tema Oscuro, los controles del
-buscador pasan a la **familia clara** (misma fuente de verdad que
-`.ingredient-modal__field input` y `.recipe-form__field input`, y que
-la tarjeta `.recipe-card` de la pestaña Recetas — superficies claras
-sobre el papel, que es el lenguaje visual del resto de la app):
+Decision: inside the Dark theme's paper modal, the finder's controls move to the **light family** (the
+  same source of truth as the
+  `.ingredient-modal__field input` and
+  the
+  `.recipe-form__field input`, and
+  the
+  Recipes tab's `.recipe-card`
+  card — light surfaces over paper, which is the app's rest's visual language):
 
-- `.recipe-pick__card` → `--paper-dim`/`--ink` con borde
-  `--paper-line`; el nombre queda en tinta oscura legible (13.1:1).
-- `.recipe-pick__search` → `--paper-dim`/`--ink` (placeholder a la
-  tinta del contenido: `--ink-soft` daba ≈ 2.45:1, no AA).
-- `.recipe-pick .recipes-filter__btn` → píldora clara
-  (`--paper-dim`/`--ink`/`--paper-line`).
-- `.recipe-pick__comensales` → `--ink` (la tinta suave daba ≈ 2.45:1).
-- Tinte del placeholder de foto `--ink-alpha-08`.
+- `.recipe-pick__card`
+     →
+     a
+     `--paper-dim`/`--ink` with
+     a
+     `--paper-line`
+     border; the
+     name stays in a legible
+     dark
+     ink (a 13.1:1).
+- The
+     `.recipe-pick__search` →
+     a
+     `--paper-dim`/`--ink`
+     (placeholder to the
+     content's ink: the
+     `--ink-soft` gave ≈
+     2.45:1, not
+     AA).
+- The
+     `.recipe-pick .recipes-filter__btn`
+     →
+     a
+     light pill (a
+     `--paper-dim`/`--ink`/`--paper-line`).
+- The
+     `.recipe-pick__diners` →
+     the
+     `--ink` (the
+     soft
+     ink gave ≈
+     2.45:1).
+- The photo placeholder's tint being the
+     `--ink-alpha-08`.
 
-Y en **Negro puro** (donde el modal es superficie oscura
-`--ink-raised`), los overrides agrupados que la base clara exige —
-la base `--paper-dim`/`--ink` es casi negra en ese tema (texto #000
-sobre #111, invisible ≈ 1.07:1):
+And in
+  **pure black**
+  (where the
+  modal is a
+  `--ink-raised` dark surface), the grouped overrides the
+  light base requires
+  — the base being its
+  `--paper-dim`/`--ink` almost black on that theme
+  (a
+  #000 text over
+  #111,
+  invisible ≈ the
+  1.07:1):
 
-- `.recipe-pick__card` → chip oscuro `--ink-raised`/`--paper` (16.5:1)
-  con hover/foco en la variante clara del teal (`--teal-reel-dark`
-  #4f9c8e, 6.11:1).
-- `.recipe-pick .recipes-filter__btn` → mismo chip oscuro (16.5:1).
-- `.recipe-pick__comensales` → `--ink-soft` (5.8:1, AA).
-- `.recipe-pick__search::placeholder` → `--ink-soft` (6.16:1, AA;
-  sin override quedaría #000 sobre el campo #000).
-- El campo y el input de comensales conservan los overrides de
-  iteraciones anteriores (`--ink`/`--paper`); las píldoras de
-  etiquetas usan los modificadores `--alergeno/--tipo` ya agrupados
-  (teal/ocre claros con texto tinta, 6.5:1 y 8.2:1).
+- `.recipe-pick__card` → a
+  dark chip of
+  `--ink-raised`/`--paper` (a
+  16.5:1) with a
+  hover/focus in the teal's
+  light variant (`--teal-reel-dark`,
+  #4f9c8e, a
+  6.11:1).
+- The
+  `.recipe-pick .recipes-filter__btn` → the
+  same dark chip (a
+  16.5:1).
+- The
+  `.recipe-pick__diners` → an
+  `--ink-soft` (a
+  5.8:1, AA
+  compliant).
+- The
+  `.recipe-pick__search::placeholder` →
+  an
+  `--ink-soft` (a
+  6.16:1, AA;
+  without the override it would be
+  #000 over the
+  #000 field).
+- The field and the
+  diners' input keep
+  the
+  previous iterations' overrides (the
+  `--ink`/`--paper`); the
+  tags' pills use the
+  already-grouped
+  `--allergen/--tipo` modifiers
+  (a
+  light teal/ochre with ink
+  textes, a
+  6.5:1 and
+  an
+  8.2:1).
 
-Contrastes resultantes (texto AA/AAA en los cuatro temas): tarjeta
-13.1:1 (Oscuro) / 16.5:1 (Negro puro) / 12.9:1 (Claro) / 21:1 (Blanco
-puro); nombre de receta siempre legible; placeholder 6.16:1 (Negro
-puro). Sin cambios de comportamiento, HTML ni JS: solo CSS de tema,
-por lo que el manual de usuario no requiere actualización.
+The resulting contrasts (an AA/AAA text in the four themes): the
+  card 13.1:1 (Dark) /
+  16.5:1 (pure black) /
+  12.9:1 (Light)
+  /
+  21:1 (Pure white); the recipe's
+  name is always legible;
+  the
+  placeholder is a 6.16:1 (pure black). With no behavior,
+  HTML nor
+  JS changes: only
+  theme CSS, so the user's manual needs no update.
 
-## Iteración 4 (2026-08-13): botón único de añadir receta con selector de destino y tarjetas en las celdas
+## Iteration 4 (2026-08-13):
+ the
+ single
+ recipe-add
+ button
+ with a
+ target
+ picker
+ and
+ cards on the
+ cells
 
-Comentario del usuario (2026-08-13T09:06:39Z): sustituir **todos** los
-botones de añadir receta por **un único botón en la parte superior**
-que permita elegir el **día de la semana o la semana completa** y la
-**comida o cena**; eliminar el botón separado de «añadir receta a la
-semana» (se añade con el mismo botón); y que lo que se añade a cada
-celda sean **tarjetas como las de la búsqueda**, no ítems vacíos no
-clicables.
+The user's
+ comment
+ (2026-08-13T09:06:39Z):
+ replace
+ **all** the
+ recipe-add
+ buttons with **a
+ single
+ button on the
+ top**
+ allowing choosing
+ the
+ **day
+ of the
+ week or the
+ whole week** and the
+ **lunch or
+ dinner**;
+ removing
+ the
+ separate "add a recipe to the week"
+ button
+ (it adds with the same button);
+ and what gets added to each
+ cell being
+ **cards
+ like the search's**, not non-clickable empty items.
 
-Cambios aplicados (js/menu.js, css/styles.css, index.html y manual
-§8.3):
+The applied changes (js/menu.js, css/styles.css,
+ index.html and the
+ manual §8.3):
 
-1. **Botón único**: `#btn-add-menu-recipe` en la barra del menú
-   (`.menu-toolbar`) sustituye a los botones `+ Receta` de cada celda
-   (`menu-meal__add`) y al botón/desplegable de «Recetas a la semana»
-   (`btn-add-weekly-recipe` y `addWeeklyRecipe`, eliminados junto con
-   el CSS `.menu-weekly__addrow`). Al pulsarlo se abre el buscador con
-   un **selector de destino** `.recipe-pick__target`: día (Lunes…
-   Domingo) o «Toda la semana» + comida (Almuerzo/Cena). Con «Toda la
-   semana» la comida se desactiva y aparece el aviso
-   `.recipe-pick__week-hint` (se añade una vez y no se multiplica por
-   los comensales). El destino vive en `pickerDay` (`"*"` = semana
-   completa, `pickerMeal` = null) y el estado se conserva al abrir la
-   lectura de una receta (mismo `restoreRecipePicker`).
-2. **Alta semanal por el mismo flujo**: `addRecipeToMeal` acepta
-   `day "*"` y escribe en `recetasPorSemana` con el mismo shape
-   `{ recipeId, cantidad: 1 }`; la lista de candidatos del buscador
-   excluye las ya añadidas al destino elegido (comida del día o
-   semana completa) y adapta el mensaje vacío.
-3. **Tarjetas en las celdas**: cada receta de una comida se renderiza
-   como `.menu-meal__card` (foto en miniatura, nombre, etiquetas —
-   misma fuente de verdad `recipeTagsHtml` y píldoras
-   `.recipe-card__tag` —, distintivo de comensales y botón ✕). La
-   tarjeta es clicable (click, Enter o Espacio) y abre la receta en
-   modo lectura (`openRecipeModal`), como las del buscador. La
-   exclusión de la lista de la compra (issue #225) tacha solo el
-   nombre en lugar de toda la fila.
-4. **Cuatro modos de tema**: la tarjeta de celda usa el tinte
-   `--paper-alpha-10` heredando el texto de la celda; en la familia
-   clara el override agrupado pasa a `--ink-alpha-10` (el de papel es
-   blanco translúcido e invisible sobre la celda blanca) y en negro
-   puro se reafirma el tinte con hover/foco en `--teal-reel-dark`.
-   El selector de destino sigue el patrón de campo del buscador
-   (`--paper-dim`/`--ink` sobre el modal papel) con inversión en
-   negro puro (`--ink`/`--paper`) y etiquetas de campo y aviso con la
-   tinta del contenido (`--ink`, `--paper` en negro puro), mismos
-   contrastes AA que los de las iteraciones anteriores.
-5. **Manual de usuario §8.3**: describe el botón único, el selector
-   de destino y las tarjetas clicables de las celdas.
+1. **The single button**: the
+   `#btn-add-menu-recipe` on the
+   menu's bar (the
+   `.menu-toolbar`) replaces
+   the
+   "+ Receta" buttons of
+   each cell (the
+   `menu-meal__add`) and the
+   "Recipes for the week" button/dropdown (the
+   `btn-add-weekly-recipe` and
+   the
+   `addWeeklyRecipe`,
+   removed along with the
+   CSS `.menu-weekly__addrow`). Pressing it opens the
+   finder
+  with a
+  **target
+  picker**
+  `.recipe-pick__target`:
+  a
+  day (Monday…
+  Sunday) or
+  "The whole week"
+  + the
+  meal (Comida/Cena). With
+  "The whole week"
+  the meal is deactivated and
+  the
+  `.recipe-pick__week-hint`
+  warning shows (it adds once and is not multiplied
+  by the diners). The
+  target lives in the
+  `pickerDay` (a
+  `"*"` = the
+  whole week,
+  `pickerMeal` =
+  null) and the
+  state stays when
+  opening a recipe's reading
+  (the
+  same
+  `restoreRecipePicker`).
+2. **The weekly high through the same flow**: the
+  `addRecipeToMeal`
+  accepts a
+  `day "*"` and
+  writes
+  to the
+  `weeklyRecipes` with the same
+  shape
+  `{ recipeId, cantidad: 1 }`; the
+  finder's candidate list excludes the ones already
+  added to the
+  chosen target (the
+  day's meal or the
+  whole week) and adapts the
+  empty message.
+3. **The cards on the cells**: each recipe of a meal renders
+  as a
+  `.menu-meal__card` (a
+  thumbnail photo, a name, tags — the
+  same source of truth
+  recipeTagsHtml
+  and pills
+  `.recipe-card__tag` —, a
+  diners badge
+  and a ✕ button). The
+  card is clickable
+  (click, Enter or
+  Espacio) and opens the recipe in
+  reading mode (the
+  `openRecipeModal`), like the finder's. The shopping list's
+  exclusion (issue
+  #225) strikes
+  through only the
+  name instead of the whole row.
+4. **Four theme modes**: the cell's card uses the
+  `--paper-alpha-10` tint, inheriting the cell's text; in the
+  light
+  family the grouped override moves to the
+  `--ink-alpha-10` (the
+  paper's being a translucent white, invisible over the white
+  cell) and in pure black the tint is reasserted with a hover/focus in
+  the
+  `--teal-reel-dark`. The target
+  picker
+  follows the finder's field pattern (the
+  `--paper-dim`/`--ink` over the paper modal) with an inversion in
+  pure black (the
+  `--ink`/`--paper`) and field
+  label and warning with the content's ink (the
+  `--ink`, the
+  `--paper` in pure black), the same AA contrasts as the
+  previous iterations' ones.
+5. **The user manual's §8.3**:
+  the single button, the target picker
+  and the cells' clickable cards.
 
-## Iteración 5 (2026-08-13): tarjetas en «recetas a la semana» y hover/animación en la ✕
+## Iteration 5 (2026-08-13):
+ cards
+ on the
+ weekly recipes and a
+ hover/animation on the
+ ✕
 
-Comentario del usuario (2026-08-13T09:42:41Z): (1) en «recetas a la
-semana» las tarjetas añadidas deben **verse igual que en la tabla del
-menú por días**, en lugar de solo el nombre; (2) el botón **«X»** de
-las tarjetas del menú debe tener **hover o animación** al pasar por
-encima o al presionarlo.
+The user's
+ comment
+ (2026-08-13T09:42:41Z):
+ (1) on "recipes
+ for the week"
+ the added cards must
+ **look
+ like the ones on the
+ day-by-day
+ menu
+ table**, instead of
+ just
+ the
+ name;
+ (2) the
+ menus' cards'
+ **«X»**
+ button must have
+ a
+ **hover or animation** when
+ passing
+ over or
+ pressing
+ it.
 
-Cambios aplicados (js/menu.js, css/styles.css, manual §8.3 y bump
-PWA `20260921 → 20260922`):
+The applied changes (js/menu.js, css/styles.css, the
+ manual §8.3 and a
+ PWA
+ bump
+ `20260921 → 20260922`):
 
-1. **«Recetas a la semana» como tarjetas** (`renderWeeklyRecipes` en
-   js/menu.js): cada receta semanal se renderiza con las **mismas
-   clases** `.menu-meal__card` que las celdas (foto en miniatura,
-   nombre, etiquetas con el mismo `recipeTagsHtml` y ✕). El bloque
-   `.menu-weekly` ya comparte fondo con las celdas (`--ink-raised`),
-   así que los overrides de tema de `.menu-meal__card` (familia clara
-   `--ink-alpha-10` y negro puro `--paper-alpha-10`) cubren la lista
-   semanal sin reglas nuevas; `#menu-weekly-list` solo apila las
-   tarjetas con `gap: 0.3rem` (se elimina `.menu-weekly__item`, su
-   fila de texto con botón «Quitar» y sus bordes separadores). La
-   tarjeta semanal es **clicable** (click, Enter o Espacio, con el
-   mismo `openRecipeModal(recipe, { readOnly: true })` que las
-   celdas) y la ✕ la quita (`removeWeeklyRecipe`); el teclado no
-   interfiere con el botón interno (guard `closest("button")`).
-2. **Hover y animación de la ✕** (`.menu-meal__remove`, compartida
-   por celdas y semana): pasa a botón **circular** de 1.5rem
-   (24 px, WCAG 2.2 AA 2.5.8) con `border-radius: 999px` y
-   `transition`; `:hover`/`:focus-visible` rellenan el círculo con
-   `--paper-alpha-14` (papel translúcido en la familia oscura, tinta
-   translúcida en la clara: visible sobre el chip en ambas) y
-   `:active` lo encoge (`transform: scale(0.8)`, patrón de
-   `.btn:active`/`.trailer-btn:active`). La media query global de
-   `prefers-reduced-motion` anula las animaciones.
-3. **Contraste AA de la ✕ en la familia oscura** (hallazgo de la
-   re-validación QA): `--stamp` (#a63b2e) sobre el chip daba ≈ 2:1 en
-   Oscuro y ≈ 2.6:1 en Negro puro (por debajo del 3:1 de componentes
-   gráficos, WCAG 1.4.11). Se aplica el patrón de
-   `.shopping-line__remove` (issue #225): base con el rojo claro
-   hardcodeado `#d16a59` (≈ 4.7:1, AA, comentado) y override agrupado
-   `[data-theme="light"]/[data-theme="white"]` a `--stamp` (≈ 5.3:1,
-   AA). En negro puro la base ya funciona (≈ 4.7:1), sin override.
-4. **Responsividad y temas**: verificado en navegador headless a
-   360 / 768 / 1280 px en los cuatro temas — sin scroll horizontal
-   (12/12 combinaciones) y con tarjetas semanales con nombre largo
-   (120+ chars sin espacios) ajustado por `overflow-wrap: break-word`
-   y `min-width: 0`.
-5. **Manual §8.3**: la sección «Recetas a la semana» describe las
-   tarjetas iguales a las de cada día (verlas pulsando, quitarlas con
-   la ✕). **PWA**: bump `20260921 → 20260922` en js/config.js,
-   index.html y service-worker.js.
+1. **"Recipes for the week" as cards** (the
+  `renderWeeklyRecipes` in js/menu.js):
+  each weekly recipe renders with the
+  **same**
+  `.menu-meal__card` classes as the
+  cells (a
+  thumbnail
+  photo, a name, tags with the
+  same
+  `recipeTagsHtml` and the ✕). The
+  `.menu-weekly` block already shares its background with the
+  cells
+  (the
+  `--ink-raised`), so the theme
+  overrides of the `.menu-meal__card` (the
+  light
+  family's
+  `--ink-alpha-10` and
+  pure black's
+  `--paper-alpha-10`) cover the weekly list with no
+  new rules; the
+  `#menu-weekly-list` just stacks the cards with
+  a
+  `gap: 0.3rem` (the
+  `.menu-weekly__item`,
+  its
+  text row with a
+  "Remove" button, and its separate borders are removed). The
+  weekly card is **clickable**
+  (click, Enter or
+  Espacio, with
+  the
+  same recipe-reading opening as the cells do via
+  `openRecipeModal(recipe, { readOnly: true })`) and the ✕
+  removes it
+  (the
+  `removeWeeklyRecipe`); the
+  keyboard does not interfere with the inner
+  button (the
+  `closest("button")` guard).
+2. **The ✕'s hover and animation** (the
+  `.menu-meal__remove`, shared by cells and week):
+  it becomes a **round** button of
+  1.5rem (24 px, WCAG
+  2.2 AA 2.5.8) with
+  a
+  `border-radius: 999px` and a
+  transition;
+  the
+  `:hover`/`:focus-visible` fill
+  the circle with
+  the
+  `--paper-alpha-14`
+  (a translucent paper in the dark family, a translucent ink in the light:
+  visible on the chip in both
+  ones) and the
+  `:active` shrinks it (a
+  `transform: scale(0.8)`,
+  the
+  `.btn:active`/`.trailer-btn:active`'s pattern). The
+  `prefers-reduced-motion`'s global media query
+  cancels the animations.
+3. **The dark-family ✕'s AA contrast**
+  (the QA re-validation's finding): the
+  `--stamp` (#a63b2e)
+  over the chip gave ≈
+  2:1 in Dark and ≈
+  2.6:1 in pure black (under the graphical
+  components' 3:1, WCAG
+  1.4.11). The
+  `.shopping-line__remove`'s
+  pattern applies
+  (issue
+  #225): a
+  base with
+  the
+  hardcoded
+  light
+  red `#d16a59` (≈
+  4.7:1,
+  AA,
+  commented) and a
+  grouped override
+  `[data-theme="light"]/[data-theme="white"]`
+  to
+  the
+  `--stamp` (≈
+  5.3:1, AA).
+  In pure black the base already works (≈
+  4.7:1), with no override.
+4. **Responsiveness and themes**:
+  verified in a
+  headless browser at
+  360 / 768 / 1280 px on the
+  four themes — with no horizontal scroll
+  (12/12 combinations) and with weekly cards with a long
+  name (120+ chars without
+  spaces) fitted by the
+  `overflow-wrap: break-word` and a
+  `min-width: 0`.
+5. **The manual §8.3**:
+  the "Recipes for the week" section describes the
+  cards identical
+  to
+  each day's (seeing them by pressing, removing
+  them with the ✕). **PWA**: the
+  bump `20260921 → 20260922`
+  in js/config.js,
+  index.html and the
+  service-worker.js.
 
-## Consecuencias
+## Consequences
 
-- **Positivas**: añadir recetas a una comida deja de ser un
-  desplegable plano: la ventana con tarjetas, búsqueda y filtros
-  facilita encontrar recetas con restricciones (alérgenos) y tipos;
-  los comensales por receta reflejan que no todos comen de todo, y la
-  lista de la compra escala cada receta por lo que realmente se
-  cocina; el menú queda ajustado a almuerzo y cena.
-- **Neutras**: las entradas antiguas (strings) siguen siendo válidas;
-  el desayuno guardado en documentos existentes queda sin uso visible;
-  «recetas a la semana» se añade con el mismo botón único eligiendo
-  «Toda la semana» (iteración 4; ya no tiene desplegable propio);
-  bump PWA `20260920 → 20260922` (iteraciones 4 y 5).
-- **Negativas**: ninguna conocida. Se prevé validar los criterios de
-  aceptación (sin desayuno, ventana con tarjetas con foto/nombre/
-  etiquetas, búsqueda y filtros por las dos etiquetas, lectura de
-  receta, comensales por receta con herencia del global), la
-  responsividad en 360 / 768 / 1280 px sin scroll horizontal, los
-  cuatro modos de tema con contraste AA y el escaneo de seguridad sin
-  hallazgos (todo dato de usuario pasa por `escapeHtml`, incluidos
-  nombres de receta, etiquetas y atributos `data-*`).
+- **Positive**: adding recipes to a meal is no longer a flat dropdown: the
+  cards'
+  window
+  with search and filters makes it easy to find recipes with
+  restrictions (the
+  allergens) and types; the per-recipe diners
+  reflect that not everyone eats everything, and the shopping list scales
+  each recipe by what is actually
+  cooked; the menu gets fitted to lunch
+  and dinner.
+- **Neutral**: the old entries
+  (the strings) stay valid; the
+  stored-desayuno breakfast in existing documents has no
+  visible use; "recipes
+  for the week" adds
+  with the same
+  single button choosing
+  "The whole week" (iteration 4; it no longer has its own dropdown); the
+  PWA bumps
+  `20260920 → 20260922` (the iterations 4 and 5).
+- **Negative**: none known. The plan is to validate
+  the
+  acceptance criteria (no
+  breakfast,
+  the cards'
+  window with photo/name/tags, a search and filtering
+  by the two tags, the recipe's reading, the per-recipe diners
+  with the
+  global's inheritance), the
+  responsiveness at 360 / 768 / 1280 px with no horizontal
+  scroll, the four theme modes with AA contrast and the security
+  scan without findings
+  (all the user data go through `escapeHtml`, including the recipes'
+  names, the tags and the `data-*`
+  attributes).
 
 Related issue: #242

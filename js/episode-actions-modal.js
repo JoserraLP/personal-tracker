@@ -1,13 +1,13 @@
 // =============================================================
-// Diálogo de acciones de un episodio ya visto (issue #133): al
-// pulsar la casilla de un episodio marcado, pregunta si se ha
-// vuelto a ver (suma 1 al contador) o si se quiere desmarcar.
-// Reutiliza el armazón #episode-actions-modal de index.html y los
-// estilos de modal genéricos. Es PURO: no persiste nada; devuelve
-// la elección del usuario y el repintado lo decide el llamador.
+// Dialog of actions for an already watched episode (issue #133): when
+// clicking the checkbox of a marked episode, it asks whether it was
+// watched again (adds 1 to the counter) or whether it should be unmarked.
+// It reuses the #episode-actions-modal shell from index.html and the
+// generic modal styles. It is PURE: it persists nothing; it returns
+// the user's choice and the caller decides the repaint.
 //
-// La promesa que devuelve openEpisodeActionsModal() se resuelve
-// con "seen_again", "unmarked" o null (descartado). Nunca rechaza.
+// The promise returned by openEpisodeActionsModal() resolves
+// with "seen_again", "unmarked" or null (dismissed). It never rejects.
 // =============================================================
 
 import { trapFocus } from "./focus-utils.js";
@@ -21,24 +21,24 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
-// Estado del modal abierto actualmente (o null). closeEpisodeActionsModal()
-// lo usa para cerrar la ventana desde fuera (p. ej. la tecla Escape,
-// que prioriza el handler global de modal-handlers.js).
+// State of the currently open modal (or null). closeEpisodeActionsModal()
+// uses it to close the window from outside (e.g. the Escape key,
+// which has priority over the global handler of modal-handlers.js).
 let currentClose = null;
 
 /**
- * Cierra el diálogo de acciones sin elegir (si está abierto).
- * La usa el handler global de Escape en modal-handlers.js.
+ * Closes the actions dialog without a choice (if it is open).
+ * Used by the global Escape handler in modal-handlers.js.
  */
 export function closeEpisodeActionsModal() {
   if (currentClose) currentClose(null);
 }
 
-// Los botones de cierre del armazón estático (✕ y backdrop) viven en
-// index.html, así que sus listeners se registran UNA sola vez al cargar
-// el módulo (no por cada apertura). Delegan en closeEpisodeActionsModal(),
-// que resuelve la promesa pendiente con null, y es idempotente: sin modal
-// abierto (currentClose null) no hace nada.
+// The close buttons of the static shell (✕ and backdrop) live in
+// index.html, so their listeners are registered ONCE when the module
+// loads (not on every open). They delegate to closeEpisodeActionsModal(),
+// which resolves the pending promise with null, and is idempotent: with no
+// open modal (currentClose null) it does nothing.
 document
   .getElementById("episode-actions-modal-close")
   .addEventListener("click", () => closeEpisodeActionsModal());
@@ -47,13 +47,13 @@ document
   .addEventListener("click", () => closeEpisodeActionsModal());
 
 /**
- * Abre el diálogo de acciones de un episodio ya visto.
+ * Opens the actions dialog for an already watched episode.
  * @param {object} opts
- * @param {string} opts.title     - Título de la serie
- * @param {string} [opts.subtitle] - Línea del episodio ("T1E3 · Piloto")
- * @param {number} opts.times     - Veces que se ha visto el episodio
- * @returns {Promise<"seen_again"|"unmarked"|null>} Elección del usuario,
- *          o null si se descartó.
+ * @param {string} opts.title     - Title of the series
+ * @param {string} [opts.subtitle] - Episode line ("T1E3 · Piloto")
+ * @param {number} opts.times     - Times the episode has been watched
+ * @returns {Promise<"seen_again"|"unmarked"|null>} User's choice,
+ *          or null if dismissed.
  */
 export function openEpisodeActionsModal({ title, subtitle, times }) {
   return new Promise((resolve) => {
@@ -80,7 +80,7 @@ export function openEpisodeActionsModal({ title, subtitle, times }) {
 
     let settled = false;
     const close = (result) => {
-      if (settled) return; // idempotente: cerrar dos veces no resuelve dos veces
+      if (settled) return; // idempotent: closing twice doesn't resolve twice
       settled = true;
       currentClose = null;
 
@@ -88,8 +88,8 @@ export function openEpisodeActionsModal({ title, subtitle, times }) {
         modal._focusTrapCleanup();
         modal._focusTrapCleanup = null;
       }
-      // Restaurar el foco al elemento previo, si sigue en el DOM
-      // (p. ej. la casilla del episodio)
+      // Restore focus to the previous element, if still in the DOM
+      // (e.g. the episode checkbox)
       if (modal._previousActiveElement && document.contains(modal._previousActiveElement)) {
         modal._previousActiveElement.focus();
       }

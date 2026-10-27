@@ -1,20 +1,20 @@
 // =============================================================
-// Detalles de ficha BAJO DEMANDA (almacenamiento mínimo A2, issue
-// #200). Con el nuevo modelo los documentos guardan solo la tarjeta
-// + campos de avisos; la sinopsis, reparto, tráiler, saga,
-// plataformas, etc. se piden a la API al abrir la ficha, con la
-// caché en memoria de 24 h de api-movies.js (una ficha recién
-// añadida o ya visitada no repite llamada) y con degradación
-// elegante a «solo tarjeta» si la red falla.
+// ON-DEMAND item details (minimal storage A2, issue
+// #200). With the new model documents store only the card
+// + alert fields; the synopsis, cast, trailer, saga,
+// platforms, etc. are requested from the API when opening the detail
+// view, with the 24 h in-memory cache of api-movies.js (a freshly
+// added or already visited item does not repeat the call) and with
+// graceful degradation to «card only» if the network fails.
 // =============================================================
 
 import { getMovieDetails, getTvExtraDetails } from "./api-movies.js";
 import { getGameDetails } from "./api-games.js";
 
-// ¿El ítem necesita cargar sus detalles de ficha? Los libros
-// conservan la sinopsis en el documento (excepción del estudio,
-// sección 8.1), así que nunca aplican. Los ítems manuales tampoco:
-// su externalId es sintético y no existe en las APIs.
+// Does the item need to load its details? Books
+// keep the synopsis in the document (exception of the study,
+// section 8.1), so they never apply. Manual items don't
+// either: their externalId is synthetic and does not exist in the APIs.
 export function needsDetailFetch(item) {
   if (!item || item.manual || !item.externalId) return false;
   if (item.type === "movie" || item.type === "tv") return !item.overview;
@@ -22,19 +22,19 @@ export function needsDetailFetch(item) {
   return false;
 }
 
-// Carga los detalles de ficha del ítem (película, serie o
-// videojuego) y los fusiona en el propio objeto (en memoria). Nunca
-// lanza: cualquier fallo devuelve null y la ficha se queda «solo
-// tarjeta». Devuelve el objeto de detalles en caso de éxito (para
-// que el llamador pueda comparar con lo guardado antes de la fusión,
-// p. ej. en el stale-while-revalidate de la tarjeta).
+// Loads the item's details (movie, TV series, or
+// videogame) and merges them into the object itself (in memory). It never
+// throws: any failure returns null and the detail stays «card
+// only». Returns the details object on success (so
+// the caller can compare it with what was saved before the merge,
+// e.g. in the card's stale-while-revalidate).
 export async function loadItemDetails(item) {
   if (!needsDetailFetch(item)) return null;
   try {
     let details;
     if (item.type === "movie") {
       details = await getMovieDetails(item.externalId);
-      if (!details.overview && !details.genres) return null; // API sin datos
+      if (!details.overview && !details.genres) return null; // API without data
     } else if (item.type === "tv") {
       details = await getTvExtraDetails(item.externalId);
       if (!details.overview && !details.genres) return null;

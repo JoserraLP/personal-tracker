@@ -1,131 +1,149 @@
-# ADR-077: Navegación por secciones — cabecera global y búsqueda acotada (issue #206)
+# ADR-077: Section navigation — global header and section-scoped search (issue #206)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-11
 
-## Contexto
+## Context
 
-La issue #206 pide que **la navegación de la web se mantenga en todas
-las secciones**: la barra lateral de navegación (hamburguesa), la barra
-superior de búsqueda y el botón del perfil deben estar disponibles
-tanto en Ocio como en Recetas y en el perfil. A cambio, se eliminan el
-**botón hacia atrás** y el **título de la sección** que hoy encabezan
-las vistas de Perfil y Recetas, y la **búsqueda superior deja de ser
-global**: busca únicamente **dentro de la sección activa**.
+Issue #206 asks that **the web's navigation be kept in all the
+sections**: the navigation sidebar (the hamburger), the
+top search bar and the profile button must be available
+both in Ocio and in Recetas and in the profile. In exchange, the
+**back button** and the **section's title** that today head the
+Profile and Recetas views are removed, and the
+**top search stops being global**: it only searches
+**within the active section**.
 
-Estado previo (construido en ADR-051/ADR-059, ADR-064, ADR-066 y
+Previous state (built in ADR-051/ADR-059, ADR-064, ADR-066 and
 ADR-076):
 
-- La cabecera (`<header class="app-header">` con hamburguesa,
-  búsqueda, campana y botón de perfil) vivía **dentro de `#app`**, la
-  vista de Ocio; las vistas de primer nivel hermana (Perfil,
-  Recetas) eran pantallas completas fuera de `#app` con su propia
-  cabecera mínima: botón «volver» (flecha) + título (`<h1
-  class="app-title">`), lo que obligaba a volver a Ocio para
-  navegar.
-- El buscador de la cabecera (`js/global-search.js`, ADR-022/ADR-082)
-  buscaba **simultáneamente** en colección, catálogo externo y amigos,
-  mostrando un toast «próximamente podrás ver su perfil» al pulsar un
-  amigo.
-- Las vistas de Perfil y Recetas no reservaban hueco superior para una
-  cabecera fija (`.profile-view` y `.recipes-view` empezaban en el
-  borde superior; la barra de pestañas de Ocio tampoco existe allí).
+- The header (`<header class="app-header">` with the hamburger,
+  search, bell and profile
+  button) lived **inside `#app`**, the Ocio view; the sibling
+  top-level views (Profile, Recetas) were full screens outside `#app`
+  with their own minimal header: a «back» button
+  (the arrow) + title (`<h1 class="app-title">`), forcing one to go
+  back to Ocio to navigate.
+- The header's search engine (`js/global-search.js`,
+  ADR-022/ADR-082) searched
+  **simultaneously** in the collection, the external catalog and
+  friends, showing the toast «soon you will be able to view their
+  profile» when pressing a friend.
+- The Profile and Recetas views did not reserve a top gap for a
+  fixed header (`.profile-view` and `.recipes-view` started at the
+  top edge; Ocio's tab bar does not exist there either).
 
-## Decisión
+## Decision
 
-1. **Cabecera global**: el `header.app-header` se mueve **fuera de
-   `#app`**, a nivel de `body`, con la clase `hidden` por defecto y el
-   **id `app-header`** (requisito del toggle de `ui.js`: sin él,
-   `getElementById("app-header")` devuelve `null` y la cabecera
-   permanece oculta en todas las páginas; regresión detectada en la
-   iteración del 2026-08-11). `ui.showApp()` la muestra al iniciar
-   sesión y `ui.showAuthScreen()` la oculta (nunca en la pantalla de
-   acceso). El auto-ocultado por scroll (issue #137) queda
-   **restringido a las listas de Ocio** (su guard `activePanel()` ya lo
-   limitaba); en Recetas la cabecera es fija.
-2. **Iteración 2026-08-11 (feedback de la issue): el perfil NO muestra
-   la cabecera global.** El usuario prefiere en el perfil el patrón
-   anterior: **flecha de volver (`#btn-close-profile`) y las pestañas
-   (Estadísticas/Amigos/Actividad/Ajustes) en la misma fila**. Por
-   tanto:
-   - `#app-header` se oculta cuando `parseHash().section === "perfil"`
-     (toggle en el `onRoute` de `app.js`; con sesión solo, porque la
-     pantalla de acceso la oculta siempre). En Ocio y Recetas sigue
+1. **A global header**: the `header.app-header` moves **out of
+   `#app`** to body level, with the `hidden` class by default and the
+   **id `app-header`** (the requirement of
+   `ui.js`'s toggle: without it,
+   `getElementById("app-header")` returns `null` and the header
+   stays hidden on all pages; a regression detected in the 2026-08-11
+   iteration). `ui.showApp()` shows it at login and
+   `ui.showAuthScreen()` hides it (never on the access screen).
+   The scroll auto-hiding (issue #137) stays
+   **restricted to Ocio's lists** (its `activePanel()` guard already
+   limited it); in Recetas the header is
+   fixed.
+2. **The 2026-08-11 iteration (the issue's feedback): the profile does
+   NOT show the global header.** The user prefers in the profile the
+   previous
+   pattern: **the back arrow (`#btn-close-profile`) and the tabs
+   (Estadísticas/Amigos/Actividad/Ajustes) on the same row**. Therefore:
+   - `#app-header` hides when
+     `parseHash().section === "perfil"`
+     (a toggle in `app.js`'s
+     `onRoute`; with a session only, because the
+     access screen hides it always). In Ocio and Recetas it stays
      visible.
-   - Se restaura `#btn-close-profile` en `index.html` (icono flecha
-     izquierda, patrón `.icon-btn` de ADR-061) con su handler en
-     `js/profile.js`: cierra la vista y vuelve a la última pestaña de
-     Ocio (normalizada a la primera visible, issue #97).
-   - `.profile-view` recupera su padding superior simple (`1.5rem`):
-     ya no hay cabecera fija que reservar hueco.
-   - El guard de `openGlobalSearch()` en `js/global-search.js` evita
-     que los atajos de teclado (Ctrl+K, "/") abran el dropdown de
-     búsqueda en el perfil, donde la cabecera está oculta.
-   - **La búsqueda de amigos desde la cabecera deja de estar
-     disponible en el perfil** (la barra no existe allí); la sección
-     «Amigos» del perfil sigue funcionando con su propia lista.
-3. **Marcado de la sección activa en la barra lateral**: antes el
-   marcado `.is-active` quedaba **fijo en «Ocio»** (`s.id === "ocio"`
-   en `renderSidebar`), así que al navegar a Recetas o Ajustes el
-   marcado no cambiaba. Ahora `js/sidebar.js` exporta
-   `setActiveSection(sectionId)` (Ocio/Recetas/Ajustes o `null`), que
-   el `onRoute` de `app.js` llama en cada cambio de ruta: en el perfil
-   solo se marca «Ajustes» (entrada pinned) cuando se está en esa
-   subsección; el resto del perfil no tiene entrada propia.
-4. **Vistas sin volver ni título (Recetas)**: en **Recetas** se
-   mantienen eliminados `#btn-close-recipes` y el `<h1
-   class="app-title">`; la clase CSS `.app-title` (y su override móvil)
-   desaparece por ser código muerto. Las subtabs de Recetas pasan de
-   `margin-left: auto` a la izquierda (ya no hay título que empujarlas).
-5. **Búsqueda por sección** (`js/global-search.js`): la sección activa
-   se obtiene de `parseHash().section` (Ocio/Recetas; el perfil queda
-   excluido en la iteración 2026-08-11 porque no muestra la cabecera).
-   - **Ocio**: colección (películas, series, libros, videojuegos) +
-     catálogo externo con los botones de tipo (Serie/Película/Libro/
-     Videojuego). **Los amigos ya no aparecen** en Ocio.
-   - **Recetas**: solo recetas (filtro local `searchRecipes()` de
-     `recipes.js`, reutiliza el filtro de nombre/ingrediente/etiqueta
-     de la pestaña); pulsar un resultado **abre el modal de la receta
-     en modo solo lectura** (`openRecipeModal(recipe, { readOnly:
-     true })`).
-   - Los botones de tipo y las secciones del catálogo solo se
-     renderizan en Ocio; el hint del dropdown y el placeholder de la
-     barra se adaptan a la sección (`ui.setSearchSection()` se llama
-     desde el `onRoute` de `app.js`).
-6. **Foco tras abrir una receta**: al abrir el modal de receta desde el
-   dropdown se reenfoca el input de búsqueda con un **contador de focus
-   suprimidos** (`suppressFocusCount`, armado con 2): uno para el focus
-   programático de la apertura y otro para el reenfoque que hace
-   `closeRecipeModal` al cerrar el modal, de modo que el dropdown no se
-   reabra solo en ninguno de los dos momentos y la barra recupere su
-   comportamiento normal con el siguiente focus manual.
-7. **Ajustes CSS**: `padding-top: calc(var(--header-h) + 1rem)` en
-   `.recipes-view` (hueco para la cabecera fija global, mismo patrón
-   que `.app`); el header pegajoso de Recetas pasa de `top: 0` a
-   `top: var(--header-h)` para quedar bajo la cabecera global.
-   `.profile-view` usa padding simple (ver punto 2).
+   - `#btn-close-profile` is restored in `index.html` (a left
+     arrow icon, ADR-061's `.icon-btn` pattern) with its handler in
+     `js/profile.js`: it closes the view and returns to the last Ocio
+     tab (normalized to the first visible, issue #97).
+   - `.profile-view` recovers its simple top padding (`1.5rem`):
+     there is no more fixed header to reserve a gap for.
+   - `openGlobalSearch()`'s guard in `js/global-search.js` prevents the
+     keyboard shortcuts (Ctrl+K, "/") from opening the search
+     dropdown in the profile, where the header is hidden.
+   - **Searching friends from the header stops being available in the
+     profile** (the bar does not exist there); the profile's «Amigos»
+     section keeps working with its own list.
+3. **Marking the active section in the sidebar**: before, the
+   `.is-active` marking was **fixed on «Ocio»** (`s.id === "ocio"`
+   in `renderSidebar`), so navigating to Recipes or Settings the
+   marking did not change. Now `js/sidebar.js` exports
+   `setActiveSection(sectionId)` (Ocio/Recetas/Settings or
+   `null`), which `app.js`'s
+   `onRoute` calls on every route change: in the profile only
+   «Ajustes» (the pinned entry) is marked when in that
+   subsection; the profile's rest has no own entry.
+4. **Views without a back or title (Recetas)**: in **Recetas** they
+   keep having
+   `#btn-close-recipes` and the `<h1 class="app-title">`
+   removed; the `.app-title` CSS class (and its mobile
+   override) disappears for being dead code. The Recipes subtabs go
+   from `margin-left: auto` to the left (there is no title
+   pushing them).
+5. **Per-section search** (`js/global-search.js`): the active
+   section comes from `parseHash().section`
+   (Ocio/Recipes; the profile stays
+   excluded in the 2026-08-11 iteration because it does not show the
+   header).
+   - **Ocio**: the collection (movies, series, books, video games)
+     + the external catalog with the type buttons
+     (Series/Movie/Book/Video game). **Friends no longer appear**
+     in Ocio.
+   - **Recetas**: recipes only (the local `searchRecipes()` filter
+     of `recipes.js`, reusing the tab's name/ingredient/tag filter);
+     pressing a result **opens the recipe's modal in read-only mode**
+     (`openRecipeModal(recipe, { readOnly: true })`).
+   - The type buttons and the catalog sections only
+     render in Ocio; the dropdown's hint and the bar's placeholder adapt
+     to the section (`ui.setSearchSection()` is called from
+     `app.js`'s
+     `onRoute`).
+6. **Focus after opening a recipe**: when opening the recipe's modal
+   from the dropdown, the search input refocuses with a
+   **suppressed-focus counter** (`suppressFocusCount`, armed with 2):
+   one for the opening's programmatic focus and one for the refocus that
+   `closeRecipeModal` does when closing the modal, so the dropdown does
+   not reopen itself in either moment and the bar recovers its
+   normal behavior with the next manual focus.
+7. **CSS adjustments**: `padding-top: calc(var(--header-h) + 1rem)` on
+   `.recipes-view`
+   (a gap for the fixed global header, the same pattern as
+   `.app`); Recipes' sticky header goes
+   from `top: 0` to `top: var(--header-h)` to sit under the global
+   header. `.profile-view` uses simple padding (see point 2).
 
-## Consecuencias
+## Consequences
 
-- **Positivas**: la navegación (barra lateral, búsqueda, perfil) está
-  disponible en Ocio y Recetas sin pasar por la pantalla anterior; la
-  búsqueda superior gana foco al acotarse a la sección; el perfil
-  recupera la cabecera ligera (flecha + pestañas) que pedía el usuario;
-  el marcado de la barra lateral refleja la sección activa.
-- **Neutras**: la búsqueda de la cabecera en Recetas convive con el
-  buscador interno de la pestaña (filtro en vivo); el de la cabecera
-  abre el modal en lectura. Ambos se mantienen por tener interacciones
-  distintas.
-- **Negativas**: los amigos ya no son buscables desde la búsqueda
-  superior (dejaron de serlo desde Ocio en la primera iteración y desde
-  el perfil en esta segunda, al ocultarse la cabecera allí); los atajos
-  Ctrl+K / "/" no abren la búsqueda en el perfil (la cabecera no está).
-- El `task file` de la issue y los criterios de responsividad
-  (AGENTS.md) se respetan: sin scroll horizontal a 360/768/1280 px y
-  contraste verificable en los cuatro temas (la cabecera usa las
-  variables de tema existentes, sin colores nuevos).
+- **Positive**: the navigation (sidebar, search,
+  profile) is available in Ocio and Recipes without
+  passing through the previous screen; the top search
+  gains focus by being scoped to the section; the profile
+  recovers the light header (arrow + tabs) the user asked for;
+  the sidebar's marking reflects the active section.
+- **Neutral**: the header's search in Recipes
+  coexists with the tab's internal engine (a live
+  filter); the header's
+  opens the modal in read mode. Both are kept for having
+  different interactions.
+- **Negative**: friends are no longer searchable from the top search
+  (they stopped being in Ocio in the first iteration and in the
+  profile in this
+  second one, when the header hides there); the
+  Ctrl+K / "/" shortcuts do not open the search in the profile (the
+  header is not there).
+- The issue's task file and the responsiveness criteria
+  (AGENTS.md) are respected: no horizontal scroll
+  at 360/768/1280 px and verifiable contrast in the
+  four themes (the header uses the existing theme
+  variables, with no new colors).
 
 Related issue: #206

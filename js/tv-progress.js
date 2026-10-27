@@ -1,21 +1,23 @@
 // =============================================================
-// Progreso de una serie a partir de:
-// - seasonsMeta: temporadas y nº de episodios, obtenidos en vivo de TMDB
-// - watched: datos por episodio del visionado actual, con forma
+// Progress of a TV show from:
+// - seasonsMeta: seasons and episode counts, fetched live from TMDB
+// - watched: per-episode data of the current watch, with shape
 //   { "1": { "1": { date: "2026-01-05", rating: 4, times: 2 }, "2": {...} }, "2": {...} }
-//   (temporada -> episodio -> { fecha de la última vez que se vio,
-//   valoración 1-5 (pasos de 0.5 desde la issue #276) o null, veces visto
-//   con 1 por defecto })
-// No depende del DOM ni de Firebase: es pura lógica, reutilizable
-// tanto desde ui.js (para refrescar la vista al vuelo) como desde
-// app.js (para decidir qué guardar).
+//   (season -> episode -> { date of the last time watched,
+//   rating 1-5 (0.5 steps since issue #276) or null, watched times
+//   defaulting to 1 })
+// It does not depend on the DOM or Firebase: it is pure logic,
+// reusable both from ui.js (to refresh the view on the fly) and from
+// app.js (to decide what to save).
 // =============================================================
 
-// Compatibilidad con datos antiguos: antes cada episodio guardaba solo
-// la fecha como texto plano ("2026-01-05"), sin objeto ni valoración,
-// y el campo times (nº de veces visto) no existía (issue #133).
-// Normaliza la entrada al formato { date, rating, times } sin mutar el
-// original: los objetos que ya tienen times se devuelven tal cual.
+// Compatibility with old data: previously each episode stored only
+// the date as plain text ("2026-01-05"), with no object and no
+// rating, and the times field (number of times watched) did not
+// exist (issue #133).
+// Normalizes the entry to the { date, rating, times } format without
+// mutating the original: objects that already have times are
+// returned as-is.
 export function normalizeEntry(entry) {
   if (!entry) return null;
   if (typeof entry === "string") return { date: entry, rating: null, times: 1 };
@@ -23,13 +25,13 @@ export function normalizeEntry(entry) {
   return entry;
 }
 
-// Media de valoración de los episodios valorados de una serie (issue #80).
-// No tiene en cuenta los episodios sin valorar: un episodio visto sin
-// valorar (rating null) nunca cuenta como 0. Desde la issue #276 la
-// valoración mínima válida es media estrella (0.5).
-// Entrada: item.watched completo ({ temporada: { episodio: {date, rating} } }).
-// Salida: null si no hay ningún episodio con valoración válida; si no,
-// { count, average } con average sin redondear (total/count).
+// Average rating of the rated episodes of a show (issue #80).
+// Unrated episodes are not taken into account: a watched episode
+// without a rating (rating null) never counts as 0. Since issue #276
+// the minimum valid rating is half a star (0.5).
+// Input: full item.watched ({ season: { episode: {date, rating} } }).
+// Output: null if there is no episode with a valid rating; otherwise
+// { count, average } with average unrounded (total/count).
 export function computeEpisodeAverageRating(watched) {
   let count = 0;
   let total = 0;
@@ -38,7 +40,7 @@ export function computeEpisodeAverageRating(watched) {
     for (const raw of Object.values(seasonMap)) {
       const entry = normalizeEntry(raw);
       const r = Number(entry?.rating);
-      // Las medias estrellas (0.5) son válidas desde la issue #276.
+      // Half-star ratings (0.5) are valid since issue #276.
       if (!Number.isFinite(r) || r < 0.5 || r > 5) continue;
       count++;
       total += r;
@@ -87,8 +89,8 @@ export function computeProgress(seasonsMeta, watched) {
   return { totalEpisodes, totalWatched, nextEpisode, status, firstWatchedAt, lastWatchedAt };
 }
 
-// dateOrNull: fecha "YYYY-MM-DD" para marcar visto, o null para desmarcar.
-// Si ya tenía una valoración o un contador de visualizaciones, se conservan.
+// dateOrNull: "YYYY-MM-DD" date to mark watched, or null to unmark.
+// If it already had a rating or a watched counter, they are kept.
 export function setEpisodeDate(watched, seasonNumber, episodeNumber, dateOrNull) {
   const key = String(seasonNumber);
   const seasonMap = { ...((watched && watched[key]) || {}) };
@@ -106,8 +108,8 @@ export function setEpisodeDate(watched, seasonNumber, episodeNumber, dateOrNull)
   return { ...(watched || {}), [key]: seasonMap };
 }
 
-// Marca un episodio YA visto como visto de nuevo: conserva la valoración
-// y suma 1 al contador de visualizaciones (issue #133).
+// Marks an ALREADY watched episode as watched again: keeps the
+// rating and adds 1 to the watched counter (issue #133).
 export function markEpisodeSeenAgain(watched, seasonNumber, episodeNumber, date) {
   const key = String(seasonNumber);
   const seasonMap = { ...((watched && watched[key]) || {}) };
@@ -121,8 +123,8 @@ export function markEpisodeSeenAgain(watched, seasonNumber, episodeNumber, date)
   return { ...(watched || {}), [key]: seasonMap };
 }
 
-// Solo se puede valorar un episodio que ya esté marcado como visto.
-// El contador de visualizaciones se conserva al re-valorar (issue #133).
+// Only an episode already marked as watched can be rated.
+// The watched counter is kept when re-rating (issue #133).
 export function setEpisodeRating(watched, seasonNumber, episodeNumber, rating) {
   const key = String(seasonNumber);
   const seasonMap = { ...((watched && watched[key]) || {}) };
@@ -150,8 +152,8 @@ export function setSeasonWatched(watched, seasonNumber, episodeCount, allWatched
   return { ...(watched || {}), [key]: seasonMap };
 }
 
-// Marca como vistas TODAS las temporadas de una serie (issue #115):
-// aplica setSeasonWatched(allWatched=true) sobre cada temporada.
+// Marks as watched ALL the seasons of a show (issue #115):
+// applies setSeasonWatched(allWatched=true) to each season.
 export function markAllSeasonsWatched(watched, seasonsMeta, date) {
   return seasonsMeta.reduce(
     (acc, s) => setSeasonWatched(acc, s.seasonNumber, s.episodeCount, true, date),
@@ -159,9 +161,9 @@ export function markAllSeasonsWatched(watched, seasonsMeta, date) {
   );
 }
 
-// Archiva el visionado actual (si lo hay) en el historial y deja la
-// serie lista para volver a verse desde el principio, sin perder el
-// nº de veces vista ni las fechas anteriores.
+// Archives the current watch (if any) into the history and leaves
+// the show ready to be watched again from scratch, without losing
+// the number of times watched or the previous dates.
 export function startRewatch(item) {
   const history = [...(item.history || [])];
   if (item.firstWatchedAt || item.lastWatchedAt) {

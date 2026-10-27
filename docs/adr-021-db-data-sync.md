@@ -1,144 +1,143 @@
-# ADR-021: Sincronización de datos con TMDB/Open Library: refresco completo con política truthy-only (issue #23)
+# ADR-021: Data synchronization with TMDB/Open Library: full refresh with truthy-only policy (issue #23)
 
-## Estado
-Aceptado (parcialmente sustituido por ADR-093, issue #200: ver la
-sección «Actualización (issue #200)» al final del documento)
+## Status
+Accepted (partially replaced by ADR-093, issue #200: see the
+"Update (issue #200)" section at the end of the document)
 
-## Fecha
-Agosto 2026
+## Date
+August 2026
 
-## Contexto
+## Context
 
-La issue #23 establece que **los datos de Firestore deben reflejar siempre los datos actuales de TMDB/Open Library**: no puede ser que un ítem se actualice únicamente al momento del alta y quede congelado después. El ejemplo canónico: una película añadida antes de que TMDB la incorporara a una saga (`belongs_to_collection`) nunca recibía sus datos de colección, porque el refresco diario ignoraba los ítems "completados".
+Issue #23 establishes that **Firestore data must always reflect the current TMDB/Open Library data**: an item cannot be updated only at creation time and then stay frozen. The canonical example: a movie added before TMDB included it in a saga (`belongs_to_collection`) never received its collection data, because the daily refresh ignored "completed" items.
 
-Antes de este cambio, `js/daily-check.js` ejecutaba `checkForUpdates` una vez al día (guard `profile.lastReleaseCheckAt === today`) pero con dos limitaciones:
+Before this change, `js/daily-check.js` ran `checkForUpdates` once a day (guard `profile.lastReleaseCheckAt === today`) but with two limitations:
 
-1. **Solo revisaba ítems incompletos**: filtros `needsCheck` (películas) y `needsBackfill` (series), y las series abandonadas (`status === "abandonado"`) quedaban excluidas.
-2. **Solo rellenaba huecos**: asignaciones del tipo `if (!movie.X && fresh.X)`, de modo que un campo ya presente (p.ej. la saga, `communityRating`, `trailerUrl` o los géneros) jamás se refrescaba aunque la API lo hubiera cambiado.
+1. **It only reviewed incomplete items**: `needsCheck` filters (movies) and `needsBackfill` (series), and abandoned series (`status === "abandonado"`) were excluded.
+2. **It only filled gaps**: assignments of the type `if (!movie.X && fresh.X)`, so a field already present (e.g. the saga, `communityRating`, `trailerUrl` or the genres) was never refreshed even if the API had changed it.
 
-La opción idónea que plantea la issue — mantener la BD sincronizada en tiempo real con la API— no es viable por coste (una llamada por ítem en cada cambio es inasumible), así que se adoptó la opción mínima recomendada: **refresco diario completo** (ya no solo de huecos) más **botón de sincronización manual** en Ajustes.
+The ideal option raised in the issue — keeping the DB synced in real time with the API — is not viable due to cost (one call per item on every change is unaffordable), so the recommended minimal option was adopted: **complete daily refresh** (no longer only gaps) plus a **manual sync button** in Settings.
 
 Related issue: #23 — https://github.com/gonzalitojh/Registro-personal/issues/23
 
-## Decisión
+## Decision
 
-Refrescar los metadatos de **todos** los ítems no manuales una vez al día (y bajo demanda con el botón "Sincronizar ahora"), sobrescribiendo los campos con política **truthy-only**: un campo se actualiza solo si el valor fresco es no vacío; si la API devuelve vacío/`null`, se conserva lo guardado. Los campos editados por el usuario (historial, estado, notas) nunca se tocan.
+Refresh the metadata of **all** non-manual items once a day (and on demand with the "Sincronizar ahora" button), overwriting fields with the **truthy-only** policy: a field is updated only if the fresh value is non-empty; if the API returns an empty/`null` value, the stored one is kept. Fields edited by the user (history, status, notes) are never touched.
 
-### 1. Sobrescritura truthy-only (`buildMovieUpdates`, `buildTvUpdates`, `buildBookUpdates`)
+### 1. Truthy-only overwrite (`buildMovieUpdates`, `buildTvUpdates`, `buildBookUpdates`)
 
-Tres funciones constructoras de `updates` en `js/daily-check.js` aplican la misma semántica por tipo:
+Three `updates` builder functions in `js/daily-check.js` apply the same semantics per type:
 
-- **Películas** (`buildMovieUpdates`): `runtime`, `overview`, `genres` (array no vacío), `cast` (array no vacío), `director`, `releaseDate` (solo si difiere de la guardada), `communityRating` (`!= null`), `trailerUrl`, `collectionId`/`collectionName`/`collectionPoster` (saga) y `coverUrl`.
-- **Series** (`buildTvUpdates`): los anteriores excepto `releaseDate`/saga, más `creators`, `episodeRuntime`, `firstAirDate` (solo si difiere), `tmdbStatus` (nuevo) y `coverUrl` (nuevo).
-- **Libros** (`buildBookUpdates`): solo `description` (sinopsis), y únicamente si la nueva es no vacía (Open Library a veces no la devuelve).
+- **Movies** (`buildMovieUpdates`): `runtime`, `overview`, `genres` (non-empty array), `cast` (non-empty array), `director`, `releaseDate` (only if it differs from the stored one), `communityRating` (`!= null`), `trailerUrl`, `collectionId`/`collectionName`/`collectionPoster` (saga) and `coverUrl`.
+- **Series** (`buildTvUpdates`): the previous ones except `releaseDate`/saga, plus `creators`, `episodeRuntime`, `firstAirDate` (only if it differs), `tmdbStatus` (new) and `coverUrl` (new).
+- **Books** (`buildBookUpdates`): only `description` (synopsis), and only if the new one is non-empty (Open Library sometimes does not return it).
 
-**Excepción**: `nextEpisodeToAir` se sobrescribe siempre que la API lo devuelva, sin condición truthy-only, porque es un campo transitorio (comportamiento histórico que el refresco de episodios necesita).
+**Exception**: `nextEpisodeToAir` is always overwritten when the API returns it, with no truthy-only condition, because it is a transient field (historical behavior that the episode refresh needs).
 
-**Campos estables (nunca sobrescritos)**: `title`, `year`, `externalId`, `manual`, `status`, `watchLog`, `readLog`, `notas` y los flags de notificación (`awaitingRelease`, `lastNotifiedEpisode`, `releasedNoticedAt`). Estos solo los mueve la lógica de avisos de la propia pasada (estreno, episodio nuevo), nunca el refresco de metadatos.
+**Stable fields (never overwritten)**: `title`, `year`, `externalId`, `manual`, `status`, `watchLog`, `readLog`, `notas` and the notification flags (`awaitingRelease`, `lastNotifiedEpisode`, `releasedNoticedAt`). These are only moved by the run's own alert logic (release, new episode), never by the metadata refresh.
 
-### 2. Cobertura completa
+### 2. Full coverage
 
-Se eliminaron los filtros `needsCheck`/`needsBackfill` y el skip de libros que ya tenían sinopsis (`if (book.manual || book.description) continue`). La pasada recorre ahora **todos** los ítems no manuales con `externalId`:
+The `needsCheck`/`needsBackfill` filters and the skip for books that already had a synopsis (`if (book.manual || book.description) continue`) were removed. The run now traverses **all** non-manual items with `externalId`:
 
-- **Películas**: `!m.manual && m.externalId`.
-- **Series**: `!s.manual && s.externalId`, **incluidas las abandonadas** (antes excluidas con `s.status !== "abandonado"`); su `status` sigue intacto porque es campo estable.
-- **Libros**: `!b.manual && b.externalId && b.externalId.startsWith("/works/")` (este último filtro se conserva: solo las claves de *work* tienen descripción consultable en Open Library).
+- **Movies**: `!m.manual && m.externalId`.
+- **Series**: `!s.manual && s.externalId`, **including abandoned ones** (previously excluded with `s.status !== "abandonado"`); their `status` remains intact because it is a stable field.
+- **Books**: `!b.manual && b.externalId && b.externalId.startsWith("/works/")` (the latter filter is kept: only *work* keys have a queryable description in Open Library).
 
-### 3. Límites de coste
+### 3. Cost limits
 
-- **Pasada diaria por usuario**: guard `profile.lastReleaseCheckAt === today`; el sello solo se estampa al terminar la pasada con éxito (no al abortar), de modo que una pasada fallida se reintenta en la siguiente carga.
-- **Cooldown manual de 30 minutos**: `MANUAL_SYNC_COOLDOWN_MS` persistido en `profile.lastManualSyncAt` (se estampa solo si la pasada manual completó sin abortar).
-- **Pool de 4 peticiones concurrentes**: `REFRESH_CONCURRENCY` con `mapConcurrent(items, limit, fn)` (promesas en orden, sin dependencias entre ítems).
-- **Aborto por fallos encadenados**: si `consecutiveFailures` supera `MAX_CONSECUTIVE_FAILURES` (= 5, es decir, al **sexto fallo consecutivo**) la pasada se aborta (`{ aborted: true }`) para no seguir golpeando una API que está caída; se reintenta en la próxima pasada.
+- **Daily run per user**: guard `profile.lastReleaseCheckAt === today`; the stamp is applied only when the run finishes successfully (not when aborting), so a failed run is retried on the next load.
+- **Manual cooldown of 30 minutes**: `MANUAL_SYNC_COOLDOWN_MS` persisted in `profile.lastManualSyncAt` (stamped only if the manual run completed without aborting).
+- **Pool of 4 concurrent requests**: `REFRESH_CONCURRENCY` with `mapConcurrent(items, limit, fn)` (promises in order, no dependencies between items).
+- **Abort on chained failures**: if `consecutiveFailures` exceeds `MAX_CONSECUTIVE_FAILURES` (= 5, i.e. on the **sixth consecutive failure**) the run aborts (`{ aborted: true }`) so it does not keep hitting an API that is down; it retries on the next run.
 
-### 4. Anti-concurrencia
+### 4. Anti-concurrency
 
-- El flag `isRefreshing` lo gestiona **`checkForUpdates`**, no `syncNow`, para cubrir tanto la pasada diaria automática como la manual con una única guarda. El chequeo y el seteo son **síncronos y contiguos** (sin `await` entre ambos), por lo que dos llamadas nunca atraviesan la guarda a la vez; la limpieza ocurre en `finally`.
-- `checkForUpdates` devuelve `{ aborted: boolean }`: `true` si entró con una pasada en curso (reentrancia) o si la pasada abortó por fallos; en ese caso **no estampa `lastReleaseCheckAt`** ni `lastManualSyncAt`.
-- `syncNow` hace un **doble chequeo** de `isRefreshing` (antes y después de leer el perfil) y, si la pasada abortó, devuelve error **sin quemar el cooldown** ni reportar éxito.
+- The `isRefreshing` flag is managed by **`checkForUpdates`**, not `syncNow`, to cover both the automatic daily run and the manual one with a single guard. The check and the set are **synchronous and contiguous** (no `await` between them), so two calls never cross the guard at the same time; the cleanup happens in `finally`.
+- `checkForUpdates` returns `{ aborted: boolean }`: `true` if it entered while a run was in progress (reentrancy) or if the run aborted due to failures; in that case it does **not stamp `lastReleaseCheckAt`** or `lastManualSyncAt`.
+- `syncNow` does a **double check** of `isRefreshing` (before and after reading the profile) and, if the run aborted, returns an error **without burning the cooldown** and without reporting success.
 
-### 5. Nuevos campos en `js/api-movies.js`
+### 5. New fields in `js/api-movies.js`
 
-- `tmdbStatus: data.status || null` en `getTvExtraDetails`: estado de emisión de la serie según TMDB ("Returning Series", "Ended", "Canceled", ...), ahora refrescable.
-- `coverUrl: data.poster_path ? IMG_BASE + poster_path : null` en `getMovieDetails` y `getTvExtraDetails`, con `IMG_BASE = "https://image.tmdb.org/t/p/w342"` — el **mismo patrón w342 que el alta** (resultados de búsqueda), de modo que una portada retirada o añadida por TMDB se propaga a las fichas existentes.
+- `tmdbStatus: data.status || null` in `getTvExtraDetails`: the series' airing status according to TMDB ("Returning Series", "Ended", "Canceled", ...), now refreshable.
+- `coverUrl: data.poster_path ? IMG_BASE + poster_path : null` in `getMovieDetails` and `getTvExtraDetails`, with `IMG_BASE = "https://image.tmdb.org/t/p/w342"` — the **same w342 pattern as creation** (search results), so a cover removed or added by TMDB propagates to existing profiles.
 
-### 6. UI: card "Sincronización de datos" en Ajustes
+### 6. UI: "Sincronización de datos" card in Settings
 
-- Nueva card en `index.html` con el botón `#btn-sync-now` (clase `btn btn--outline`).
-- `wireSyncButton` (`js/settings.js`) lanza `syncNow(ctx)` y traduce el resultado a toasts: éxito ("Datos sincronizados con las APIs."), cooldown ("Sincronización reciente, inténtalo en un rato."), pasada en curso ("Ya hay una sincronización en curso.") o error.
-- El botón queda **deshabilitado durante la ejecución** (texto "Sincronizando…", restaurado en `finally`) y también mientras haya cualquier pasada en curso vía `isSyncRunning()` (exportado por `daily-check.js` y consultado en `renderSettings`).
+- New card in `index.html` with the `#btn-sync-now` button (`btn btn--outline` class).
+- `wireSyncButton` (`js/settings.js`) launches `syncNow(ctx)` and translates the result into toasts: success ("Datos sincronizados con las APIs."), cooldown ("Sincronización reciente, inténtalo en un rato."), run in progress ("Ya hay una sincronización en curso.") or error.
+- The button is **disabled during execution** (text "Sincronizando…", restored in `finally`) and also while any run is in progress via `isSyncRunning()` (exported by `daily-check.js` and consulted in `renderSettings`).
 
-### 7. Bump de versión
+### 7. Version bump
 
-`APP_VERSION` pasa a `'20260804'` en `js/config.js`, con el `?v=20260804` correspondiente en `index.html` (styles, ocio.css, app.js) y en `STATIC_ASSETS` de `service-worker.js`, para que el nuevo `daily-check.js`/`settings.js` llegue a los clientes (consistencia con ADR-019).
+`APP_VERSION` moves to `'20260804'` in `js/config.js`, with the corresponding `?v=20260804` in `index.html` (styles, ocio.css, app.js) and in `STATIC_ASSETS` of `service-worker.js`, so the new `daily-check.js`/`settings.js` reaches clients (consistency with ADR-019).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Sincronización en tiempo real / reactiva (cada cambio de la API se propaga al instante)**: la opción idónea de la issue, descartada por coste: TMDB no ofrece webhooks y un polling continuo por ítem excedería los límites de la API. El botón manual cubre el caso "quiero datos frescos ahora".
-- **Refrescar solo ítems incompletos (status quo)**: descartado por definición — es exactamente el comportamiento que reporta la issue: un ítem completado (p.ej. con saga ausente) nunca se curaba.
-- **Sobrescritura incondicional (el dato de la API siempre gana)**: descartado: si la API devuelve `overview: ""` o `communityRating: null` de forma transitoria, se destruirían datos válidos. La política truthy-only refresca sin riesgo de vaciado.
-- **Botón manual sin cooldown**: descartado: permitiría lanzar pasadas completas de N ítems ilimitadamente y tumbar los límites de TMDB; el cooldown de 30 min persistido en `profile.lastManualSyncAt` lo impide.
-- **Flag anti-concurrencia gestionado en `syncNow`**: descartado: no cubriría la pasada diaria (dos pasadas diarias de pestañas distintas podrían correr en paralelo duplicando coste y notificaciones); al centralizarlo en `checkForUpdates` la guarda cubre ambas vías.
+- **Real-time / reactive sync (every API change propagates instantly)**: the ideal option of the issue, rejected due to cost: TMDB offers no webhooks and continuous polling per item would exceed the API limits. The manual button covers the "I want fresh data now" case.
+- **Refresh only incomplete items (status quo)**: rejected by definition — it is exactly the behavior reported by the issue: a completed item (e.g. with a missing saga) was never healed.
+- **Unconditional overwrite (API data always wins)**: rejected: if the API transiently returns `overview: ""` or `communityRating: null`, valid data would be destroyed. The truthy-only policy refreshes without risk of erasure.
+- **Manual button without cooldown**: rejected: it would allow launching full runs of N items indefinitely and take down the TMDB limits; the 30 min cooldown persisted in `profile.lastManualSyncAt` prevents this.
+- **Anti-concurrency flag managed in `syncNow`**: rejected: it would not cover the daily run (two daily runs from different tabs could run in parallel, duplicating cost and notifications); centralizing it in `checkForUpdates` means the guard covers both paths.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **La BD refleja los datos actuales de la API**: un ítem completado se cura cuando TMDB añade su saga, cambia su valoración, portada o tráiler, o cuando una serie pasa a "Ended" (`tmdbStatus`).
-- **Sin riesgo de vaciado**: la política truthy-only nunca destruye un campo guardado por una respuesta vacía o fallo transitorio de la API.
-- **Los datos del usuario son intocables**: `watchLog`, `readLog`, `status`, `notas` y los flags de notificación quedan fuera del refresco.
-- **Cobertura total**: series abandonadas y libros con sinopsis ya incluidos en la pasada diaria.
-- **Control de coste y robustez**: una pasada por día y usuario, cooldown de 30 min para la manual, pool de 4 peticiones y aborto temprano ante fallos encadenados evitan exceder los límites de TMDB y no bloquean indefinidamente al usuario (el cooldown no se quema si la pasada aborta).
-- **Sin pasadas duplicadas**: el flag `isRefreshing` con seteo síncrono contiguo cierra la carrera entre la pasada diaria y la manual.
+### Positive
+- **The DB reflects the current API data**: a completed item is healed when TMDB adds its saga, changes its rating, cover or trailer, or when a series becomes "Ended" (`tmdbStatus`).
+- **No risk of erasure**: the truthy-only policy never destroys a stored field due to an empty response or a transient API failure.
+- **User data is untouchable**: `watchLog`, `readLog`, `status`, `notas` and the notification flags are outside the refresh.
+- **Full coverage**: abandoned series and books with a synopsis are now included in the daily run.
+- **Cost control and robustness**: one run per day and user, a 30 min cooldown for the manual run, a pool of 4 requests and early abort on chained failures avoid exceeding TMDB limits and do not block the user indefinitely (the cooldown is not burned if the run aborts).
+- **No duplicated runs**: the `isRefreshing` flag with synchronous contiguous set closes the race between the daily run and the manual one.
 
-### Negativas
-- **Más peticiones diarias a TMDB**: la pasada diaria ahora consulta la API por **todos** los ítems no manuales, no solo los incompletos; con bibliotecas grandes el coste diario por usuario crece proporcionalmente (mitigado por el pool de 4 y la frecuencia de una pasada/día).
-- **Escrituras Firestore adicionales**: aunque `buildMovieUpdates` devuelve `{}` cuando no hay nada que cambiar (sin `updateItem`), es esperable que más ítems reciban `updateItem` que antes.
+### Negative
+- **More daily requests to TMDB**: the daily run now queries the API for **all** non-manual items, not only incomplete ones; with large libraries the daily cost per user grows proportionally (mitigated by the pool of 4 and the one-run/day frequency).
+- **Additional Firestore writes**: although `buildMovieUpdates` returns `{}` when there is nothing to change (without `updateItem`), it is expected that more items receive `updateItem` than before.
 
-### Neutras
-- `checkForUpdates(ctx, { force })` pasa a devolver `{ aborted: boolean }` (antes `undefined`); el único consumidor de la pasada diaria (`app.js` → `maybeTriggerDailyCheck`) no usa el retorno, y `syncNow` lo interpreta para no quemar el cooldown.
-- `syncNow(ctx)` y `isSyncRunning()` son exportaciones nuevas de `daily-check.js`; `settings.js` las importa (sin ciclos: `settings.js` ya importaba de `daily-check.js` vía `getNotificationPrefs`).
-- `coverUrl` se guarda en los documentos de películas/series; las fichas que muestran portada la leen del documento, por lo que el refresco diario las actualiza sin cambios de UI.
+### Neutral
+- `checkForUpdates(ctx, { force })` now returns `{ aborted: boolean }` (previously `undefined`); the only consumer of the daily run (`app.js` → `maybeTriggerDailyCheck`) does not use the return value, and `syncNow` interprets it to avoid burning the cooldown.
+- `syncNow(ctx)` and `isSyncRunning()` are new exports of `daily-check.js`; `settings.js` imports them (no cycles: `settings.js` already imported from `daily-check.js` via `getNotificationPrefs`).
+- `coverUrl` is stored in movie/series documents; profiles that show the cover read it from the document, so the daily refresh updates them without UI changes.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/daily-check.js` | Refactor de `checkForUpdates`: pasa a `(ctx, { force })` y devuelve `{ aborted }`; flag `isRefreshing` interno con seteo síncrono + `finally`; eliminados `needsCheck`/`needsBackfill` y el skip de libros; cobertura total de ítems no manuales (incluidas series abandonadas); nuevas funciones `buildMovieUpdates`/`buildTvUpdates`/`buildBookUpdates` (truthy-only), `mapConcurrent` (pool `REFRESH_CONCURRENCY` = 4), aborto con `MAX_CONSECUTIVE_FAILURES`; nuevas exportaciones `syncNow(ctx)` (cooldown `MANUAL_SYNC_COOLDOWN_MS` = 30 min + doble chequeo) e `isSyncRunning()` |
-| `js/api-movies.js` | `getTvExtraDetails`: nuevo `tmdbStatus` (`data.status`); `getMovieDetails` y `getTvExtraDetails`: nuevo `coverUrl` (patrón w342 de `IMG_BASE`, igual que el alta) |
-| `index.html` | Card "Sincronización de datos" en Ajustes con botón `#btn-sync-now` (`btn--outline`); assets con `?v=20260804` |
-| `js/settings.js` | `wireSyncButton` (toasts por resultado, deshabilitado durante ejecución con "Sincronizando…") y `renderSettings` deshabilita el botón si `isSyncRunning()` |
+| `js/daily-check.js` | Refactor of `checkForUpdates`: now `(ctx, { force })` and returns `{ aborted }`; internal `isRefreshing` flag with synchronous set + `finally`; removed `needsCheck`/`needsBackfill` and the book skip; full coverage of non-manual items (including abandoned series); new functions `buildMovieUpdates`/`buildTvUpdates`/`buildBookUpdates` (truthy-only), `mapConcurrent` (pool `REFRESH_CONCURRENCY` = 4), abort with `MAX_CONSECUTIVE_FAILURES`; new exports `syncNow(ctx)` (cooldown `MANUAL_SYNC_COOLDOWN_MS` = 30 min + double check) and `isSyncRunning()` |
+| `js/api-movies.js` | `getTvExtraDetails`: new `tmdbStatus` (`data.status`); `getMovieDetails` and `getTvExtraDetails`: new `coverUrl` (`IMG_BASE` w342 pattern, same as creation) |
+| `index.html` | "Sincronización de datos" card in Settings with `#btn-sync-now` button (`btn--outline`); assets with `?v=20260804` |
+| `js/settings.js` | `wireSyncButton` (toasts per result, disabled during execution with "Sincronizando…") and `renderSettings` disables the button if `isSyncRunning()` |
 | `js/config.js` | `APP_VERSION` → `'20260804'` |
-| `service-worker.js` | `STATIC_ASSETS` actualizados a `?v=20260804` para propagar el cambio (consistencia con ADR-019) |
-| `docs/adr-021-db-data-sync.md` | **Nuevo**: este documento |
+| `service-worker.js` | `STATIC_ASSETS` updated to `?v=20260804` to propagate the change (consistency with ADR-019) |
+| `docs/adr-021-db-data-sync.md` | **New**: this document |
 
-## Actualización (issue #200)
+## Update (issue #200)
 
-El **refresco completo diario de metadatos** descrito en este ADR queda
-**parcialmente sustituido** por el **almacenamiento mínimo A2 + pasada
-mínima A5-a** de la issue #200 (estudio de la issue #183, ADR-073;
-implementación en **ADR-093**):
+The **daily full metadata refresh** described in this ADR is **partially
+replaced** by the **minimum storage A2 + minimum run A5-a** of issue #200
+(study of issue #183, ADR-073; implementation in **ADR-093**):
 
-- Las altas ya **no persisten** el snapshot de ficha (sinopsis, reparto,
-  géneros, tráiler, saga, plataformas...): los detalles se piden **bajo
-  demanda** al abrir el modal con caché de 24 h.
-- La pasada diaria **ya no consulta todos los ítems no manuales**: solo
-  los que pueden generar un aviso (películas con estreno pendiente,
-  series con premiere/episodio sin estrenar, libros /works/ sin sinopsis;
-  juegos sin red). Con ello desaparecen `buildMovieUpdates`,
-  `buildTvUpdates` y el refresco diario de `coverUrl`/`communityRating`/
-  `trailerUrl`/saga (la portada y el rating se revalidan al abrir la
-  ficha, stale-while-revalidate).
-- El botón **«Sincronizar ahora»** pasa a **«Comprobar estrenos»** con el
-  alcance reducido de la pasada mínima (mismo cooldown de 30 min).
-- Los documentos antiguos conservan los campos históricos hasta la poda
-  única por usuario (`js/migration.js`, marcador `profile.storageMigration`).
+- Creations **no longer persist** the profile snapshot (synopsis, cast,
+  genres, trailer, saga, streaming platforms...): details are requested
+  **on demand** when opening the modal, with a 24 h cache.
+- The daily run **no longer queries all non-manual items**: only those that
+  can generate an alert (movies with a pending release, series with a
+  premiere/unaired episode, /works/ books without a synopsis; games
+  without a network). This removes `buildMovieUpdates`, `buildTvUpdates`
+  and the daily refresh of `coverUrl`/`communityRating`/`trailerUrl`/saga
+  (cover and rating are revalidated when opening the profile,
+  stale-while-revalidate).
+- The button **«Sincronizar ahora»** becomes **«Comprobar estrenos»** with
+  the reduced scope of the minimum run (same 30 min cooldown).
+- Old documents keep the historical fields until the one-time pruning per
+  user (`js/migration.js`, marker `profile.storageMigration`).
 
-En vigor de este ADR siguen: el guard diario (`lastReleaseCheckAt`), el
-flag anti-concurrencia `isRefreshing` (gestión centralizada en
-`checkForUpdates`, seteo síncrono contiguo), el pool de 4 peticiones, el
-aborto por fallos encadenados y el cooldown de 30 min sin quemado si la
-pasada aborta. La política truthy-only permanece en los fragmentos de la
-pasada mínima que aún escriben (`releaseDate`, campos de emisión de
-series, sinopsis de libros).
+Still in force from this ADR: the daily guard (`lastReleaseCheckAt`), the
+`isRefreshing` anti-concurrency flag (centralized management in
+`checkForUpdates`, synchronous contiguous set), the pool of 4 requests,
+the abort on chained failures and the 30 min cooldown without burning if
+the run aborts. The truthy-only policy remains in the minimal run's
+fragments that still write (`releaseDate`, series airing fields, book
+synopses).
 
 Related issue: #23 — https://github.com/gonzalitojh/Registro-personal/issues/23

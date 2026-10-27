@@ -1,68 +1,68 @@
-# ADR-110: Interfaz bilingüe Español / English switchable
+# ADR-110: Switchable Spanish / English bilingual interface
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-10-26
 
-## Contexto
+## Context
 
-El propietario pide "arreglar los textos en español" (tildes y
-textos raros) y además poder usar la web en inglés (switchable).
+The owner asks to "fix the Spanish texts" (accents and weird strings)
+and also to be able to use the web app in English (switchable).
 
-Investigación previa: revisé todos los HTML y JS buscando mojibake
-(U+FFFD) — solo había **un** texto corrupto en la web viva y era de
-`js/wishlist.js` («no es válida» corrompido por una errata de
-encoding en un commit anterior). El resto de la "basura" que se ve
-en consola es artefacto del terminal de Windows, no de la web: los
-ficheros están en UTF-8 correcto y en el navegador se ven con sus
-tildes.
+Prior research: I reviewed all the HTML and JS looking for mojibake
+(U+FFFD) — there was only **one** corrupted string in the live web app,
+and it came from `js/wishlist.js` («no es válida» [is not valid],
+corrupted by an encoding typo in a previous commit). The rest of the
+"garbage" seen in the console is a Windows terminal artifact, not a web
+issue: the files are in correct UTF-8 and display their accents fine in
+the browser.
 
-La app no tiene capa de internacionalización: los textos viven
-dispersos en HTML estático (index + partials de Ocio inyectados
-lazy) y en JS (etiquetas de estado, toasts...).
+The app has no internationalization layer: texts live scattered across
+static HTML (index + Leisure partials injected lazily) and in JS
+(status labels, toasts...).
 
-## Decisión
+## Decision
 
-Modelo **"español como fuente de verdad" + traducción aplicada al
+Model: **"Spanish as the source of truth" + translation applied to the
 DOM** (`js/i18n.js`):
 
-1. **Sólo hay que escribir español una vez**: cualquier texto que
-   la app renderice en español (estático o dinámico) se traduce en
-   el acto si el usuario eligió English.
-2. **Matching exacto normalizado** (espacios colapsados) contra un
-   diccionario en/m:
-   - Nodos de texto via `TreeWalker`.
-   - Atributos translate: `placeholder`, `aria-label`, `title`.
-3. **MutationObserver** sobre `document.body`: los renders
-   dinámicos (biblioteca, fichas, listas) se traducen sin tocar
-   los puntos de render existentes.
-4. **Select de idioma** en Ajustes › Apariencia › Idioma
-   (`settings-lang-select`), persistido en
-   `localStorage("mi-registro-lang")` (independiente del usuario
-   para funcionar en la pantalla de acceso).
-5. Etiquetas de estado (`constants.js STATUS_LABELS`) cubiertas
-   vía el diccionario.
+1. **Spanish only needs to be written once**: any text the app renders
+   in Spanish (static or dynamic) is translated on the spot if the user
+   chose English.
+2. **Exact normalized matching** (collapsed spaces) against an en/m
+   dictionary:
+   - Text nodes via `TreeWalker`.
+   - Translated attributes: `placeholder`, `aria-label`, `title`.
+3. **MutationObserver** on `document.body`: dynamic renders (library,
+   cards, lists) get translated without touching the existing render
+   points.
+4. **Language select** in Ajustes › Apariencia › Idioma
+   [Settings › Appearance › Language] (`settings-lang-select`),
+   persisted in `localStorage("mi-registro-lang")` (independent of the
+   user so it works on the sign-in screen).
+5. Status labels (`constants.js STATUS_LABELS`) covered via the
+   dictionary.
 
-## Cobertura v1
+## v1 coverage
 
-- Toda la marqueta estática (index + partials Ocio/Compras).
-- Etiquetas de estado dinámicas (chips de estado).
-- **No cubierto:** mensajes dinámicos de toasts/errores JS
-  siguen en español (siguiente iteración; documentado).
+- All the static copy (index + Leisure/Purchases partials).
+- Dynamic status labels (status chips).
+- **Not covered:** dynamic toast/error messages from JS remain in
+  Spanish (next iteration; documented).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **data-i18n a mano** en cada string de los ~1.500 elementos:
-  error-prone y con el doble de superficie que cambia a la vez.
-- **Framework i18n (i18next)**: dependencia y build para 2 idiomas
-  de UI estática: sobredimensionado (la app no tiene bundler).
+- **Hand-written data-i18n** on each string of the ~1,500 elements:
+  error-prone and with double the changing surface.
+- **i18n framework (i18next)**: dependency and build for 2 languages of
+  static UI: oversized (the app has no bundler).
 
-## Consecuencias
+## Consequences
 
-- Añadir un texto nuevo: nada si es español-de-verdad (solo se
-  verá en inglés si se añade al dict de `js/i18n.js`).
-- Rendimiento: el observer re-traduce solo los nodos añadidos o
-  reescritos (coste mínimo; el texto EN no matchea y no hay
-  bucles de traducción sobre sí mismo).
+- Adding a new string: nothing to do if it is real Spanish (it will
+  only show in English if added to the `js/i18n.js` dictionary).
+- Performance: the observer re-translates only added or rewritten nodes
+  (minimal cost; EN text does not match and there are no
+  translation-loops over itself).

@@ -1,282 +1,285 @@
-# ADR-064: Modos Negro puro y Blanco puro (issue #43)
+# ADR-064: Pure black and pure white modes (issue #43)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-09
 
-## Contexto
+## Context
 
-La issue #43 pide **ampliar el sistema de temas** con dos modos de
-visualización nuevos **sin eliminar los existentes**: un modo de
-**negro puro** (fondo `#000000`, pensado para pantallas OLED: los píxeles
-apagados consumen menos y el aspecto se ve más profundo) y su
-**contrapartida de blanco puro** (fondo `#ffffff`).
+Issue #43 asks to **expand the theme system** with two new display
+modes **without removing the existing ones**: a **pure black** mode
+(background `#000000`, meant for OLED screens: switched-off pixels
+consume less and the look feels deeper) and its **pure white
+counterpart** (background `#ffffff`).
 
-Antes de esta decisión la aplicación tenía **dos temas** (ADR-009):
-el oscuro por defecto (definido en `:root` de `css/styles.css`) y el
-claro (`[data-theme="light"]`), con overrides puntuales por elemento
-para los componentes que invierten la semántica de `--ink`/`--paper`.
-La selección vivía únicamente en **Ajustes → Apariencia → Tema** (el
-botón de alternancia de la cabecera se eliminó en la issue #75); la
-preferencia se persiste en `localStorage` (clave `"mi-registro-theme"`)
-y se sincroniza con `settings.theme` (`syncThemeToSettings`). Los modos
-existentes pasan a llamarse **«Oscuro»** (dark) y **«Claro»** (light),
-que ya era su etiqueta actual en el selector.
+Before this decision the application had **two themes** (ADR-009):
+the default dark one (defined in `:root` of `css/styles.css`) and the
+light one (`[data-theme="light"]`), with per-element overrides for
+the components that invert the `--ink`/`--paper` semantics. The
+selection lived only in **Settings → Apariencia → Tema** (the
+header's toggle button was removed in issue #75); the
+preference is persisted in `localStorage` (key `"mi-registro-theme"`)
+and synced with `settings.theme` (`syncThemeToSettings`). The existing
+modes now get called **«Oscuro»** (dark) and **«Claro»** (light),
+which was already their current label in the selector.
 
-La implementación está **validada (QA PASS)** y **escaneada por
-seguridad (PASS)** en esta rama (`feature/task-issue-43-modos-negro-y-blanco-puro`),
-con un fix posterior del review de QA: hover visible del dropdown de
-perfil en blanco puro (ver punto 3). El manual de usuario se actualizó
-en la misma tarea (`docs/manual-de-usuario.md` §14, regla 3 de
-AGENTS.md). Este ADR documenta la decisión a posteriori, como los
-recientes (ADR-059, ADR-060, ADR-061, ADR-062, ADR-063).
+The implementation is **validated (QA PASS)** and **security-scanned
+(PASS)** on this branch
+(`feature/task-issue-43-modos-negro-y-blanco-puro`),
+with a later fix from the QA review: visible hover of the profile
+dropdown in pure white (see point 3). The user manual was updated
+in the same task (`docs/manual-de-usuario.md` §14, rule 3 of
+AGENTS.md). This ADR documents the decision retrospectively, like the
+recent ones (ADR-059, ADR-060, ADR-061, ADR-062, ADR-063).
 
 Related issue: #43 — https://github.com/gonzalitojh/Registro-personal/issues/43
 
-## Decisión
+## Decision
 
-Añadir dos bloques de variables CSS nuevos, `[data-theme="black"]` y
-`[data-theme="white"]`, sobre la arquitectura existente de ADR-009
-(variables en `:root` + bloque `[data-theme="light"]` + overrides por
-elemento), extendiendo los overrides de la familia clara al blanco puro
-con selectores agrupados por comas. La decisión se organiza en nueve
-puntos: los dos bloques de variables, los overrides, el selector de
-Ajustes, el JS de aplicación, la defensa en `settings.js`, la
-persistencia, el versionado PWA y la compatibilidad de Chart.js.
+Add two new CSS variable blocks, `[data-theme="black"]` and
+`[data-theme="white"]`, over ADR-009's existing architecture
+(variables in `:root` + a `[data-theme="light"]` block + per-element
+overrides), extending the light family's overrides to pure white
+with comma-grouped selectors. The decision is organized in nine
+points: the two variable blocks, the overrides, the Settings
+selector, the application JS, the defense in `settings.js`, the
+persistence, the PWA versioning and Chart.js compatibility.
 
-### 1. Bloque `[data-theme="black"]` (delta sobre `:root`, `css/styles.css`)
+### 1. The `[data-theme="black"]` block (a delta over `:root`, `css/styles.css`)
 
-Bloque **delta**: solo redeclara lo que cambia respecto al modo oscuro:
+A **delta** block: it only redeclares what changes from the dark mode:
 
-- `--ink: #000000` (fondo general) y `--ink-raised: #0a0a0a`
-  (superficies elevadas, casi negro).
-- Los cinco tintes `--ink-alpha-*` (`06/08/10/15/20`) pasan a
-  `rgba(0, 0, 0, X)` (tintes de hover/foco sobre superficies de papel).
+- `--ink: #000000` (general background) and `--ink-raised: #0a0a0a`
+  (elevated surfaces, almost black).
+- The five `--ink-alpha-*` tints (`06/08/10/15/20`) become
+  `rgba(0, 0, 0, X)` (hover/focus tints over paper surfaces).
 
-**Todo lo demás hereda de `:root`**: `--paper` (`#f1ead9`, pergamino),
-acentos (`--teal-reel`, `--ochre-spine`, `--stamp`), sombras,
-`--date-picker-filter: invert(1)` (el date picker sigue siendo oscuro)
-y los alfas de papel. Así el modo oscuro se conserva visualmente
-íntegro con el fondo puramente negro. **No hacen falta overrides por
-elemento**: los componentes que pintan `background: var(--ink)` (body,
-cabecera, barra de pestañas, `auth-screen`, `profile-view`,
-`settings-select`) se vuelven negros puros automáticamente.
+**Everything else inherits from `:root`**: `--paper` (`#f1ead9`,
+parchment), accents (`--teal-reel`, `--ochre-spine`, `--stamp`),
+shadows, `--date-picker-filter: invert(1)` (the date picker stays
+dark) and the paper alphas. Thus the dark mode stays visually
+intact with a purely black background. **No per-element overrides
+are needed**: the components painting `background: var(--ink)` (body,
+header, tab bar, `auth-screen`, `profile-view`,
+`settings-select`) become pure black automatically.
 
-### 2. Bloque `[data-theme="white"]` (familia clara llevada al extremo, `css/styles.css`)
+### 2. The `[data-theme="white"]` block (the light family taken to the extreme, `css/styles.css`)
 
 - `--ink: #000000`, `--ink-raised: #ffffff`, `--ink-soft: #6b6355`
-  (texto secundario), `--paper: #ffffff`, `--paper-dim: #ffffff`
-  (fondo general blanco puro, aquí sí difiere del claro), `--paper-line:
-  #d9cfc0` (bordes).
-- `--ink-alpha-*`: `rgba(0, 0, 0, X)` (negro puro translúcido).
-- `--paper-alpha-14/20/30/35/40`: `rgba(0, 0, 0, X)` (bordes oscuros
-  sobre fondo blanco); **`--paper-alpha-10` y `--paper-alpha-92` se
-  mantienen blancos** (`rgba(255, 255, 255, X)`): el 92% es el fondo
-  translúcido de los sellos de las tarjetas, que debe seguir siendo
-  claro.
-- `--backdrop: rgba(0, 0, 0, 0.25)` y `--date-picker-filter: none`
-  (igual que en claro).
-- **Sombras algo más fuertes que en claro** (`--shadow-card:
-  0 8px 24px rgba(0,0,0,0.12)` y `--shadow-pop: 0 16px 44px
-  rgba(0,0,0,0.18)` frente a `0.08`/`0.12` del claro): en blanco puro
-  las tarjetas blancas solo se separan del fondo por la sombra.
+  (secondary text), `--paper: #ffffff`, `--paper-dim: #ffffff`
+  (general pure white background, here it does differ from light),
+  `--paper-line: #d9cfc0` (borders).
+- `--ink-alpha-*`: `rgba(0, 0, 0, X)` (translucent pure black).
+- `--paper-alpha-14/20/30/35/40`: `rgba(0, 0, 0, X)` (dark borders
+  over a white background); **`--paper-alpha-10` and `--paper-alpha-92`
+  stay white** (`rgba(255, 255, 255, X)`): the 92% is the cards'
+  stamps' translucent background, which must stay light.
+- `--backdrop: rgba(0, 0, 0, 0.25)` and
+  `--date-picker-filter: none` (same as light).
+- **Somewhat stronger shadows than light** (`--shadow-card:
+  0 8px 24px rgba(0,0,0,0.12)` and `--shadow-pop: 0 16px 44px
+  rgba(0,0,0,0.18)` vs light's `0.08`/`0.12`): in pure white the
+  white cards only separate from the background by the shadow.
 
-Los acentos semánticos (`--teal-reel`, `--ochre-spine`, `--stamp` y
-sus variantes) no se redeclaran: son idénticos en `:root` y en claro, y
-funcionan sobre cualquier fondo (misma filosofía que ADR-009).
+The semantic accents (`--teal-reel`, `--ochre-spine`, `--stamp` and
+their variants) are not redeclared: they are identical in `:root`
+and in light, and work over any background (ADR-009's same
+philosophy).
 
-### 3. Overrides por elemento extendidos al modo blanco
+### 3. Per-element overrides extended to the white mode
 
-Los 19 overrides puntuales del modo claro se extienden a
-`[data-theme="white"]` agregando el selector en los grupos de comas ya
-existentes: `html`/`body`, `.auth-screen`, `.profile-view`, `.icon-btn`,
-`.btn-link`, `.btn--outline-dark` (+ `:hover`), `.app-footer`,
-`.profile-view__header select`, `.settings-select`,
-`.stats-range-fields` (+ su `input[type="date"]`),
-`.global-search__input`, `.activity-event__text`, foco del `.switch`,
-`.app-header` y `.tabs--bar`. Dos particularidades:
+The light mode's 19 per-element overrides are extended to
+`[data-theme="white"]` by adding the selector to the already-existing
+comma groups: `html`/`body`, `.auth-screen`, `.profile-view`,
+`.icon-btn`, `.btn-link`, `.btn--outline-dark` (+ `:hover`),
+`.app-footer`, `.profile-view__header select`, `.settings-select`,
+`.stats-range-fields` (+ its `input[type="date"]`),
+`.global-search__input`, `.activity-event__text`, the `.switch`'s
+focus, `.app-header` and `.tabs--bar`. Two particularities:
 
-- **`.app-footer`**: el blanco puro usa `rgba(0, 0, 0, 0.55)` mientras
-  que el claro mantiene su `rgba(44, 40, 34, 0.55)` — por eso no se
-  agrupa: necesita su propia regla.
-- **`[data-theme="white"] .profile-dropdown__item:hover`** (nuevo):
-  en blanco puro el dropdown es blanco y su hover usaba `--paper-dim`
-  (`#ffffff`), que lo haría invisible; se usa `background:
-  var(--ink-alpha-06)`. Fue el fix del review de QA.
+- **`.app-footer`**: pure white uses `rgba(0, 0, 0, 0.55)` while
+  light keeps its `rgba(44, 40, 34, 0.55)` — that is why it is not
+  grouped: it needs its own rule.
+- **`[data-theme="white"] .profile-dropdown__item:hover`** (new): in
+  pure white the dropdown is white and its hover used `--paper-dim`
+  (`#ffffff`), which would make it invisible; `background:
+  var(--ink-alpha-06)` is used. It was the QA review's fix.
 
-En `ocio/ocio.css` se extienden los 2 overrides claros existentes
-(`.sort-select` y `.item-card__perforation`) al blanco puro con el
-mismo patrón de selectores agrupados.
+In `ocio/ocio.css` the 2 existing light overrides
+(`.sort-select` and `.item-card__perforation`) are extended to
+pure white with the same grouped-selectors pattern.
 
-### 4. Selector de tema en Ajustes (`index.html`)
+### 4. Theme selector in Settings (`index.html`)
 
-`#settings-theme-select` pasa de 2 a 4 opciones:
+`#settings-theme-select` goes from 2 to 4 options:
 
-| value | Etiqueta |
+| value | Label |
 |-------|----------|
 | `dark` | Oscuro |
 | `black` | Negro puro |
 | `light` | Claro |
 | `white` | Blanco puro |
 
-### 5. `setTheme()` y `getSavedTheme()` (`js/app.js`)
+### 5. `setTheme()` and `getSavedTheme()` (`js/app.js`)
 
-- **`THEME_META_COLORS`**: mapa `{ dark: "#171512", black: "#000000",
-  light: "#f5f0e8", white: "#ffffff" }` que `setTheme()` usa para
-  actualizar el `<meta name="theme-color">` (color real del fondo de
-  cada modo); con `|| THEME_META_COLORS.dark` como guard contra
-  valores desconocidos.
-- **`getSavedTheme()`**: valida el valor de `localStorage` con
+- **`THEME_META_COLORS`**: map `{ dark: "#171512", black: "#000000",
+  light: "#f5f0e8", white: "#ffffff" }` that `setTheme()` uses to
+  update the `<meta name="theme-color">` (each mode's real background
+  color); with `|| THEME_META_COLORS.dark` as a guard against
+  unknown values.
+- **`getSavedTheme()`**: validates the `localStorage` value with
   `Object.prototype.hasOwnProperty.call(THEME_META_COLORS, saved)`;
-  cualquier valor legacy o inválido cae a `"dark"`. El uso de
-  `hasOwnProperty` llamada sobre `Object.prototype` hace la comprobación
-  resistente a _prototype pollution_.
+  any legacy or invalid value falls to `"dark"`. Calling
+  `hasOwnProperty` over `Object.prototype` makes the check resistant
+  to _prototype pollution_.
 
-### 6. Defensa en `js/settings.js`
+### 6. Defense in `js/settings.js`
 
 `VALID_THEMES = ["dark", "black", "light", "white"]` (whitelist):
-`renderSettings()` solo asigna al select el tema guardado si está en la
-lista; si no, cae a `"dark"`. Protege contra valores antiguos o
-corruptos en `settings.theme`.
+`renderSettings()` only assigns the stored theme to the select if it is in
+the list; if not, it falls to `"dark"`. It protects against old or
+corrupt values in `settings.theme`.
 
-### 7. Persistencia (sin cambios)
+### 7. Persistence (unchanged)
 
-La preferencia se sigue guardando en `localStorage` (clave
-`"mi-registro-theme"`) y sincronizada con `settings.theme`
-(`syncThemeToSettings`), como en ADR-009. No hay ningún campo nuevo en
-el modelo de datos.
+The preference keeps being stored in `localStorage` (key
+`"mi-registro-theme"`) and synced with `settings.theme`
+(`syncThemeToSettings`), as in ADR-009. There is no new field in
+the data model.
 
-### 8. Versionado PWA
+### 8. PWA versioning
 
-**Bump `20260836` → `20260837`**: la PR toca `css/styles.css`,
-`ocio/ocio.css`, `index.html`, `js/app.js` y `js/settings.js`, todos
-precacheados por el service worker (ADR-019), así que se aplica la
-práctica de un bump por PR (ADR-049/059/061) vía
-`scripts/bump-version.sh`: `js/config.js` (`APP_VERSION = '20260837'`),
-`index.html` (`?v=` ×3: `styles.css`, `ocio.css`, `app.js`) y
-`service-worker.js` (`?v=` ×6 en `STATIC_ASSETS`).
+**Bump `20260836` → `20260837`**: the PR touches `css/styles.css`,
+`ocio/ocio.css`, `index.html`, `js/app.js` and `js/settings.js`, all
+precached by the service worker (ADR-019), so the one-bump-per-PR
+practice is applied (ADR-049/059/061) via
+`scripts/bump-version.sh`: `js/config.js` (`APP_VERSION =
+'20260837'`),
+`index.html` (`?v=` ×3: `styles.css`, `ocio.css`, `app.js`) and
+`service-worker.js` (`?v=` ×6 in `STATIC_ASSETS`).
 
-### 9. Chart.js (sin cambios)
+### 9. Chart.js (unchanged)
 
-`js/profile.js` ya lee los colores de los gráficos con
-`getComputedStyle(...).getPropertyValue(...)` (ADR-009), por lo que se
-adaptan a los 4 modos sin tocar una línea de JS.
+`js/profile.js` already reads the charts' colors with
+`getComputedStyle(...).getPropertyValue(...)` (ADR-009), so they adapt to
+the 4 modes without touching a line of JS.
 
-### Contraste WCAG (verificado)
+### WCAG contrast (verified)
 
-| Par | Ratio | Nivel |
+| Pair | Ratio | Level |
 |-----|-------|-------|
-| `#f1ead9` (pergamino) sobre `#000` (negro puro) | 17.5:1 | AAA |
-| `#948a76` (`--ink-soft` de negro puro) sobre `#000` | 6.16:1 | AA |
-| `#000` sobre `#fff` (blanco puro) | 21:1 | AAA |
-| `#6b6355` (`--ink-soft` de blanco puro) sobre `#fff` | 5.93:1 | AA |
-| `rgba(0,0,0,0.55)` (footer blanco puro) sobre `#fff` | 4.74:1 | AA |
+| `#f1ead9` (parchment) over `#000` (pure black) | 17.5:1 | AAA |
+| `#948a76` (pure black's `--ink-soft`) over `#000` | 6.16:1 | AA |
+| `#000` over `#fff` (pure white) | 21:1 | AAA |
+| `#6b6355` (pure white's `--ink-soft`) over `#fff` | 5.93:1 | AA |
+| `rgba(0,0,0,0.55)` (pure white's footer) over `#fff` | 4.74:1 | AA |
 
-Los modos existentes no cambian su ratio: oscuro 15.2:1 y claro 12.9:1
-(texto principal).
+The existing modes keep their ratio: dark 15.2:1 and light 12.9:1
+(main text).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Duplicar todas las reglas de override por modo** (un bloque
-  `[data-theme="white"]` repetiendo el contenido de los de claro):
-  descartado — duplicaría ~19 reglas sin necesidad. Se optó por
-  **extender los selectores existentes con grupos de comas**
-  (`[data-theme="light"] X, [data-theme="white"] X`), una única fuente
-  de verdad para cada regla.
-- **Usar la pseudo-clase funcional `:is()`** para agrupar los
-  selectores (`:is([data-theme="light"], [data-theme="white"]) X`):
-  descartado — funciona en navegadores modernos, pero se prefirió un
-  grupo de selectores explícito para revisión de mínimo riesgo y máxima
-  compatibilidad (GitHub Pages, sin paso de build).
-- **Reutilizar los valores del modo claro para el blanco puro**
-  (`--paper-dim: #f5f0e8` en vez de `#ffffff`, sombras del claro):
-  descartado — el blanco puro exige su propio `--paper-dim` (blanco
-  absoluto) y sombras más fuertes; las tarjetas blancas solo se separan
-  del fondo por la sombra.
-- **Hacer de `[data-theme="black"]` un bloque duplicado completo** de
-  `:root` con los cambios: descartado — un **bloque delta** (solo
-  `--ink`, `--ink-raised` y los `--ink-alpha-*`) minimiza la superficie
-  de cambio y garantiza que negro puro siempre herede el resto de
-  variables del modo oscuro (papel, acentos, sombras, filtro del date
-  picker) aunque `:root` evolucione.
-- **Añadir nombres/etiquetas nuevos para los modos existentes**:
-  descartado — «Oscuro» y «Claro» ya eran las etiquetas del selector;
-  la issue pide añadir modos sin eliminar ni renombrar los actuales.
+- **Duplicating all the override rules per mode** (a
+  `[data-theme="white"]` block repeating the light ones' content):
+  rejected — it would duplicate ~19 rules unnecessarily. The choice was
+  **extending the existing selectors with comma groups**
+  (`[data-theme="light"] X, [data-theme="white"] X`), a single
+  source of truth per rule.
+- **Using the functional pseudo-class `:is()`** to group the
+  selectors (`:is([data-theme="light"], [data-theme="white"]) X`):
+  rejected — it works in modern browsers, but an explicit selector
+  group was preferred for a low-risk and maximum-compatibility review
+  (GitHub Pages, no build step).
+- **Reusing the light mode's values for pure white**
+  (`--paper-dim: #f5f0e8` instead of `#ffffff`, light's shadows):
+  rejected — pure white requires its own `--paper-dim` (absolute
+  white) and stronger shadows; the white cards only separate
+  from the background by the shadow.
+- **Making `[data-theme="black"]` a complete duplicated block** of
+  `:root` with the changes: rejected — a **delta block** (only
+  `--ink`, `--ink-raised` and the `--ink-alpha-*`) minimizes the change
+  surface and guarantees that pure black always inherits the rest of
+  the dark mode's variables (paper, accents, shadows, the date picker's
+  filter) even as `:root` evolves.
+- **Adding new names/labels for the existing modes**:
+  rejected — «Oscuro» and «Claro» were already the selector's labels;
+  the issue asks to add modes without removing or renaming the current
+  ones.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Issue #43 resuelta**: cuatro modos seleccionables en Ajustes →
-  Apariencia → Tema (Oscuro, Negro puro, Claro, Blanco puro), sin
-  eliminar ninguno de los existentes (criterio de aceptación 1).
-- **Ahorro de energía en OLED** con negro puro: los píxeles apagados
-  consumen menos y el aspecto se ve más profundo.
-- **Contraste WCAG AA/AAA en los dos modos nuevos** (17.5:1, 6.16:1,
-  21:1, 5.93:1 y 4.74:1 — tabla arriba), manteniendo los ratios de los
-  modos existentes.
-- **Sin regresiones**: los bloques `:root` y `[data-theme="light"]` no
-  se modifican (quedan byte-idénticos); todo lo nuevo está scoped bajo
-  `[data-theme="black"]` y `[data-theme="white"]`.
-- **Cero impacto de layout**: los bloques solo cambian colores; no hay
-  medidas, posiciones ni unidades nuevas (criterio de responsividad de
-  AGENTS.md / ADR-026), verificado en 360/768/1280 px.
-- **Defensa en profundidad**: valores inválidos o legacy de
-  `localStorage` y de `settings.theme` caen siempre al modo oscuro
-  (`getSavedTheme` con `hasOwnProperty` — resistente a prototype
-  pollution — y whitelist `VALID_THEMES`).
-- **Persistencia intacta**: la preferencia se guarda y restaura como
-  hasta ahora; Chart.js se adapta solo (getComputedStyle, ADR-009).
-- **El modo negro puro es gratuito en mantenimiento**: al ser un delta,
-  cualquier evolución de `:root` (papel, acentos, sombras) se aplica
-  automáticamente.
+- **Issue #43 solved**: four selectable modes in Settings → Apariencia →
+  Tema (Oscuro, Negro puro, Claro, Blanco puro), without removing any
+  of the existing ones (acceptance criterion 1).
+- **Energy saving on OLED** with pure black: switched-off pixels
+  consume less and the look feels deeper.
+- **WCAG AA/AAA contrast in the two new modes** (17.5:1, 6.16:1,
+  21:1, 5.93:1 and 4.74:1 — table above), keeping the existing modes'
+  ratios.
+- **No regressions**: the `:root` and `[data-theme="light"]` blocks are
+  not modified (they remain byte-identical); everything new is scoped
+  under `[data-theme="black"]` and `[data-theme="white"]`.
+- **Zero layout impact**: the blocks only change colors; there are no
+  new measures, positions nor units (AGENTS.md's responsiveness
+  criterion / ADR-026), verified at 360/768/1280 px.
+- **Defense in depth**: invalid or legacy `localStorage` and
+  `settings.theme` values always fall to the dark mode
+  (`getSavedTheme` with `hasOwnProperty` — resistant to prototype
+  pollution — and the `VALID_THEMES` whitelist).
+- **Persistence intact**: the preference is stored and restored as
+  until now; Chart.js adapts by itself (getComputedStyle, ADR-009).
+- **The pure black mode is maintenance-free**: being a delta,
+  any evolution of `:root` (paper, accents, shadows) applies
+  automatically.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Separación solo por sombra en blanco puro**: las tarjetas blancas
-  sobre fondo blanco dependen de la sombra (y de algún borde) para
-  distinguirse; si un diseño futuro suavizara las sombras, el modo
-  perdería profundidad.
-- **Perforación decorativa invisible en blanco puro**: la perforación
-  tipo «entrada de cine» de las tarjetas (`item-card__perforation`)
-  deja ver `--paper-dim`, que en blanco puro es blanco: el efecto
-  decorativo no se aprecia (aceptado, es puramente estético).
-- **~60 líneas extra de CSS** entre los dos bloques delta y los grupos
-  de selectores añadidos; cada componente nuevo de la familia clara
-  necesitará también su extensión a blanco.
-- **Comentarios a mantener en sincronía**: los bloques documentan sus
-  contrastes; si un color cambia, hay que actualizar el comentario y
-  verificar el ratio.
+- **Separation only by shadow in pure white**: the white cards
+  over a white background rely on the shadow (and some borders) to
+  differentiate; if a future design softened the shadows, the mode
+  would lose depth.
+- **Invisible decorative perforation in pure white**: the cards'
+  "cinema ticket" perforation (`item-card__perforation`) shows
+  `--paper-dim`, which in pure white is white: the decorative effect is
+  not appreciated (accepted, it is purely aesthetic).
+- **~60 extra CSS lines** between the two delta blocks and the added
+  selector groups; each new member of the light family will also need
+  its extension to white.
+- **Comments to keep in sync**: the blocks document their contrasts;
+  if a color changes, the comment must be updated and the ratio
+  verified.
 
-### Neutras
+### Neutral
 
-- **Sin dependencias nuevas**: misma arquitectura de ADR-009 (CSS
-  Custom Properties + `[data-theme]` en `<html>`); GitHub Pages sin
-  paso de build.
-- **Oscuro y negro puro comparten casi todas las variables**: el delta
-  solo toca tinta y tintes; claro y blanco puro comparten la mayoría de
-  la paleta (difieren en `--paper-dim`, sombras y alfas de tinta).
-- **Bump PWA de rutina** `20260836` → `20260837`, un bump por PR
-  (ADR-049/059/061), por tocar assets precacheados (ADR-019).
-- **Manual de usuario al día** (§14 Ajustes → Apariencia → Tema: los
-  cuatro modos y sus descripciones, la elección se guarda sola) —
-  regla 3 de AGENTS.md.
+- **No new dependencies**: ADR-009's same architecture (CSS
+  Custom Properties + `[data-theme]` on `<html>`); GitHub Pages without
+  a build step.
+- **Dark and pure black share almost all variables**: the delta
+  only touches ink and tints; light and pure white share most of the
+  palette (they differ in `--paper-dim`, shadows and ink alphas).
+- **Routine PWA bump** `20260836` → `20260837`, one bump per PR
+  (ADR-049/059/061), for touching precached assets (ADR-019).
+- **User manual up to date** (§14 Settings → Apariencia → Tema: the
+  four modes and their descriptions, the choice is stored automatically)
+  — AGENTS.md's rule 3.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `css/styles.css` | **Modificado**: bloque delta `[data-theme="black"]` (`--ink #000000`, `--ink-raised #0a0a0a`, tintes `--ink-alpha-*` en `rgba(0,0,0,X)`; el resto hereda de `:root`); bloque `[data-theme="white"]` (familia clara extrema: `--ink #000`, `--paper`/`--paper-dim`/`--ink-raised` `#fff`, `--ink-soft #6b6355`, alfas de papel oscuras salvo 10%/92%, `--backdrop rgba(0,0,0,0.25)`, `--date-picker-filter none`, sombras 0.12/0.18); todos los overrides por elemento de `[data-theme="light"]` extendidos a `[data-theme="white"]` con selectores agrupados; `.app-footer` blanco con `rgba(0,0,0,0.55)` (regla propia, no agrupada); nueva regla `[data-theme="white"] .profile-dropdown__item:hover` con `--ink-alpha-06` (fix QA) |
-| `ocio/ocio.css` | **Modificado**: overrides `.sort-select` y `.item-card__perforation` extendidos a `[data-theme="white"]` con selectores agrupados |
-| `index.html` | **Modificado**: `#settings-theme-select` con 4 opciones (`dark`/Oscuro, `black`/Negro puro, `light`/Claro, `white`/Blanco puro); bump `?v=20260836` → `?v=20260837` (×3: `styles.css`, `ocio.css`, `app.js`) |
-| `js/app.js` | **Modificado**: mapa `THEME_META_COLORS` (`dark #171512`, `black #000000`, `light #f5f0e8`, `white #ffffff`) usado por `setTheme()` para el `meta[name=theme-color]` (fallback a dark); `getSavedTheme()` normaliza valores inválidos/legacy a `"dark"` con `hasOwnProperty` (resistente a prototype pollution) |
-| `js/settings.js` | **Modificado**: whitelist `VALID_THEMES = ["dark", "black", "light", "white"]`; `renderSettings()` cae a `"dark"` si el tema guardado no es válido |
-| `js/config.js` | **Modificado**: `APP_VERSION` `20260836` → `20260837` |
-| `service-worker.js` | **Modificado**: bump `?v=20260836` → `?v=20260837` en los 6 assets versionados de `STATIC_ASSETS` (vía `scripts/bump-version.sh`) |
-| `docs/manual-de-usuario.md` | **Modificado**: §14 Apariencia → Tema documenta los 4 modos (Oscuro, Negro puro con ahorro OLED, Claro, Blanco puro) y que la elección se guarda automáticamente — regla 3 de AGENTS.md |
-| `tasks/task-issue-43.json` | **Modificado**: estado de la tarea (implementado → validado por QA → escaneado por seguridad) con bloque `pr` e issue #43 |
-| `docs/adr-064-modos-negro-puro-y-blanco-puro.md` | **Nuevo**: este documento |
+| `css/styles.css` | **Modified**: the delta block `[data-theme="black"]` (`--ink #000000`, `--ink-raised #0a0a0a`, tints `--ink-alpha-*` in `rgba(0,0,0,X)`; the rest inherits from `:root`); the `[data-theme="white"]` block (extreme light family: `--ink #000`, `--paper`/`--paper-dim`/`--ink-raised` `#fff`, `--ink-soft #6b6355`, dark paper alphas except 10%/92%, `--backdrop rgba(0,0,0,0.25)`, `--date-picker-filter none`, shadows 0.12/0.18); all of `[data-theme="light"]`'s per-element overrides extended to `[data-theme="white"]` with grouped selectors; the white `.app-footer` with `rgba(0,0,0,0.55)` (own rule, not grouped); new rule `[data-theme="white"] .profile-dropdown__item:hover` with `--ink-alpha-06` (QA fix) |
+| `ocio/ocio.css` | **Modified**: the `.sort-select` and `.item-card__perforation` overrides extended to `[data-theme="white"]` with grouped selectors |
+| `index.html` | **Modified**: `#settings-theme-select` with 4 options (`dark`/Oscuro, `black`/Negro puro, `light`/Claro, `white`/Blanco puro); bump `?v=20260836` → `?v=20260837` (×3: `styles.css`, `ocio.css`, `app.js`) |
+| `js/app.js` | **Modified**: the `THEME_META_COLORS` map (`dark #171512`, `black #000000`, `light #f5f0e8`, `white #ffffff`) used by `setTheme()` for `meta[name=theme-color]` (fallback to dark); `getSavedTheme()` normalizes invalid/legacy values to `"dark"` with `hasOwnProperty` (resistant to prototype pollution) |
+| `js/settings.js` | **Modified**: whitelist `VALID_THEMES = ["dark", "black", "light", "white"]`; `renderSettings()` falls to `"dark"` if the stored theme is invalid |
+| `js/config.js` | **Modified**: `APP_VERSION` `20260836` → `20260837` |
+| `service-worker.js` | **Modified**: bump `?v=20260836` → `?v=20260837` on the 6 versioned assets of `STATIC_ASSETS` (via `scripts/bump-version.sh`) |
+| `docs/manual-de-usuario.md` | **Modified**: §14 Settings → Apariencia → Tema documents the 4 modes (Oscuro, Negro puro with OLED saving, Claro, Blanco puro) and that the choice is stored automatically — AGENTS.md's rule 3 |
+| `tasks/task-issue-43.json` | **Modified**: the task's state (implemented → QA validated → security scanned) with the `pr` block and issue #43 |
+| `docs/adr-064-modos-negro-puro-y-blanco-puro.md` | **New**: this document |
 
 Related issue: #43 — https://github.com/gonzalitojh/Registro-personal/issues/43

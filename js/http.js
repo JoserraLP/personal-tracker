@@ -1,8 +1,8 @@
 // =============================================================
-// fetch con reintento. Las APIs externas (sobre todo Google Books)
-// a veces devuelven errores temporales del servidor (503, etc.).
-// Reintentar una vez tras una pequeña espera resuelve la mayoría
-// de esos casos sin que el usuario tenga que volver a buscar a mano.
+// fetch with retry. External APIs (especially Google Books)
+// sometimes return temporary server errors (503, etc.).
+// Retrying once after a short wait resolves most
+// of those cases without the user having to search again by hand.
 // =============================================================
 
 export async function fetchJson(url, { retries = 1, retryDelayMs = 400 } = {}) {

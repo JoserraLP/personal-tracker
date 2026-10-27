@@ -1,176 +1,398 @@
-# ADR-096: Icono de la sección Gimnasio: mancuerna horizontal clásica (issue #263)
+# ADR-096: The Gym section's icon: a classic horizontal dumbbell (issue #263)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-13
 
-## Contexto
+## Context
 
-La issue #263 pide un **nuevo icono para la sección Gimnasio**: el
-actual no convence al usuario. Es un cambio puramente cosmético de la
-issue de la sección (#62, ADR-095) y se ciñe al **aspecto del icono**
-en los únicos dos sitios donde aparece: la entrada **«Gimnasio»** de
-la barra lateral (`js/sidebar.js`, array `SECTIONS`) y la pestaña
-**«Entrenos»** de la barra de pestañas del `gym-view` (`index.html`).
+Issue #263 asks for a
+**new
+icon for the Gym
+section**:
+the
+current one does not convince the
+user. It is a purely
+cosmetic change of the
+section's
+issue (#62, ADR-095) and sticks to
+the
+**icon's appearance** on the
+only two
+places where it appears:
+the
+**«Gimnasio»** entry of the
+sidebar (the
+`js/sidebar.js`, the
+`SECTIONS` array)
+and the
+**«Entrenos»** tab of
+the
+`gym-view`'s tab bar
+(the
+`index.html`).
 
-El icono sustituido era la **mancuerna diagonal de Feather** (7
-`<path>`: la barra diagonal `M6.5 6.5 17.5 17.5`, los dos ganchos
-`M21 17 17 21` / `M3 7 7 3`, los dos trazos de los discos
-`m2.5 12.5 9-9` / `m12.5 2.5 9 9` y los dos puntos `M6 21h.01` /
-`M18 3h.01`). Con los trazos sueltos y la diagonal, resultaba difícil
-de leer a tamaño de icono pequeño y rompía la coherencia con el resto
-de secciones.
+The replaced icon was
+the
+**Feather
+diagonal dumbbell** (7
+a
+`<path>`s: the
+diagonal bar
+`M6.5 6.5 17.5 17.5`, the two
+hooks
+`M21 17 17 21` /
+`M3 7 7 3`, the discs' two
+strokes
+`m2.5 12.5 9-9` / the
+`m12.5 2.5 9 9` and the
+two
+dots
+`M6 21h.01` /
+`M18 3h.01`). With
+loose strokes and the
+diagonal, it was hard to
+read at a
+small-icon
+size and broke the coherence with the
+other
+sections.
 
-Encaje con las reglas del proyecto:
+Fit with the project's rules and conventions:
 
-- **Convención de iconos** (ADR-009, ADR-064, ADR-066 y manual de
-  estilo de las secciones existentes): `viewBox 0 0 24 24`,
-  `fill="none"`, `stroke="currentColor"`, `stroke-width="1.8"`,
-  `stroke-linecap/linejoin="round"` y `aria-hidden="true"`. El icono
-  hereda el color del contenedor (`.icon-btn` en la cabecera,
-  `.tab` en la barra de pestañas), así que **no necesita overrides
-  por modo de tema** (regla 4 de AGENTS.md): correcto en Oscuro,
-  Negro puro, Claro y Blanco puro sin tocar `css/styles.css`.
-- **Regla 3 de AGENTS.md (manual de usuario)**: el manual no describe
-  la forma del icono de la sección; un cambio cosmético de este tipo
-  no requiere actualización.
-- **Ramificación**: la tarea nace de `feat/issue-62-seccion-gimnasio`
-  (el ADR-095 y la sección aún no están en `dev`; PR #262 pendiente de
-  integración). La rama de la #263 se fusionará en esa rama
-  intermedia, de modo que este ADR llegará a `dev` junto con la
-  sección completa. Por eso el número de serie continúa tras ADR-095
-  aunque la sección no esté publicada.
+- **The icons' convention**
+  (the
+  ADR-009, ADR-064, ADR-066 and the existing sections' style
+  manual):
+  the
+  `viewBox 0 0 24 24`, the
+  `fill="none"`, the
+  `stroke="currentColor"`, the
+  `stroke-width="1.8"`, the
+  `stroke-linecap/linejoin="round"` and the
+  `aria-hidden="true"`. The icon inherits the container's
+  color (the
+  `.icon-btn` on the header, the
+  `.tab` on the tab bar), so it
+  **needs no per-theme-mode
+  overrides** (the
+  AGENTS.md's rule 4): correct
+  in Dark,
+  Pure
+  black, Light
+  and Pure
+  white without touching
+  the
+  `css/styles.css`.
+- **The AGENTS.md's rule 3**
+  (the
+  user manual): the
+  manual does not describe the section's icon's
+  shape; a
+  cosmetic change like this needs no update.
+- **The
+  branch
+  chain**: the
+  task
+  is
+  born
+  from the
+  `feat/issue-62-seccion-gimnasio`
+  (the ADR-095 and the section are not yet in the
+  `dev`; the
+  PR
+  #262 pending integration). The
+  #263's branch merges into that intermediate
+  branch, so this ADR arrives at the
+  `dev` together with the whole section. That's why the serial number continues after
+  the
+  ADR-095 even if the section is unpublished.
 
-La implementación está validada (QA PASS: simetría verificada por
-rasterización — 0.00 % de píxeles distintos entre las mitades, sin
-restos del path antiguo `M6.5 6.5 17.5 17.5`, comprobados los cuatro
-modos de tema y sin impacto de layout/responsividad) y escaneada
-(seguridad PASS, 0 hallazgos). Este ADR documenta la decisión a
-posteriori, como los recientes (ADR-093, ADR-094, ADR-095).
+The implementation is validated
+  (a
+  QA PASS: the
+  symmetry verified by
+  rasterization — a
+  0.00 % of
+  different pixels between the halves, with
+  no
+  leftovers
+  of the old
+  path of
+  the
+  `M6.5 6.5 17.5 17.5`, the four theme modes checked and with no
+  layout/responsiveness
+  impact) and scanned
+  (a
+  security PASS, 0
+  findings). This ADR documents the decision
+  retrospectively, like the recent ones
+  (the
+  ADR-093, ADR-094, ADR-095).
 
 Related issue: #263 — https://github.com/gonzalitojh/Registro-personal/issues/263
 
-## Decisión
+## Decision
 
-### 1. Nueva forma: mancuerna horizontal clásica
+### 1. A new shape: the classic horizontal dumbbell
 
-Sustituir el SVG diagonal de Feather por una **mancuerna horizontal
-clásica** — barra + cuatro discos simétricos — con un único shape por
-elemento (`<line>` + 4 `<rect>`, frente a los 7 `<path>` anteriores,
-tres de ellos solo decorativos):
+Replacing
+Feather's diagonal
+SVG with a
+**classic horizontal dumbbell** — a
+bar + four symmetric discs — with a
+single shape per element (a
+`<line>` + 4
+`<rect>`s, versus the previous 7 paths, three of them just decorative):
 
-- **Barra**: `<line x1="8" y1="12" x2="16" y2="12" />` — centrada en
-  el viewBox (x=8→16, y=12).
-- **Discos exteriores** (los más alejados del centro):
-  `<rect x="2.5" y="9" width="3" height="6" rx="1" />` y su espejo
+- **The bar**:
+  the
+  `<line x1="8" y1="12" x2="16" y2="12" />` — centered in
+  the
+  viewBox (the
+  x=8→16, the
+  y=12).
+- **The outer discs** (the ones farthest from the center): the
+  `<rect x="2.5" y="9" width="3" height="6" rx="1" />` and its
+  mirror
   `<rect x="18.5" y="9" width="3" height="6" rx="1" />`
-  (18.5 = 24 − 2.5 − 3).
-- **Discos interiores** (pegados al centro):
-  `<rect x="6.5" y="7.5" width="2" height="9" rx="0.7" />` y su espejo
+  (the
+  18.5 = 24 − 2.5 − 3).
+- **The inner discs** (glued to the center): the
+  `<rect x="6.5" y="7.5" width="2" height="9" rx="0.7" />` and its
+  mirror
   `<rect x="15.5" y="7.5" width="2" height="9" rx="0.7" />`
-  (15.5 = 24 − 6.5 − 2).
+  (the
+  15.5 = 24 − 6.5 − 2).
 
-**Simetría verificada**:
+**The verified symmetry**:
 
-- **Vertical (eje x = 12)**: cada rect tiene su espejo a la misma
-  distancia: exteriores 2.5↔18.5 (centros x=4 y x=20, a 8 px del
-  centro), interiores 6.5↔15.5 (centros x=7.5 y x=16.5, a 4.5 px del
-  centro); la barra 8→16 está centrada en 12.
-- **Horizontal (eje y = 12)**: todos los elementos están centrados en
-  y=12 — la barra en y=12; los exteriores en y=9 con h=6
-  (centro 12); los interiores en y=7.5 con h=9 (centro 12).
+- **Vertical (the
+  x = 12 axis)**: each rect has its mirror at the same
+  distance:
+  the
+  outer 2.5↔18.5 (the
+  centers x=4 and x=20, at 8 px from the
+  center), the inner 6.5↔15.5 (the centers x=7.5 and x=16.5, at 4.5 px from the
+  center);
+  the bar of
+  the
+  8→16 is centered at
+  12.
+- **Horizontal (the y = 12 axis)**: all the elements are centered at
+  the
+  y=12 — the bar
+  at the
+  y=12; the outer at the
+  y=9
+  with the
+  h=6 (the
+  center
+  12); the inner at the y=7.5
+  with the h=9 (the
+  center
+  12).
 
-Los `rx` redondean las esquinas de los discos (1 px los exteriores,
-0.7 px los interiores) para mantener el estilo redondeado del resto de
-iconos del proyecto.
+The
+`rx`s round
+the
+discs' corners (1 px the outer, 0.7
+px the inner)
+to keep the
+project's other icons' rounded style.
 
-### 2. Sustitución en los dos únicos puntos de uso
+### 2. The replacement on the only two
+  points of use
 
-1. `js/sidebar.js` — entrada «Gimnasio» del array `SECTIONS`
-   (propiedad `icon`): se reemplaza el contenido del `<svg>`; el
-   contenedor y el `onClick` no cambian.
-2. `index.html` — pestaña «Entrenos» de la barra del `gym-view`
-   (`nav.tabs--bar`, `data-gym-tab="entrenos"`): se reemplaza el
-   contenido del `<svg>`; nada más del markup cambia.
+1. The
+   `js/sidebar.js` — the
+   `SECTIONS` array's "Gym" entry
+   (the
+   `icon`
+   property): the
+   `<svg>`'s content is replaced; the container and the
+   `onClick` do not change.
+2. The
+   `index.html` — the
+   `gym-view`'s bar's
+   "Workouts" tab (the
+   `nav.tabs--bar`, the
+   `data-gym-tab="entrenos"`):
+   the
+   `<svg>`'s content is replaced;
+   nothing else of the markup changes.
 
-La pestaña **«Ejercicios» no se toca**: mantiene su icono de check
-(`<polyline points="9 11 12 14 22 4">` + `<path>` del marco), que ya
-cumple la convención y no era objeto de la issue.
+The
+**«Ejercicios» tab is not touched**: it keeps its
+check
+icon (the
+`<polyline points="9 11 12 14 22 4">` + the frame's
+`<path>`), which already
+meets the convention and was not the issue's target.
 
-### 3. Fuera de alcance deliberado
+### 3. The deliberate out of scope
 
-- **`css/styles.css`**: sin cambios — `currentColor` ya hereda el
-  color correcto en los cuatro modos de tema (sin overrides nuevos).
-- **`docs/manual-de-usuario.md`**: sin cambios (regla 3 de AGENTS.md;
-  el manual no describe la forma del icono).
-- **ADR-095**: sigue vigente; este ADR solo documenta el aspecto del
-  icono de la sección.
+- **The css/styles.css**: unchanged — the
+  `currentColor` already inherits the correct color in the
+  four theme modes (no new
+  overrides).
+- **The docs/manual-de-usuario.md**: unchanged (the
+  AGENTS.md's rule
+  3;
+  the manual does not describe the icon's shape).
+- **The ADR-095**: remains in force; this ADR
+  only documents the section's icon's
+  appearance.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Mantener el icono actual**: descartado — es la propia petición de
-  la issue #263; la mancuerna diagonal con trazos sueltos se lee mal a
-  tamaño pequeño.
-- **Usar la mancuerna diagonal pero rediseñada (más paths gruesos)**:
-  descartado — la forma diagonal se cruza con los límites del viewBox
-  (los ganchos salen por las esquinas) y seguiría necesitando elementos
-  decorativos; la horizontal clásica es más legible y más simple
-  (5 shapes frente a 7 paths).
-- **Añadir overrides de tema o colores propios del icono**:
-  descartado — el icono usa `currentColor` exactamente como el resto
-  de secciones; cualquier color hardcodeado habría requerido overrides
-  por familia de tema (regla 4 de AGENTS.md) sin beneficio visual.
-- **Añadir el icono a `css/styles.css` vía máscara/fuente**:
-  descartado — rompería la convención de SVGs inline `currentColor`
-  del proyecto y añadiría CSS innecesario sin cambiar el resultado.
+- **Keeping
+  the
+  current icon**:
+  rejected — it is the issue #263's own
+  request; the
+  diagonal dumbbell with loose
+  strokes reads poorly at a
+  small size.
+- **Using the diagonal dumbbell but redesigned (with more
+  thick paths)**:
+  rejected — the diagonal shape
+  crosses the viewBox's bounds (the hooks come out by the corners) and
+  would still need
+  decorative
+  elements; the classic horizontal is more legible and simpler (5 shapes versus 7 paths).
+- **Adding theme overrides or the icon's own colors**: rejected — the icon uses the
+  `currentColor` exactly like the other sections; any
+  hardcoded color would have required
+  per-theme-family
+  overrides (the
+  AGENTS.md's rule 4) with
+  no
+  visual
+  benefit.
+- **Adding the icon to the
+  `css/styles.css` via a
+  mask/font**:
+  rejected — it would break
+  the
+  project's inline `currentColor`
+  SVGs' convention and add
+  unnecessary
+  CSS without changing the result.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Icono legible y coherente** con el estilo del resto de secciones
-  (películas, series, libros, ocio): trazo 1.8, esquinas redondeadas,
-  formas cerradas y simétricas a tamaño pequeño (~1.15–1.5 rem).
-- **Simetría garantizada y verificada**: QA PASS por rasterización
-  (0.00 % de píxeles distintos entre las dos mitades), sin restos del
-  path antiguo en los dos archivos.
-- **Cero cambios de tema**: `currentColor` + `stroke-width` heredados
-  → correcto en Oscuro, Negro puro, Claro y Blanco puro (ADR-009,
-  ADR-064, ADR-066) sin una sola línea de CSS.
-- **Menos DOM**: 5 shapes frente a 7 paths en los dos puntos de uso.
+- **A legible and coherent icon** with the
+  other sections' style
+  (the
+  movies, the series, the books, the
+  Ocio):
+  the
+  1.8 stroke,
+  rounded
+  corners, closed and
+  symmetric shapes
+  at a
+  small size (~1.15–1.5 rem).
+- **The guaranteed and verified symmetry**: a
+  QA
+  PASS
+  by rasterization (a
+  0.00 % of
+  different pixels between the two halves), with no
+  old-path
+  leftovers on the two files.
+- **Zero theme changes**: the
+  `currentColor` + the
+  inherited `stroke-width`
+  → correct
+  in
+  Dark, Pure
+  black, Light and Pure
+  white (the
+  ADR-009, the
+  ADR-064, the
+  ADR-066) without a
+  single line of CSS.
+- **Less DOM**: 5 shapes versus 7 paths on the two points of use.
 
-### Neutras
+### Neutral
 
-- **La sección Gimnasio aún no está en `dev`**: el icono (y este ADR)
-  viven en la cadena de ramas `feat/issue-62-seccion-gimnasio` →
-  `style/issue-263-icono-seccion`; llegarán a `dev` cuando se integre
-  la PR #262 con la sección completa. El número ADR-096 ya queda
-  reservado en esa línea.
-- **La pestaña «Ejercicios» sigue con su icono de check**: deliberado,
-  la issue solo afecta al icono de la sección.
-- **Manual de usuario sin cambios**: el manual no describe la forma
-  del icono (regla 3 de AGENTS.md).
-- **Sin impacto de layout ni responsividad**: el SVG ocupa el mismo
-  espacio que el anterior (los archivos `js/sidebar.js` e `index.html`
-  solo cambian el contenido del `<svg>`).
+- **The Gym
+  section is not yet in the
+  `dev`**: the icon
+  (and this ADR)
+  live in the branch
+  chain of
+  the
+  `feat/issue-62-seccion-gimnasio` → the
+  `style/issue-263-icono-seccion`; they will
+  arrive at the
+  `dev` when the
+  PR
+  #262 with the whole
+  section is integrated. The ADR-096 number is already reserved on that line.
+- **The
+  «Ejercicios» tab keeps its
+  check
+  icon**:
+  deliberate, the issue only affects the section's
+  icon.
+- **The user manual
+  unchanged**: the manual does not describe the icon's shape (the
+  AGENTS.md's rule 3).
+- **No layout nor
+  responsiveness impact**: the
+  SVG occupies the same space as the
+  old
+  one (the
+  `js/sidebar.js` and the
+  `index.html` files only change the
+  `<svg>`'s content).
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Ninguna conocida.** Validado: QA PASS (simetría por
-  rasterización, cuatro modos de tema, sin scroll horizontal en
-  360/768/1280 px — el icono no altera el layout) y seguridad PASS
-  (0 hallazgos HIGH/MEDIUM/LOW; SVG 100 % estático, sin interpolación
-  de datos ni handlers).
+- **None known.**
+  Validated: a
+  QA PASS
+  (the
+  rasterization symmetry, the four theme modes, with
+  no horizontal scroll at
+  the
+  360/768/1280 px — the icon does not alter the layout) and a
+  security PASS
+  (0
+  HIGH/MEDIUM/LOW findings; a
+  100 % static SVG, with no
+  data interpolation nor handlers).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/sidebar.js` | **Modificado**: icono de la entrada «Gimnasio» de `SECTIONS` — mancuerna diagonal de Feather (7 paths) → mancuerna horizontal clásica (line + 4 rects simétricos) |
-| `index.html` | **Modificado**: SVG de la pestaña «Entrenos» del `gym-view` — mismo reemplazo; la pestaña «Ejercicios» (check) no se toca |
-| `tasks/task-issue-263.json` | Task file de la tarea (title/description con la base `feat/issue-62-seccion-gimnasio`, criterios de aceptación AC1–AC4, DoD y bloque `issue` con la #263 — https://github.com/gonzalitojh/Registro-personal/issues/263) |
-| `docs/adr-096-icono-seccion-gimnasio.md` | **Nuevo**: este documento |
+| `js/sidebar.js` | **Modified**: the
+  `SECTIONS`' "Gym" entry's icon — Feather's diagonal dumbbell (7 paths) → a
+  classic horizontal dumbbell (line + 4 symmetric rects) |
+| `index.html` | **Modified**: the
+  `gym-view`'s "Workouts" tab's SVG — the
+  same replacement; the
+  "Exercises" tab (check)
+  is not touched |
+| `tasks/task-issue-263.json` | The task's task file
+  (the
+  title/description with the
+  base of
+  the
+  `feat/issue-62-seccion-gimnasio`, the
+  AC1–AC4
+  acceptance criteria, the
+  DoD and the
+  `issue` block with the
+  #263 — https://github.com/gonzalitojh/Registro-personal/issues/263) |
+| `docs/adr-096-icono-seccion-gimnasio.md` | **New**: this document |
 
 Related issue: #263 — https://github.com/gonzalitojh/Registro-personal/issues/263

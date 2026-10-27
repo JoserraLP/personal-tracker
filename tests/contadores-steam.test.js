@@ -54,7 +54,7 @@ describe("timesCount (anotación manual)", () => {
   });
 
   it("la anotación 0 se trata como reseteo", () => {
-    // seenCount: 0 → cuenta el log (no se puede "ver menos")
+    // seenCount: 0 → counts the log (you cannot "watch fewer")
     expect(timesCount({ type: "movie", watchLog: ["2026-01-01"], seenCount: 0 })).toBe(1);
   });
 });
@@ -74,7 +74,7 @@ describe("etiquetas y badges", () => {
 
   it("sanitizeSeenCount: entero >= 1 o null", () => {
     expect(sanitizeSeenCount("3")).toBe(3);
-    expect(sanitizeSeenCount("2,5")).toBeNull(); // no es entero
+    expect(sanitizeSeenCount("2,5")).toBeNull(); // not an integer
     expect(sanitizeSeenCount("0")).toBeNull();
     expect(sanitizeSeenCount("")).toBeNull();
     expect(sanitizeSeenCount("-1")).toBeNull();
@@ -95,7 +95,7 @@ describe("api-steam.js — parte pura", () => {
   });
 
   it("ownedUrl construye el endpoint con el proxy configurado", () => {
-    if (!ownedUrl("76561198000000000")) return; // sin proxy en el tree
+    if (!ownedUrl("76561198000000000")) return; // no proxy in the tree
     expect(ownedUrl("76561198000000000")).toMatch(/^https:\/\/.+\/owned\?steamid=76561198000000000$/);
   });
 
@@ -110,7 +110,7 @@ describe("api-steam.js — parte pura", () => {
   });
 
   it("steamLoginUrl sin proxy devuelve null", () => {
-    // Sin proxy configurado no hay login; con proxy, apunta a /login.
+    // Without proxy configured there is no login; with proxy, points to /login.
     const url = steamLoginUrl();
     if (!url) return;
     expect(url).toMatch(/^https:\/\/.+\/login\?return_to=/);

@@ -1,8 +1,8 @@
 // =============================================================
-// Historial de lecturas de un libro: un array de tramos
-// { startedAt, finishedAt }. finishedAt es null mientras el
-// libro se está leyendo. Permite releer sin perder el registro
-// de lecturas anteriores.
+// Book reading history: an array of stretches
+// { startedAt, finishedAt }. finishedAt is null while the book
+// is being read. Allows re-reading without losing the record
+// of previous readings.
 // =============================================================
 
 export function startReading(readLog, date) {

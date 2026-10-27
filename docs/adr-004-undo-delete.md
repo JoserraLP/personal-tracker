@@ -1,142 +1,140 @@
-# ADR-004: Sistema de "Deshacer" al borrar elementos
+# ADR-004: "Undo" system for deleting items
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Contexto
-Al hacer clic en "Eliminar" en el modal de detalle de una película,
-serie o libro, el sistema ejecutaba la eliminación en Firestore
-inmediatamente tras una confirmación con `window.confirm()`. Esto
-tenía dos problemas:
+## Context
+When clicking "Delete" in the detail modal of a movie,
+series or book, the system executed the deletion in Firestore
+immediately after a confirmation with `window.confirm()`. This
+had two problems:
 
-1. **Falta de seguridad**: El diálogo nativo `window.confirm()` es
-   intrusivo y el usuario podía eliminar un elemento accidentalmente
-   sin posibilidad de recuperación.
-2. **UX pobre**: Una vez confirmado, el elemento desaparecía al
-   instante sin margen para rectificar.
+1. **Lack of safety**: The native `window.confirm()` dialog is
+   intrusive and the user could delete an item accidentally
+   with no possibility of recovery.
+2. **Poor UX**: Once confirmed, the item disappeared
+   instantly with no margin to reconsider.
 
-Se necesitaba un mecanismo que diera al usuario una segunda
-oportunidad antes de la eliminación definitiva, similar al patrón
-"Undo" que usan Gmail, Google Drive y la mayoría de las
-aplicaciones modernas.
+A mechanism was needed that gave the user a second
+chance before definitive deletion, similar to the "Undo" pattern
+used by Gmail, Google Drive and most
+modern applications.
 
-## Decisión
-Implementar un sistema de eliminación diferida con opción de
-"Deshacer" que reemplaza el flujo anterior. En lugar de borrar
-inmediatamente de Firestore, se programa la eliminación con un
-temporizador de 6 segundos mientras se muestra un aviso no intrusivo
-con un botón de "Deshacer".
+## Decision
+Implement a deferred deletion system with an
+"Undo" option that replaces the previous flow. Instead of deleting
+immediately from Firestore, deletion is scheduled with a
+6-second timer while a non-intrusive notice is shown
+with an "Undo" button.
 
-### Flujo nuevo
+### New flow
 ```
-Usuario hace clic en "Eliminar"
-  → Modal se cierra
-  → Aparece toast: "«Inception» se eliminará… [Deshacer]"
-  → Durante 6 segundos:
-    ├─ Usuario hace clic en "Deshacer" → se cancela la eliminación
-    │  y se muestra "Cancelado."
-    └─ Temporizador expira → se ejecuta deleteDoc en Firestore
-       y se muestra "Eliminado."
+User clicks "Delete"
+  → Modal closes
+  → Toast appears: "«Inception» will be deleted… [Undo]"
+  → For 6 seconds:
+    ├─ User clicks "Undo" → the deletion is cancelled
+    │  and "Cancelled." is shown
+    └─ Timer expires → deleteDoc is executed in Firestore
+       and "Deleted." is shown
 ```
 
-### Estrategia de aplazamiento
-Se optó por **no borrar de Firestore hasta que el temporizador
-expira**. Esto evita tener que implementar un mecanismo de
-"restauración" (que requeriría guardar los datos eliminados y
-reinsertarlos). Al mantener el ítem en Firestore durante la ventana
-de deshacer, la cancelación es trivial: simplemente no se hace nada.
+### Deferral strategy
+The choice was made to **not delete from Firestore until the timer
+expires**. This avoids having to implement a
+"restoration" mechanism (which would require saving the deleted data and
+re-inserting it). By keeping the item in Firestore during the undo
+window, cancellation is trivial: simply do nothing.
 
-### Gestión de cola
-Solo un toast de deshacer es visible a la vez. Cuando se programa
-una nueva eliminación mientras hay una pendiente:
+### Queue management
+Only one undo toast is visible at a time. When a new
+deletion is scheduled while another one is pending:
 
-- **Mismo ítem**: se reinicia el temporizador (útil si el usuario
-  cierra y reabre el modal).
-- **Ítem diferente**: la eliminación pendiente se ejecuta
-  inmediatamente y la nueva toma su lugar en el toast.
+- **Same item**: the timer is reset (useful if the user
+  closes and reopens the modal).
+- **Different item**: the pending deletion is executed
+  immediately and the new one takes its place in the toast.
 
-### Seguridad ante recarga de página
-Al recargar la página (evento `beforeunload`), todas las
-eliminaciones pendientes se cancelan automáticamente. Como el ítem
-nunca se eliminó de Firestore, no hay pérdida de datos.
+### Safety against page reload
+On page reload (`beforeunload` event), all pending
+deletions are cancelled automatically. Since the item
+was never deleted from Firestore, there is no data loss.
 
-### Eliminación del `window.confirm()`
-El diálogo de confirmación nativo se eliminó por completo. El toast
-de deshacer actúa como la "segunda oportunidad" del usuario, con una
-experiencia más fluida y moderna.
+### Removal of `window.confirm()`
+The native confirmation dialog was removed entirely. The undo
+toast acts as the user's "second chance", with a
+smoother, more modern experience.
 
-### Implementación técnica
-Se creó un nuevo módulo `js/undo-delete.js` que expone dos funciones:
+### Technical implementation
+A new module `js/undo-delete.js` was created that exposes two functions:
 
-- **`scheduleDeletion(item, uid, kind, ctx)`**: Programa la
-  eliminación con temporizador y muestra el toast de deshacer.
-- **`cancelAllDeletions()`**: Cancela todas las eliminaciones
-  pendientes (usado en `beforeunload`).
+- **`scheduleDeletion(item, uid, kind, ctx)`**: Schedules the
+  deletion with a timer and shows the undo toast.
+- **`cancelAllDeletions()`**: Cancels all pending
+  deletions (used in `beforeunload`).
 
-El módulo mantiene un `Map` interno (`pending`) con las
-eliminaciones pendientes. Cada entrada contiene el temporizador,
-los identificadores del ítem y una referencia a la función `hide()`
-del toast.
+The module keeps an internal `Map` (`pending`) with the
+pending deletions. Each entry contains the timer, the item's
+identifiers and a reference to the toast's `hide()` function.
 
-En `js/ui.js` se añadió la función `showUndoToast(title, onUndo)`
-que renderiza el toast con contenido HTML (escapado) y devuelve un
-objeto `{ hide }` para que el llamador controle el ciclo de vida.
-La función `showToast()` existente se modificó para limpiar
-cualquier toast de deshacer activo antes de mostrar un mensaje
-normal.
+In `js/ui.js` the function `showUndoToast(title, onUndo)` was added,
+which renders the toast with HTML content (escaped) and returns an
+object `{ hide }` so the caller controls the lifecycle.
+The existing `showToast()` function was modified to clear
+any active undo toast before showing a normal message.
 
-### Alternativas descartadas
+### Rejected alternatives
 
-- **Eliminar y restaurar**: Borrar el documento de Firestore
-  inmediatamente y conservar sus datos en memoria/localStorage para
-  restaurarlo si el usuario hace clic en "Deshacer". Descartado
-  porque es más complejo, requiere manejar IDs de documento y no
-  funciona si el usuario recarga la página.
-- **Soft delete con campo `deletedAt`**: Marcar el ítem como
-  eliminado con un timestamp y filtrarlo de las consultas.
-  Descartado porque requeriría cambiar el modelo de datos, las
-  reglas de seguridad y las suscripciones Firestore.
-- **Mantener `window.confirm()` junto al toast**: Añadiría una
-  doble confirmación innecesaria que empeora la UX.
-- **Diálogo modal personalizado**: Sobrecarga de interacción; el
-  toast no intrusivo es el estándar actual para operaciones
-  reversibles.
+- **Delete and restore**: Delete the document from Firestore
+  immediately and keep its data in memory/localStorage to
+  restore it if the user clicks "Undo". Rejected
+  because it is more complex, requires handling document IDs and
+  does not work if the user reloads the page.
+- **Soft delete with a `deletedAt` field**: Mark the item as
+  deleted with a timestamp and filter it out of queries.
+  Rejected because it would require changing the data model, the
+  security rules and the Firestore subscriptions.
+- **Keeping `window.confirm()` alongside the toast**: would add
+  an unnecessary double confirmation that worsens the UX.
+- **Custom modal dialog**: interaction overhead; the
+  non-intrusive toast is today's standard for reversible
+  operations.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- Los usuarios pueden rectificar eliminaciones accidentales durante
-  6 segundos.
-- La experiencia es más moderna y consistente con otras
-  aplicaciones (Gmail, Google Drive, etc.).
-- No hay pérdida de datos si el usuario recarga la página durante
-  la ventana de deshacer.
-- El cambio es transparente para el sistema de datos de Firestore
-  (no se modifica el modelo, las reglas de seguridad ni las
-  suscripciones).
-- Funciona igual para películas, series y libros sin cambios
-  adicionales.
+### Positive
+- Users can rectify accidental deletions for
+  6 seconds.
+- The experience is more modern and consistent with other
+  applications (Gmail, Google Drive, etc.).
+- No data loss if the user reloads the page during
+  the undo window.
+- The change is transparent to the Firestore data system
+  (the model, the security rules and the subscriptions are not
+  modified).
+- Works the same for movies, series and books with no additional
+  changes.
 
-### Negativas
-- Las eliminaciones no son inmediatas; hay una ventana de 6 segundos
-  antes de que el documento se borre realmente de Firestore.
-- Si el usuario cierra el navegador antes de que expire el
-  temporizador y el evento `beforeunload` no se dispara (ej. en
-  móviles), el ítem nunca se elimina. Esto es aceptable (no hay
-  pérdida de datos, solo un ítem que el usuario quería borrar y no
-  se borró).
+### Negative
+- Deletions are not immediate; there is a 6-second window
+  before the document is actually deleted from Firestore.
+- If the user closes the browser before the timer
+  expires and the `beforeunload` event does not fire (e.g. on
+  mobile), the item is never deleted. This is acceptable (there is
+  no data loss, just an item the user wanted to delete that was
+  not deleted).
 
-### Neutras
-- El toast existente (`#toast` en `index.html`) se reutiliza con
-  `innerHTML` en lugar de `textContent` para el modo deshacer.
-- Se añadieron dos clases CSS (`.toast--undo` y `.toast__btn`) que
-  usan variables de diseño existentes (`--teal-reel`, `--paper`).
+### Neutral
+- The existing toast (`#toast` in `index.html`) is reused with
+  `innerHTML` instead of `textContent` for undo mode.
+- Two CSS classes were added (`.toast--undo` and `.toast__btn`) that
+  use existing design variables (`--teal-reel`, `--paper`).
 
-## Archivos creados/modificados
-- `js/undo-delete.js` — Nuevo módulo gestor de eliminaciones con
-  deshacer (98 líneas).
-- `js/ui.js` — Añadida `showUndoToast()`, modificada `showToast()`
-  para limpiar estado de deshacer.
-- `js/modal-handlers.js` — `confirmDelete` rewrite usando
-  `scheduleDeletion`, eliminado `window.confirm()`.
-- `css/styles.css` — Añadidos `.toast--undo` y `.toast__btn`.
+## Files created/modified
+- `js/undo-delete.js` — New module managing deletions with
+  undo (98 lines).
+- `js/ui.js` — Added `showUndoToast()`, modified `showToast()`
+  to clear undo state.
+- `js/modal-handlers.js` — `confirmDelete` rewrite using
+  `scheduleDeletion`, removed `window.confirm()`.
+- `css/styles.css` — Added `.toast--undo` and `.toast__btn`.

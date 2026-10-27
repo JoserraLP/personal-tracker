@@ -1,282 +1,277 @@
-# ADR-059: Episodios de series: layout a 2 líneas, re-visionado y contador de visualizaciones (issue #133)
+# ADR-059: Series episodes: 2-line layout, re-watch and watch counter (issue #133)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-10
 
-## Contexto
+## Context
 
-La issue #133 («Arreglo de los episodios de las series») reporta dos
-problemas en la ficha de una serie, en la lista desplegable de episodios
-de cada temporada:
+Issue #133 («Arreglo de los episodios de las series») reports two
+problems in a series' profile, in each season's dropdown episode list:
 
-1. **El título del episodio se muestra «vertical»** en anchos pequeños:
-   con `flex-wrap: wrap` activo en `.episode-row__main` (que además
-   contenía el input de fecha), el título —con `min-width: 0` y
-   `overflow-wrap: anywhere`— quedaba aplastado y su texto se apilaba
-   línea a línea dentro de la fila, descentrándose del resto de la
-   línea.
-2. **No hay forma de registrar un re-visionado**: pulsar la casilla de
-   un episodio ya visto solo permitía desmarcarlo; no existía un
-   contador de visualizaciones por episodio ni una acción «lo he visto
-   de nuevo».
+1. **The episode's title shows "vertical"** at small widths:
+   with `flex-wrap: wrap` active in `.episode-row__main` (which also
+   contained the date input), the title —with `min-width: 0` and
+   `overflow-wrap: anywhere`— got squashed and its text stacked
+   line by line inside the row, drifting away from the rest of the line.
+2. **There is no way to register a re-watch**: pressing the checkbox of
+   an already-watched episode only allowed un-marking it; there was no
+   per-episode watch counter nor a "I watched it again" action.
 
-Estado anterior:
+Previous state:
 
-- El layout de cada fila era **una sola línea** (`episode-row__main` con
-  `flex-wrap: wrap`) con: checkbox, nº, título, badge de comunidad y el
-  input de fecha; la valoración con estrellas iba en una segunda línea
-  aparte (`.episode-rating` con `padding-left: 30px`).
-- El modelo de datos por episodio era `{ date, rating }` (y las
-  entradas más antiguas solo `"YYYY-MM-DD"` como string); `normalizeEntry`
-  normalizaba string → `{ date, rating: null }`.
-- Pulsar la casilla de un episodio **ya visto** lo desmarcaba
-  directamente, sin preguntar.
+- Each row's layout was **one line** (`episode-row__main` with
+  `flex-wrap: wrap`) with: checkbox, no., title, community badge and the
+  date input; the star rating went on a separate second line
+  (`.episode-rating` with `padding-left: 30px`).
+- The per-episode data model was `{ date, rating }` (and older
+  entries were only `"YYYY-MM-DD"` as a string); `normalizeEntry`
+  normalized string → `{ date, rating: null }`.
+- Pressing an already-watched episode's checkbox **unmarked it**
+  directly, without asking.
 
-La implementación está validada (QA PASS) y escaneada (seguridad PASS);
-el manual de usuario se actualizó en la misma tarea (regla 3 de
-AGENTS.md). Este ADR documenta la decisión a posteriori.
+The implementation is validated (QA PASS) and scanned (security PASS);
+the user manual was updated in the same task (rule 3 of
+AGENTS.md). This ADR documents the decision retrospectively.
 
 Related issue: #133 — https://github.com/gonzalitojh/Registro-personal/issues/133
 
-## Decisión
+## Decision
 
-### 1. UI: layout del episodio a 2 líneas en todos los anchos
+### 1. UI: episode layout at 2 lines at all widths
 
-Cada fila de episodio pasa a tener **dos líneas** fijas en cualquier
-ancho de pantalla:
+Each episode row moves to **two fixed lines** at any screen width:
 
-- **Línea 1** (`episode-row__main`): checkbox + nº (`E1`) + título
-  multilínea centrado vertical + badge de comunidad (TMDB).
-- **Línea 2** (`episode-row__meta`, nueva): estrellas de valoración +
-  input de fecha, con `padding-left: 30px` para alinearse con el
-  checkbox (el sangrado que antes llevaba `.episode-rating`, que pierde
-  su `padding-left`).
+- **Line 1** (`episode-row__main`): checkbox + no. (`E1`) + vertically
+  centered multiline title + community badge (TMDB).
+- **Line 2** (`episode-row__meta`, new): rating stars +
+  date input, with `padding-left: 30px` to align with the
+  checkbox (the indent previously carried by `.episode-rating`, which
+  loses its `padding-left`).
 
-**Causa raíz corregida en CSS, sin parches**: se elimina
-`flex-wrap: wrap` de `.episode-row__main` —el título ya no puede saltar
-a líneas propias apiladas— y el título multilínea se ajusta con
-`flex: 1; min-width: 0; overflow-wrap: anywhere` en
-`.episode-row__name` y `align-items: center` en el contenedor (centrado
-vertical). **No se usa `overflow-x: hidden` en `body`/`html`** ni ningún
-parche que enmascare el desbordamiento (regla 2 de AGENTS.md): se
-corrige la causa raíz. `overflow-wrap: anywhere` en `.episode-row__meta`
-(`flex-wrap: wrap` aquí sí permitido, segunda línea) evita que la fecha
-se salga en anchos mínimos.
+**Root cause corrected in CSS, with no patches**: `flex-wrap: wrap` is
+removed from `.episode-row__main` —the title can no longer jump to
+stacked lines of its own— and the multiline title is fitted with
+`flex: 1; min-width: 0; overflow-wrap: anywhere` in
+`.episode-row__name` and `align-items: center` on the container
+(vertical centering). **`overflow-x: hidden` on `body`/`html` is not used** nor
+any patch masking the overflow (AGENTS.md's rule 2): the root cause is
+fixed. `overflow-wrap: anywhere` in `.episode-row__meta`
+(`flex-wrap: wrap` allowed here, second line) prevents the date
+from spilling at minimum widths.
 
-### 2. Modelo de datos: campo `times` (nº de visualizaciones)
+### 2. Data model: `times` field (watch count)
 
-La entrada de episodio pasa de `{ date, rating }` a
-`{ date, rating, times }`, donde `times` es el nº de veces que se ha
-visto el episodio:
+The episode entry goes from `{ date, rating }` to
+`{ date, rating, times }`, where `times` is the number of times the
+episode has been watched:
 
 ```js
 // temporada -> episodio -> { fecha de la última vez visto, valoración 1-5 o null, veces visto }
 { "1": { "1": { date: "2026-01-05", rating: 4, times: 2 } } }
 ```
 
-- **`normalizeEntry()`** (en lectura, no en escritura) normaliza los
-  datos legacy sin mutar el original: un string (`"2026-01-05"`) →
-  `{ date, rating: null, times: 1 }`, y un objeto con `date` pero sin
-  `times` → `{ ...entry, times: 1 }`. Los objetos que ya tienen `times`
-  se devuelven tal cual.
-- **Sin migración de datos ni bump de versión de backup**: los datos en
-  Firebase conservan el formato que tengan; `export-backup` serializa
-  `watched` tal cual (las entradas sin `times` se exportan sin él) y
-  **la importación de backups antiguos queda cubierta por
-  `normalizeEntry`** en el punto de lectura. Cero riesgo de pérdida o
-  reescritura de datos.
+- **`normalizeEntry()`** (on read, not write) normalizes legacy
+  data without mutating the original: a string (`"2026-01-05"`) →
+  `{ date, rating: null, times: 1 }`, and an object with `date` but
+  without `times` → `{ ...entry, times: 1 }`. Objects already having
+  `times` return as-is.
+- **No data migration nor backup version bump**: the data in
+  Firebase keeps whatever format it has; `export-backup` serializes
+  `watched` as-is (entries without `times` export without it) and
+  **importing old backups is covered by
+  `normalizeEntry`** at the read point. Zero risk of data loss or
+  rewriting.
 
-### 3. Lógica de progreso (`js/tv-progress.js`)
+### 3. Progress logic (`js/tv-progress.js`)
 
-- **`markEpisodeSeenAgain(watched, season, ep, date)`** (nueva): marca
-  un episodio YA visto como visto de nuevo — pone la fecha en hoy (la
-  pasa el llamador), **conserva la valoración** (`existing.rating`) y
-  **suma 1 a `times`** (`(existing.times || 1) + 1`).
-- **`setEpisodeDate`** conserva `times` al cambiar la fecha
-  (`existing.times || 1`); **`setEpisodeRating`** conserva `times` al
-  re-valorar; **`setSeasonWatched`** (marcar toda la temporada)
-  conserva `rating` y `times` de los episodios que ya estaban vistos
-  (y pone `times: 1` a los nuevos).
-- **`computeProgress` NO cambia**: cuenta episodios con fecha, no
-  visualizaciones. Consecuencia deliberada: un re-visionado **no
-  dispara el estado «completado»** de la serie (ni lo desactiva) y
-  **los contadores por temporada no se inflan** (siguen contando
-  episodios distintos vistos, no veces).
-- **`startRewatch()`** sigue reseteando `watched = {}` (y archivando el
-  ciclo en `history`): **decisión de diseño — los contadores `times`
-  son por ciclo de visionado**, se reinician al empezar un rewatch. El
-  historial de ciclos anteriores sigue en `item.history`/`timesCompleted`.
+- **`markEpisodeSeenAgain(watched, season, ep, date)`** (new): marks an
+  ALREADY-watched episode as watched again — sets the date to today
+  (passed by the caller), **keeps the rating** (`existing.rating`) and
+  **adds 1 to `times`** (`(existing.times || 1) + 1`).
+- **`setEpisodeDate`** keeps `times` when changing the date
+  (`existing.times || 1`); **`setEpisodeRating`** keeps `times` when
+  re-rating; **`setSeasonWatched`** (marking the whole season) keeps
+  `rating` and `times` of episodes already watched
+  (and sets `times: 1` on new ones).
+- **`computeProgress` does not change**: it counts episodes with dates, not
+  watches. Deliberate consequence: a re-watch **does not trigger the
+  series' "completado" status** (nor clears it) and
+  **the per-season counters do not inflate** (they keep counting
+  distinct watched episodes, not times).
+- **`startRewatch()`** still resets `watched = {}` (and archives the
+  cycle in `history`): **design decision — the `times` counters are per
+  watch cycle**, they reset when a rewatch starts. Previous cycles'
+  history stays in `item.history`/`timesCompleted`.
 
-### 4. Nuevo diálogo de acciones de episodio ya visto
+### 4. New actions dialog for already-watched episodes
 
-En `index.html` se añade el armazón `#episode-actions-modal`
-(`modal modal--top hidden`, con `#episode-actions-modal-backdrop`,
-`#episode-actions-modal-close` y `#episode-actions-modal-content`), y el
-módulo `js/episode-actions-modal.js` (patrón `rating-modal.js`):
+In `index.html` the `#episode-actions-modal` frame is added
+(`modal modal--top hidden`, with `#episode-actions-modal-backdrop`,
+`#episode-actions-modal-close` and `#episode-actions-modal-content`), and the
+module `js/episode-actions-modal.js` (the `rating-modal.js` pattern):
 
-- `openEpisodeActionsModal({ title, subtitle, times })` devuelve una
-  **promesa que se resuelve con `"seen_again"`, `"unmarked"` o `null`**
-  (descartado); nunca rechaza. Es PURO: no persiste nada, el repintado
-  lo decide el llamador.
-- Usa `trapFocus` en `.modal__card` (mismo `focus-utils` que el modal de
-  valoración) y guarda `_previousActiveElement` para **restaurar el foco
-  a la casilla del episodio** al cerrar.
-- Los listeners de ✕ y backdrop se registran UNA vez al cargar el
-  módulo (armazón estático) y delegan en `closeEpisodeActionsModal()`
-  (idempotente: resuelve con `null` y no hace nada sin modal abierto).
-- **Prioridad de la tecla Escape** (handler global en
-  `modal-handlers.js`): `episode-actions > rating > item > notifs`. El
-  nuevo modal es el primero que se comprueba, antes que la ventana de
-  valoración.
+- `openEpisodeActionsModal({ title, subtitle, times })` returns a
+  **promise resolving with `"seen_again"`, `"unmarked"` or `null`**
+  (dismissed); never rejects. It is PURE: it persists nothing, the caller
+  decides the repainting.
+- It uses `trapFocus` on `.modal__card` (the same
+  `focus-utils` as the rating modal) and stores `_previousActiveElement` to
+  **restore focus to the episode's checkbox** on close.
+- The ✕ and backdrop listeners register ONCE on module load
+  (static frame) and delegate to `closeEpisodeActionsModal()`
+  (idempotent: resolves with `null` and does nothing without an open modal).
+- **Escape key priority** (global handler in
+  `modal-handlers.js`): `episode-actions > rating > item > notifs`. The
+  new modal is the first one checked, before the rating window.
 
-### 5. Comportamiento de la casilla (`js/ui.js`)
+### 5. Checkbox behavior (`js/ui.js`)
 
-- **Nuevo estado visual centralizado en `applyEpisodeRowState(row,
-  entry)`**: sincroniza checkbox, clase `is-watched`, fecha, fila 2
-  (`hidden` si no visto), contador y estrellas a partir de la entrada
-  real normalizada de `item.watched` (patrón issue #136: el repintado
-  SIEMPRE deriva de `item.watched`). Se usa en los tres puntos: cambio
-  de casilla, «Desmarcar todo» (que ahora repinta cada fila a su estado
-  real en lugar de vaciarla a mano) y el handler de la casilla.
-- **Rama `wasWatched` en el handler `change` del checkbox**: si el
-  episodio ya estaba visto, se restaura el check al instante (sin
-  parpadeo, checkbox `disabled` mientras dura el diálogo), se abre
-  `#episode-actions-modal` y según la elección: `"seen_again"` →
-  `onSetEpisodeSeenAgain` (que llama a `markEpisodeSeenAgain` con la
-  fecha de hoy), `"unmarked"` → `onSetEpisodeDate(..., null)`,
-  `null` → nada (la fila vuelve a su estado real). El foco se restaura a
-  la casilla en `finally` (se guarda `document.activeElement` antes de
-  abrir el diálogo, porque el navegador mueve el foco a `body` al
-  deshabilitar el checkbox). Si el episodio NO estaba visto, se mantiene
-  el flujo actual (confirmación de «sin estrenar» y ventana de
-  valoración posterior del lado de `modal-handlers`).
-- **`aria-label` dinámico**: con `times > 1` la casilla pasa a decir
+- **New visual state centralized in `applyEpisodeRowState(row,
+  entry)`**: syncs checkbox, `is-watched` class, date, row 2
+  (`hidden` if not watched), counter and stars from the real normalized
+  entry of `item.watched` (issue #136 pattern: repainting
+  ALWAYS derives from `item.watched`). It is used in three points: the
+  checkbox change, «Desmarcar todo» (which now repaints each row to its real
+  state instead of manually emptying it) and the checkbox's handler.
+- **`wasWatched` branch in the checkbox's `change` handler**: if the
+  episode was already watched, the check is restored instantly (no
+  flicker, checkbox `disabled` while the dialog lasts), the
+  `#episode-actions-modal` opens and depending on the choice: `"seen_again"`
+  → `onSetEpisodeSeenAgain` (calls `markEpisodeSeenAgain` with
+  today's date), `"unmarked"` → `onSetEpisodeDate(..., null)`,
+  `null` → nothing (the row goes back to its real state). Focus is restored
+  to the checkbox in `finally` (`document.activeElement` is stored before
+  opening the dialog, because the browser moves focus to `body` when
+  disabling the checkbox). If the episode was NOT watched, the current
+  flow is kept (the "not released" confirmation and the subsequent rating
+  window on the `modal-handlers` side).
+- **Dynamic `aria-label`**: with `times > 1` the checkbox says
   «E3 — Título: visto N veces. Pulsa para verlo de nuevo o desmarcarlo».
 
-### 6. Checkbox visual con contador
+### 6. Visual checkbox with counter
 
-Con `times > 1` el círculo del checkbox muestra el **nº de veces en
-lugar del tick ✓**: `renderEpisodeRows` añade `data-count="${times}"` a
-`.episode-checkbox-visual` (y `applyEpisodeRowState` lo añade/elimina al
-repintar), y la regla CSS
+With `times > 1` the checkbox's circle shows the **number of times instead
+of the tick ✓**: `renderEpisodeRows` adds `data-count="${times}"` to
+`.episode-checkbox-visual` (and `applyEpisodeRowState` adds/removes it
+when repainting), and the CSS rule
 `.episode-checkbox:checked ~ .episode-checkbox-visual[data-count]::after`
-sustituye el tick por `content: attr(data-count)` (tipografía mono,
-centrado, sin borde). Con `times === 1` se mantiene el tick clásico.
+replaces the tick with `content: attr(data-count)` (mono typography,
+centered, no border). With `times === 1` the classic tick remains.
 
-### 7. PWA y documentación
+### 7. PWA and documentation
 
-- **Bump PWA** `20260831` → `20260901` (un bump por PR que toca
+- **PWA bump** `20260831` → `20260901` (one bump per PR touching
   assets, cf. ADR-049): `js/config.js` (`APP_VERSION`), `index.html`
-  (`?v=20260901` ×3) y `service-worker.js` (`?v=20260901` ×6), y el
-  módulo **`js/episode-actions-modal.js` se añade a `STATIC_ASSETS`**
-  (es un módulo nuevo que el SW debe cachear).
-- **Manual de usuario** (`docs/manual-de-usuario.md`): nuevo bullet
-  «Volver a ver un episodio» en §4.3 «Ver y marcar episodios» explicando
-  el diálogo, la actualización de fecha, el +1 del contador y que la
-  casilla muestra el nº de veces en lugar de la marca ✓ (regla 3 de
-  AGENTS.md).
+  (`?v=20260901` ×3) and `service-worker.js` (`?v=20260901` ×6), and
+  the module **`js/episode-actions-modal.js` is added to
+  `STATIC_ASSETS`** (it is a new module the SW must cache).
+- **User manual** (`docs/manual-de-usuario.md`): new bullet
+  «Volver a ver un episodio» in §4.3 «Ver y marcar episodios» explaining
+  the dialog, the date update, the counter's +1 and that the
+  checkbox shows the number of times instead of the ✓ mark
+  (AGENTS.md's rule 3).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Usar `window.confirm` encadenado** para preguntar «¿Lo has visto de
-  nuevo o lo desmarcas?»: descartado — los `confirm` nativos son
-  modales del navegador sin estilo, rompen el patrón visual de la app y
-  no permiten `trapFocus` ni restaurar el foco a la casilla; el diálogo
-  propio reutiliza el armazón y los estilos de modal existentes.
-- **Marcar la serie completa automáticamente con re-visionados**
-  (p. ej. re-visionar el último episodio vuelve a «completado»):
-  descartado — `computeProgress` cuenta episodios distintos, no
-  visualizaciones; inflaría el progreso, dispararía estados
-  «completado» espurios y contaminaría los contadores por temporada.
-  El re-visionado solo actualiza `date` y `times` del episodio.
-- **Contar los re-visionados en el progreso** (sumar `times` en
-  `computeProgress`): descartado — el % de una serie es de episodios
-  distintos vistos; sumar veces rompería el progreso, «Siguiente:
-  T2E5» y el estado de la lista. El contador es informativo del
-  episodio, no métrica de progreso.
-- **Migración de datos / bump de versión de backup** para añadir
-  `times` a todas las entradas existentes: descartado — innecesario:
-  `normalizeEntry` cubre la lectura de datos legacy (string u objeto
-  sin `times` → `times: 1`) y `export-backup`/`import-backup` no
-  necesitan tocar el formato; migrar añadía riesgo de pérdida de datos
-  sin ningún beneficio funcional.
+- **Chained `window.confirm`s** to ask «¿Lo has visto de
+  nuevo o lo desmarcas?»: rejected — native `confirm`s are
+  unstyled browser modals, break the app's visual pattern and
+  do not allow `trapFocus` nor restoring focus to the checkbox; the
+  own dialog reuses the existing modal frame and styles.
+- **Marking the whole series automatically on re-watches**
+  (e.g. re-watching the last episode goes back to «completado»):
+  rejected — `computeProgress` counts distinct episodes, not
+  watches; it would inflate the progress, trigger spurious
+  «completado» states and pollute the per-season counters.
+  The re-watch only updates the episode's `date` and `times`.
+- **Counting re-watches in the progress** (summing `times` in
+  `computeProgress`): rejected — a series' % is of distinct watched
+  episodes; summing times would break the progress, «Siguiente:
+  T2E5» and the list's state. The counter is informative for the
+  episode, not a progress metric.
+- **Data migration / backup version bump** to add
+  `times` to all existing entries: rejected — unnecessary:
+  `normalizeEntry` covers reading legacy data (string or
+  object without `times` → `times: 1`) and
+  `export-backup`/`import-backup` need no format change; migrating added
+  data-loss risk with no functional benefit.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Layout estable a 2 líneas**: título multilínea centrado vertical,
-  fecha y estrellas en su propia línea, en cualquier ancho; se corrige
-  la causa raíz sin parches de desbordamiento (regla 2 de AGENTS.md).
-- **Re-visionados registrables**: el usuario puede indicar que ha
-  vuelto a ver un episodio sin perder la valoración ni tener que
-  desmarcarlo; el contador `times` queda visible en la casilla.
-- **Datos legacy protegidos**: `normalizeEntry` sin mutación +
-  exportación tal cual = importación de backups antiguos compatible sin
-  migración ni reescritura de datos.
-- **Progreso intacto**: `computeProgress` sin cambios — ni «completado»
-  espurio por re-visionados ni contadores por temporada inflados.
-- **Accesibilidad**: diálogo con `trapFocus`, Escape con prioridad,
-  `aria-label` informativo («visto N veces…») y foco restaurado a la
-  casilla.
-- **Manual al día**: regla 3 de AGENTS.md cumplida en la misma tarea
-  (bullet «Volver a ver un episodio» en §4.3).
-- **QA y seguridad PASS** antes de documentar: la decisión está
-  validada en la práctica.
+- **Stable 2-line layout**: vertically centered multiline title,
+  date and stars on their own line, at any width; the root cause is
+  fixed with no overflow patches (AGENTS.md's rule 2).
+- **Re-watches can be registered**: the user can indicate having
+  watched an episode again without losing the rating nor having to
+  un-mark it; the `times` counter becomes visible on the checkbox.
+- **Legacy data protected**: `normalizeEntry` without mutation +
+  as-is export = importing old backups compatible without
+  migration nor data rewriting.
+- **Progress intact**: `computeProgress` unchanged — neither spurious
+  «completado» from re-watches nor inflated per-season counters.
+- **Accessibility**: dialog with `trapFocus`, Escape with priority,
+  informative `aria-label` («visto N veces…») and focus restored to the
+  checkbox.
+- **Manual up to date**: AGENTS.md's rule 3 met in the same task
+  (the «Volver a ver un episodio» bullet in §4.3).
+- **QA and security PASS** before documenting: the decision is
+  validated in practice.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Cambio visible para el usuario**: la fila de episodio ocupa ahora
-  dos líneas (más espacio vertical en temporadas largas) y el checkbox
-  muestra un número en vez del tick para re-visionados; puede requerir
-  un momento de adaptación. Mitigado con la actualización del manual.
-- **Dos puntos de verdad para el estado visual de la fila**: el
-  render inicial (template en `renderEpisodeRows`) y el repintado
-  (`applyEpisodeRowState`) deben mantenerse en sincronía; un cambio en
-  uno sin el otro produciría estados visuales inconsistentes.
-- **Complejidad del handler de casilla**: la rama `wasWatched`
-  (restaurar check, abrir diálogo, repintar y restaurar foco) es el
-  camino más delicado del wiring; cualquier futura edición debe
-  conservar el patrón «repintado siempre derivado de `item.watched`».
-- **`times` no visible para series manuales antiguas**: los episodios
-  sin `times` en datos se leen como `times: 1` (normalización en
-  lectura); el contador solo es significativo para episodios vistos
-  más de una vez tras esta versión.
+- **Visible change for the user**: the episode row now takes
+  two lines (more vertical space in long seasons) and the checkbox
+  shows a number instead of the tick for re-watches; it may require an
+  adaptation moment. Mitigated by the manual's update.
+- **Two sources of truth for the row's visual state**: the
+  initial render (`renderEpisodeRows`' template) and the repainting
+  (`applyEpisodeRowState`) must stay in sync; changing one without the
+  other would produce inconsistent visual states.
+- **Checkbox handler complexity**: the `wasWatched` branch
+  (restore check, open dialog, repaint and restore focus) is the
+  wiring's most delicate path; any future edit must keep the
+  "repainting always derived from `item.watched`" pattern.
+- **`times` not visible for old manual series**: episodes
+  without `times` in data read as `times: 1` (read-time
+  normalization); the counter is only meaningful for episodes watched
+  more than once after this version.
 
-### Neutras
+### Neutral
 
-- **Contadores por ciclo de visionado**: `startRewatch()` resetea
-  `watched = {}` y con ello los `times`; el historial de ciclos se
-  conserva en `item.history`/`timesCompleted` (comportamiento previo,
-  sin cambios en esta tarea).
-- **Bump PWA de rutina**: `20260831` → `20260901` siguiendo la práctica
-  de un bump por PR (ADR-049); los navegadores purgan las cachés
-  anteriores en el siguiente `activate`. `js/episode-actions-modal.js`
-  entra en `STATIC_ASSETS` para quedar precacheado.
-- **Sin cambios en `export-backup.js` / `import-backup.js`**: el
-  formato de `watched` sigue siendo el mismo con el campo añadido; la
-  compatibilidad la da `normalizeEntry` en lectura.
-- **ADR históricos intactos**: los ADRs que describen el layout o el
-  modelo previos (p. ej. ADR-022, modal de valoración) son registro
-  histórico y **no se modifican**.
+- **Counters per watch cycle**: `startRewatch()` resets
+  `watched = {}` and thereby the `times`; the cycles' history stays in
+  `item.history`/`timesCompleted` (previous behavior, unchanged in this
+  task).
+- **Routine PWA bump**: `20260831` → `20260901` following the
+  one-bump-per-PR practice (ADR-049); browsers purge previous caches
+  on the next `activate`. `js/episode-actions-modal.js` enters
+  `STATIC_ASSETS` to be precached.
+- **No changes in `export-backup.js` / `import-backup.js`**: the
+  `watched` format stays the same with the added field; the
+  compatibility comes from `normalizeEntry` at read.
+- **Historical ADRs intact**: the ADRs describing the previous
+  layout or model (e.g. ADR-022, rating modal) are historical
+  records and are **not modified**.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `index.html` | **Modificado**: añadido el armazón del diálogo `#episode-actions-modal` (`modal--top`, backdrop, botón ✕ y contenedor de contenido); bump `?v=20260831` → `?v=20260901` (×3) |
-| `js/episode-actions-modal.js` | **Nuevo**: `openEpisodeActionsModal()` (patrón rating-modal) — promesa que resuelve `"seen_again"`\|`"unmarked"`\|`null`, `trapFocus`, foco restaurado a `_previousActiveElement`, `closeEpisodeActionsModal()` idempotente usada por ✕, backdrop y Escape |
-| `js/tv-progress.js` | **Modificado**: `normalizeEntry` añade `times: 1` a strings y objetos legacy sin mutar (y devuelve tal cual los que ya tienen `times`); nueva `markEpisodeSeenAgain` (+1 a `times`, fecha hoy, conserva `rating`); `setEpisodeDate`, `setEpisodeRating` y `setSeasonWatched` conservan `times`; comentario de cabecera del módulo actualizado. `computeProgress` y `startRewatch` sin cambios |
-| `js/ui.js` | **Modificado**: `renderEpisodeRows` — layout a 2 líneas (estrellas + fecha en `.episode-row__meta`), `data-count` y `aria-label` dinámico («visto N veces…») en la casilla, `data-episode-name` en la fila; nueva `applyEpisodeRowState(row, entry)` (repintado único derivado de `item.watched`, patrón issue #136) usada también en «Desmarcar todo»; rama `wasWatched` en el handler `change` del checkbox (diálogo de acciones, foco restaurado en `finally`) |
-| `js/modal-handlers.js` | **Modificado**: import y callback `onSetEpisodeSeenAgain` (llama a `markEpisodeSeenAgain` con `todayISO()`); prioridad de Escape actualizada: `episode-actions > rating > item > notifs` |
-| `ocio/ocio.css` | **Modificado**: eliminado `flex-wrap: wrap` de `.episode-row__main` (causa raíz del título vertical); nueva `.episode-row__meta` (flex, `gap`, `flex-wrap: wrap` permitido, `padding-left: 30px`, `.episode-date { flex-shrink: 0 }`); `.episode-rating` pierde el `padding-left`; regla `.episode-checkbox:checked ~ .episode-checkbox-visual[data-count]::after` con `content: attr(data-count)` (contador en lugar del tick); `.eam-body` para el cuerpo del diálogo (`overflow-wrap: anywhere`) |
-| `js/config.js` | **Modificado**: `APP_VERSION` `20260831` → `20260901` |
-| `service-worker.js` | **Modificado**: bump `?v=20260831` → `?v=20260901` en los 6 assets versionados de `STATIC_ASSETS`; añadido `./js/episode-actions-modal.js` a `STATIC_ASSETS` |
-| `docs/manual-de-usuario.md` | **Modificado**: nuevo bullet «Volver a ver un episodio» en §4.3 «Ver y marcar episodios» (diálogo, fecha a hoy, +1 al contador, casilla con nº de veces en lugar de ✓) — regla 3 de AGENTS.md |
-| `tasks/task-issue-133.json` | Task file de la tarea (title/description, plan de cambios, criterios de aceptación y bloque `issue` con la issue #133) |
-| `docs/adr-059-episodios-series-revision-y-contador.md` | **Nuevo**: este documento |
+| `index.html` | **Modified**: the `#episode-actions-modal` dialog's frame added (`modal--top`, backdrop, ✕ button and content container); bump `?v=20260831` → `?v=20260901` (×3) |
+| `js/episode-actions-modal.js` | **New**: `openEpisodeActionsModal()` (rating-modal pattern) — promise resolving `"seen_again"`\|`"unmarked"`\|`null`, `trapFocus`, focus restored to `_previousActiveElement`, idempotent `closeEpisodeActionsModal()` used by ✕, backdrop and Escape |
+| `js/tv-progress.js` | **Modified**: `normalizeEntry` adds `times: 1` to legacy strings and objects without mutating (and returns as-is those already having `times`); new `markEpisodeSeenAgain` (+1 to `times`, date today, keeps `rating`); `setEpisodeDate`, `setEpisodeRating` and `setSeasonWatched` keep `times`; module header comment updated. `computeProgress` and `startRewatch` unchanged |
+| `js/ui.js` | **Modified**: `renderEpisodeRows` — 2-line layout (stars + date in `.episode-row__meta`), `data-count` and dynamic `aria-label` («visto N veces…») on the checkbox, `data-episode-name` on the row; new `applyEpisodeRowState(row, entry)` (single repainting derived from `item.watched`, issue #136 pattern) also used in «Desmarcar todo»; `wasWatched` branch in the checkbox's `change` handler (actions dialog, focus restored in `finally`) |
+| `js/modal-handlers.js` | **Modified**: import and `onSetEpisodeSeenAgain` callback (calls `markEpisodeSeenAgain` with `todayISO()`); Escape priority updated: `episode-actions > rating > item > notifs` |
+| `ocio/ocio.css` | **Modified**: `flex-wrap: wrap` removed from `.episode-row__main` (the vertical title's root cause); new `.episode-row__meta` (flex, `gap`, `flex-wrap: wrap` allowed, `padding-left: 30px`, `.episode-date { flex-shrink: 0 }`); `.episode-rating` loses its `padding-left`; the rule `.episode-checkbox:checked ~ .episode-checkbox-visual[data-count]::after` with `content: attr(data-count)` (counter instead of the tick); `.eam-body` for the dialog's body (`overflow-wrap: anywhere`) |
+| `js/config.js` | **Modified**: `APP_VERSION` `20260831` → `20260901` |
+| `service-worker.js` | **Modified**: bump `?v=20260831` → `?v=20260901` on the 6 versioned assets of `STATIC_ASSETS`; `./js/episode-actions-modal.js` added to `STATIC_ASSETS` |
+| `docs/manual-de-usuario.md` | **Modified**: new bullet «Volver a ver un episodio» in §4.3 «Ver y marcar episodios» (dialog, date to today, +1 to the counter, checkbox with the times' number instead of ✓) — AGENTS.md's rule 3 |
+| `tasks/task-issue-133.json` | Task file of the task (title/description, change plan, acceptance criteria and the `issue` block with issue #133) |
+| `docs/adr-059-episodios-series-revision-y-contador.md` | **New**: this document |
 
 Related issue: #133 — https://github.com/gonzalitojh/Registro-personal/issues/133

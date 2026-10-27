@@ -1,257 +1,264 @@
-# ADR-044: Hub de previews en /dev y reestructuración del despliegue multi-rama (issue #103)
+# ADR-044: Previews hub at /dev and restructuring of the multi-branch deployment (issue #103)
 
-> **OBSOLETO (ADR-106, 2026-10-24)**: el hub de previews y todo el
-> despliegue multi-rama desaparecieron con el cambio a "solo main"
-> (workflow `deploy-pages.yml`). Se conserva como histórico.
+> **OBSOLETE (ADR-106, 2026-10-24)**: the previews hub and the whole
+> multi-branch deployment disappeared with the switch to "main only"
+> (workflow `deploy-pages.yml`). Kept as historical.
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-07
 
-## Contexto
+## Context
 
-El ADR-036 introdujo el despliegue multi-rama en GitHub Pages vía
-`.github/workflows/deploy-all-branches.yml` y `scripts/build-pages-site.sh`:
-main en la raíz, cada rama no-default en `/<ruta-saneada>/`
-(`https://gonzalitojh.github.io/Registro-personal/<rama>/`). El ADR-041
-revisó después los triggers (push solo a `main`/`dev`, guard en `delete`,
-`configure-pages@v5` y reintentos de deploy), dejando intacta la estructura
-de rutas.
+ADR-036 introduced the multi-branch deployment on GitHub Pages via
+`.github/workflows/deploy-all-branches.yml` and
+`scripts/build-pages-site.sh`:
+main at the root, each non-default branch at
+`/<sanitized-route>/`
+(`https://gonzalitojh.github.io/Registro-personal/<branch>/`). ADR-041
+later reviewed the triggers (push only to `main`/`dev`, guard on
+`delete`, `configure-pages@v5` and deploy retries), leaving the route
+structure intact.
 
-La issue #103 pedía reestructurar esa estructura:
+Issue #103 asked to restructure that structure:
 
-1. Una **página simple**, desplegada en `/Registro-personal/dev`, que
-   simplemente tenga enlaces al resto de ramas.
-2. La rama `main` sigue desplegada en `/Registro-personal` (raíz, **sin
-   cambios**).
-3. El resto de ramas se desplegarían en `/Registro-personal/dev/<nombre de
-   rama>`, **incluida la rama `dev`**.
+1. A **simple page**, deployed at `/Registro-personal/dev`, that simply
+   has links to the rest of the branches.
+2. The `main` branch stays deployed at `/Registro-personal` (root, **no
+   changes**).
+3. The rest of the branches would be deployed at
+   `/Registro-personal/dev/<branch-name>`, **including the `dev` branch**.
 
-Es decir: la ruta `/dev/` pasa de ser el preview de la rama `dev` a ser un
-**hub de previews** con una página índice auto-generada.
+That is: the `/dev/` route stops being the `dev` branch's preview and
+becomes a **previews hub** with an auto-generated index page.
 
 Related issue: #103 — https://github.com/gonzalitojh/Registro-personal/issues/103
 
-## Decisión
+## Decision
 
-Reestructurar el despliegue multi-rama para convertir `/dev/` en un **hub de
-previews**:
+Restructure the multi-branch deployment to turn `/dev/` into a **previews
+hub**:
 
-- **`main`** sigue extrayéndose en la **raíz de `_site/`** (sin cambios;
-  las URLs de producción quedan intactas).
-- **`_site/dev/index.html`** es una **página índice simple auto-generada**
-  por el script (el hub de previews) con enlaces a todas las ramas
-  no-default (incluida `dev`) y a la raíz.
-- **Cada rama no-default** se extrae en `_site/dev/<ruta-saneada>/`
-  (incluida `dev` → `_site/dev/dev/`), en lugar de `_site/<ruta>/`.
+- **`main`** keeps being extracted to the **root of `_site/`** (unchanged;
+  the production URLs stay intact).
+- **`_site/dev/index.html`** is a **simple auto-generated index page**
+  produced by the script (the previews hub) with links to all
+  non-default branches (including `dev`) and to the root.
+- **Each non-default branch** is extracted into
+  `_site/dev/<sanitized-route>/`
+  (including `dev` → `_site/dev/dev/`), instead of `_site/<route>/`.
 
-### 1. Constante `HUB_DIR="dev"` en `scripts/build-pages-site.sh`
+### 1. Constant `HUB_DIR="dev"` in `scripts/build-pages-site.sh`
 
-El nombre del hub es fijo: `HUB_DIR="dev"`. Toda la construcción depende de
-esta constante (extracciones, checks y generación del índice), de modo que
-renombrar el hub futuro se reduce a cambiar una línea. Nota: `dev` es
-también el nombre de la rama de integración, que sanea a `dev` y se extrae
-en `_site/dev/dev/` (la propia rama dev tiene su preview como cualquier
-rama no-default, bajo el hub que lleva su mismo nombre).
+The hub's name is fixed: `HUB_DIR="dev"`. The whole build depends on
+this constant (extractions, checks and index generation), so renaming
+the hub later reduces to changing one line. Note: `dev` is
+also the integration branch's name, which sanitizes to `dev` and is
+extracted into `_site/dev/dev/` (the dev branch itself has its preview
+like any other non-default branch, under the hub bearing its same name).
 
-### 2. Generación del índice: `html_escape()` + `build_hub_index()`
+### 2. Index generation: `html_escape()` + `build_hub_index()`
 
-- **`html_escape()`**: escapa las cinco entidades estándar (`&`, `<`, `>`,
-  `"`, `'`) con `sed` antes de incrustar el texto visible en el HTML. Los
-  `href` usan rutas saneadas (solo `[A-Za-z0-9._-]` y `/`), pero también se
-  escapan por defensa en profundidad.
-- **`build_hub_index()`**: genera `_site/dev/index.html` como HTML
-  autocontenido (doctype, `lang="es"`, viewport, CSS mínimo con
-  `color-scheme: light dark`, títulos y enlaces con `overflow-wrap:
-  anywhere`). Recibe una línea por rama con el formato
-  `NOMBRE<TAB>ruta` (la ruta saneada **relativa al hub**, sin el prefijo
-  `dev/`) ya ordenadas.
-- **Determinismo byte-idéntico**: el HTML se acumula con `printf` línea a
-  línea, **sin timestamps ni fechas**. Dos builds del mismo conjunto de
-  ramas producen el mismo `index.html` byte a byte.
-- **Orden alfabético**: el índice se ordena por **nombre original** de rama
-  con `LC_ALL=C sort` (no por la ruta saneada).
-- **hrefs relativos al hub**: `../` para el enlace a la raíz (main) y
-  `<ruta-saneada>/` para cada rama. El texto visible es el **nombre
-  original** de la rama, escapado con `html_escape()`.
-- **Guard de cero ramas no-default**: `mkdir -p _site/dev` + `build_hub_index`
-  con entradas vacías producen un índice mínimo con solo el enlace a la
-  raíz; el build no falla si no hay ramas de trabajo.
+- **`html_escape()`**: escapes the five standard entities (`&`, `<`, `>`,
+  `"`, `'`) with `sed` before embedding the visible text into the HTML.
+  The `href`s use sanitized routes (only `[A-Za-z0-9._-]` and `/`), but
+  they are escaped too as defense in depth.
+- **`build_hub_index()`**: generates `_site/dev/index.html` as
+  self-contained HTML (doctype, `lang="es"`, viewport, minimal CSS with
+  `color-scheme: light dark`, headings and links with `overflow-wrap:
+  anywhere`). It receives one line per branch with the format
+  `NAME<TAB>route` (the sanitized route **relative to the hub**, without
+  the `dev/` prefix), already sorted.
+- **Byte-identical determinism**: the HTML is accumulated with `printf`
+  line by line, **without timestamps or dates**. Two builds of the same
+  set of branches produce the same `index.html` byte for byte.
+- **Alphabetical order**: the index is sorted by the branch's
+  **original name** with `LC_ALL=C sort` (not by the sanitized route).
+- **hrefs relative to the hub**: `../` for the link to the root (main) and
+  `<sanitized-route>/` for each branch. The visible text is the
+  branch's **original name**, escaped with `html_escape()`.
+- **Zero non-default branches guard**: `mkdir -p _site/dev` +
+  `build_hub_index` with empty entries produce a minimal index with only
+  the link to the root; the build does not fail when there are no work
+  branches.
 
-### 3. Checks de colisión actualizados a la nueva estructura
+### 3. Collision checks updated to the new structure
 
-Todos se ejecutan **antes de extraer** ramas y fallan con `::error::` +
+All run **before extracting** branches and fail with `::error::` +
 `exit 1`:
 
-- **(a) Duplicados de rutas completas**: dos ramas no-default cuyas rutas
-  saneadas completas (con prefijo `dev/`) coinciden (p. ej. `feat/a` y
-  `feat/a#x`), con mensaje claro de colisión.
-- **(b) Hub vs entradas top-level de main**: como **todas** las ramas
-  no-default comparten el primer segmento `HUB_DIR`, el check degenera a un
-  único caso: si la rama raíz (`origin/${DEFAULT_BRANCH}`) tiene una entrada
-  top-level llamada `dev` (fichero o directorio, detectada con
-  `git ls-tree`), el build falla con mensaje claro pidiendo **renombrar la
-  entrada `dev` de main**.
-- **(c) Nuevo, defensivo — colisión archivo/directorio con el índice**:
-  ninguna ruta bajo el hub puede empezar por `index.html`. Una rama llamada
-  `index.html` (o `index.html/foo`) escribiría `_site/dev/index.html` como
-  **directorio**, colisionando con el archivo índice del hub
-  (`_site/dev/index.html`). El check lo detecta antes de extraer y pide
-  renombrar la rama. Nota: el nombre de rama `.nojekyll` se sanea a
-  `nojekyll` (el saneo recorta `-`/`.` iniciales), por lo que no colisiona
-  con el `.nojekyll` del hub y no requiere check propio.
+- **(a) Duplicates of full routes**: two non-default branches whose full
+  sanitized routes (with the `dev/` prefix) coincide (e.g. `feat/a` and
+  `feat/a#x`), with a clear collision message.
+- **(b) Hub vs main's top-level entries**: since **all** non-default
+  branches share the first segment `HUB_DIR`, the check degenerates to a
+  single case: if the root branch (`origin/${DEFAULT_BRANCH}`) has a
+  top-level entry named `dev` (file or directory, detected with
+  `git ls-tree`), the build fails with a clear message asking to
+  **rename main's `dev` entry**.
+- **(c) New, defensive — file/directory collision with the index**: no
+  route under the hub may start with `index.html`. A branch named
+  `index.html` (or `index.html/foo`) would write `_site/dev/index.html`
+  as a **directory**, colliding with the hub's index file
+  (`_site/dev/index.html`). The check detects it before extraction and
+  asks to rename the branch. Note: a branch named `.nojekyll` sanitizes
+  to `nojekyll` (sanitization trims leading `-`/`.`), so it does not
+  collide with the hub's `.nojekyll` and does not need its own check.
 
-### 4. Extracción bajo el hub, `.nojekyll` y `strip_sensitive()` intactos
+### 4. Extraction under the hub, `.nojekyll` and `strip_sensitive()` intact
 
-Cada rama no-default se extrae en `_site/dev/<ruta-saneada>/` con
-`git archive`, se añade `.nojekyll` en la raíz, en el hub (`_site/dev/`) y
-en cada carpeta de rama (Pages sirve el contenido tal cual, sin Jekyll), y
-se aplica `strip_sensitive()` a raíz y a cada rama, **exactamente igual
-que documentaba el ADR-036** (defensa en profundidad: `.env`, `*.pem`,
+Each non-default branch is extracted into
+`_site/dev/<sanitized-route>/` with `git archive`, `.nojekyll` is added
+at the root, at the hub (`_site/dev/`) and
+in each branch's folder (Pages serves the content as-is, no Jekyll), and
+`strip_sensitive()` is applied to the root and to each branch, **exactly
+as ADR-036 documented** (defense in depth: `.env`, `*.pem`,
 `*.key`, `*.p12`, `*.pfx`, `*service-account*.json`, `credentials*.json`).
 
-### 5. Regeneración automática en cada build
+### 5. Automatic regeneration on every build
 
-El índice se regenera en **cada ejecución** del script: una rama nueva
-aparece en el hub automáticamente, y una rama borrada desaparece. El
-evento `delete` del workflow (que reconstruye **todo** el sitio, sin
-filtros de rama) garantiza que al borrar una rama su preview deja de
-servirse y se elimina del índice en el mismo build.
+The index is regenerated on **every run** of the script: a new branch
+appears in the hub automatically, and a deleted branch disappears. The
+workflow's `delete` event (which rebuilds the **whole** site, without
+branch filters) guarantees that when deleting a branch its preview stops
+being served and is removed from the index in the same build.
 
-### 6. Workflow sin cambios
+### 6. Workflow unchanged
 
-`.github/workflows/deploy-all-branches.yml` **no se toca**: los triggers
-(push a `main`/`dev`, `workflow_dispatch`, `delete` con guard
-`ref_type == 'branch'`), los reintentos y el paso `configure-pages@v5`
-documentados en el ADR-041 siguen intactos; el workflow continúa llamando
-al script sin ningún cambio.
+`.github/workflows/deploy-all-branches.yml` is **not touched**: the
+triggers (push to `main`/`dev`, `workflow_dispatch`, `delete` with the
+`ref_type == 'branch'` guard), the retries and the `configure-pages@v5`
+step documented in ADR-041 remain intact; the workflow keeps calling
+the script with no change.
 
-### 7. README y `.gitignore`
+### 7. README and `.gitignore`
 
-- **README sección 6** actualizada con la nueva estructura de rutas: hub
-  `/dev/` con índice auto-generado, ramas en `/dev/<rama>/`, la propia
-  `dev` en `/dev/dev/`, y la regeneración del índice en cada build (ramas
-  nuevas aparecen, borradas desaparecen).
-- **`.gitignore` nuevo** con `_site/`: el build local no debe committearse.
-  Es la mitigación del hallazgo MEDIUM del security scan (evitar que
-  `git add .` suba el build de Pages al repositorio).
+- **README section 6** updated with the new route structure: hub
+  `/dev/` with an auto-generated index, branches at `/dev/<branch>/`, `dev`
+  itself at `/dev/dev/`, and the index's regeneration on each build (new
+  branches appear, deleted ones disappear).
+- **New `.gitignore`** with `_site/`: the local build must not be
+  committed. It is the mitigation of the security scan's MEDIUM finding
+  (preventing `git add .` from uploading the Pages build to the
+  repository).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Índice estático commiteado a mano**: descartado — quedaría **obsoleto**
-  en cuanto se creara o borrara una rama: exigiría un commit y un merge
-  adicionales por cada cambio de ramas, y no cubre el caso «rama borrada
-  desaparece del índice» sin intervención manual.
-- **Índice con timestamps o fecha de generación**: descartado — rompe el
-  **determinismo**: dos builds del mismo conjunto de ramas producirían
-  bytes distintos, dificultando la comparación y las cachés.
-- **Mantener las URLs antiguas `/<rama>/`**: descartado — imposible con la
-  nueva estructura: el primer segmento de todas las ramas no-default es
-  ahora `dev`, y `dev/` está ocupado por el hub. Las URLs antiguas
-  (`/Registro-personal/<rama>/`) pasan a devolver **404** — comportamiento
-  esperado: el hub (`/dev/`) es el nuevo punto de entrada a los previews.
-- **Índice generado por la app en runtime**: descartado — la app no debe
-  conocer la lista de ramas ni el hub; es **infraestructura** del
-  despliegue y pertenece al script de build, no al código de la web.
-- **Enlazar `main` como una rama más de la lista**: descartado — main vive
-  en la raíz, no bajo el hub; se enlaza de forma destacada y separada al
-  inicio del índice con `href="../"` («main — raíz (producción)»), en
-  lugar de mezclarlo con el resto.
+- **Manually committed static index**: rejected — it would be **stale**
+  as soon as a branch were created or deleted: it would require an extra
+  commit and merge per branch change, and it does not cover the "deleted
+  branch disappears from the index" case without manual intervention.
+- **Index with timestamps or generation date**: rejected — it breaks
+  **determinism**: two builds of the same branch set would produce
+  different bytes, complicating comparison and caching.
+- **Keeping the old URLs `/<branch>/`**: rejected — impossible with the
+  new structure: the first segment of all non-default branches is
+  now `dev`, and `dev/` is occupied by the hub. The old URLs
+  (`/Registro-personal/<branch>/`) start returning **404** — expected
+  behavior: the hub (`/dev/`) is the new entry point to the previews.
+- **Index generated by the app at runtime**: rejected — the app must not
+  know the branch list nor the hub; it is **infrastructure** of
+  the deployment and belongs to the build script, not to the web's code.
+- **Linking `main` as just another branch in the list**: rejected — main
+  lives at the root, not under the hub; it is linked prominently and
+  separately at the start of the index with `href="../"` («main — raíz
+  (producción)»), instead of mixing it with the rest.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Hub de previews navegable**: una única URL estable (`/dev/`) lista
-  todas las ramas de trabajo con enlaces directos; el enlace a producción
-  (main) siempre está presente al inicio del índice.
-- **Índice siempre al día**: se regenera en cada build; ramas nuevas
-  aparecen y borradas desaparecen sin intervención manual (el evento
-  `delete` del workflow reconstruye todo el sitio).
-- **Determinismo**: sin timestamps, dos builds del mismo conjunto de ramas
-  producen un `index.html` byte-idéntico.
-- **URLs de producción intactas**: main sigue en la raíz; nada cambia para
-  el sitio público.
-- **Checks de colisión más estrictos**: el check (c) cierra la colisión
-  archivo/directorio con el índice, imposible de detectar con la estructura
-  anterior.
+- **Navigable previews hub**: a single stable URL (`/dev/`) lists
+  all work branches with direct links; the production link elsewhere
+  (main) is always present at the start of the index.
+- **Index always up to date**: regenerated on each build; new branches
+  appear and deleted ones disappear without manual intervention (the
+  workflow's `delete` event rebuilds the whole site).
+- **Determinism**: without timestamps, two builds of the same branch set
+  produce a byte-identical `index.html`.
+- **Production URLs intact**: main stays at the root; nothing changes for
+  the public site.
+- **Stricter collision checks**: check (c) closes the
+  file/directory collision with the index, impossible to detect with the
+  previous structure.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **URLs antiguas `/<rama>/` → 404**: cualquier enlace o bookmark de un
-  preview con la estructura anterior deja de funcionar. Es el
-  comportamiento esperado de la decisión (el hub `/dev/` es el nuevo punto
-  de entrada); no se añade redirección.
-- **Si `main` gana una entrada top-level `dev`**: el build falla con un
-  mensaje claro pidiendo renombrar la entrada de main (check b). Es un
-  bloqueo intencional: sin él, el hub y la entrada de main colisionarían
-  silenciosamente en el despliegue.
-- **Rama llamada `index.html` inviable**: una rama (o un primer segmento de
-  rama) que sane a `index.html` rompe el build con mensaje claro (check c);
-  hay que renombrarla. Caso límite improbable, pero ahora está detectado en
-  CI en lugar de corromper el despliegue.
+- **Old URLs `/<branch>/` → 404**: any link or bookmark of a preview with
+  the previous structure stops working. It is the decision's expected
+  behavior (the hub `/dev/` is the new entry point); no redirect is
+  added.
+- **If `main` gains a top-level `dev` entry**: the build fails with a
+  clear message asking to rename main's entry (check b). It is an
+  intentional block: without it, the hub and main's entry would silently
+  collide in the deployment.
+- **A branch named `index.html` is unviable**: a branch (or a branch's
+  first segment) that sanitizes to `index.html` breaks the build with a
+  clear message (check c); it must be renamed. An unlikely edge case, but
+  now detected in CI instead of corrupting the deployment.
 
-### Neutras
+### Neutral
 
-- **`docs/manual-de-usuario.md` sin cambios**: el cambio es interno
-  (infraestructura de despliegue); el usuario final no ve ninguna
-  diferencia de comportamiento, por lo que no aplica la obligación de
-  AGENTS.md de actualizar el manual (misma decisión que ADR-036 y ADR-041;
-  se verificó que el manual no menciona rutas de despliegue).
-- **Workflow sin cambios**: triggers, guard, reintentos y
-  `configure-pages@v5` se mantienen exactamente como los documentó el
-  ADR-041.
-- **La web de cada preview no cambia**: service worker, manifest y assets
-  relativos siguen funcionando igual desde su nueva base `/dev/<rama>/` (la
-  base dinámica de ADR-036 los hace agnósticos a la profundidad).
+- **`docs/manual-de-usuario.md` unchanged**: the change is internal
+  (deployment infrastructure); the end user sees no behavioral
+  difference, so AGENTS.md's obligation to update the manual does not
+  apply (same decision as ADR-036 and ADR-041;
+  it was verified that the manual does not mention deployment routes).
+- **Workflow unchanged**: triggers, guard, retries and
+  `configure-pages@v5` remain exactly as ADR-041 documented.
+- **Each preview's web does not change**: service worker, manifest and
+  relative assets keep working the same from their new base
+  `/dev/<branch>/` (ADR-036's dynamic base makes them depth-agnostic).
 
-## Nota de implementación
+## Implementation note
 
-- **Por qué `sed` en `html_escape()`**: en la expansión de patrones de
-  bash, `&` en el reemplazo se sustituye por el texto que casó con el
-  patrón: `"${s//</&lt;}"` produce `'<lt;'` (el `&` se convierte en el
-  literal `<` casado), no la entidad `&lt;`. En `sed`, en cambio, `\&` es
-  el carácter `&` literal, por lo que `sed 's/&/\&amp;/g; s/</\&lt;/g; ...'`
-  escapa correctamente. El comentario del script documenta este detalle.
-- **Por qué bucle + `printf` en lugar de heredoc con interpolación**: con
-  `set -u` y nombres de rama arbitrarios, un heredoc con variables (p. ej.
-  `<h1>${name}</h1>`) es frágil (una variable sin definir aborta, y el
-  sangrado/expansión de `$(...)` dentro del heredoc es delicado). Acumular
-  líneas con `printf '%s\n'` y comillas simples evita cualquier
-  interpolación accidental; el único punto de interpolación es el `li` de
-  cada rama, donde los valores ya pasan por `html_escape()`.
-- **Por qué el check (b) degenera a un único caso `dev`**: todas las ramas
-  no-default comparten el primer segmento (`HUB_DIR`), así que el bucle
-  sobre `NON_DEFAULT_PATHS` comprueba N veces el mismo valor. El mensaje de
-  error usa el primer segmento real (`'${first_segment}'`) y pide renombrar
-  la entrada homónima de main; en la práctica solo puede fallar con la
-  entrada `dev` (a menos que se cambie `HUB_DIR`).
-- **Por qué `.nojekyll` no requiere check**: el saneo recorta `-`/`.`
-  iniciales (`s/^[-.]+//` en `sanitize_segment`), así que una rama llamada
-  `.nojekyll` se convierte en `nojekyll` y no colisiona con el archivo
-  `.nojekyll` del hub. Lo mismo aplica a la raíz.
-- **Separador `TAB` en las entradas del índice**: `git` no permite
-  caracteres de control en los nombres de rama, así que el tab es un
-  separador seguro entre el nombre original y la ruta saneada.
-- **El orden del índice es por nombre original** (`LC_ALL=C sort` sobre
-  `NOMBRE<TAB>ruta`), no por ruta saneada: el texto visible es el nombre
-  real de la rama, que es lo que ordena el usuario espera ver.
-- El guard de cero ramas no-default: si `HUB_ENTRIES` está vacío,
-  `build_hub_index` recibe cero argumentos y genera el índice mínimo (solo
-  el enlace a la raíz); el `mkdir -p _site/dev` del paso 7b cubre el caso.
+- **Why `sed` in `html_escape()`**: in bash's pattern expansion, `&` in
+  the replacement is substituted by the text matching the pattern:
+  `"${s//</&lt;}"` produces `'<lt;'` (the `&` becomes the matched literal
+  `<`), not the `&lt;` entity. In `sed`, instead, `\&` is the literal `&`
+  character, so `sed 's/&/\&amp;/g; s/</\&lt;/g; ...'` escapes correctly.
+  The script's comment documents this detail.
+- **Why a loop + `printf` instead of a heredoc with interpolation**: with
+  `set -u` and arbitrary branch names, a heredoc with variables (e.g.
+  `<h1>${name}</h1>`) is fragile (an undefined variable aborts, and the
+  indentation/expansion of `$(...)` inside the heredoc is delicate).
+  Accumulating lines with `printf '%s\n'` and single quotes avoids any
+  accidental interpolation; the only interpolation point is each
+  branch's `li`, where the values already pass through `html_escape()`.
+- **Why check (b) degenerates to a single `dev` case**: all non-default
+  branches share the first segment (`HUB_DIR`), so the loop over
+  `NON_DEFAULT_PATHS` checks the same value N times. The error message
+  uses the real first segment (`'${first_segment}'`) and asks to rename
+  main's homonymous entry; in practice it can only fail with the
+  `dev` entry (unless `HUB_DIR` is changed).
+- **Why `.nojekyll` needs no check**: the sanitization trims leading
+  `-`/`.` (`s/^[-.]+//` in `sanitize_segment`), so a branch named
+  `.nojekyll` becomes `nojekyll` and does not collide with the hub's
+  `.nojekyll` file. The same applies to the root.
+- **`TAB` separator in the index's entries**: `git` does not allow
+  control characters in branch names, so the tab is a safe separator
+  between the original name and the sanitized route.
+- **The index's order is by original name** (`LC_ALL=C sort` over
+  `NAME<TAB>route`), not by sanitized route: the visible text is the
+  branch's real name, which is what the user watching the order expects
+  to see.
+- The zero non-default branches guard: if `HUB_ENTRIES` is empty,
+  `build_hub_index` receives zero arguments and generates the minimal
+  index (only the root link); step 7b's `mkdir -p _site/dev` covers the
+  case.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `scripts/build-pages-site.sh` | **Modificado**: `HUB_DIR="dev"`; nuevas funciones `html_escape()` y `build_hub_index()` (HTML autocontenido acumulado con `printf`, sin timestamps → determinismo byte-idéntico, orden `LC_ALL=C sort` por nombre original, hrefs relativos al hub); checks de colisión (a) duplicados con prefijo `dev/`, (b) hub vs entradas top-level de main, (c) nuevo defensivo `index.html`; extracción de ramas en `_site/dev/<saneada>/` con `.nojekyll` y `strip_sensitive()`; paso 7b genera el hub (con guard de cero ramas no-default); resumen actualizado |
-| `README.md` | **Modificado**: sección 6 con la nueva estructura de rutas — hub `/dev/` con índice auto-generado en cada build, ramas en `/dev/<rama>/`, `dev` en `/dev/dev/` |
-| `.gitignore` | **Nuevo**: `_site/` (el build local de Pages no debe ir a git; mitigación MEDIUM del security scan) |
-| `docs/adr-044-dev-preview-hub.md` | **Nuevo**: este documento |
-| `docs/adr-036-deploy-all-branches.md` | **Modificado**: nota de deprecación parcial al inicio (estructura de rutas `/<rama>/` sustituida por el hub `/dev/` de ADR-044); el resto queda intacto como histórico |
-| `.github/workflows/deploy-all-branches.yml` | **Sin cambios** (triggers intactos: push a `main`/`dev`, `workflow_dispatch`, `delete` con guard `ref_type == 'branch'`; sigue llamando al script) |
-| `docs/manual-de-usuario.md` | **Sin cambios** (cambio interno de infraestructura, no visible para el usuario final — misma decisión que ADR-036 y ADR-041) |
+| `scripts/build-pages-site.sh` | **Modified**: `HUB_DIR="dev"`; new functions `html_escape()` and `build_hub_index()` (self-contained HTML accumulated with `printf`, no timestamps → byte-identical determinism, `LC_ALL=C sort` order by original name, hrefs relative to the hub); collision checks (a) duplicates with the `dev/` prefix, (b) hub vs main's top-level entries, (c) new defensive `index.html`; branch extraction into `_site/dev/<sanitized>/` with `.nojekyll` and `strip_sensitive()`; step 7b generates the hub (with a zero non-default branches guard); summary updated |
+| `README.md` | **Modified**: section 6 with the new route structure — hub `/dev/` with an index auto-generated on each build, branches at `/dev/<branch>/`, `dev` at `/dev/dev/` |
+| `.gitignore` | **New**: `_site/` (the local Pages build must not go to git; MEDIUM mitigation of the security scan) |
+| `docs/adr-044-dev-preview-hub.md` | **New**: this document |
+| `docs/adr-036-deploy-all-branches.md` | **Modified**: partial deprecation note at the start (the `/<branch>/` route structure replaced by ADR-044's `/dev/` hub); the rest stays intact as historical |
+| `.github/workflows/deploy-all-branches.yml` | **Unchanged** (triggers intact: push to `main`/`dev`, `workflow_dispatch`, `delete` with the `ref_type == 'branch'` guard; it keeps calling the script) |
+| `docs/manual-de-usuario.md` | **Unchanged** (internal infrastructure change, not visible to the end user — same decision as ADR-036 and ADR-041) |
 
 Related issue: #103 — https://github.com/gonzalitojh/Registro-personal/issues/103

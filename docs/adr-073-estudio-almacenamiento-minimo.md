@@ -1,251 +1,270 @@
-# ADR-073: Estudio de almacenamiento mínimo en base de datos — se adopta el híbrido A2 + pasada mínima A5-a para una futura implementación (issue #183)
+# ADR-073: Minimum database storage study — the A2 + A5-a minimal-run hybrid is adopted for a future implementation (issue #183)
 
-## Estado
-Aceptado (decisión de estudio: define la estrategia a implementar en una issue
-futura; esta issue no implementa nada).
+## Status
+Accepted (a study decision: it defines the strategy to implement in a future
+issue; this issue implements nothing).
 
-## Fecha
+## Date
 2026-08-10
 
-## Contexto
+## Context
 
-La issue #183 pide **realizar un estudio, sin implementar nada**, de la
-posibilidad de hacer un guardado de **información mínima en base de datos**,
-de forma que la mayor parte de la información se extraiga directamente de las
-APIs (TMDB, Google Books, Open Library, IGDB). La propia issue plantea la
-pregunta central: ¿guardar solo el id y los datos de visionados/valoraciones
-sería demasiado poco (sobrecarga de APIs), o conviene guardar la información
-básica de las tarjetas y consultar las APIs al visualizar la información?
+Issue #183 asks to **carry out a study, without implementing anything**,
+on the possibility of a save of **minimal information in the database**,
+in such a way most of the information is pulled directly from the APIs
+(TMDB, Google Books, Open Library, IGDB). The issue itself poses
+the central question: would storing only the id and the watch/rating
+data be too little (an API overload), or is it better to store the cards'
+basic information and query the APIs when viewing the information?
 
-El punto de partida, verificado en el código real (sección 3 del estudio):
+The starting point, verified against the real code (study section 3):
 
-- **Arquitectura 100 % cliente**: Firebase Hosting, vanilla JS, PWA con
-  service worker (`js/firebase.js:7-29`), sin backend propio salvo el proxy
-  de IGDB (ADR-067). Los datos viven en Firestore con el modelo
-  `users/{uid}/movies|series|books|games` y `users/{uid}/notifications`
-  (`js/db.js:1-14` y `:33-38`).
-- **Guardado completo al alta**: películas/series/juegos persisten el
-  snapshot enriquecido de las APIs al añadir el ítem (snapshot de búsqueda +
-  `getMovieDetails`/`getTvExtraDetails`/`getGameDetails`), y **refresco
-  diario masivo** con política **truthy-only** (ADR-021) que consulta las
-  APIs por **todos** los ítems no manuales: películas, series (incluidas las
-  abandonadas) y libros de Open Library; los juegos no se refrescan. Un ítem
-  sin `releaseDate` quedaría `awaitingRelease` para siempre
-  (`isUnreleasedDate(null)` es true, `js/release.js:13-15`).
-- **Consumidores**: tarjetas, ficha modal, progreso de series, avisos de
-  estreno, amigos, feed, ICS, backup/restore, estadísticas y ordenación leen
-  casi todo del documento Firestore (sección 3.4); solo la ficha hace ya
-  llamadas en vivo (providers/similares, cacheadas 24 h en memoria,
+- A **100 % client architecture**: Firebase Hosting, vanilla JS, a PWA with
+  a service worker (`js/firebase.js:7-29`), no backend of its own except
+  IGDB's proxy (ADR-067). The data live in Firestore with the model
+  `users/{uid}/movies|series|books|games` and `users/{uid}/notifications`
+  (`js/db.js:1-14` and `:33-38`).
+- **Full save on creation**: movies/series/games persist the APIs'
+  enriched snapshot when the item is added (the search's snapshot +
+  `getMovieDetails`/`getTvExtraDetails`/`getGameDetails`), and there is a
+  **massive daily refresh** with a **truthy-only** policy (ADR-021) querying
+  the APIs for **all** non-manual items: movies, series (including
+  abandoned ones) and Open Library books; games do not refresh. An item
+  without a `releaseDate` would remain `awaitingRelease` forever
+  (`isUnreleasedDate(null)` is true, `js/release.js:13-15`).
+- **Consumers**: cards, the modal profile, series' progress, release
+  notices, friends, the feed, ICS, backup/restore, statistics and sorting
+  read almost everything from the Firestore document (section 3.4); only
+  the profile already makes live calls (providers/similar, 24 h cached,
   `js/api-movies.js:227-243`).
-- **Cachés existentes**: service worker con `networkFirst` para las APIs y
-  GET de Firestore (`service-worker.js:305-322`) y tope de 50 entradas en la
-  caché dinámica (`DYNAMIC_MAX_ENTRIES`, `:21`).
+- **Existing caches**: a service worker with `networkFirst` for the APIs
+  and Firestore GETs (`service-worker.js:305-322`) and a 50-entry cap in the
+  dynamic cache (`DYNAMIC_MAX_ENTRIES`, `:21`).
 
-**Por qué era necesario el estudio**: el coste actual (baseline A0, sección
-3.7 del estudio) es **proporcional al tamaño de la biblioteca** y crece con
-la cobertura total del ADR-021: ~445 llamadas a APIs/día/usuario (410 TMDB +
-~35 Open Library), ~120 escrituras Firestore/día, ~10.100 lecturas/día y
-~2,2 MB/usuario (480 ítems). Aunque hoy no se golpean los límites (Spark:
-50.000 lecturas/día, 20.000 escrituras/día, 1 GiB), el riesgo de sobrecargar
-las APIs con llamadas repetidas a TMDB/IGDB (4 req/s) es la preocupación
-explícita de la issue y justifica evaluar cuantitativamente qué conviene
-guardar.
+**Why the study was needed**: the current cost (the A0 baseline, study
+section 3.7) is **proportional to the library's size** and grows with
+ADR-021's full coverage: ~445 API calls/day/user (410 TMDB +
+~35 Open Library), ~120 Firestore writes/day, ~10,100 reads/day and
+~2.2 MB/user (480 items). Although the limits are not hit today
+(Spark: 50,000 reads/day, 20,000 writes/day, 1 GiB), the risk of
+overloading the APIs with repeated TMDB/IGDB calls (4 req/s) is
+the issue's explicit concern and justifies quantitatively evaluating what
+should be stored.
 
-El estudio ya está **realizado y validado (QA PASS)**:
-`docs/estudio-almacenamiento-minimo.md` (788 líneas, evidencia verificada con
-el código real y los límites oficiales de cada API consultados el
-2026-08-10). Su veredicto: **es factible y recomendable guardar menos
-información en Firestore, pero no hace falta llegar al extremo de guardar
-"solo el id"**. Este ADR documenta la decisión/conclusión a posteriori, como
-hicieron los ADR-065 y ADR-067 para sus estudios, y cumple la definición de
-done de `tasks/task-issue-183.json` («ADR documentando la decisión/conclusión
-del estudio (con 'Related issue: #183')»).
+The study is already **done and validated (QA PASS)**:
+`docs/estudio-almacenamiento-minimo.md` (788 lines, evidence verified
+against the real code and each API's official limits consulted on
+2026-08-10). Its verdict: **it is feasible and advisable to store less
+information in Firestore, but there is no need to go to the extreme of
+storing "only the id"**. This ADR documents the decision/conclusion
+retrospectively, as ADR-065 and ADR-067 did for their studies, and fulfills
+`tasks/task-issue-183.json`'s definition of done («ADR documentando
+la decisión/conclusión del estudio (with 'Related issue: #183')»).
 
 Related issue: #183 — https://github.com/gonzalitojh/Registro-personal/issues/183
 
-## Decisión
+## Decision
 
-**Se adopta el híbrido A2 (campos de tarjeta + campos de notificación en
-Firestore; detalles de ficha bajo demanda con caché) complementado con la
-pasada diaria mínima A5-a**, como estrategia para una futura issue de
-implementación — **fuera del alcance de esta issue**, que no implementa nada
-(secciones 4.2, 4.5 y 8 del estudio). Frente al statu quo supone, por usuario
-medio y día (secciones 6 y 7; todas las cifras son estimaciones declaradas en
-la sección 6):
+**The A2 hybrid is adopted (card fields + notification fields in
+Firestore; profile details on demand with a cache) complemented by the A5-a
+minimal daily run**, as the strategy for a future implementation
+issue — **out of this issue's scope**, which implements nothing
+(the study's sections 4.2, 4.5 and 8). Against the status quo it means, per
+average user and day (sections 6 and 7; all figures are estimates
+declared in section 6):
 
-- **Llamadas a APIs**: ~445 → **~125** (~-72 %); la pasada diaria pasa de
-  ~445 a **~70** (~-85 %).
-- **Escrituras Firestore**: ~120 → **~35** (~-70 %).
-- **Almacenamiento**: ~2,2 MB → **~0,9 MB** (~-59 %; Anexo A.1).
-- **Lecturas Firestore**: intactas (~10.100/día): dependen del nº de
-  documentos, no de los campos.
-- **Latencia de tarjetas**: instantánea y sin red en todas las alternativas
-  que guardan la tarjeta.
+- **API calls**: ~445 → **~125** (~-72 %); the daily run goes from
+  ~445 to **~70** (~-85 %).
+- **Firestore writes**: ~120 → **~35** (~-70 %).
+- **Storage**: ~2.2 MB → **~0.9 MB** (~-59 %; Annex A.1).
+- **Firestore reads**: intact (~10,100/day): they depend on the
+  documents' number, not the fields'.
+- **Cards' latency**: instant and offline-capable in all the alternatives
+  that store the card.
 
-### Campos a guardar SIEMPRE en Firestore (sección 8.1 del estudio)
+### Fields to ALWAYS store in Firestore (study section 8.1)
 
-| Grupo | Campos |
+| Group | Fields |
 |---|---|
-| Identidad + tarjeta | `externalId`, `type`, `title`, `year`, `coverUrl` |
-| Datos del usuario | `status`, `rating`, `notes`, `watchLog`, `watched` (+ `nextEpisode`, `firstWatchedAt`, `lastWatchedAt`, `timesCompleted`, `history`), `readLog`, `playLog`, `progress`, `manual` |
-| Avisos (notificaciones) | `releaseDate`, `firstAirDate`, `nextEpisodeToAir`, `nextEpisodeAirDate`, `seasonAirDates`, `awaitingRelease`, `releasedNoticedAt`, `lastNotifiedEpisode` |
+| Identity + card | `externalId`, `type`, `title`, `year`, `coverUrl` |
+| User's data | `status`, `rating`, `notes`, `watchLog`, `watched` (+ `nextEpisode`, `firstWatchedAt`, `lastWatchedAt`, `timesCompleted`, `history`), `readLog`, `playLog`, `progress`, `manual` |
+| Notices (notifications) | `releaseDate`, `firstAirDate`, `nextEpisodeToAir`, `nextEpisodeAirDate`, `seasonAirDates`, `awaitingRelease`, `releasedNoticedAt`, `lastNotifiedEpisode` |
 | Control | `manual`, `addedAt`, `updatedAt` |
-| Rating comunitario | `communityRating` (**decisión explícita**: la tarjeta lo muestra, `js/ui.js:46-53`; guardarlo evita una llamada por tarjeta y su frescura se recupera con *stale-while-revalidate* al abrir la ficha) |
-| Libros (excepción justificada) | `author`, `pages`, `description` |
+| Community rating | `communityRating` (**an explicit decision**: the card shows it, `js/ui.js:46-53`; storing it avoids a call per card and its freshness is recovered with *stale-while-revalidate* when opening the profile) |
+| Books (a justified exception) | `author`, `pages`, `description` |
 
-Excepción de libros: la tarjeta y la ficha de libro los pintan al instante y
-la ficha de libro no tiene llamada de detalle (Google Books/Open Library solo
-dan la descripción en la búsqueda); re-consultar la sinopsis en cada apertura
-añadiría llamadas por ítem sin valor.
+The books exception: the book's card and profile paint them
+instantly and
+the book profile has no detail call (Google Books/Open Library only
+give the description in the search); re-querying the synopsis on every opening
+would add per-item calls with no value.
 
-### Campos bajo demanda, con caché en memoria 24 h + `networkFirst` del SW (sección 8.2)
+### On-demand fields, with a 24 h in-memory cache + the SW's `networkFirst` (section 8.2)
 
-`overview`/`description` (no libros), `runtime`, `episodeRuntime`, `genres`,
+`overview`/`description` (not books), `runtime`, `episodeRuntime`, `genres`,
 `cast`, `director`, `creators`, `trailerUrl`, `collectionId/Name/Poster`
-(películas), `platforms`, `developers`, `publishers`, `esrbName`,
-`metacritic`, `playtime` (juegos). Todos solo se consumen en la ficha
-(`extraInfoHtml`, `js/ui.js:623-665`), que ya hace llamadas en vivo a
-`getWatchProviders`/`getSimilarMovies` con la caché 24 h existente
-(`js/modal-handlers.js:115` y `:126`).
+(movies), `platforms`, `developers`, `publishers`, `esrbName`,
+`metacritic`, `playtime` (games). They are all only consumed in the profile
+(`extraInfoHtml`, `js/ui.js:623-665`), which already makes live calls to
+`getWatchProviders`/`getSimilarMovies` with the existing 24 h cache
+(`js/modal-handlers.js:115` and `:126`).
 
-### Pasada diaria mínima A5-a (sección 4.5)
+### The A5-a minimal daily run (section 4.5)
 
-La pasada consulta la API **solo** para ítems `awaitingRelease`
-(películas/series/juegos sin estrenar) y **series en curso** con
-`nextEpisode` pendiente (detectar episodio nuevo y auto-standby, ADR-033),
-más los libros `/works/` sin sinopsis: ~65 TMDB + ~5 Open Library ≈ **~70
-llamadas/día** (vs 445), conservando el 100 % del sistema de avisos actual.
-La variante A5-d (pedir solo campos de notificación) equivale en la práctica
-a A5-a y no reduce más las llamadas por ítem, por lo que se asume A5-a.
+The run queries the API **only** for `awaitingRelease` items
+(unreleased movies/series/games) and **ongoing
+series** with a pending `nextEpisode` (detecting a new episode and
+auto-standby, ADR-033), plus `/works/` books without a synopsis: ~65
+TMDB + ~5 Open Library ≈ **~70 calls/day** (vs
+445), keeping 100 % of today's notice system. The A5-d variant (asking
+ only the notification fields) is practically
+equal to A5-a and does not reduce the per-item calls further, so
+A5-a is assumed.
 
-### Descarte con datos de la opción literal de la issue (sección 4.1)
+### The quantitative rejection of the issue's literal option (section 4.1)
 
-**Guardar solo `externalId` + datos de usuario/visionados (A1) se descarta
-cuantitativamente**: sin `title`/`coverUrl`/fechas en el documento, la app no
-pagina las tarjetas (`renderGrid`/`renderList` pintan el array completo,
-`js/ui.js:342-381` y `:455-498`), por lo que:
+**Storing only `externalId` + user/watch data (A1) is quantitatively
+rejected**: without `title`/`coverUrl`/dates in the document, the app does
+not paginate the cards (`renderGrid`/`renderList` paint the whole array,
+`js/ui.js:342-381` and `:455-498`), so:
 
-- Abrir la pestaña de películas = **~300 llamadas a TMDB** (una por tarjeta):
-  ~23 s con el pool 4 del daily-check, ~15 s con el límite de ~6 conexiones
-  del navegador por host.
-- Abrir la pestaña de videojuegos = **~30 llamadas a IGDB ≈ 7,5 s mínimos**
-  por el límite de 4 req/s; con los 3 usuarios simultáneos, 90 llamadas =
-  22,5 s.
-- Amigos = **M×N llamadas por visita** (~960 para 2 amigos de tamaño medio,
-  con ~15 s solo por los juegos); el feed añadiría lo mismo. La cuota se
-  dispara a nivel de cuenta API, compartida entre amigos.
-- **No ahorra la pasada de avisos**: sin `releaseDate`/`nextEpisodeToAir` en
-  BD, la pasada diaria seguiría llamando a TMDB por todos los ítems (~410
-  llamadas/día).
-- **Rompe el offline** de la PWA (el SW `networkFirst` no puede pintar
-  tarjetas sin red) y **degrada consumidores locales** (orden alfabético/año
-  en vivo, estadísticas, ICS).
+- Opening the movies tab = **~300 TMDB calls** (one per card):
+  ~23 s with the daily-check's pool
+  4, ~15 s with the browser's ~6-connections limit
+  per host.
+- Opening the video games tab = **~30 IGDB calls ≈
+  a 7.5 s minimum** due to the 4 req/s limit; with 3 simultaneous users,
+  90 calls =
+  22.5 s.
+- Friends = **M×N calls per visit** (~960 for 2 friends of medium size,
+  with ~15 s for the games alone); the feed would add the same. The quota
+  fires at the API-account level, shared among friends.
+- **It does not save the notice run**: with
+  no `releaseDate`/`nextEpisodeToAir` in the DB, the daily run would keep
+  calling TMDB for all the items (~410
+  calls/day).
+- **It breaks the PWA's offline mode** (the `networkFirst` SW cannot
+  paint cards without network) and **degrades local consumers**
+  (live alphabetical/year sorting, statistics, ICS).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **A1 — Solo `externalId` + datos de usuario, todo lo demás en vivo**
-  (sección 4.1): descartada con números (ver descarte anterior): colapsa la
-  UX con picos de 300 llamadas por pestaña y 960 por amigo, rompe offline y
-  no ahorra las llamadas del sistema de avisos.
-- **A3 — Almacenamiento solo local (IndexedDB/localStorage)** (sección 4.3):
-  descartada — rompe amigos y feed (leen los documentos de otros usuarios,
-  `firestore.rules:36-57`), el multi-dispositivo (la PWA usa Firestore como
-  única fuente compartida) y las notificaciones de estreno (la pasada diaria
-  compara fechas en la nube); backup/ICS/estadísticas pasarían a ser
-  por-dispositivo.
-- **A4 — Capa proxy / caché centralizada (tipo Worker IGDB, precedente
-  ADR-067)** (sección 4.4): descartada ahora — para 3 usuarios no compensa
-  (una ficha abierta por 2 amigos genera 2 llamadas igualmente; el ahorro
-  marginal no justifica operar un servicio nuevo y rompería la arquitectura
-  sin backend). Queda documentada como **opción futura si el grupo creciera**
-  (escenario M=10).
-- **A5-b — Sin pasada (solo *stale-while-revalidate* en ficha)** (sección
-  4.5): descartada — rompe los avisos: un ítem que el usuario nunca abre
-  nunca se avisaría.
-- **A5-c — Pasada semanal** (sección 4.5): descartada — retrasa hasta 7 días
-  los avisos de estreno/episodio; con M=3 usuarios el coste de A5-a ya es
-  bajo, no merece el riesgo de UX.
-- **A5-d — Pasada diaria solo campos de notificación** (sección 4.5): es en
-  la práctica A5-a (TMDB no tiene un endpoint «lite» de fechas); no aporta
-  una alternativa distinta.
+- **A1 — Only `externalId` + user data, everything else live**
+  (section 4.1): rejected with numbers (see the previous rejection): it
+  collapses the UX with spikes of 300 calls per tab and 960 per
+  friend, breaks offline and does not save the notice system's
+  calls.
+- **A3 — Local-only storage (IndexedDB/localStorage)** (section
+  4.3): rejected — it breaks friends and the feed (they read other users'
+  documents, `firestore.rules:36-57`), multi-device (the PWA uses
+  Firestore as the only shared source) and release notifications
+  (the daily run compares dates in the cloud); backup/ICS/statistics would
+  become per-device.
+- **A4 — A proxy / centralized cache layer (an IGDB Worker-like
+  one, precedent ADR-067)** (section 4.4): rejected now — for 3 users it
+  does not pay off (a profile opened by 2 friends generates 2 calls
+  anyway; the marginal saving does not justify running a new service and
+  it would break the no-backend architecture). It stays documented as the
+  **future option if the group grows**
+  (the M=10 scenario).
+- **A5-b — No run (only *stale-while-revalidate* in the profile)**
+  (section 4.5): rejected — it breaks the notices: an item the
+  user never opens would never be notified.
+- **A5-c — A weekly run** (section 4.5): rejected — it delays release/
+  episode notices by up to 7 days; with M=3 users A5-a's cost is already
+  low and does not merit the UX risk.
+- **A5-d — A daily run only with notification fields** (section
+  4.5): in practice it is A5-a (TMDB has no "lite" endpoint for dates);
+  it provides no distinct alternative.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Ahorro de costes** (por usuario medio y día): ~-72 % de llamadas a APIs
-  (con -85 % en la pasada diaria), ~-70 % de escrituras Firestore y ~-59 %
-  de almacenamiento, sin tocar las lecturas (secciones 6 y 7).
-- **Tarjetas, amigos, feed, ICS, backup y estadísticas siguen funcionando
-  sin llamadas a APIs**: todo lo que consumen está en el documento guardado
-  (sección 3.4).
-- **Aprovecha cachés ya existentes**: memoria 24 h (`js/api-movies.js:227-243`)
-  y `networkFirst` del service worker (`service-worker.js:305-313`) para las
-  fichas bajo demanda.
-- **Sin infraestructura nueva**: se mantiene la arquitectura 100 % cliente;
-  nada que desplegar ni vigilar.
-- **Offline conservado**: tarjetas siempre; fichas tras la primera visita
-  (patrón actual de la PWA, sección 3.5).
+- **Cost savings** (per average user and day): ~-72 % of API calls
+  (with -85 % in the daily run), ~-70 % of Firestore writes and ~-59 %
+  of storage, leaving the reads untouched (sections 6 and 7).
+- **Cards, friends, the feed, ICS, backup and statistics keep working
+  without API calls**: everything they consume is in the stored
+  document (section 3.4).
+- **It leverages existing caches**: the 24 h memory one
+  (`js/api-movies.js:227-243`)
+  and the service worker's `networkFirst`
+  (`service-worker.js:305-313`) for the profiles
+  on demand.
+- **No new infrastructure**: the 100 % client architecture is kept;
+  nothing to deploy or watch.
+- **Offline preserved**: cards always; profiles after the first visit
+  (the PWA's current pattern, section 3.5).
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Pérdida de frescura de metadatos en tarjetas/ficha** (portadas,
-  `communityRating`, colección, tráiler dejaron de curarse a diario; sección
-  8.3.1): mitigación obligada en la implementación — *stale-while-revalidate*
-  al abrir la ficha (`updateItem` de portada/rating, ~20 escrituras/día;
-  riesgos R1-R3 de la sección 9).
-- **Tope del service worker de 50 entradas** (`DYNAMIC_MAX_ENTRIES`): con 480
-  ítems la LRU expulsa pronto las respuestas de ficha; mitigación — caché de
-  detalles en IndexedDB por `externalId`+tipo y/o subir el tope (sección
-  8.3.3, riesgo R1).
-- **IGDB a 4 req/s**: el enriquecimiento bajo demanda de juegos debe
-  serializarse con **throttle ≤ 4 req/s** (reutilizando `mapConcurrent` de
-  `js/daily-check.js:80-96` o un semáforo; sección 8.3.5, riesgo R2).
-- **Backup/restore deja de incluir metadatos de ficha** (sinopsis, cast,
-  tráiler): un restore traería tarjetas sin detalles hasta abrir cada ficha;
-  aceptable si se re-enriquece al restaurar (sección 8.3.6).
-- **El botón «Sincronizar ahora» (ADR-021) pierde su alcance de curado
-  total**: habría que redefinirlo («revalidar pendientes de estreno»,
-  manteniendo el cooldown de 30 min; sección 8.3.7, riesgo R9).
-- **Migración de los documentos existentes** (~480×M con metadatos
-  sobrantes): obligatorio **coexistencia primero** (ignorar campos viejos) y
-  limpieza de campos solo tras validar las fichas bajo demanda; nunca borrar
-  antes (sección 8.3.8, riesgo R5).
-- **Los avisos de estreno requieren mantener la pasada mínima A5-a**: la
-  issue planteaba «no mantener una actualización de datos de base de datos»;
-  con A2+A5-a queda una pasada diaria, pero ~85 % más barata y limitada a los
-  ítems relevantes (sección 8.3.2). La «cero pasada» (A5-b) se rechaza.
-- **Fichas de amigos read-only**: si el amigo no abrió esa ficha, el lector
-  hará el fetch on-demand (cuota del lector) o verá solo la tarjeta —
-  degradación elegante documentada (sección 8.3.4).
+- **Loss of metadata freshness in cards/profile** (covers,
+  `communityRating`, collection, trailer stopped being healed
+  daily; section
+  8.3.1): a mandatory mitigation in the implementation — *stale-while-
+  revalidate* when opening the profile (the cover/rating's
+  `updateItem`, ~20 writes/day;
+  the risks R1-R3 of section 9).
+- **The service worker's 50-entry cap** (`DYNAMIC_MAX_ENTRIES`): with 480
+  items the LRU quickly evicts the profile's responses; mitigation — a
+  details cache in IndexedDB by `externalId`+type and/or raising the cap
+  (section 8.3.3, risk R1).
+- **IGDB at 4 req/s**: the games' on-demand enrichment must
+  serialize with a **throttle ≤ 4 req/s** (reusing `mapConcurrent` of
+  `js/daily-check.js:80-96` or a semaphore; section 8.3.5, risk
+  R2).
+- **Backup/restore stops including profile metadata** (synopsis, cast,
+  trailer): a restore would bring cards without details until opening each
+  profile; acceptable if re-enriched on restore (section
+  8.3.6).
+- **The "Sincronizar ahora" button (ADR-021) loses its full-healing
+  scope**: it would have to be redefined («revalidate pending
+  releases», keeping the 30 min cooldown; section 8.3.7, risk
+  R9).
+- **Migration of the existing documents** (~480×M with leftover
+  metadata): **coexistence first** is mandatory (ignore the old
+  fields) and field cleanup only after validating the profiles
+  on demand; never delete beforehand (section 8.3.8, risk R5).
+- **Release notices require keeping the A5-a minimal run**: the issue
+  asked about «not maintaining a database data update»;
+  with A2+A5-a there is a daily run, but ~85 % cheaper and limited to the
+  relevant items (section 8.3.2). The "zero run" (A5-b) is
+  rejected.
+- **Read-only friend profiles**: if the friend did not open that
+  profile, the reader makes the fetch on-demand (the reader's quota)
+  or sees only the card — a documented graceful
+  degradation (section 8.3.4).
 
-### Neutras
+### Neutral
 
-- **Sin cambios de UX ahora**: esta issue no implementa nada; la estrategia
-  queda fijada para la issue de implementación futura.
-- **El estudio queda como referencia**: `docs/estudio-almacenamiento-minimo.md`
-  (788 líneas, QA PASS) sirve de evidencia cuantitativa (modelo de la sección
-  6, límites de APIs de la sección 11) y de punto de partida para la
-  implementación (trabajo futuro esbozado en la sección 10: alta sin
-  enriquecimiento, ficha bajo demanda, throttle IGDB, pasada A5-a,
-  redefinición de «Sincronizar ahora», migración, manual de usuario y ADR-021).
-- **ADR-021 no se modifica** con esta decisión; su política actual sigue
-  vigente hasta la issue de implementación.
+- **No UX changes now**: this issue implements nothing; the strategy
+  is fixed for the future implementation issue.
+- **The study remains as a reference**: `docs/estudio-almacenamiento-minimo.md`
+  (788 lines, QA PASS) serves as quantitative evidence (section 6's
+  model, section 11's API limits) and as the
+  starting point for the implementation (the future work sketched in
+  section 10: creation without enrichment, the profile on demand, the
+  IGDB throttle, the A5-a run, the redefinition of "Sincronizar ahora",
+  migration, the user manual and ADR-021).
+- **ADR-021 is not modified** by this decision; its current policy
+  remains in force until the
+  implementation issue.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `docs/adr-073-estudio-almacenamiento-minimo.md` | **Nuevo**: este documento |
-| `docs/estudio-almacenamiento-minimo.md` | **Nuevo en esta issue**: estudio completo (788 líneas, QA PASS) cuya conclusión documenta este ADR — no se modifica |
-| `tasks/task-issue-183.json` | **Nuevo**: definición de done (criterio «ADR documentando la decisión/conclusión del estudio (con 'Related issue: #183')») que este ADR cumple |
+| `docs/adr-073-estudio-almacenamiento-minimo.md` | **New**: this document |
+| `docs/estudio-almacenamiento-minimo.md` | **New in this issue**: the full study (788 lines, QA PASS) whose conclusion this ADR documents — it is not modified |
+| `tasks/task-issue-183.json` | **New**: the definition of done (criterion "ADR documenting the study's decision/conclusion (with 'Related issue: #183')") that this ADR fulfills |
 
-**No se modifica ningún archivo de código**: la issue era «sin implementar
-nada» (criterio de aceptación n.º 8: no se toca `js/`, `css/`, `index.html`,
-`service-worker.js`, `firestore.rules`, `cloudflare/` ni `config`). Todas las
-rutas y líneas citadas en este ADR son evidencia del estado actual, verificada
-en el estudio (sección 3).
+**No code file is modified**: the issue was "without implementing
+anything" (its acceptance criterion no. 8: `js/`, `css/`, `index.html`,
+`service-worker.js`, `firestore.rules`, `cloudflare/` nor `config` are
+untouched). All the routes and lines cited in this ADR are evidence of the current
+state, verified in the study (section 3).
 
-Relacionado con: docs/estudio-almacenamiento-minimo.md
+Related to: docs/estudio-almacenamiento-minimo.md
 
 Related issue: #183 — https://github.com/gonzalitojh/Registro-personal/issues/183

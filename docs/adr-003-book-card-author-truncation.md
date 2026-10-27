@@ -1,113 +1,113 @@
-# ADR-003: Truncado de autores en tarjetas de libros
+# ADR-003: Author truncation on book cards
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Contexto
-Cuando un libro tiene muchos autores, la línea de metadatos
-("Autor1, Autor2, Autor3 … · 2024") se alarga horizontalmente
-y estira las tarjetas de la cuadrícula (`library-grid`), rompiendo
-la alineación del grid que usa `grid-template-columns: repeat(auto-fill, minmax(150px, 1fr))`.
-Esto obliga al usuario a desplazarse horizontalmente y desordena
-la biblioteca visualmente.
+## Context
+When a book has many authors, the metadata line
+("Author1, Author2, Author3 … · 2024") grows horizontally
+and stretches the cards in the grid (`library-grid`), breaking
+the grid alignment set by `grid-template-columns: repeat(auto-fill, minmax(150px, 1fr))`.
+This forces the user to scroll horizontally and visually
+disorders the library.
 
-Además, el título del libro también podía desbordarse en tarjetas
-con títulos muy largos.
+Additionally, the book title could also overflow in cards
+with very long titles.
 
-## Decisión
-Aplicar las siguientes técnicas CSS y HTML para mantener tarjetas
-de tamaño uniforme sin perder información:
+## Decision
+Apply the following CSS and HTML techniques to keep cards
+of uniform size without losing information:
 
-1. **CSS `text-overflow: ellipsis`** en `.item-card__meta` y
-   `.list-row__meta` para truncar visualmente la línea de autor/año
-   cuando es demasiado larga, mostrando puntos suspensivos (...).
+1. **CSS `text-overflow: ellipsis`** on `.item-card__meta` and
+   `.list-row__meta` to visually truncate the author/year line
+   when it is too long, showing an ellipsis (...).
 
-2. **CSS `-webkit-line-clamp: 2`** en `.item-card__title` para
-   limitar el título a un máximo de 2 líneas antes de truncar.
+2. **CSS `-webkit-line-clamp: 2`** on `.item-card__title` to
+   limit the title to a maximum of 2 lines before truncating.
 
-3. **`min-width: 0`** en `.item-card` (grid item) para que la
-   columna del grid pueda encogerse por debajo del tamaño del
-   contenido. Sin esto, los grid items tienen `min-width: auto`
-   por defecto y el `text-overflow: ellipsis` nunca se activa
-   porque el elemento nunca se ve forzado a ser más angosto.
+3. **`min-width: 0`** on `.item-card` (grid item) so the
+   grid column can shrink below the size of the
+   content. Without this, grid items default to `min-width: auto`
+   and `text-overflow: ellipsis` never activates
+   because the element is never forced to be narrower.
 
-4. **`min-width: 0`** en `.item-card__body` para evitar que el
-   contenido fuerce al contenedor flex (dentro del grid item) a
-   expandirse más allá del ancho de la columna.
+4. **`min-width: 0`** on `.item-card__body` to prevent the
+   content from forcing the flex container (inside the grid item) to
+   expand beyond the column width.
 
-   > **Nota**: Ambos `min-width: 0` son necesarios: uno a nivel
-   > grid item (`.item-card`) y otro a nivel flex child
-   > (`.item-card__body`). El primero permite que la columna del
-   > grid se encoja, y el segundo permite que el body flex se
-   > encoja dentro del card.
+   > **Note**: Both `min-width: 0` declarations are needed: one at
+   > grid item level (`.item-card`) and one at flex child level
+   > (`.item-card__body`). The former allows the grid column to
+   > shrink, and the latter allows the flex body to
+   > shrink inside the card.
 
-5. **Atributo HTML `title`** nativo en los elementos de título y
-   metadatos, tanto en vista cuadrícula como lista, para que el
-   contenido completo sea visible como tooltip del navegador al
-   hacer hover.
+5. **Native HTML `title` attribute** on the title and
+   metadata elements, in both grid and list views, so the
+   full content is visible as a browser tooltip on
+   hover.
 
-6. **`title` en el botón `.item-card__btn`** (capa absoluta que
-   cubre toda la tarjeta) con el título y autor completos, para
-   garantizar que el tooltip sea accesible en vista cuadrícula
-   donde el botón overlay intercepta los eventos del ratón.
+6. **`title` on the `.item-card__btn` button** (absolute layer that
+   covers the whole card) with the full title and author, to
+   guarantee the tooltip is accessible in grid view
+   where the overlay button intercepts mouse events.
 
-### Alternativas descartadas
+### Rejected alternatives
 
-- **Tooltip personalizado con JavaScript**: Complejidad adicional
-  innecesaria; el tooltip nativo (`title`) cubre el caso de uso
-  sin añadir dependencias ni lógica extra.
-- **Modal adicional para autores**: Sobrecarga de interacción para
-  un dato secundario; el detalle completo ya está disponible en el
-  modal de ficha del libro al hacer clic.
-- **Acortar el autor en JavaScript (mostrar solo primeros N
-  autores)**: Pérdida de información sin beneficio claro, y
-  requeriría cambios en la lógica de datos.
-- **Solo tooltip sin truncado**: No resuelve el problema de layout;
-  las tarjetas seguirían estirándose.
+- **Custom JavaScript tooltip**: unnecessary
+  extra complexity; the native tooltip (`title`) covers the use case
+  without adding dependencies or extra logic.
+- **Additional modal for authors**: interaction overhead for
+  secondary data; the full detail is already available in the
+  book detail modal on click.
+- **Shortening the author in JavaScript (showing only the first N
+  authors)**: loss of information without clear benefit, and
+  would require changes in the data logic.
+- **Tooltip only, no truncation**: does not solve the layout problem;
+  cards would still stretch.
 
-### Nota sobre tooltip en cuadrícula
-En vista cuadrícula, el botón `.item-card__btn` tiene
-`position: absolute; inset: 0` y cubre toda la tarjeta. Esto
-impide que los `title` de los elementos hijos se activen. Como
-solución, se añadió `title` directamente al botón con el título
-y autor completos.
+### Note about the tooltip in grid view
+In grid view, the `.item-card__btn` button has
+`position: absolute; inset: 0` and covers the whole card. This
+prevents the `title` of child elements from activating. As a
+workaround, `title` was added directly to the button with the full
+title and author.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- Las tarjetas mantienen tamaño uniforme independientemente de la
-  longitud del campo `author`.
-- La información completa es accesible por hover (tooltip nativo)
-  y permanentemente en el modal de detalle.
-- No hay cambios en la lógica de datos ni en el formato de
-  almacenamiento de autores.
-- Títulos largos se muestran hasta 2 líneas antes de truncar.
+### Positive
+- Cards keep a uniform size regardless of the
+  length of the `author` field.
+- The full information is accessible on hover (native tooltip)
+  and permanently in the detail modal.
+- No changes to the data logic or the author
+  storage format.
+- Long titles are shown up to 2 lines before truncating.
 
-### Negativas
-- El tooltip nativo del navegador no es personalizable
-  visualmente (estilo, animación, tiempo de aparición).
-- En vista cuadrícula, el tooltip del botón muestra título y
-  autor juntos, no por separado.
+### Negative
+- The browser's native tooltip is not visually customizable
+  (style, animation, appearance timing).
+- In grid view, the button tooltip shows title and
+  author together, not separately.
 
-### Neutras
-- Non-book items (movies, TV) no se ven afectados porque su
-  metadato "tipo · año" es siempre corto.
-- La vista de lista ya tenía truncado en `.list-row__title`;
-  solo se añadió el `title` attribute y truncado en el meta.
+### Neutral
+- Non-book items (movies, TV) are not affected because their
+  "type · year" metadata is always short.
+- The list view already had truncation on `.list-row__title`;
+  only the `title` attribute was added, plus truncation on the meta.
 
-## Archivos modificados
-- `ocio/ocio.css` — Añadido `min-width: 0` a `.item-card` (grid
-  item, la pieza clave que faltaba) y a `.item-card__body`,
-  `-webkit-line-clamp` a `.item-card__title`, y `text-overflow:
-  ellipsis` a `.item-card__meta` y `.list-row__meta`.
-  En las tarjetas de resultados de búsqueda (`.result-card`):
-  `min-width: 0` en `.result-card__body`, `text-overflow: ellipsis`
-  en `.result-card__title` y `.result-card__meta`.
-- `js/ui.js` — Añadidos atributos `title` a los elementos de
-  título y metadatos en `renderGrid()` y `renderList()`, y al
-  botón `.item-card__btn` en cuadrícula. También en
-  `renderSearchResults()` para `.result-card__title` y
+## Files modified
+- `ocio/ocio.css` — Added `min-width: 0` to `.item-card` (grid
+  item, the missing key piece) and to `.item-card__body`,
+  `-webkit-line-clamp` to `.item-card__title`, and `text-overflow:
+  ellipsis` to `.item-card__meta` and `.list-row__meta`.
+  On search result cards (`.result-card`):
+  `min-width: 0` on `.result-card__body`, `text-overflow: ellipsis`
+  on `.result-card__title` and `.result-card__meta`.
+- `js/ui.js` — Added `title` attributes to the title and metadata
+  elements in `renderGrid()` and `renderList()`, and to the
+  `.item-card__btn` button in grid view. Also in
+  `renderSearchResults()` for `.result-card__title` and
   `.result-card__meta`.
-- `js/global-search.js` — Añadidos atributos `title` a los
-  elementos `.global-search__item-title` y
-  `.global-search__item-meta`.
+- `js/global-search.js` — Added `title` attributes to the
+  `.global-search__item-title` and
+  `.global-search__item-meta` elements.

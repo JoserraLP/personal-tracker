@@ -1,49 +1,51 @@
-# ADR-050: Deploy explícito tras sesión, comentario en PR de iteración, eliminación del trigger pull_request y logs legibles en auto-resolve-issues (issue #126)
+# ADR-050: Explicit deploy after session, comment on the iteration PR, removal of the pull_request trigger and readable logs in auto-resolve-issues (issue #126)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-07
 
-## Contexto
+## Context
 
-El ADR-047 introdujo el workflow `.github/workflows/auto-resolve-issues.yml`: una
-sesión headless de OpenCode (agente `sdd-master`) resuelve automáticamente la
-issue más prioritaria del backlog, crea una rama y una PR contra `dev`, y el
-merge en `dev` disparaba el siguiente ciclo. El usuario reportó 4 problemas
+ADR-047 introduced the workflow `.github/workflows/auto-resolve-issues.yml`: a
+headless OpenCode session (agent `sdd-master`) automatically resolves the
+backlog's most prioritary issue, creates a branch and a PR against `dev`, and
+the merge into `dev` triggered the next cycle. The user reported 4 problems
 (issue #126):
 
-1. **El despliegue de Pages no se relanza tras una sesión exitosa**. Cuando el
-   push de la rama/PR lo hace el bot (`github-actions[bot]` con `GITHUB_TOKEN`),
-   los eventos `push` generados con ese token **no disparan** los triggers de
-   otros workflows (regla de GitHub Actions: los eventos creados con el
-   `GITHUB_TOKEN` del repo no crean nuevos runs, con la excepción de
-   `workflow_dispatch` y `repository_dispatch`). Antes el push lo hacía la
-   máquina local del usuario y sí se disparaba `deploy-all-branches`; ahora,
-   con el bot, los previews de Pages se quedan desactualizados hasta un
-   despliegue manual o un merge posterior.
-2. **En iteración no se comenta en la PR lo nuevo aplicado**: el agente
-   actualiza la PR con `gh pr edit`, pero quien revisa la PR no ve qué cambió
-   en la última iteración sin comparar commits.
-3. **El trigger `pull_request` provoca la ejecución continua de la action**:
-   PR mergeada en `dev` → se resuelve la siguiente issue → nueva PR → merge →
-   siguiente issue… un ciclo sin intervención manual que el usuario quiere
-   evitar. La resolución automática debe dispararse solo con issue nueva,
-   comentario en issue en curso o dispatch manual.
-4. **El log de la sesión es ilegible**: `--format json` emite eventos JSONL
-   crudos; se quiere una salida similar al cliente local (formato por defecto).
+1. **The Pages deployment does not relaunch after a successful session**. The
+   branch/PR push is made by the bot (`github-actions[bot]` with
+   `GITHUB_TOKEN`), and `push` events generated with that token **do not
+   trigger** other workflows' triggers (GitHub Actions rule: events created
+   with the repo's `GITHUB_TOKEN` do not create new runs, except
+   `workflow_dispatch` and `repository_dispatch`). Before, the push was made
+   by the user's local machine and `deploy-all-branches` did trigger; now,
+   with the bot, the Pages previews stay stale until a
+   manual deployment or a later merge.
+2. **In iteration there is no comment on the PR about what was newly
+   applied**: the agent updates the PR with `gh pr edit`, but whoever reviews
+   the PR does not see what changed in the last iteration without comparing
+   commits.
+3. **The `pull_request` trigger causes the action's continuous
+   execution**: PR merged into `dev` → the next issue is resolved → new PR →
+   merge → next issue… a cycle without manual intervention the user wants
+   to avoid. Automatic resolution must only trigger on a new issue, a
+   comment on an ongoing issue or a manual dispatch.
+4. **The session log is unreadable**: `--format json` emits raw JSONL
+   events; an output similar to the local client (default format) is
+   wanted.
 
 Related issue: #126 — https://github.com/gonzalitojh/Registro-personal/issues/126
 
-## Decisión
+## Decision
 
-Ampliar ADR-047 con cuatro correcciones en `.github/workflows/auto-resolve-issues.yml`:
+Expand ADR-047 with four fixes in `.github/workflows/auto-resolve-issues.yml`:
 
-### 1. Dispatch explícito de `deploy-all-branches` tras sesión exitosa
+### 1. Explicit dispatch of `deploy-all-branches` after a successful session
 
-Nuevo paso «Disparar despliegue deploy-all-branches (workflow_dispatch)» entre
-el paso de «Rollback en fallo de sesión» y el de «Resumen»:
+New step «Disparar despliegue deploy-all-branches (workflow_dispatch)» between
+the "Rollback on session failure" step and the "Summary" one:
 
 ```yaml
 - name: Disparar despliegue deploy-all-branches (workflow_dispatch)
@@ -56,121 +58,125 @@ el paso de «Rollback en fallo de sesión» y el de «Resumen»:
     echo "Dispatch enviado: revisa el run de deploy-all-branches en la pestaña Actions."
 ```
 
-- **Permiso nuevo**: `actions: write` en `permissions` del workflow (necesario
-  para lanzar `workflow_dispatch` de otro workflow con `gh workflow run`).
-- **`if` implícito `success()`**: el paso solo corre si la sesión terminó con
-  exit 0. Está **después** del rollback para que un fallo del propio dispatch
-  no re-evalúe ni `wip-save` ni el rollback (no hay best-effort ni trap: si el
-  dispatch falla, el run falla y el Resumen lo muestra).
-- **Sin `--ref`**: se usa la rama por defecto (`main`), donde el trigger
-  `workflow_dispatch` de `deploy-all-branches` ya existe (ADR-041); el workflow
-  construye todas las ramas con `fetch-depth: 0`, así que las ramas nuevas de
-  la sesión aparecen en el despliegue aunque `main` no se haya tocado.
-- **Por qué NO `workflow_run`**: el trigger `workflow_run` solo se activa si el
-  workflow fuente está publicado en la **rama por defecto** y depende del
-  evento de completación, que además no se genera para runs disparados por
-  `GITHUB_TOKEN` (misma restricción del problema 1). El `workflow_dispatch`
-  explícito **funciona de inmediato** desde el propio run, sin esperar
-  promoción ni eventos derivados del token del bot.
+- **New permission**: `actions: write` in the workflow's `permissions`
+  (needed to launch another workflow's `workflow_dispatch` with
+  `gh workflow run`).
+- **Implicit `success()` on `if`**: the step only runs if the session ended
+  with exit 0. It is **after** the rollback so a failure of the dispatch
+  itself does not re-evaluate `wip-save` or the rollback (no best-effort and
+  no trap: if the dispatch fails, the run fails and the Summary shows it).
+- **No `--ref`**: the default branch (`main`) is used, where
+  `deploy-all-branches`' `workflow_dispatch` trigger already exists
+  (ADR-041); the workflow builds all branches with `fetch-depth: 0`, so the
+  session's new branches appear in the deployment even if `main` has not
+  been touched.
+- **Why NOT `workflow_run`**: the `workflow_run` trigger only fires if the
+  source workflow is published on the **default branch** and depends on the
+  completion event, which is also not generated for runs triggered by
+  `GITHUB_TOKEN` (same restriction as problem 1). The explicit
+  `workflow_dispatch` **works right away** from the run itself, without
+  waiting for a promotion nor events derived from the bot's token.
 
-### 2. Comentario obligatorio en la PR en modo iteración
+### 2. Mandatory comment on the PR in iteration mode
 
-El prompt de la sesión (MODO ITERACIÓN, «PUBLICACIÓN CON PR EXISTENTE») exige
-ahora que, **tanto si se actualiza una PR existente (`gh pr edit`) como si se
-crea una PR nueva** en la iteración, el agente añada un comentario con
-`gh pr comment <NUM> --body "..."` que resuma lo nuevo aplicado: cambios,
-validaciones (aceptación + DoD), escaneo de seguridad y ADR. El contenido lo
-genera la propia sesión, adaptado a lo hecho.
+The session's prompt (ITERATION MODE, «PUBLICACIÓN CON PR EXISTENTE») now
+requires that, **both when updating an existing PR (`gh pr edit`) and when
+creating a new PR** in the iteration, the agent adds a comment with
+`gh pr comment <NUM> --body "..."` summarizing what was newly applied:
+changes, validations (acceptance + DoD), security scan and ADR. The content
+is generated by the session itself, adapted to what was done.
 
-También se añade una frase breve en el paso 5a del prompt normal (modo
-WIP-restore): si se actualiza una PR existente, comentarla igualmente con
-`gh pr comment` resumiendo lo nuevo.
+A brief sentence is also added in step 5a of the normal prompt (the
+WIP-restore mode): if an existing PR is updated, comment on it as well with
+`gh pr comment` summarizing what is new.
 
-### 3. Eliminación del trigger `pull_request`
+### 3. Removal of the `pull_request` trigger
 
-- `on: pull_request: types: [closed]` eliminado: la action ya NO se lanza al
-  fusionar PRs (ni contra `dev` ni contra ninguna rama).
-- El `if:` del job `resolve` pierde el término
-  `(github.event_name == 'pull_request' && merged && base.ref == 'dev')` y queda
-  con `issues`, `issue_comment` y `workflow_dispatch`.
-- Comentario de cabecera actualizado (se elimina el bullet de pull_request y la
-  NOTA de activación ya no menciona el merge ref: todos los triggers
-  automáticos usan la rama por defecto `main`).
-- Comentario del Caso C renombrado: `# ---- Caso C: issues (opened) → selección automática ----`.
-- Se **mantienen** los guards anti-PR (`!github.event.issue.pull_request`) en
-  los términos `issues`/`issue_comment` del `if:`.
+- `on: pull_request: types: [closed]` removed: the action is NO LONGER
+  launched when merging PRs (neither against `dev` nor any other branch).
+- The `resolve` job's `if:` loses the term
+  `(github.event_name == 'pull_request' && merged && base.ref == 'dev')` and keeps
+  `issues`, `issue_comment` and `workflow_dispatch`.
+- Header comment updated (the pull_request bullet is removed and the
+  activation NOTE no longer mentions the merge ref: all automatic triggers
+  use the default branch `main`).
+- Case C's comment renamed: `# ---- Caso C: issues (opened) → selección automática ----`.
+- The anti-PR guards (`!github.event.issue.pull_request`) are **kept** in
+  the `issues`/`issue_comment` terms of the `if:`.
 
-Consecuencia de diseño: el «ciclo continuo» de ADR-047 (merge → siguiente
-issue) deja de ser automático; la resolución se dispara con issue nueva,
-comentario en issue en curso o dispatch manual, y tras cada sesión exitosa el
-despliegue de Pages se relanza con el dispatch del punto 1.
+Design consequence: ADR-047's "continuous cycle" (merge → next
+issue) is no longer automatic; resolution triggers on a new issue,
+a comment on an ongoing issue or a manual dispatch, and after each
+successful session the Pages deployment is relaunched with point 1's
+dispatch.
 
-### 4. Log legible de la sesión
+### 4. Readable session log
 
-La invocación de `opencode run` sustituye `--format json` por `--format
-default`: la salida es similar al cliente local, legible en el log de CI. No se
-añade `--print-logs` y no se toca nada más: **ningún paso posterior parsea la
-salida** de la sesión (la sesión solo necesita su exit code, que ya se captura
-con `$?`).
+The `opencode run` invocation replaces `--format json` with `--format
+default`: the output is similar to the local client, readable in the CI
+log. No `--print-logs` is added and nothing else is touched: **no later
+step parses the session's output** (the session only needs its exit code,
+already captured with `$?`).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **`workflow_run` para relanzar el deploy**: descartado — depende de que el
-  workflow fuente esté en la rama por defecto y del evento de completación,
-  que no se genera para runs disparados por `GITHUB_TOKEN`; el dispatch
-  explícito funciona de inmediato.
-- **Mantener `pull_request: closed` con `base.ref == 'dev'`**: descartado —
-  es la causa del ciclo continuo no deseado (problema 3 de la issue #126).
-- **Seguir con `--format json` y documentar cómo leer los eventos**: descartado
-  — la issue pide explícitamente logs legibles; el formato por defecto no
-  afecta al flujo (nada parsea la salida).
-- **Comentar la PR solo cuando se actualiza una existente**: descartado — una
-  PR nueva de iteración también necesita el resumen de lo nuevo para el
-  revisor.
+- **`workflow_run` to relaunch the deploy**: rejected — it depends on the
+  source workflow being on the default branch and on the completion event,
+  which is not generated for runs triggered by `GITHUB_TOKEN`; the explicit
+  dispatch works right away.
+- **Keeping `pull_request: closed` with `base.ref == 'dev'`**: rejected —
+  it is the cause of the unwanted continuous cycle (issue #126's problem 3).
+- **Staying with `--format json` and documenting how to read the events**:
+  rejected — the issue explicitly asks for readable logs; the default
+  format does not affect the flow (nothing parses the output).
+- **Commenting on the PR only when updating an existing one**: rejected — a
+  new iteration PR also needs the summary of what is new for the
+  reviewer.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Pages siempre al día**: tras cada sesión exitosa, `deploy-all-branches` se
-  relanza automáticamente; los previews de las ramas nuevas de la sesión se
-  construyen sin depender de los push del bot (que no generan eventos).
-- **PRs de iteración autoexplicativas**: el revisor ve en el comentario de la
-  PR qué se validó y qué cambió en cada iteración.
-- **Fin del ciclo continuo no deseado**: la action solo se dispara con issue
-  nueva, comentario o dispatch manual; el usuario controla cuándo se resuelven
-  issues.
-- **Logs legibles**: la ejecución de la sesión se lee como en el cliente local.
+- **Pages always up to date**: after each successful session,
+  `deploy-all-branches` relaunches automatically; the session's new branches'
+  previews are built without depending on the bot's pushes (which generate no
+  events).
+- **Self-explanatory iteration PRs**: the reviewer sees in the PR's comment
+  what was validated and what changed in each iteration.
+- **End of the unwanted continuous cycle**: the action only fires on a new
+  issue, a comment or a manual dispatch; the user controls when issues are
+  resolved.
+- **Readable logs**: the session's run is read like in the local client.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **El ciclo «merge → siguiente issue» ya no es automático**: el backlog solo
-  se drena con issues nuevas, comentarios o dispatch manual (decisión
-  solicitada por el usuario).
-- **El dispatch depende del permiso `actions: write`**: si GitHub cambia la
-  política del token en el futuro, el paso fallaría; el fallo del dispatch
-  tiñe el run (no hay best-effort, a propósito: es señal visible de que el
-  despliegue no se relanzó).
+- **The "merge → next issue" cycle is no longer automatic**: the backlog only
+  drains with new issues, comments or a manual dispatch (a decision
+  requested by the user).
+- **The dispatch depends on the `actions: write` permission**: if GitHub
+  changes the token policy in the future, the step would fail; a dispatch
+  failure tinges the run (no best-effort, on purpose: it is a visible signal
+  that the deployment did not relaunch).
 
-### Neutras
+### Neutral
 
-- **`docs/manual-de-usuario.md` sin cambios**: cambios internos de CI, no
-  visibles para el usuario final de la web (AC6 de la tarea; no aplica la
-  regla 3 de AGENTS.md).
-- **`.github/workflows/deploy-all-branches.yml` sin cambios**: el trigger
-  `workflow_dispatch` ya existe en `main` (ADR-041) y el workflow ya construye
-  todas las ramas.
-- **Guards anti-PR y concurrency intactos**: `!github.event.issue.pull_request`
-  y `sdd-auto-resolver` con `cancel-in-progress: false` se mantienen.
+- **`docs/manual-de-usuario.md` unchanged**: internal CI changes, not
+  visible to the web's end user (the task's AC6; AGENTS.md's rule 3 does
+  not apply).
+- **`.github/workflows/deploy-all-branches.yml` unchanged**: the
+  `workflow_dispatch` trigger already exists on `main` (ADR-041) and the
+  workflow already builds all branches.
+- **Anti-PR guards and concurrency intact**: `!github.event.issue.pull_request`
+  and `sdd-auto-resolver` with `cancel-in-progress: false` are kept.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `.github/workflows/auto-resolve-issues.yml` | **Modificado**: eliminado el trigger `pull_request` de `on:` y del `if:` del job (con comentarios de cabecera/NOTA actualizados y Caso C renombrado); instrucción obligatoria `gh pr comment` en MODO ITERACIÓN y paso 5a; `--format json` → `--format default` en la sesión; permiso `actions: write`; nuevo paso «Disparar despliegue deploy-all-branches (workflow_dispatch)» entre rollback y resumen (`if: selected != 'NONE' && dry_run != 'true'`, sin `--ref` → rama por defecto) |
-| `docs/adr-050-auto-resolve-deploy-iteracion-triggers.md` | **Nuevo**: este documento (amplía ADR-047) |
-| `tasks/task-issue-126.json` | Task file de la tarea (title/description, plan de cambios C1–C4, criterios de aceptación AC1–AC6, DoD y bloque `issue` con la issue #126) |
-| `README.md` | **Modificado**: sección 6, punto 6 — la resolución ya NO se dispara al fusionar PRs (solo issue nueva, comentario en issue en curso o dispatch manual) y tras cada sesión exitosa se relanza automáticamente el despliegue Pages |
-| `docs/manual-de-usuario.md` | **Sin cambios** (cambio interno de infraestructura, no visible para el usuario final) |
+| `.github/workflows/auto-resolve-issues.yml` | **Modified**: the `pull_request` trigger removed from `on:` and from the job's `if:` (with updated header/NOTE comments and Case C renamed); mandatory `gh pr comment` instruction in ITERATION MODE and step 5a; `--format json` → `--format default` in the session; `actions: write` permission; new step «Disparar despliegue deploy-all-branches (workflow_dispatch)» between rollback and summary (`if: selected != 'NONE' && dry_run != 'true'`, no `--ref` → default branch) |
+| `docs/adr-050-auto-resolve-deploy-iteracion-triggers.md` | **New**: this document (expands ADR-047) |
+| `tasks/task-issue-126.json` | Task file of the task (title/description, change plan C1–C4, acceptance criteria AC1–AC6, DoD and the `issue` block with issue #126) |
+| `README.md` | **Modified**: section 6, point 6 — resolution is NO LONGER triggered on PR merge (only a new issue, a comment on an ongoing issue or a manual dispatch) and after each successful session the Pages deployment relaunches automatically |
+| `docs/manual-de-usuario.md` | **Unchanged** (internal infrastructure change, not visible to the end user) |
 
 Related issue: #126 — https://github.com/gonzalitojh/Registro-personal/issues/126

@@ -1,84 +1,84 @@
-# ADR-033: Paso automático a standby de series en curso sin actividad en el último año (issue #48)
+# ADR-033: Automatic standby transition for ongoing series with no activity in the last year (issue #48)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-05
 
-## Contexto
+## Context
 
-La web «Mi Registro» guarda en Firestore las series con un campo `status` que puede ser `pendiente`, `en_curso`, `completado`, `standby` o `abandonado`. Hasta ahora, **todos los cambios de estado eran manuales**: pausar (standby), abandonar o retomar una serie requería siempre la acción explícita del usuario. La comprobación diaria (`js/daily-check.js`, función `checkForUpdates`) se limitaba a refrescar los metadatos de TMDB una vez al día (datos faltantes, `nextEpisodeToAir`, `seasonAirDates`, backfill de `nextEpisodeAirDate`, avisos de estrenos) sin modificar jamás el estado de ningún ítem. Se verificó antes de implementar que no existía ningún cambio automático de estado en el código.
+The web «Mi Registro» stores series in Firestore with a `status` field that can be `pendiente`, `en_curso`, `completado`, `standby` or `abandonado`. Until now, **all status changes were manual**: pausing (standby), abandoning or resuming a series always required the user's explicit action. The daily check (`js/daily-check.js`, function `checkForUpdates`) was limited to refreshing TMDB metadata once a day (missing data, `nextEpisodeToAir`, `seasonAirDates`, backfill of `nextEpisodeAirDate`, release alerts) without ever modifying any item's status. It was verified before implementing that no automatic status change existed in the code.
 
-La issue #48 pide que las series que se empezaron a ver y se dejaron de lado pasen automáticamente a *Standby* cuando no haya actividad en el último año, con dos reglas explícitas:
+Issue #48 asks that series that were started watching and then left aside automatically move to *Standby* when there has been no activity in the last year, with two explicit rules:
 
-1. Si la serie está **esperando nuevos episodios para estrenar**, NO se debe mover (aunque todavía no tenga fecha de estreno).
-2. Si ya se han estrenado nuevos episodios, pero estos se estrenaron **hace menos de un año**, NO se debe mover.
-3. Criterio de actividad: tomar la fecha **más actual** entre la fecha de estreno del último episodio y la fecha de última visualización para comprobar si hay actividad en el último año.
+1. If the series is **waiting for new episodes to be released**, it must NOT be moved (even if it does not have a release date yet).
+2. If new episodes have already been released, but they were released **less than a year ago**, it must NOT be moved.
+3. Activity criterion: take the **most recent** date between the last episode's air date and the last watch date to check for activity in the last year.
 
 Related issue: #48 — https://github.com/gonzalitojh/Registro-personal/issues/48
 
-## Decisión
+## Decision
 
-Implementar el auto-standby por inactividad dentro de la comprobación diaria existente, mediante una **función pura** `shouldAutoStandby(show, today)` (exportada, `js/daily-check.js`) que decide si una serie debe pasar a standby, integrada en la misma pasada de `checkForUpdates` sin peticiones extra a la API.
+Implement auto-standby due to inactivity inside the existing daily check, via a **pure function** `shouldAutoStandby(show, today)` (exported, `js/daily-check.js`) that decides whether a series should move to standby, integrated into the same `checkForUpdates` run without extra API requests.
 
-### 1. Función pura `shouldAutoStandby(show, today)` (exportada)
+### 1. Pure function `shouldAutoStandby(show, today)` (exported)
 
-Es la única fuente de verdad de la decisión; recibe la serie y la fecha de hoy (`YYYY-MM-DD`) y devuelve `true` si debe pasar a standby:
+It is the decision's single source of truth; it takes the series and today's date (`YYYY-MM-DD`) and returns `true` if it should move to standby:
 
-1. **Solo status `"en_curso"`**: si `show.status !== "en_curso"` ⇒ `false`. Los estados `pendiente`, `completado`, `standby` y `abandonado` no se tocan (standby ya está pausado; el caso de uso es la serie empezada y abandonada de facto).
-2. **Regla 1 de la issue — próximo episodio sin estrenar**: si `isNextEpisodeUnreleased(show)` (fecha futura **o sin fecha**, criterio unificado de ADR-020/ADR-023/ADR-024) ⇒ `false`. La serie está «esperando nuevos episodios» y no debe moverse, aunque no tenga fecha de estreno todavía.
-3. **Reglas 2 y 3 de la issue — criterio de actividad**: se calcula `lastAirDate` como `getNextEpisodeAirInfo(show).airDate` **solo cuando ese episodio ya se emitió** (si el próximo episodio estuviera sin estrenar, el paso 2 ya habría devuelto `false`), y `lastWatched` como `show.lastWatchedAt`. La fecha de actividad es la **más actual** de ambas: `activity = max(lastAirDate, lastWatchedAt)`. Si `activity <= subtractDays(today, 365)` (hace más de un año) ⇒ `true` (mover a standby); si está dentro del último año ⇒ `false`.
-4. **Sin fechas conocidas — conservador**: si no existe ni `lastAirDate` ni `lastWatchedAt` ⇒ `false` (no se mueve).
+1. **Only status `"en_curso"`**: if `show.status !== "en_curso"` ⇒ `false`. The statuses `pendiente`, `completado`, `standby` and `abandonado` are not touched (standby is already paused; the use case is the series started and de facto abandoned).
+2. **Issue rule 1 — next episode not released**: if `isNextEpisodeUnreleased(show)` (future date **or without a date**, unified criterion of ADR-020/ADR-023/ADR-024) ⇒ `false`. The series is "waiting for new episodes" and must not move, even if it does not have a release date yet.
+3. **Issue rules 2 and 3 — activity criterion**: `lastAirDate` is computed as `getNextEpisodeAirInfo(show).airDate` **only when that episode already aired** (if the next episode were unreleased, step 2 would already have returned `false`), and `lastWatched` as `show.lastWatchedAt`. The activity date is the **most recent** of both: `activity = max(lastAirDate, lastWatchedAt)`. If `activity <= subtractDays(today, 365)` (more than a year ago) ⇒ `true` (move to standby); if within the last year ⇒ `false`.
+4. **Without known dates — conservative**: if neither `lastAirDate` nor `lastWatchedAt` exists ⇒ `false` (do not move).
 
-Comparaciones de strings `YYYY-MM-DD` (formato canónico del proyecto), sin manipulación de `Date` en la propia función.
+`YYYY-MM-DD` string comparisons (the project's canonical format), without `Date` manipulation inside the function itself.
 
-### 2. Helper `subtractDays(iso, days)` en `js/dates.js` (nuevo, exportado)
+### 2. Helper `subtractDays(iso, days)` in `js/dates.js` (new, exported)
 
-Resta días a una fecha `"YYYY-MM-DD"` y devuelve otra fecha en el mismo formato canónico. Usa **aritmética UTC** (`new Date(iso + "T00:00:00Z")`, `setUTCDate`/`toISOString`) para evitar desfases de zona horaria al cruzar medianoches locales; garantiza que el resultado sea directamente comparable como texto con las fechas almacenadas.
+Subtracts days from a `"YYYY-MM-DD"` date and returns another date in the same canonical format. It uses **UTC arithmetic** (`new Date(iso + "T00:00:00Z")`, `setUTCDate`/`toISOString`) to avoid timezone drifts crossing local midnights; it guarantees the result is directly comparable as text with the stored dates.
 
-### 3. Integración en `checkForUpdates` (`js/daily-check.js`)
+### 3. Integration in `checkForUpdates` (`js/daily-check.js`)
 
-- **Series no manuales**: dentro del bucle principal existente de series con datos TMDB, tras el backfill de `nextEpisodeAirDate`, se construye un `evaluatedShow` con los datos **frescos de la misma pasada** (`nextEpisodeToAir`, `seasonAirDates` y el `nextEpisodeAirDate` recién calculado) y se evalúa `shouldAutoStandby(evaluatedShow, today)`. Si mueve, se persiste `{ status: "standby", autoStandbyAt: today }` en el **mismo `updateItem`** que ya escribía el resto de actualizaciones de la serie (una sola escritura, sin peticiones extra).
-- **Series manuales en curso** (sin datos TMDB): un mini-bucle aparte, **sin red**, con los datos guardados en Firestore (la evaluación cae a `lastWatchedAt` si no hay fechas de emisión). Cada escritura va en su propio `try/catch` con **fail-open**: un error de escritura se loguea (`console.error`) y no aborta la pasada ni cuenta como fallo de API.
-- **Alcance**: solo series con `status === "en_curso"`. No se tocan `pendiente`/`completado`/`standby`/`abandonado`. **Sin notificaciones**: el cambio es visible en la lista (el filtro «Viendo» lo oculta; el usuario lo ve al filtrar por Standby).
-- **Trazabilidad**: el nuevo campo `autoStandbyAt` guarda la fecha (`YYYY-MM-DD`) en la que el sistema movió la serie a standby, distinguiendo pausas automáticas de manuales.
+- **Non-manual series**: inside the existing main loop for series with TMDB data, after the `nextEpisodeAirDate` backfill, an `evaluatedShow` is built with the data **fresh from the same run** (`nextEpisodeToAir`, `seasonAirDates` and the freshly computed `nextEpisodeAirDate`) and `shouldAutoStandby(evaluatedShow, today)` is evaluated. If it moves, `{ status: "standby", autoStandbyAt: today }` is persisted into the **same `updateItem`** that was already writing the rest of the series' updates (a single write, no extra requests).
+- **Manual ongoing series** (without TMDB data): a separate mini-loop, **without network**, with the data stored in Firestore (the evaluation falls back to `lastWatchedAt` when there are no air dates). Each write goes in its own `try/catch` with **fail-open**: a write error is logged (`console.error`) and does not abort the run nor count as an API failure.
+- **Scope**: only series with `status === "en_curso"`. `pendiente`/`completado`/`standby`/`abandonado` are not touched. **No notifications**: the change is visible in the list (the «Viendo» filter hides it; the user sees it when filtering by Standby).
+- **Traceability**: the new `autoStandbyAt` field stores the date (`YYYY-MM-DD`) on which the system moved the series to standby, distinguishing automatic pauses from manual ones.
 
-### 4. Decisión notoria: serie sin NINGUNA información de emisión
+### 4. Notorious decision: series with NO airing information at all
 
-Una serie sin `nextEpisodeToAir`, sin `seasonAirDates` y sin `nextEpisodeAirDate` (es decir, sin ninguna fecha de emisión conocida) **SÍ se mueve** si `lastWatchedAt` es antiguo: el criterio de la issue cae a la fecha de última visualización, que es la única actividad disponible. Para series **no manuales** este caso es casi imposible en la práctica, porque la pasada diaria rellena `seasonAirDates` con `null` y el backfill aporta `nextEpisodeAirDate`; para series **manuales** es el camino normal (no hay datos de TMDB que respalden «estrenos recientes»). Solo cuando no existe *ninguna* de las dos fechas (`lastAirDate` y `lastWatchedAt`) se aplica el criterio conservador de no mover.
+A series without `nextEpisodeToAir`, without `seasonAirDates` and without `nextEpisodeAirDate` (that is, with no known air date) **IS moved** if `lastWatchedAt` is old: the issue's criterion falls back to the last watch date, which is the only available activity. For **non-manual** series this case is almost impossible in practice, because the daily run fills `seasonAirDates` with `null` and the backfill provides `nextEpisodeAirDate`; for **manual** series it is the normal path (there is no TMDB data supporting "recent releases"). Only when neither of the two dates exists (`lastAirDate` and `lastWatchedAt`) is the conservative no-move criterion applied.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Evaluar solo con los datos guardados (también para series no manuales)**: descartado — el dato fresco de TMDB de la pasada diaria es la fuente de verdad para detectar «estrenos recientes»; evaluar con datos viejos movería por error series que ya retomaron emisión. Por eso las series no manuales se evalúan con `nextEpisodeToAir`/`seasonAirDates`/`nextEpisodeAirDate` frescos de la misma pasada, y solo las manuales (que no tienen datos TMDB) usan lo guardado.
-- **Ampliar el filtro del bucle principal para incluir series manuales**: descartado — meter las manuales en el bucle de series con API ensuciaría el flujo de red (llamaría a TMDB por series que no tienen `externalId`); el mini-bucle separado, sin red, mantiene cada flujo limpio.
-- **Año calendario en vez de 365 días**: descartado — «últimos 365 días» es más simple de calcular y de explicar, y el impacto de 1 día (p. ej. un estreno del 1 de enero del año anterior) es irrelevante para la decisión de pausar una serie.
-- **Notificar al usuario del cambio de estado**: descartado — la issue #48 no lo pide y el cambio es visible en la lista (la serie sale del filtro «Viendo» y aparece en el filtro «Standby»); además el campo `autoStandbyAt` da trazabilidad para consultas posteriores.
+- **Evaluating only with stored data (also for non-manual series)**: rejected — the fresh TMDB data of the daily run is the source of truth for detecting "recent releases"; evaluating with old data would erroneously move series that already resumed airing. That is why non-manual series are evaluated with fresh `nextEpisodeToAir`/`seasonAirDates`/`nextEpisodeAirDate` from the same run, and only manual ones (which have no TMDB data) use the stored data.
+- **Expanding the main loop's filter to include manual series**: rejected — putting manual series into the API series loop would dirty the network flow (it would call TMDB for series that have no `externalId`); the separate mini-loop, without network, keeps each flow clean.
+- **Calendar year instead of 365 days**: rejected — «the last 365 days» is simpler to compute and to explain, and the impact of 1 day (e.g. a release on January 1 of the previous year) is irrelevant to the decision to pause a series.
+- **Notifying the user of the status change**: rejected — issue #48 does not ask for it and the change is visible in the list (the series leaves the «Viendo» filter and appears in the «Standby» filter); in addition the `autoStandbyAt` field provides traceability for later queries.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- **Issue #48 resuelta**: las series en curso sin actividad en el último año (último estreno emitido o última visualización, la más actual) pasan automáticamente a standby en la comprobación diaria.
-- **Sin regresiones en series activas**: las series con próximo episodio sin estrenar (esperando nuevos episodios) y las que estrenaron en el último año no se mueven, según las reglas de la issue.
-- **Cero coste de red**: la decisión se calcula con los datos ya obtenidos por la pasada diaria (series no manuales) o con los datos guardados (series manuales, sin red); la escritura se añade al `updateItem` existente.
-- **Lógica testable**: `shouldAutoStandby` es una función pura y exportada; 14 casos de borde verificados en validación (fechas recientes no mueven, antiguas mueven, próximos episodios sin estrenar no mueven, umbral exacto de 1 año mueve, manuales funcionan, sin fechas no mueve, etc.). QA aprobado y escaneo de seguridad sin hallazgos (CLEAN).
-- **Robustez ante fallos**: los errores de escritura en el mini-bucle de manuales no abortan la pasada (fail-open), preservando el resto de la comprobación diaria.
+### Positive
+- **Issue #48 solved**: ongoing series without activity in the last year (last aired release or last watch, whichever is most recent) automatically move to standby in the daily check.
+- **No regressions in active series**: series with an unreleased next episode (waiting for new episodes) and those that released within the last year do not move, per the issue's rules.
+- **Zero network cost**: the decision is computed with the data already fetched by the daily run (non-manual series) or with stored data (manual series, without network); the write is added to the existing `updateItem`.
+- **Testable logic**: `shouldAutoStandby` is a pure, exported function; 14 edge cases verified in validation (recent dates do not move, old ones move, unreleased next episodes do not move, the exact 1-year threshold moves, manual ones work, without dates it does not move, etc.). QA approved and security scan with no findings (CLEAN).
+- **Robustness against failures**: write errors in the manual series mini-loop do not abort the run (fail-open), preserving the rest of the daily check.
 
-### Negativas
-- **Cambio de estado sin acción del usuario**: una serie puede pasar a standby «sola»; es el comportamiento pedido por la issue, y se mitiga porque no hay borrado de datos ni pérdida de progreso (el historial `watched` se conserva y la serie puede retomarse desde Standby).
-- **Dependencia de la exactitud de los datos**: si `lastWatchedAt` o el `airDate` del último episodio estuvieran corruptos o ausentes, la decisión se toma con la fecha disponible; el criterio conservador (sin ninguna fecha ⇒ no mover) limita el riesgo.
+### Negative
+- **Status change without user action**: a series can move to standby "by itself"; it is the behavior requested by the issue, and it is mitigated because there is no data deletion nor progress loss (the `watched` history is preserved and the series can be resumed from Standby).
+- **Dependence on data accuracy**: if `lastWatchedAt` or the last episode's `airDate` were corrupt or missing, the decision is made with the available date; the conservative criterion (no date at all ⇒ do not move) limits the risk.
 
-### Neutras
-- **Nuevo campo `autoStandbyAt`** en las series movidas automáticamente; distingue pausas automáticas de las manuales y da trazabilidad.
-- **`subtractDays` pasa a ser utilidad general** de `js/dates.js` (exportada), reutilizable por otras lógicas de umbrales de fechas.
-- **Sin cambios en UI**: el estado standby ya existía con su tratamiento visual y de filtros; no hay notificaciones ni textos nuevos (el manual de usuario ya fue actualizado por la implementación).
+### Neutral
+- **New field `autoStandbyAt`** in automatically moved series; it distinguishes automatic from manual pauses and provides traceability.
+- **`subtractDays` becomes a general utility** of `js/dates.js` (exported), reusable by other date-threshold logics.
+- **No UI changes**: the standby status already existed with its visual and filter treatment; there are no notifications or new texts (the user manual was already updated by the implementation).
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `js/daily-check.js` | Nueva función pura exportada `shouldAutoStandby(show, today)` (solo `en_curso`, próximo episodio sin estrenar ⇒ no mueve, `max(airDate del último episodio emitido, lastWatchedAt)` frente al umbral `subtractDays(today, 365)`, sin fechas ⇒ no mueve) y constante `AUTO_STANDBY_DAYS = 365`; integración en `checkForUpdates`: evaluación con datos frescos de la pasada para series no manuales (persistida en el mismo `updateItem` como `{ status: "standby", autoStandbyAt: today }`) y mini-bucle sin red para series manuales con fail-open |
-| `js/dates.js` | Nueva función exportada `subtractDays(iso, days)` con aritmética UTC y resultado en formato canónico `YYYY-MM-DD` |
-| `docs/adr-033-auto-standby.md` | **Nuevo**: este documento |
+| `js/daily-check.js` | New exported pure function `shouldAutoStandby(show, today)` (only `en_curso`, unreleased next episode ⇒ does not move, `max(airDate of the last aired episode, lastWatchedAt)` against the threshold `subtractDays(today, 365)`, no dates ⇒ does not move) and constant `AUTO_STANDBY_DAYS = 365`; integration in `checkForUpdates`: evaluation with fresh run data for non-manual series (persisted in the same `updateItem` as `{ status: "standby", autoStandbyAt: today }`) and a network-free mini-loop for manual series with fail-open |
+| `js/dates.js` | New exported function `subtractDays(iso, days)` with UTC arithmetic and result in the canonical `YYYY-MM-DD` format |
+| `docs/adr-033-auto-standby.md` | **New**: this document |
 
 Related issue: #48 — https://github.com/gonzalitojh/Registro-personal/issues/48

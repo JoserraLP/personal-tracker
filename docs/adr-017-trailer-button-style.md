@@ -1,59 +1,59 @@
-# ADR-017: Mejora visual del botón de tráiler
+# ADR-017: Visual improvement of the trailer button
 
-## Estado
-Implementado
+## Status
+Implemented
 
-## Contexto
+## Context
 
-En ADR-008 se implementó el soporte de tráilers desde TMDB, incluyendo la generación del HTML del botón mediante la función `trailerButtonHtml(item)` en `js/ui.js`. Esta función produce un enlace `<a>` con las clases BEM `.trailer-btn`, `.trailer-btn__icon` y `.trailer-btn__label`. Aunque la ADR-008 mencionaba que se habían añadido estilos CSS para estas clases, en realidad **nunca se llegaron a implementar**: no existía ninguna regla CSS para `.trailer-btn` ni sus variantes en `ocio/ocio.css` ni en ningún otro lugar.
+In ADR-008, trailer support from TMDB was implemented, including the generation of the button's HTML via the `trailerButtonHtml(item)` function in `js/ui.js`. This function produces an `<a>` link with the BEM classes `.trailer-btn`, `.trailer-btn__icon` and `.trailer-btn__label`. Although ADR-008 mentioned that CSS styles had been added for these classes, in reality **they were never implemented**: there was no CSS rule for `.trailer-btn` nor for its variants in `ocio/ocio.css` or anywhere else.
 
-Como resultado, el botón de «Ver tráiler» era funcional (abría correctamente el enlace de YouTube en una nueva pestaña), pero se renderizaba como un enlace de texto sin formato —sin fondo, sin padding, sin bordes redondeados—, rompiendo la coherencia visual con el resto de la interfaz. El icono ▶ y la etiqueta «Tráiler» aparecían como texto simple subrayado, indistinguibles de un enlace común.
+As a result, the "Ver tráiler" button was functional (it correctly opened the YouTube link in a new tab), but it rendered as a plain text link —no background, no padding, no rounded corners— breaking visual coherence with the rest of the interface. The ▶ icon and the "Tráiler" label appeared as plain underlined text, indistinguishable from a common link.
 
-El botón se muestra en tres modales distintos (detalle de película, detalle de serie, y modal de solo lectura de amigo), por lo que la ausencia de estilo afectaba a todas las vistas de detalle de la aplicación.
+The button is shown in three different modals (movie detail, series detail, and the friend read-only modal), so the lack of styling affected all detail views of the application.
 
-## Decisión
+## Decision
 
-Añadir estilos CSS completos para el botón de tráiler en `ocio/ocio.css`, transformándolo visualmente en un «chip» o «píldora» coherente con la paleta de colores y el sistema de diseño de la aplicación.
+Add complete CSS styles for the trailer button in `ocio/ocio.css`, visually transforming it into a "chip" or "pill" consistent with the application's color palette and design system.
 
-### Diseño visual
+### Visual design
 
-| Propiedad | Valor | Justificación |
+| Property | Value | Justification |
 |-----------|-------|---------------|
-| **Forma** | `border-radius: 999px` (píldora) | Consistente con otros badges del sistema como `.read-only-badge` |
-| **Color de fondo** | `var(--teal-reel)` (#2b6459) | Mismo acento teal que usan `.community-rating__label`, `.btn--accent-media` y otros elementos de películas/series |
-| **Hover** | `var(--teal-reel-dark)` (#1c4a41) | Transición suave de 0.15s para feedback visual |
-| **Active** | `translateY(1px)` | Ligero desplazamiento para sensación de pulsación física |
-| **Focus-visible** | `outline: 2px solid var(--teal-reel)` con `outline-offset: 2px` | Accesibilidad por teclado, coherente con el resto de elementos focusables del sistema |
-| **Tipografía** | 0.78rem, semibold (600) | Misma escala que botones pequeños del sistema |
-| **Icono** | 0.6rem | Reducido proporcionalmente para equilibrar con el texto |
-| **Espaciado** | `padding: 0.25rem 0.7rem 0.25rem 0.55rem` | Más relleno a la derecha (texto) que a la izquierda (icono) para equilibrio visual |
-| **Layout** | `inline-flex` con `gap: 0.35rem` | Alineación precisa de icono y texto en una sola línea |
+| **Shape** | `border-radius: 999px` (pill) | Consistent with other badges in the system such as `.read-only-badge` |
+| **Background color** | `var(--teal-reel)` (#2b6459) | Same teal accent used by `.community-rating__label`, `.btn--accent-media` and other movie/series elements |
+| **Hover** | `var(--teal-reel-dark)` (#1c4a41) | Smooth 0.15s transition for visual feedback |
+| **Active** | `translateY(1px)` | Slight shift for a pressed-button feel |
+| **Focus-visible** | `outline: 2px solid var(--teal-reel)` with `outline-offset: 2px` | Keyboard accessibility, consistent with the rest of the focusable elements in the system |
+| **Typography** | 0.78rem, semibold (600) | Same scale as the system's small buttons |
+| **Icon** | 0.6rem | Reduced proportionally to balance with the text |
+| **Spacing** | `padding: 0.25rem 0.7rem 0.25rem 0.55rem` | More padding on the right (text) than on the left (icon) for visual balance |
+| **Layout** | `inline-flex` with `gap: 0.35rem` | Precise alignment of icon and text on a single line |
 
-### Reglas CSS añadidas
+### CSS rules added
 
-Se añadieron ~40 líneas en `ocio/ocio.css` (bloque completo con comentario de sección) que cubren:
+About 40 lines were added in `ocio/ocio.css` (a complete block with a section comment) covering:
 
-1. **`.trailer-btn`** — Estilo base del botón (display, colores, bordes, tipografía, transiciones).
-2. **`.trailer-btn:hover`** — Color de fondo más oscuro, sin subrayado.
-3. **`.trailer-btn:active`** — Efecto de presión.
-4. **`.trailer-btn__icon`** — Tamaño del icono reducido, sin ajuste de línea.
-5. **`.trailer-btn__label`** — Prevención de salto de línea.
-6. **`.trailer-btn:focus-visible`** — Outline de accesibilidad.
+1. **`.trailer-btn`** — Base button style (display, colors, borders, typography, transitions).
+2. **`.trailer-btn:hover`** — Darker background color, no underline.
+3. **`.trailer-btn:active`** — Press effect.
+4. **`.trailer-btn__icon`** — Reduced icon size, no line wrapping.
+5. **`.trailer-btn__label`** — Prevention of line wrapping.
+6. **`.trailer-btn:focus-visible`** — Accessibility outline.
 
-### Cobertura
+### Coverage
 
-El CSS aplica automáticamente a los tres modales donde se usa `trailerButtonHtml()`:
-- `openMovieModal()` — modal de detalle de película.
-- `openTvModal()` — modal de detalle de serie.
-- `openReadOnlyModal()` — modal de solo lectura (amigos).
+The CSS automatically applies to the three modals where `trailerButtonHtml()` is used:
+- `openMovieModal()` — movie detail modal.
+- `openTvModal()` — series detail modal.
+- `openReadOnlyModal()` — read-only modal (friends).
 
-No se modificó ningún archivo JavaScript, HTML ni otros CSS. Las clases BEM existentes se mantienen intactas.
+No JavaScript, HTML or other CSS files were modified. The existing BEM classes remain intact.
 
-### Detalles de implementación
+### Implementation details
 
-- **Solo se modificó** `ocio/ocio.css` (~40 líneas).
-- **No se modificó** `js/ui.js`, `js/api-movies.js`, `js/daily-check.js`, `css/styles.css`, ni `index.html`.
-- El HTML generado por `trailerButtonHtml()` permanece idéntico:
+- **Only** `ocio/ocio.css` (~40 lines) **was modified**.
+- **Not modified**: `js/ui.js`, `js/api-movies.js`, `js/daily-check.js`, `css/styles.css`, nor `index.html`.
+- The HTML generated by `trailerButtonHtml()` remains identical:
   ```html
   <a class="trailer-btn" href="https://www.youtube.com/watch?v=..." target="_blank" rel="noopener noreferrer" aria-label="Ver tráiler en YouTube">
     <span class="trailer-btn__icon" aria-hidden="true">▶</span>
@@ -61,58 +61,58 @@ No se modificó ningún archivo JavaScript, HTML ni otros CSS. Las clases BEM ex
   </a>
   ```
 
-### Accesibilidad
+### Accessibility
 
-- **Contraste**: El color `--teal-reel` (#2b6459) sobre `--paper` (#f1ead9) tiene una relación de contraste de 5.70:1, superando el umbral WCAG AA de 4.5:1 para texto normal.
-- **Focus-visible**: Outline visible para navegación por teclado, coherente con el patrón establecido en otros elementos interactivos (`.btn-filter`, `.sort-select`, etc.).
-- **aria-label**: Se preserva el `aria-label="Ver tráiler en YouTube"` del HTML generado.
-- **Icono decorativo**: `aria-hidden="true"` en el span del icono, semántica transmitida por el texto visible y el `aria-label`.
+- **Contrast**: The `--teal-reel` color (#2b6459) over `--paper` (#f1ead9) has a contrast ratio of 5.70:1, exceeding the WCAG AA threshold of 4.5:1 for normal text.
+- **Focus-visible**: Visible outline for keyboard navigation, consistent with the pattern established in other interactive elements (`.btn-filter`, `.sort-select`, etc.).
+- **aria-label**: The `aria-label="Ver tráiler en YouTube"` of the generated HTML is preserved.
+- **Decorative icon**: `aria-hidden="true"` on the icon span, semantics conveyed by the visible text and the `aria-label`.
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Rojo YouTube (#ff0000) como color de fondo**: Se descartó porque:
-  - El rojo YouTube no forma parte de la paleta de la aplicación.
-  - Introduciría un color aislado que no se usa en ningún otro elemento.
-  - `--teal-reel` ya es el color identificativo del contenido audiovisual (películas/series) en la aplicación.
-  - El contraste de #ff0000 sobre fondo oscuro es bajo en modo oscuro (2.80:1).
-  - La ADR-008 original especulaba con un botón «rojo estilo YouTube», pero en la práctica el teal se integra mejor con el sistema de diseño existente.
+- **YouTube red (#ff0000) as background color**: Rejected because:
+  - YouTube red is not part of the application's palette.
+  - It would introduce an isolated color not used in any other element.
+  - `--teal-reel` is already the identifying color for audiovisual content (movies/series) in the application.
+  - The contrast of #ff0000 on a dark background is low in dark mode (2.80:1).
+  - The original ADR-008 speculated about a "YouTube-style red" button, but in practice teal integrates better with the existing design system.
 
-- **Botón rectangular con bordes tradicionales**: Se descartó porque:
-  - El diseño tipo píldora (`border-radius: 999px`) es consistente con otros badges y chips de la interfaz (`.read-only-badge`, etiquetas de estado).
-  - Los botones rectangulares con bordes de 4-6px se usan para acciones principales (botones de formulario, filtros), no para complementos informativos.
-  - La forma de píldora diferencia visualmente el tráiler como un elemento complementario, no como una acción principal.
+- **Rectangular button with traditional borders**: Rejected because:
+  - The pill-shaped design (`border-radius: 999px`) is consistent with other badges and chips in the interface (`.read-only-badge`, status labels).
+  - Rectangular buttons with 4-6px borders are used for primary actions (form buttons, filters), not for informational add-ons.
+  - The pill shape visually differentiates the trailer as a complementary element, not as a primary action.
 
-- **Botón con relleno completo (block)**: Se descartó porque `inline-flex` permite que el botón fluya con el contenido y no fuerce un ancho completo innecesario. El botón es un complemento que va integrado entre la puntuación comunitaria y la información ampliada.
+- **Full-width (block) button**: Rejected because `inline-flex` allows the button to flow with the content and does not force an unnecessary full width. The button is an add-on integrated between the community rating and the extended information.
 
-- **Icono SVG de YouTube en lugar del carácter ▶**: Se descartó porque:
-  - El carácter Unicode ▶ es universal, no requiere carga adicional y funciona sin JavaScript.
-  - Un SVG de YouTube añadiría una petición extra o código inline, aumentando el peso de la página.
-  - El ▶ es reconocible instantáneamente como icono de reproducción.
-  - La marca visual de YouTube se transmite suficientemente al abrir el enlace.
+- **SVG YouTube icon instead of the ▶ character**: Rejected because:
+  - The Unicode character ▶ is universal, requires no extra loading and works without JavaScript.
+  - A YouTube SVG would add an extra request or inline code, increasing page weight.
+  - The ▶ is instantly recognizable as a play icon.
+  - YouTube's visual branding is sufficiently conveyed when the link opens.
 
-- **Sombra o elevación en el botón**: Se descartó porque el sistema de diseño de la aplicación usa sombras principalmente en tarjetas y modales, no en elementos inline pequeños. Un botón tipo píldora sin sombra es más plano y consistente con otros badges.
+- **Shadow or elevation on the button**: Rejected because the application's design system uses shadows mainly on cards and modals, not on small inline elements. A pill-shaped button without a shadow is flatter and more consistent with other badges.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- El botón de tráiler ahora es visualmente distintivo: se reconoce como un elemento interactivo, no como un enlace de texto.
-- La coherencia visual con el sistema de diseño mejora: usa `--teal-reel`, el mismo acento que otros elementos de películas/series.
-- La accesibilidad mejora con contraste suficiente (5.70:1) y focus-visible explícito.
-- La implementación es mínima: solo CSS, sin cambios en JS, HTML ni otros archivos.
-- Funciona en los tres modales sin duplicación de código.
-- Es responsive por diseño (usa `rem`, `inline-flex` y unidades relativas).
+### Positive
+- The trailer button is now visually distinctive: it is recognized as an interactive element, not as a text link.
+- Visual coherence with the design system improves: it uses `--teal-reel`, the same accent as other movie/series elements.
+- Accessibility improves with sufficient contrast (5.70:1) and explicit focus-visible.
+- The implementation is minimal: CSS only, no changes to JS, HTML or other files.
+- It works in all three modals without code duplication.
+- It is responsive by design (uses `rem`, `inline-flex` and relative units).
 
-### Negativas
-- El color teal, aunque coherente con la app, no es el rojo asociado culturalmente a YouTube. Un usuario podría esperar el color característico de la plataforma.
-- El botón es sutil (tamaño pequeño, colores integrados), lo que podría hacerlo menos visible para usuarios que buscan activamente un tráiler.
-- Los títulos sin `trailerUrl` (añadidos manualmente sin TMDB) no muestran el botón, pero esto es una limitación del dato, no del estilo.
+### Negative
+- The teal color, although coherent with the app, is not the red culturally associated with YouTube. A user might expect the platform's characteristic color.
+- The button is subtle (small size, integrated colors), which could make it less visible to users actively looking for a trailer.
+- Titles without `trailerUrl` (added manually without TMDB) do not show the button, but this is a limitation of the data, not of the styling.
 
-### Neutras
-- El CSS añadido (~40 líneas) incrementa ligeramente el tamaño de `ocio/ocio.css` (de ~1729 a ~1769 líneas).
-- Al usar `var(--teal-reel)` y `var(--paper)`, el botón se adapta automáticamente al tema claro/oscuro sin cambios adicionales.
-- Las clases BEM existentes no se modifican; el cambio es puramente aditivo en CSS.
-- El botón sigue abriendo en nueva pestaña (`target="_blank"`), preservando el estado de la aplicación.
+### Neutral
+- The added CSS (~40 lines) slightly increases the size of `ocio/ocio.css` (from ~1729 to ~1769 lines).
+- By using `var(--teal-reel)` and `var(--paper)`, the button automatically adapts to the light/dark theme without additional changes.
+- The existing BEM classes are not modified; the change is purely additive in CSS.
+- The button still opens in a new tab (`target="_blank"`), preserving the application state.
 
-## Archivos modificados
+## Files modified
 
-- `ocio/ocio.css` — Nuevas reglas CSS para `.trailer-btn`, `.trailer-btn:hover`, `.trailer-btn:active`, `.trailer-btn:focus-visible`, `.trailer-btn__icon` y `.trailer-btn__label` (bloque entre líneas 1369-1407 y regla `:focus-visible` en línea 1766).
+- `ocio/ocio.css` — New CSS rules for `.trailer-btn`, `.trailer-btn:hover`, `.trailer-btn:active`, `.trailer-btn:focus-visible`, `.trailer-btn__icon` and `.trailer-btn__label` (block between lines 1369-1407 and the `:focus-visible` rule at line 1766).

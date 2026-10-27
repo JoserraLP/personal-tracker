@@ -1,24 +1,24 @@
 // =============================================================
-// Contadores de "veces" de un elemento (ADR-107):
-//   - película  → nº de veces vista   (len de watchLog, o un valor
-//                  manual si está anotado)
-//   - serie     → nº de veces completada (timesCompleted o valor manual)
-//   - libro     → nº de veces leído    (len de readLog terminadas, o manual)
-//   - videojuego→ nº de veces jugada   (len de playLog, o manual)
+// "Times" counters of an item (ADR-107):
+//   - movie     → number of times watched  (len of watchLog, or a manual
+//                  value if annotated)
+//   - TV series → number of times completed (timesCompleted or manual value)
+//   - book      → number of times read     (len of finished readLog, or manual)
+//   - videogame → number of times played   (len of playLog, or manual)
 //
-// La web ya registra cada sesión/visión con fecha en los logs; el
-// contador se muestra en las tarjetas como chip «×N» y puede
-// AJUSTARSE a mano desde la ficha de edición del artículo con el
-// campo seenCount (para cuando re-viste/re-lee/re-juega algo y no
-// quiere registrar una sesión por cada vez).
+// The web already records each session/view with a date in the logs; the
+// counter is shown on the cards as a «×N» chip and can be
+// ADJUSTED by hand from the item's edit form with the
+// seenCount field (for when the user re-watches/re-reads/re-plays
+// something and doesn't want to record a session for each time).
 //
-// Semántica de seenCount (anotación manual): si está presente, su
-// valor ES el contador que se muestra (siempre >= 1); si no, se usa
-// el natural del log. Un seenCount null/1 equivale al natural.
-// Parte pura (sin DOM), para tests.
+// Semantics of seenCount (manual annotation): if present, its
+// value IS the displayed counter (always >= 1); otherwise the
+// natural value of the log is used. A null/1 seenCount equals the natural one.
+// Pure parts (no DOM), for tests.
 // =============================================================
 
-// Nº natural de veces, a partir de los historiales del tipo.
+// Natural number of times, from the logs of the type.
 export function naturalTimes(item) {
   if (!item) return 0;
   if (item.type === "movie") return (item.watchLog || []).length;
@@ -26,22 +26,22 @@ export function naturalTimes(item) {
     return (item.readLog || []).filter((e) => e && e.finishedAt).length;
   }
   if (item.type === "game") return (item.playLog || []).length;
-  return Number(item.timesCompleted) || 0; // series
+  return Number(item.timesCompleted) || 0; // TV series
 }
 
-// Contador que se muestra en la web: la anotación manual si hay; si
-// no, el natural del log. Nunca baja de 0.
+// Counter shown on the web: the manual annotation if there is one;
+// otherwise the natural value of the log. Never below 0.
 export function timesCount(item) {
   if (!item) return 0;
   const raw = Number(item.seenCount);
   if (!Number.isFinite(raw)) return naturalTimes(item);
-  // Una anotación (>= 1) siempre se muestra; si alguien pone un
-  // valor menor que el natural, gana el natural (no se puede ver
-  // menos de lo registrado).
+  // An annotation (>= 1) is always shown; if someone sets a
+  // value lower than the natural one, the natural value wins (you can't
+  // watch less than what was recorded).
   return Math.max(naturalTimes(item), Math.max(0, raw));
 }
 
-// Etiqueta de la pregunta de edición según el tipo.
+// Label of the edit question depending on the type.
 export function counterFieldLabel(type) {
   if (type === "tv") return "Veces completada";
   if (type === "book") return "Veces leído";
@@ -49,14 +49,14 @@ export function counterFieldLabel(type) {
   return "Veces vista";
 }
 
-// Texto del chip de la tarjeta: "×3", o "" si el contador es 0.
+// Text of the card chip: "×3", or "" if the counter is 0.
 export function counterBadgeText(item) {
   const n = timesCount(item);
   return n > 0 ? `×${n}` : "";
 }
 
-// Sanea el valor del campo de edición: número entero >= 0 o null.
-// "0" equivale a resetear la anotación (null).
+// Sanitizes the value of the edit field: an integer >= 0 or null.
+// "0" is equivalent to resetting the annotation (null).
 export function sanitizeSeenCount(value) {
   const raw = (value || "").toString().replace(",", ".").trim();
   if (!raw) return null;

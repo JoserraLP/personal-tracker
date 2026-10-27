@@ -1,58 +1,56 @@
-# ADR-061: Botón de volver del perfil como flecha hacia la izquierda (issue #157)
+# ADR-061: Profile's back button as a left arrow (issue #157)
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Fecha
+## Date
 2026-08-09
 
-## Contexto
+## Context
 
-La issue #157 (type: style) pide cambiar el botón de volver de la vista
-de perfil: «Cambiar el botón de volver por una flecha hacia la izquierda
-simplemente, sin recuadro ni palabra _volver_». El botón afectado es
-`#btn-close-profile`, en la cabecera de la vista de perfil
-(`#profile-view__header`, `index.html`), que tenía este marcado:
+Issue #157 (type: style) asks to change the profile view's back button: «Cambiar el botón de volver por una flecha hacia la izquierda
+simplemente, sin recuadro ni palabra _volver_». The affected button is
+`#btn-close-profile`, in the profile view's header
+(`#profile-view__header`, `index.html`), which had this markup:
 
 ```html
 <button type="button" class="btn btn--ghost" id="btn-close-profile">← Volver</button>
 ```
 
-Tenía recuadro (clase `btn btn--ghost`, con borde redondeado) y la
-palabra «Volver». La issue pide que quede **solo una flecha hacia la
-izquierda, sin recuadro ni texto**.
+It had a box (the `btn btn--ghost` class, with a rounded border) and the
+word «Volver». The issue asks to keep **only a left
+arrow, without box nor text**.
 
-Ya existía en el repo el patrón **`.icon-btn`**: botón de icono
-transparente sin recuadro, con SVG de trazo `currentColor` de ~1.15rem
-(`.icon-btn svg`) y `:focus-visible` con outline `--teal-reel`, usado en
-la cabecera para la hamburguesa `#btn-sidebar-toggle` y la campana
-`#btn-notifications`. En tema claro, `[data-theme="light"] .icon-btn {
-color: var(--ink) }` sobre el fondo `--paper-dim` de `.profile-view`
-(contraste ~12.8:1, AA/AAA).
+The **`.icon-btn`** pattern already existed in the repo: transparent
+borderless icon button, with a ~1.15rem `currentColor`-stroke SVG
+(`.icon-btn svg`) and `:focus-visible` with a `--teal-reel` outline, used in
+the header for the hamburger `#btn-sidebar-toggle` and the bell
+`#btn-notifications`. In the light theme, `[data-theme="light"] .icon-btn {
+color: var(--ink) }` over `.profile-view`'s `--paper-dim` background
+(contrast ~12.8:1, AA/AAA).
 
-El botón `#btn-back-to-friends` («← Todos los amigos», clase `btn-link`)
-**no dice "volver"** y ya carece de recuadro: queda **fuera del alcance**
-de esta issue.
+The `#btn-back-to-friends` button («← Todos los amigos», the `btn-link`
+class) **does not say "volver"** and already lacks a box: it stays
+**out of scope** of this issue.
 
-La implementación está **validada (QA 8/8 criterios PASS)** y
-**escaneada (seguridad PASS, 0 hallazgos)**; el manual de usuario se
-actualizó en la misma tarea (`docs/manual-de-usuario.md` §13, regla 3 de
-AGENTS.md). Este ADR documenta la decisión a posteriori, como los
-recientes (ADR-059, ADR-060).
+The implementation is **validated (QA 8/8 criteria PASS)** and
+**scanned (security PASS, 0 findings)**; the user manual was
+updated in the same task (`docs/manual-de-usuario.md` §13, rule 3 of
+AGENTS.md). This ADR documents the decision retrospectively, like the
+recent ones (ADR-059, ADR-060).
 
 Related issue: #157 — https://github.com/gonzalitojh/Registro-personal/issues/157
 
-## Decisión
+## Decision
 
-Sustituir el botón de texto con recuadro por un **botón de icono
-reutilizando la clase `.icon-btn`** existente y el **SVG feather
-`arrow-left`** (chevron hacia la izquierda, el mismo glifo visual que el
-«←» que ya se mostraba), y eliminar la clase `.btn--ghost` como código
-muerto.
+Replace the boxed text button with an **icon button reusing the existing
+`.icon-btn` class** and the **feather
+`arrow-left` SVG** (left chevron, the same visual glyph as the
+«←» already shown), and remove the `.btn--ghost` class as dead code.
 
-### 1. `index.html`: marcado del botón
+### 1. `index.html`: the button's markup
 
-`#btn-close-profile` pasa de `btn btn--ghost` con texto a:
+`#btn-close-profile` goes from `btn btn--ghost` with text to:
 
 ```html
 <button type="button" class="icon-btn" id="btn-close-profile" aria-label="Volver">
@@ -60,130 +58,133 @@ muerto.
 </button>
 ```
 
-- **El `id` NO cambia**: el listener de `js/profile.js`
-  (`getElementById("btn-close-profile")`) funciona igual; el wiring
-  queda intacto.
-- El botón lleva `aria-label="Volver"` y el SVG es `aria-hidden="true"`
-  (no duplica texto legible): la accesibilidad se conserva.
-- El destacado de foco viene heredado de `.icon-btn:focus-visible`
-  (outline `--teal-reel`, 2px).
+- **The `id` does NOT change**: `js/profile.js`'s listener
+  (`getElementById("btn-close-profile")`) works the same; the wiring
+  stays intact.
+- The button carries `aria-label="Volver"` and the SVG is
+  `aria-hidden="true"` (it does not duplicate readable text):
+  accessibility is kept.
+- The focus highlight is inherited from `.icon-btn:focus-visible`
+  (a 2px `--teal-reel` outline).
 
-### 2. `css/styles.css`: eliminar `.btn--ghost` (código muerto)
+### 2. `css/styles.css`: remove `.btn--ghost` (dead code)
 
-Se eliminan **4 reglas**: `.btn--ghost` base
+**4 rules are removed**: the base `.btn--ghost`
 (`background: transparent; border-color: var(--paper-alpha-35)…`),
-`.btn--ghost:hover` y las 2 del tema claro
-(`[data-theme="light"] .btn--ghost` y su `:hover`). Su **único uso** en
-el repo era ese botón; tras el cambio queda código muerto. La limpieza
-sigue el precedente de **ADR-046** (eliminación de estilos huérfanos al
-cambiar un botón). **No se añade CSS nuevo**: `.icon-btn` ya existía.
+`.btn--ghost:hover` and the 2 light-theme ones
+(`[data-theme="light"] .btn--ghost` and its `:hover`). Its **only
+use** in the repo was that button; after the change there is dead code
+left. The cleanup follows **ADR-046**'s precedent (removal of orphaned
+styles when changing a button). **No new CSS is added**: `.icon-btn`
+already existed.
 
-### 3. `js/profile.js`: sin cambios de lógica
+### 3. `js/profile.js`: no logic changes
 
-Solo cambia un **comentario** («← Volver» → «Flecha de volver»); el
-listener de `#btn-close-profile` (cierre de la vista con toggle manual
-y vuelta a la última pestaña de Ocio activa) queda tal cual.
+Only a **comment** changes («← Volver» → «Flecha de volver»); the
+`#btn-close-profile` listener (closing the view with a manual toggle
+and returning to the last active Ocio tab) stays as it is.
 
-### 4. Bump PWA `20260833` → `20260834`
+### 4. PWA bump `20260833` → `20260834`
 
-La PR toca assets versionados, así que se aplica la práctica de **un
-bump por PR** (ADR-049/059) vía `scripts/bump-version.sh`:
+The PR touches versioned assets, so **one bump per PR** is applied
+(ADR-049/059) via `scripts/bump-version.sh`:
 `js/config.js` (`APP_VERSION = '20260834'`), `index.html` (`?v=` ×3:
-`styles.css`, `ocio.css`, `app.js`) y `service-worker.js` (`?v=` ×6 en
+`styles.css`, `ocio.css`, `app.js`) and `service-worker.js` (`?v=` ×6 in
 `STATIC_ASSETS`).
 
-### 5. Manual de usuario (§13)
+### 5. User manual (§13)
 
-`docs/manual-de-usuario.md` §13 añade la frase: «En la cabecera del
+`docs/manual-de-usuario.md` §13 adds the sentence: «En la cabecera del
 perfil, la flecha de la izquierda te devuelve a la última pestaña de
-Ocio (Series, Películas o Libros) que tenías abierta.» — regla 3 de
-AGENTS.md (cambio visible para el usuario documentado en la misma
-tarea). Como el nombre del botón ya no es visible en la interfaz, el
-manual es ahora la referencia explícita de su función.
+Ocio (Series, Películas o Libros) que tenías abierta.» — AGENTS.md's rule
+3 (a change visible to the user documented in the same
+task). Since the button's name is no longer visible in the interface, the
+manual is now the explicit reference of its function.
 
-### 6. `.gitignore`: artefactos CI
+### 6. `.gitignore`: CI artifacts
 
-Se añaden `candidate.json` y `sdd_prompt.md` (artefactos untracked de la
-sesión CI vía `scripts/gh-select-issue.sh`; hallazgo LOW del security
-scan).
+`candidate.json` and `sdd_prompt.md` are added (untracked artifacts of
+the CI session via `scripts/gh-select-issue.sh`; LOW finding of the
+security scan).
 
-## Alternativas descartadas
+## Rejected alternatives
 
-- **Mantener `.btn--ghost` quitándole el borde** (sobreescribir el
-  recuadro en ese botón): descartado — duplicaría a `.icon-btn` con una
-  segunda clase de propósito idéntico (botón de icono transparente); lo
-  coherente es reutilizar el patrón ya existente de la cabecera.
-- **Usar el glifo «←» en un botón sin clase**: descartado — depende de
-  la fuente del sistema (metrica y trazo variables) y es inconsistente
-  con los SVGs de trazo (`stroke="currentColor"`, `stroke-width="1.8"`)
-  que usan el resto de botones de icono de la interfaz.
-- **Quitar el botón confiando en el botón «atrás» del navegador**:
-  descartado — la lógica de `js/profile.js` hace un **toggle manual** de
-  vistas que **no siempre cambia el hash**; el botón del navegador no
-  garantiza cerrar la vista de perfil ni volver a la última pestaña de
-  Ocio activa.
-- **Conservar `.btn--ghost` "por si acaso"**: descartado — código muerto
-  en producción (único uso eliminado); la limpieza sigue el precedente
-  de ADR-046 y la clase es recuperable desde git si alguna vez se
-  necesita.
+- **Keeping `.btn--ghost` removing its border** (overriding the box on
+  that button): rejected — it would duplicate `.icon-btn` with a
+  second class of identical purpose (transparent icon button); the
+  coherent thing is to reuse the header's existing pattern.
+- **Using the «←» glyph in a classless button**: rejected — it depends
+  on the system font (variable metrics and stroke) and is inconsistent
+  with the stroke SVGs (`stroke="currentColor"`, `stroke-width="1.8"`)
+  the rest of the interface's icon buttons use.
+- **Removing the button relying on the browser's back button**:
+  rejected — `js/profile.js`'s logic does a **manual toggle** of
+  views that does **not always change the hash**; the browser's button
+  does not guarantee closing the profile view nor returning to the last
+  active Ocio tab.
+- **Keeping `.btn--ghost` "just in case"**: rejected — dead
+  code in production (its only use removed); the cleanup follows
+  ADR-046's precedent and the class is recoverable from git if ever
+  needed.
 
-## Consecuencias
+## Consequences
 
-### Positivas
+### Positive
 
-- **Cabecera de perfil consistente con el header**: el botón de volver
-  usa ahora el mismo `.icon-btn` que hamburguesa y campana; misma
-  apariencia y mismo comportamiento (transparente, sin borde, SVG
-  1.15rem, outline teal al enfocar).
-- **Menos ruido visual**: desaparecen el recuadro redondeado y la
-  palabra «Volver»; queda solo la flecha, como pide la issue.
-- **Accesibilidad conservada**: `aria-label="Volver"` + SVG
-  `aria-hidden="true"`; el `:focus-visible` de `.icon-btn` hereda el
-  outline teal.
-- **Wiring intacto**: el `id` no cambia; el listener de `js/profile.js`
-  (por `getElementById`) funciona sin tocarse.
-- **Contraste AA/AAA en ambos temas**: en tema claro `--ink` sobre
-  `--paper-dim` (~12.8:1); en tema oscuro `--paper` sobre el fondo del
-  perfil.
-- **Deuda técnica saldada**: `.btn--ghost` muerto eliminado (precedente
-  ADR-046) y artefactos CI añadidos a `.gitignore`.
+- **Profile header consistent with the header**: the back button now uses
+  the same `.icon-btn` as the hamburger and the bell; same
+  look and same behavior (transparent, borderless, 1.15rem SVG,
+  teal outline when focused).
+- **Less visual noise**: the rounded box and the word «Volver»
+  disappear; only the arrow remains, as the issue asks.
+- **Accessibility kept**: `aria-label="Volver"` + an
+  `aria-hidden="true"` SVG; `.icon-btn`'s `:focus-visible` inherits the
+  teal outline.
+- **Wiring intact**: the `id` does not change; `js/profile.js`'s listener
+  (via `getElementById`) works without being touched.
+- **AA/AAA contrast in both themes**: in the light theme `--ink` over
+  `--paper-dim` (~12.8:1); in the dark theme `--paper` over the profile's
+  background.
+- **Technical debt settled**: the dead `.btn--ghost` removed (ADR-046
+  precedent) and CI artifacts added to `.gitignore`.
 
-### Negativas / Riesgos
+### Negative / Risks
 
-- **Área táctil pequeña**: el botón mide ~28px (SVG 1.15rem + `padding:
-  0.3rem`), por debajo del objetivo de 44px de WCAG 2.5.8. **Aceptada**
-  por consistencia con los `.icon-btn` existentes de la cabecera (mismo
-  patrón); si en el futuro se endurece el criterio, habrá que ampliarlo
-  para todos.
-- **La palabra «volver» ya no es visible**: el texto desaparece de la
-  interfaz; mitigado con el `aria-label` del botón y documentado en el
-  manual (§13), que explica qué hace la flecha.
-- **Eliminación de `.btn--ghost`**: si un botón futuro necesita ese
-  estilo habrá que recrearlo — recuperable desde git (ADR-046 idéntico).
+- **Small touch area**: the button measures ~28px (1.15rem SVG +
+  `padding: 0.3rem`), below WCAG 2.5.8's 44px target. **Accepted**
+  for consistency with the header's existing `.icon-btn`s (the same
+  pattern); if the criterion hardens in the future, it will have to be
+  expanded for all of them.
+- **The word "volver" is no longer visible**: the text disappears from the
+  interface; mitigated with the button's `aria-label` and documented in
+  the manual (§13), which explains what the arrow does.
+- **Deletion of `.btn--ghost`**: if a future button needs that
+  style it will have to be recreated — recoverable from git (identical to
+  ADR-046).
 
-### Neutras
+### Neutral
 
-- **Bump PWA de rutina**: `20260833` → `20260834`, un bump por PR
-  (ADR-049/059), aplicado con `scripts/bump-version.sh`.
-- **ADR históricos intactos**: ADR-043 (botón de perfil) y ADR-046
-  (eliminación del nombre del botón) documentan el estado previo y **no
-  se modifican**.
-- **`.gitignore` ampliado**: `candidate.json` y `sdd_prompt.md` quedan
-  protegidos de un `git add -A` manual.
-- **`#btn-back-to-friends` sin cambios**: «← Todos los amigos»
-  (`btn-link`) queda fuera del alcance, tal como delimita la issue.
+- **Routine PWA bump**: `20260833` → `20260834`, one bump per PR
+  (ADR-049/059), applied with `scripts/bump-version.sh`.
+- **Historical ADRs intact**: ADR-043 (profile button) and ADR-046
+  (removal of the button's name) document the previous state and are **not
+  modified**.
+- **`.gitignore` expanded**: `candidate.json` and `sdd_prompt.md` are
+  protected from a manual `git add -A`.
+- **`#btn-back-to-friends` unchanged**: «← Todos los amigos»
+  (`btn-link`) stays out of scope, as the issue delimits.
 
-## Archivos creados/modificados
+## Created/modified files
 
-| Archivo | Cambio |
+| File | Change |
 |---------|--------|
-| `index.html` | **Modificado**: `#btn-close-profile` pasa de `<button class="btn btn--ghost">← Volver</button>` a `<button class="icon-btn" aria-label="Volver">` con SVG feather `arrow-left` (`viewBox="0 0 24 24"`, `stroke="currentColor"`, `stroke-width="1.8"`, `aria-hidden="true"`, polyline `15 18 9 12 15 6`); el `id` no cambia; bump `?v=20260833` → `?v=20260834` (×3) |
-| `css/styles.css` | **Modificado**: eliminadas 4 reglas de `.btn--ghost` (base, `:hover` y las 2 del tema claro) — código muerto tras el cambio, único uso era ese botón (precedente ADR-046); sin CSS nuevo (se reutiliza `.icon-btn`) |
-| `js/profile.js` | **Modificado**: solo un comentario («← Volver» → «Flecha de volver»); el listener de `#btn-close-profile` queda intacto |
-| `js/config.js` | **Modificado**: `APP_VERSION` `20260833` → `20260834` |
-| `service-worker.js` | **Modificado**: bump `?v=20260833` → `?v=20260834` en los 6 assets versionados de `STATIC_ASSETS` (vía `scripts/bump-version.sh`) |
-| `docs/manual-de-usuario.md` | **Modificado**: §13 añadida la frase de la flecha de la cabecera del perfil (devuelve a la última pestaña de Ocio abierta) — regla 3 de AGENTS.md |
-| `.gitignore` | **Modificado**: añadidos `candidate.json` y `sdd_prompt.md` (artefactos untracked de la sesión CI, hallazgo LOW del security scan) |
-| `docs/adr-061-boton-volver-perfil-flecha.md` | **Nuevo**: este documento |
+| `index.html` | **Modified**: `#btn-close-profile` goes from `<button class="btn btn--ghost">← Volver</button>` to `<button class="icon-btn" aria-label="Volver">` with the feather `arrow-left` SVG (`viewBox="0 0 24 24"`, `stroke="currentColor"`, `stroke-width="1.8"`, `aria-hidden="true"`, polyline `15 18 9 12 15 6`); the `id` does not change; bump `?v=20260833` → `?v=20260834` (×3) |
+| `css/styles.css` | **Modified**: 4 `.btn--ghost` rules removed (base, `:hover` and the 2 light-theme ones) — dead code after the change, its only use was that button (ADR-046 precedent); no new CSS (`.icon-btn` is reused) |
+| `js/profile.js` | **Modified**: only a comment («← Volver» → «Flecha de volver»); the `#btn-close-profile` listener stays intact |
+| `js/config.js` | **Modified**: `APP_VERSION` `20260833` → `20260834` |
+| `service-worker.js` | **Modified**: bump `?v=20260833` → `?v=20260834` on the 6 versioned assets of `STATIC_ASSETS` (via `scripts/bump-version.sh`) |
+| `docs/manual-de-usuario.md` | **Modified**: §13 adds the sentence about the profile header's arrow (returns to the last open Ocio tab) — AGENTS.md's rule 3 |
+| `.gitignore` | **Modified**: `candidate.json` and `sdd_prompt.md` added (untracked artifacts of the CI session, LOW finding of the security scan) |
+| `docs/adr-061-boton-volver-perfil-flecha.md` | **New**: this document |
 
 Related issue: #157 — https://github.com/gonzalitojh/Registro-personal/issues/157

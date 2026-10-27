@@ -1,149 +1,146 @@
-# ADR-010: Recomendaciones de contenido similar desde TMDB
+# ADR-010: Similar content recommendations from TMDB
 
-## Estado
-Aceptado
+## Status
+Accepted
 
-## Contexto
-La aplicación permite al usuario registrar películas, series y libros, y
-ver detalles de cada título (sinopsis, reparto, puntuación, plataformas de
-streaming, etc.). Sin embargo, una vez que el usuario explora la ficha de
-un título, no tenía forma de descubrir contenido relacionado sin volver a
-la búsqueda.
+## Context
+The application allows the user to record movies, series and books, and
+to see details of each title (synopsis, cast, rating, streaming,
+platforms, etc.). However, once the user explores a title's
+detail page, there was no way to discover related content without going back to
+search.
 
-TMDB proporciona endpoints de contenido similar (`/movie/{id}/similar` y
-`/tv/{id}/similar`) que devuelven una lista de títulos relacionados según
-el algoritmo de recomendaciones de TMDB. Estos datos ya están disponibles
-sin coste adicional en el plan gratuito de TMDB.
+TMDB provides similar-content endpoints (`/movie/{id}/similar` and
+`/tv/{id}/similar`) that return a list of related titles according
+to TMDB's recommendation algorithm. This data is already available
+at no extra cost on TMDB's free plan.
 
-Se necesitaba una sección de recomendaciones en la ficha de detalle que
-permitiera al usuario descubrir contenido similar y añadirlo directamente
-a su registro personal.
+A recommendations section was needed in the detail page to
+let the user discover similar content and add it directly
+to their personal record.
 
-## Decisión
-Implementar una sección de recomendaciones en los modales de detalle de
-películas y series, usando los endpoints `/similar` de TMDB. La sección
-se titula "Si te gustó esto, quizá te guste..." y muestra una lista
-horizontal desplazable con carátula, título y año de cada recomendación,
-junto con un botón "Añadir" para incorporarla directamente al registro.
+## Decision
+Implement a recommendations section in the movie and series
+detail modals, using TMDB's `/similar` endpoints. The section is
+titled "If you liked this, you might like..." and shows a horizontal
+scrollable list with the cover, title and year of each recommendation,
+along with an "Add" button to incorporate it directly into the record.
 
-### Obtención de datos
-Se añadieron dos nuevas funciones exportadas en `api-movies.js`:
+### Data retrieval
+Two new exported functions were added in `api-movies.js`:
 
 ```
 getSimilarMovies(id) → GET /movie/{id}/similar?language=es-ES&page=1
 getSimilarTv(id)    → GET /tv/{id}/similar?language=es-ES&page=1
 ```
 
-Ambas funciones:
-- Reutilizan los mapeadores existentes `mapMovieResult` / `mapTvResult`,
-  por lo que devuelven objetos con la misma forma que los resultados de
-  búsqueda: `{ externalId, type, title, year, coverUrl, overview }`.
-- Devuelven siempre un array (vacío si hay error), nunca lanzan
-  excepciones, por lo que no bloquean la apertura del modal.
-- Se limitan a la primera página (hasta 20 resultados), de los cuales
-  se toman los primeros 10.
+Both functions:
+- Reuse the existing mappers `mapMovieResult` / `mapTvResult`, so
+  they return objects with the same shape as the search
+  results: `{ externalId, type, title, year, coverUrl, overview }`.
+- Always return an array (empty on error) and never throw
+  exceptions, so they never block the opening of the modal.
+- Are limited to the first page (up to 20 results), from which
+  the first 10 are taken.
 
-### Flujo de datos
+### Data flow
 ```
 TMDB /similar → api-movies.js (getSimilarMovies / getSimilarTv)
   → modal-handlers.js (openMovieItem / openTvItem)
-    → Filtra items ya registrados (existingIds)
-    → slice(0, 10) para limitar cantidad
+    → Filters already-recorded items (existingIds)
+    → slice(0, 10) to limit quantity
     → ui.js (openMovieModal / openTvModal)
-      → renderRecommendations() genera HTML
-      → Botón "Añadir" → addFromRecommendation()
-        → getMovieDetails / getTvExtraDetails (opcional)
-        → addItem() a Firestore
+      → renderRecommendations() generates HTML
+      → "Add" button → addFromRecommendation()
+        → getMovieDetails / getTvExtraDetails (optional)
+        → addItem() to Firestore
 ```
 
-### Visualización
-Las recomendaciones se muestran como una sección horizontal desplazable
-dentro del modal de detalle:
+### Visualization
+Recommendations are shown as a horizontally scrollable section
+inside the detail modal:
 
-- **Películas**: después del banner de saga (si existe) y antes de la
-  sección de visionados.
-- **Series**: después de la información ampliada de TMDB y antes del
-  banner de progreso.
+- **Movies**: after the saga banner (if there is one) and before the
+  watch log section.
+- **Series**: after the extended TMDB info and before the
+  progress banner.
 
-Cada tarjeta de recomendación (`rec-card`) contiene:
-- Carátula (con placeholder si no hay imagen).
-- Título (truncado a 2 líneas con `-webkit-line-clamp`).
-- Año (monospace, color secundario).
-- Botón "Añadir" (o "Añadido" deshabilitado si ya está registrado).
+Each recommendation card (`rec-card`) contains:
+- Cover (with placeholder if there is no image).
+- Title (truncated to 2 lines with `-webkit-line-clamp`).
+- Year (monospace, secondary color).
+- "Add" button (or disabled "Added" if already recorded).
 
-Las tarjetas miden 110px de ancho, con scroll horizontal nativo
-personalizado (scrollbar sutil). En hover (escritorio) las tarjetas
-elevan su sombra.
+The cards are 110px wide, with customized native horizontal scroll
+(subtle scrollbar). On hover (desktop) the cards raise their shadow.
 
-### Comportamiento del botón "Añadir"
-Al hacer clic en "Añadir":
-1. El botón se deshabilita y muestra "Añadiendo…"
-2. Se construye un objeto `draft` con los datos básicos del título
-3. Se intentan obtener los detalles ampliados de TMDB
-   (`getMovieDetails` / `getTvExtraDetails`) para enriquecer la ficha
-   (sinopsis, reparto, duración, etc.). Si falla, se añade igualmente
-   con los datos básicos.
-4. Se persiste en Firestore mediante `addItem()`
-5. El botón muestra "Añadido" permanentemente (no se re-renderiza el
-   modal, pero en la próxima apertura aparecerá como "Añadido" gracias
-   al filtro por `existingIds`).
+### "Add" button behavior
+When clicking "Add":
+1. The button is disabled and shows "Adding…"
+2. A `draft` object is built with the title's basic data
+3. It tries to fetch the extended TMDB details
+   (`getMovieDetails` / `getTvExtraDetails`) to enrich the record
+   (synopsis, cast, runtime, etc.). If it fails, it is still added
+   with the basic data.
+4. It is persisted in Firestore via `addItem()`
+5. The button shows "Added" permanently (the modal is not re-rendered, but on its next opening it will appear as "Added" thanks
+   to the filter by `existingIds`).
 
-### Items ya registrados
-Antes de abrir el modal, se calcula un `Set` de `externalId` de todos
-los items del mismo tipo que ya tiene el usuario. Las tarjetas cuyos
-`externalId` están en ese conjunto muestran el botón "Añadido"
-deshabilitado.
+### Already-recorded items
+Before opening the modal, a `Set` of `externalId` of all
+items of the same type that the user already has is computed. Cards whose
+`externalId` is in that set show a disabled "Added" button.
 
-### Casos borde
-- **Sin conexión o error de TMDB**: La sección simplemente no se muestra
-  (no hay errores visibles).
-- **Sin recomendaciones**: TMDB puede devolver array vacío para títulos
-  muy nicho. La sección no se renderiza.
-- **Items manuales**: No tienen `externalId`, por lo que nunca aparecen
-  en recomendaciones (no hay correspondencia en TMDB). Es correcto.
-- **Modo solo lectura (amigos)**: No se muestran recomendaciones. Las
-  funciones de apertura de modal de solo lectura no reciben estos datos.
+### Edge cases
+- **No connection or TMDB error**: The section is simply not shown
+  (there are no visible errors).
+- **No recommendations**: TMDB may return an empty array for very
+  niche titles. The section is not rendered.
+- **Manual items**: They have no `externalId`, so they never appear
+  in recommendations (no TMDB match). This is correct.
+- **Read-only mode (friends)**: No recommendations are shown. The
+  read-only modal opening functions do not receive this data.
 
-## Consecuencias
+## Consequences
 
-### Positivas
-- El usuario descubre contenido relacionado sin salir de la ficha.
-- La incorporación es inmediata: un clic añade la recomendación al
-  registro con todos los metadatos de TMDB.
-- El filtrado de items ya registrados evita duplicados.
-- La sección es no intrusiva: si no hay datos, no ocupa espacio.
-- Todas las llamadas a TMDB son fallibles sin bloquear la interfaz.
+### Positive
+- The user discovers related content without leaving the detail page.
+- Incorporation is immediate: one click adds the recommendation to
+  the record with all TMDB metadata.
+- Filtering of already-recorded items avoids duplicates.
+- The section is unobtrusive: if there is no data, it takes no space.
+- All calls to TMDB are fail-safe without blocking the interface.
 
-### Negativas
-- Las recomendaciones son estáticas en el momento de abrir el modal.
-  Si el usuario añade una recomendación, el resto de tarjetas no se
-  actualizan (el botón de la añadida queda en "Añadido", pero otra
-  recomendación que coincida con un item recién añadido no se
-  deshabilitará hasta la próxima apertura del modal).
-- Las recomendaciones no están disponibles en el modal de solo lectura
-  (amigos), aunque técnicamente podrían mostrarse sin botón "Añadir".
-- Dependencia del algoritmo de TMDB: no controlamos qué considera TMDB
-  como "similar". Para algunos títulos las recomendaciones pueden no
-  ser relevantes.
+### Negative
+- Recommendations are static at the moment of opening the modal.
+  If the user adds a recommendation, the other cards do not
+  update (the added card's button stays on "Added", but another
+  recommendation matching a newly added item will not be
+  disabled until the next modal opening).
+- Recommendations are not available in the read-only
+  modal (friends), although technically they could be shown without an "Add" button.
+- Dependence on TMDB's algorithm: we do not control what TMDB considers
+  "similar". For some titles the recommendations may not be
+  relevant.
 
-### Neutras
-- No se añaden nuevas dependencias externas.
-- No se modifican las reglas de Firestore ni el modelo de datos.
-- Las funciones de API usan el mismo patrón de caching que las
-  existentes (sin caché en esta implementación inicial, ya que las
-  recomendaciones se piden una vez por apertura de modal).
+### Neutral
+- No new external dependencies are added.
+- The Firestore rules and the data model are not modified.
+- The API functions use the same caching pattern as the
+  existing ones (no cache in this initial implementation, since
+  recommendations are requested once per modal opening).
 
-## Archivos modificados
-- `js/api-movies.js` — Nuevas funciones `getSimilarMovies()` y
+## Files modified
+- `js/api-movies.js` — New functions `getSimilarMovies()` and
   `getSimilarTv()`.
-- `js/modal-handlers.js` — Nueva función `addFromRecommendation()`;
-  modificadas `openMovieItem()` y `openTvItem()` para cargar y pasar
-  recomendaciones.
-- `js/ui.js` — Nueva función `renderRecommendations()`; modificadas
-  `openMovieModal()` y `openTvModal()` para aceptar y renderizar
-  recomendaciones.
-- `ocio/ocio.css` — Nuevas clases CSS para la sección de
-  recomendaciones: `.recommendations`, `.recommendations__title`,
+- `js/modal-handlers.js` — New function `addFromRecommendation()`;
+  modified `openMovieItem()` and `openTvItem()` to load and pass
+  recommendations.
+- `js/ui.js` — New function `renderRecommendations()`; modified
+  `openMovieModal()` and `openTvModal()` to accept and render
+  recommendations.
+- `ocio/ocio.css` — New CSS classes for the recommendations
+  section: `.recommendations`, `.recommendations__title`,
   `.recommendations__scroll`, `.rec-card`, `.rec-card__cover`,
   `.rec-card__body`, `.rec-card__title`, `.rec-card__year`,
   `.rec-card__add`.
