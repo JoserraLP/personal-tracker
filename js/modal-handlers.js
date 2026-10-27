@@ -746,11 +746,14 @@ async function openTvItem(item, ctx, isRerender = false) {
     onExpandSeason: (seasonNumber) =>
       item.manual
         ? Promise.resolve(
-            Array.from({ length: seasonsMeta[0].episodeCount }, (_, i) => ({
-              episodeNumber: i + 1,
-              name: `Episodio ${i + 1}`,
-              airDate: null,
-            }))
+            Array.from(
+              { length: (seasonsMeta.find((s) => s.seasonNumber === seasonNumber) || seasonsMeta[0]).episodeCount },
+              (_, i) => ({
+                episodeNumber: i + 1,
+                name: `Episodio ${i + 1}`,
+                airDate: null,
+              })
+            )
           )
         : ctx.getSeasonEpisodes(item.externalId, seasonNumber),
 
