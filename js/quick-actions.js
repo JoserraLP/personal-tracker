@@ -13,10 +13,14 @@ import { unreleasedConfirmMessage, episodeUnreleasedMessage } from "./release.js
 import { getNextEpisodeAirInfo } from "./sorting.js";
 import { openRatingModal, RATING_MODAL_UNDONE } from "./rating-modal.js";
 
-// Season meta: for manual shows returns a single season with the
-// given episode count; for the rest, it asks TMDB.
+// Season meta: for imported/manual shows, the imported seasonsMeta
+// (TV Time carries the real season list; ADR-117) — and as fallback a
+// single season with the manual episode count; for the rest, TMDB.
 export async function getSeasonsMetaFor(item, ctx) {
   if (item.manual) {
+    if (Array.isArray(item.seasonsMeta) && item.seasonsMeta.length) {
+      return item.seasonsMeta;
+    }
     return [{ seasonNumber: 1, name: "Temporada 1", episodeCount: item.manualEpisodeCount || 10 }];
   }
   return ctx.getTvSeasonsMeta(item.externalId);

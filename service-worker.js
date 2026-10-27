@@ -94,7 +94,7 @@ const STATIC_ASSETS = [
   './ocio/libros.html?v=20261030',
   './ocio/videojuegos.html?v=20261030',
   './ocio/compras.html?v=20261030',
-  './ocio/experiences.html?v=20261102',
+  './ocio/experiences.html?v=20261103',
 ];
 
 // -------------------------------------------------------------
