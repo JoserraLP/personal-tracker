@@ -77,7 +77,7 @@ function communityRatingDisplay(item) {
 function trailerButtonHtml(item) {
   if (!item.trailerUrl) return "";
   return `<a href="${escapeHtml(item.trailerUrl)}" target="_blank" rel="noopener noreferrer" class="trailer-btn" aria-label="Ver tráiler en YouTube">
-    <span class="trailer-btn__icon" aria-hidden="true">â–¶</span>
+    <span class="trailer-btn__icon" aria-hidden="true">▶</span>
     <span class="trailer-btn__label">Tráiler</span>
   </a>`;
 }
@@ -202,11 +202,11 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
   const content = document.getElementById("modal-content");
   const metaLine =
     item.type === "book"
-      ? [item.author, item.year, item.pages ? `${item.pages} págs.` : null].filter(Boolean).join(" Â· ")
-      : [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
+      ? [item.author, item.year, item.pages ? `${item.pages} págs.` : null].filter(Boolean).join(" · ")
+      : [typeLabel(item.type), item.year].filter(Boolean).join(" · ");
   const editionsNote =
     item.type === "book" && item.editionsCount > 1
-      ? `<p class="book-confirm__editions">${item.editionsCount} ediciones â€” al añadir podrás elegir portada</p>`
+      ? `<p class="book-confirm__editions">${item.editionsCount} ediciones — al añadir podrás elegir portada</p>`
       : "";
   const isBook = item.type === "book";
 
@@ -224,7 +224,7 @@ export function openSearchPreviewModal(item, { added = false, onAdd = null, onEn
       ${extraInfoHtml(item)}
       ${previewPagesHtml(item)}
       ${previewSeasonsHtml(item)}
-      ${onEnrich ? `<p class="extra-info__line" id="preview-loading">Cargando detallesâ€¦</p>` : ""}
+      ${onEnrich ? `<p class="extra-info__line" id="preview-loading">Cargando detalles…</p>` : ""}
     </div>
     ${isBook ? "" : `${communityRatingDisplay(item)}${trailerButtonHtml(item)}`}
     <div class="modal-actions">
@@ -307,14 +307,14 @@ function progressLine(item) {
     const log = item.watchLog || [];
     if (!log.length) return "";
     const last = log[log.length - 1];
-    return `Vista el ${formatDateEs(last)}${log.length > 1 ? ` Â· Ã—${log.length}` : ""}`;
+    return `Vista el ${formatDateEs(last)}${log.length > 1 ? ` · ×${log.length}` : ""}`;
   }
   if (item.type === "tv") {
     if (item.status === "standby") return "En pausa";
     if (item.status === "abandonado") return "Abandonada";
     if (item.status === "completado") {
       const times = (item.timesCompleted || 0) + 1;
-      return `Completa${times > 1 ? ` Â· Ã—${times}` : ""} Â· ${formatDateEs(item.lastWatchedAt)}`;
+      return `Completa${times > 1 ? ` · ×${times}` : ""} · ${formatDateEs(item.lastWatchedAt)}`;
     }
     if (item.nextEpisode) {
       return `Siguiente: T${item.nextEpisode.season}E${item.nextEpisode.episode}`;
@@ -329,7 +329,7 @@ function progressLine(item) {
     const last = log[log.length - 1];
     if (!last.finishedAt) return `Leyendo desde ${formatDateEs(last.startedAt)}`;
     const times = log.filter((e) => e.finishedAt).length;
-    return `LeÃ­do el ${formatDateEs(last.finishedAt)}${times > 1 ? ` Â· Ã—${times}` : ""}`;
+    return `Leído el ${formatDateEs(last.finishedAt)}${times > 1 ? ` · ×${times}` : ""}`;
   }
   if (item.type === "game") {
     if (item.status === "standby") return "En pausa";
@@ -339,53 +339,53 @@ function progressLine(item) {
     const last = log[log.length - 1];
     if (!last.finishedAt) return `Jugando desde ${formatDateEs(last.startedAt)}`;
     const times = log.filter((e) => e.finishedAt).length;
-    return `Jugado el ${formatDateEs(last.finishedAt)}${times > 1 ? ` Â· Ã—${times}` : ""}`;
+    return `Jugado el ${formatDateEs(last.finishedAt)}${times > 1 ? ` · ×${times}` : ""}`;
   }
   return "";
 }
 
 function metaLineFor(item) {
   return item.type === "book"
-    ? [item.author, item.year].filter(Boolean).join(" Â· ")
-    : [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
+    ? [item.author, item.year].filter(Boolean).join(" · ")
+    : [typeLabel(item.type), item.year].filter(Boolean).join(" · ");
 }
 
 // Short label of the quick action button (list mode and swipe).
 function quickActionLabel(item) {
-  if (item.type === "movie") return "Vista âœ“";
+  if (item.type === "movie") return "Vista ✓";
   if (item.type === "tv") {
-    if (!item.nextEpisode) return "Completa âœ“";
+    if (!item.nextEpisode) return "Completa ✓";
     return `Ver T${item.nextEpisode.season}E${item.nextEpisode.episode}`;
   }
   if (item.type === "game") {
     const log = item.playLog || [];
     const isPlaying = log.length && !log[log.length - 1].finishedAt;
-    if (isPlaying) return "Terminar âœ“";
-    if (log.length) return "Rejugar â†º";
-    return "Empezar âœ“";
+    if (isPlaying) return "Terminar ✓";
+    if (log.length) return "Rejugar ↺";
+    return "Empezar ✓";
   }
   const log = item.readLog || [];
   const isReading = log.length && !log[log.length - 1].finishedAt;
-  if (isReading) return "Terminar âœ“";
-  if (log.length) return "Releer â†º";
-  return "Empezar âœ“";
+  if (isReading) return "Terminar ✓";
+  if (log.length) return "Releer ↺";
+  return "Empezar ✓";
 }
 
 function upcomingBadge(item) {
   if (!isItemUnreleased(item)) return "";
   const cls = "item-card__upcoming item-card__upcoming--unreleased";
   if (item.type === "movie") {
-    return `<div class="${cls}">AÃºn no estrenada${item.releaseDate ? ` Â· ${formatDateEs(item.releaseDate)}` : ""}</div>`;
+    return `<div class="${cls}">Aún no estrenada${item.releaseDate ? ` · ${formatDateEs(item.releaseDate)}` : ""}</div>`;
   }
   if (item.awaitingRelease && item.nextEpisode) { // show not yet released (premiere)
-    return `<div class="${cls}">AÃºn no estrenada${item.firstAirDate ? ` Â· ${formatDateEs(item.firstAirDate)}` : ""}</div>`;
+    return `<div class="${cls}">Aún no estrenada${item.firstAirDate ? ` · ${formatDateEs(item.firstAirDate)}` : ""}</div>`;
   }
   // Ongoing show with the next episode not yet released. isItemUnreleased
   // guarantees there is info, but for safety if there is none it is
   // not painted.
   const info = getNextEpisodeAirInfo(item);
   if (!info) return "";
-  return `<div class="${cls}">AÃºn no estrenado Â· T${info.season}E${info.episode}${info.airDate ? ` Â· ${formatDateEs(info.airDate)}` : ""}</div>`;
+  return `<div class="${cls}">Aún no estrenado · T${info.season}E${info.episode}${info.airDate ? ` · ${formatDateEs(info.airDate)}` : ""}</div>`;
 }
 
 function renderGrid(gridEl, items, onOpen) {
@@ -420,7 +420,7 @@ function renderGrid(gridEl, items, onOpen) {
           </div>` : ""}
         </div>
         <button class="item-card__btn" data-index="${index}"
-                title="${escapeHtml(item.title)} â€” ${escapeHtml(metaLineFor(item))}"
+                title="${escapeHtml(item.title)} — ${escapeHtml(metaLineFor(item))}"
                 aria-label="Ver detalles de ${escapeHtml(item.title)}"></button>
       </article>`;
     })
@@ -512,7 +512,7 @@ function renderList(gridEl, items, { onOpen, onQuickAction }) {
       const blockedClass = isItemUnreleased(item) ? " list-row--unreleased" : "";
       return `
       <div class="list-row list-row--${item.status}${blockedClass}" data-index="${index}">
-        <div class="list-row__swipe-bg">âœ“ ${escapeHtml(quickActionLabel(item))}</div>
+        <div class="list-row__swipe-bg">✓ ${escapeHtml(quickActionLabel(item))}</div>
         <div class="list-row__content">
           <button class="list-row__open" data-index="${index}"
                   aria-label="Ver detalles de ${escapeHtml(item.title)}">
@@ -613,7 +613,7 @@ export function ratingPickerHtml(rating, idPrefix = "field-rating", extraHtml = 
               full ? "is-active" : ""
             }${half ? " is-half" : ""}" aria-label="${
               half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
-            }">${half ? "Â½" : n}</button>`;
+            }">${half ? "½" : n}</button>`;
           })
           .join("")}
       </div>
@@ -654,7 +654,7 @@ export function wireRatingAndGetValue(content, initialRating, idPrefix = "field-
       const half = selectedRating === n - 0.5;
       b.classList.toggle("is-active", full && !half);
       b.classList.toggle("is-half", half);
-      b.textContent = half ? "Â½" : n;
+      b.textContent = half ? "½" : n;
       b.setAttribute(
         "aria-label",
         half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
@@ -700,8 +700,8 @@ function renderStandbyBanner(status, extraText, abandonLabel = "Abandonado/a") {
   if (status !== "standby" && status !== "abandonado") return "";
   const label = status === "standby" ? "En pausa" : abandonLabel;
   return `<div class="standby-banner"><span>${label}${
-    extraText ? " Â· " + escapeHtml(extraText) : ""
-  } â€” tu progreso se conserva.</span></div>`;
+    extraText ? " · " + escapeHtml(extraText) : ""
+  } — tu progreso se conserva.</span></div>`;
 }
 
 function wireStatusActions(content, handleStatusChange) {
@@ -731,7 +731,7 @@ function extraInfoHtml(item) {
   if (item.runtime) metaBits.push(`${item.runtime} min`);
   if (item.episodeRuntime) metaBits.push(`~${item.episodeRuntime} min/episodio`);
   if (item.genres && item.genres.length) metaBits.push(item.genres.join(", "));
-  if (metaBits.length) lines.push(`<p class="extra-info__line">${escapeHtml(metaBits.join(" Â· "))}</p>`);
+  if (metaBits.length) lines.push(`<p class="extra-info__line">${escapeHtml(metaBits.join(" · "))}</p>`);
   if (item.director) {
     lines.push(`<p class="extra-info__line"><strong>Director:</strong> ${escapeHtml(item.director)}</p>`);
   }
@@ -783,10 +783,10 @@ function detailStatusHtml(item) {
   }
   if (!item.manual && item.externalId) {
     if ((item.type === "movie" || item.type === "tv") && !item.overview) {
-      return `<p class="extra-info__loading">Cargando detallesâ€¦</p>`;
+      return `<p class="extra-info__loading">Cargando detalles…</p>`;
     }
     if (item.type === "game" && !item.description) {
-      return `<p class="extra-info__loading">Cargando detallesâ€¦</p>`;
+      return `<p class="extra-info__loading">Cargando detalles…</p>`;
     }
   }
   return "";
@@ -802,8 +802,8 @@ function previewSeasonsHtml(item) {
     const name = s.name || `Temporada ${s.seasonNumber}`;
     const count = s.episodeCount || 0;
     const episodes = `${count} episodio${count === 1 ? "" : "s"}`;
-    const airDate = s.airDate ? ` Â· ${formatDateEs(s.airDate)}` : "";
-    return `<li class="preview-seasons__row">${escapeHtml(name)} Â· ${episodes}${airDate}</li>`;
+    const airDate = s.airDate ? ` · ${formatDateEs(s.airDate)}` : "";
+    return `<li class="preview-seasons__row">${escapeHtml(name)} · ${episodes}${airDate}</li>`;
   });
   const totalEpisodes = seasons.reduce((sum, s) => sum + (s.episodeCount || 0), 0);
   return `
@@ -812,7 +812,7 @@ function previewSeasonsHtml(item) {
       <ul class="preview-seasons__list">
         ${rows.join("")}
       </ul>
-      <p class="preview-seasons__total">${seasons.length} temporada${seasons.length === 1 ? "" : "s"} Â· ${totalEpisodes} episodio${totalEpisodes === 1 ? "" : "s"}</p>
+      <p class="preview-seasons__total">${seasons.length} temporada${seasons.length === 1 ? "" : "s"} · ${totalEpisodes} episodio${totalEpisodes === 1 ? "" : "s"}</p>
     </div>
   `;
 }
@@ -825,7 +825,7 @@ function previewPagesHtml(item) {
 }
 
 function editButtonHtml() {
-  return `<button type="button" class="btn btn--small btn--outline edit-info-btn" id="btn-edit-item">âœŽ Editar información</button>`;
+  return `<button type="button" class="btn btn--small btn--outline edit-info-btn" id="btn-edit-item">✎ Editar información</button>`;
 }
 
 /* ---------- Add / edit of basic information ---------- */
@@ -846,7 +846,7 @@ function itemFormFields(type, values) {
         : ""
     }
     <div class="field-group">
-      <label for="form-year">AÃ±o</label>
+      <label for="form-year">Año</label>
       <input type="number" id="form-year" min="0" max="2100" value="${escapeHtml(values.year || "")}" />
     </div>
     ${
@@ -935,11 +935,11 @@ export function openManualAddModal(type, onSubmit) {
       ${
         type === "tv"
           ? `<div class="field-group">
-              <label for="manual-episodes">NÃºmero de episodios</label>
+              <label for="manual-episodes">Número de episodios</label>
               <input type="number" id="manual-episodes" min="1" value="10" />
             </div>
             <p class="log-empty">
-              Se asume una sola temporada con ese nÃºmero de episodios.
+              Se asume una sola temporada con ese número de episodios.
             </p>`
           : ""
       }
@@ -1011,7 +1011,7 @@ function watchProvidersHtml(item) {
                  (wp.buy && wp.buy.length);
   if (!hasAny) {
     return `<div class="watch-providers watch-providers--empty">
-      <span class="watch-providers__title">Sin info. de streaming para este paÃ­s</span>
+      <span class="watch-providers__title">Sin info. de streaming para este país</span>
     </div>`;
   }
   return `
@@ -1178,7 +1178,7 @@ function renderSagaMovies(sagaParts, existingIds, interactive, onOpen) {
 
 function renderWatchLogRows(watchLog) {
   if (!watchLog || !watchLog.length) {
-    return `<p class="log-empty">AÃºn no la has visto.</p>`;
+    return `<p class="log-empty">Aún no la has visto.</p>`;
   }
   return `<div class="log-list">
     ${watchLog
@@ -1197,7 +1197,7 @@ export function openMovieModal(item, callbacks, recommendations = [], existingId
   const { onAddWatch, onUpdateWatch, onRemoveWatch, onSaveMeta, onDelete, onEdit, onAddSaga, onAddRecommendation, onAddSagaMovie, onOpenSagaMovie, onOpenRecommendation } = callbacks;
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
-  const metaLine = [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
+  const metaLine = [typeLabel(item.type), item.year].filter(Boolean).join(" · ");
 
   content.innerHTML = `
     <div class="modal-detail__header">
@@ -1419,7 +1419,7 @@ export function openSagaSelectionModal(collectionName, movies, callbacks) {
 
 function renderReadLogRows(readLog) {
   if (!readLog || !readLog.length) {
-    return `<p class="log-empty">AÃºn no has empezado a leerlo.</p>`;
+    return `<p class="log-empty">Aún no has empezado a leerlo.</p>`;
   }
   return `<div class="log-list">
     ${readLog
@@ -1444,7 +1444,7 @@ function renderReadLogRows(readLog) {
 // history, with its own semantics; issue #47).
 function renderPlayLogRows(playLog) {
   if (!playLog || !playLog.length) {
-    return `<p class="log-empty">AÃºn no has empezado a jugarlo.</p>`;
+    return `<p class="log-empty">Aún no has empezado a jugarlo.</p>`;
   }
   return `<div class="log-list">
     ${playLog
@@ -1479,7 +1479,7 @@ export function openBookModal(item, callbacks) {
   } = callbacks;
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
-  const metaLine = [item.author, item.year].filter(Boolean).join(" Â· ");
+  const metaLine = [item.author, item.year].filter(Boolean).join(" · ");
   const isReading =
     item.readLog && item.readLog.length && !item.readLog[item.readLog.length - 1].finishedAt;
 
@@ -1599,7 +1599,7 @@ export function openGameModal(item, callbacks) {
   } = callbacks;
   const modal = document.getElementById("item-modal");
   const content = document.getElementById("modal-content");
-  const metaLine = [typeLabel(item.type), item.year].filter(Boolean).join(" Â· ");
+  const metaLine = [typeLabel(item.type), item.year].filter(Boolean).join(" · ");
   const isPlaying =
     item.playLog && item.playLog.length && !item.playLog[item.playLog.length - 1].finishedAt;
   // Played hours in the detail view (ADR-111): the total of the
@@ -1751,7 +1751,7 @@ function applyEpisodeRowState(row, entry) {
     const half = value === n - 0.5;
     s.classList.toggle("is-active", full && !half);
     s.classList.toggle("is-half", half);
-    s.textContent = half ? "Â½" : "â˜…";
+    s.textContent = half ? "½" : "★";
     s.setAttribute(
       "aria-label",
       half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
@@ -1767,7 +1767,7 @@ function renderSeasonBlock(s, watched) {
     <div class="season-block" data-season="${s.seasonNumber}" data-episode-count="${s.episodeCount}">
       <div class="season-header">
         <button class="season-toggle" data-season="${s.seasonNumber}">
-          <span class="season-chevron">â–¸</span>
+          <span class="season-chevron">▸</span>
           <span class="season-name">${escapeHtml(s.name)}</span>
           <span class="season-count">${watchedCount}/${s.episodeCount}</span>
         </button>
@@ -1805,8 +1805,8 @@ function renderEpisodeRows(episodes, seasonWatched, { manual = false } = {}) {
             <input type="checkbox" class="episode-checkbox" ${checked ? "checked" : ""}
                    aria-label="${
                      checked
-                       ? `E${e.episodeNumber} â€” ${escapeHtml(e.name)}: visto ${times} ${times === 1 ? "vez" : "veces"}. Pulsa para verlo de nuevo o desmarcarlo`
-                       : `Marcar E${e.episodeNumber} â€” ${escapeHtml(e.name)} como visto`
+                       ? `E${e.episodeNumber} — ${escapeHtml(e.name)}: visto ${times} ${times === 1 ? "vez" : "veces"}. Pulsa para verlo de nuevo o desmarcarlo`
+                       : `Marcar E${e.episodeNumber} — ${escapeHtml(e.name)} como visto`
                    }" />
             <span class="episode-checkbox-visual" aria-hidden="true"
                   ${times > 1 ? `data-count="${times}"` : ""}></span>
@@ -1815,7 +1815,7 @@ function renderEpisodeRows(episodes, seasonWatched, { manual = false } = {}) {
           <span class="episode-row__name">${escapeHtml(e.name)}${
         future
           ? ` <em class="episode-row__future">${
-              e.airDate ? `(sin estrenar Â· ${formatDateEs(e.airDate)})` : "(sin estrenar)"
+              e.airDate ? `(sin estrenar · ${formatDateEs(e.airDate)})` : "(sin estrenar)"
             }</em>`
           : ""
       }</span>
@@ -1832,7 +1832,7 @@ function renderEpisodeRows(episodes, seasonWatched, { manual = false } = {}) {
                   full ? "is-active" : ""
                 }${half ? " is-half" : ""}" data-value="${n}" aria-label="${
                   half ? `${String(n - 0.5).replace(".", ",")} estrellas` : ratingButtonAriaLabel(n)
-                }">${half ? "Â½" : "â˜…"}</button>`;
+                }">${half ? "½" : "★"}</button>`;
               })
               .join("")}
           </div>
@@ -1865,7 +1865,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
 
   const nextLine = progress.nextEpisode
     ? `Siguiente: T${progress.nextEpisode.season}E${progress.nextEpisode.episode}`
-    : "Â¡Serie completada!";
+    : "¡Serie completada!";
   const pct = progress.totalEpisodes
     ? Math.round((progress.totalWatched / progress.totalEpisodes) * 100)
     : 0;
@@ -1903,9 +1903,9 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
     ${
       item.status === "completado"
         ? `<div class="completion-banner">
-            <p>Has terminado esta serie${times > 1 ? ` (visionado nÂº ${times})` : ""}.</p>
+            <p>Has terminado esta serie${times > 1 ? ` (visionado nº ${times})` : ""}.</p>
             <p class="completion-dates">
-              Empezada: ${formatDateEs(item.firstWatchedAt)} Â· Terminada: ${formatDateEs(item.lastWatchedAt)}
+              Empezada: ${formatDateEs(item.firstWatchedAt)} · Terminada: ${formatDateEs(item.lastWatchedAt)}
             </p>
             <button type="button" class="btn btn--accent-media btn--small" id="btn-rewatch">
               Volver a verla desde el principio
@@ -1946,7 +1946,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
   function updateBanner(newProgress) {
     const line = newProgress.nextEpisode
       ? `Siguiente: T${newProgress.nextEpisode.season}E${newProgress.nextEpisode.episode}`
-      : "Â¡Serie completada!";
+      : "¡Serie completada!";
     content.querySelector(".next-line").textContent = line;
     const newPct = newProgress.totalEpisodes
       ? Math.round((newProgress.totalWatched / newProgress.totalEpisodes) * 100)
@@ -2011,7 +2011,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
           try {
             const choice = await openEpisodeActionsModal({
               title: item.title,
-              subtitle: `T${seasonNumber}E${episodeNumber} Â· ${row.dataset.episodeName || ""}`,
+              subtitle: `T${seasonNumber}E${episodeNumber} · ${row.dataset.episodeName || ""}`,
               times: currentEntry.times || 1,
             });
             let newProgress = null;
@@ -2140,7 +2140,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       chevron.textContent = "-";
       if (block.dataset.loaded) return;
 
-      block.innerHTML = `<p class="episode-loading">Cargando episodiosâ€¦</p>`;
+      block.innerHTML = `<p class="episode-loading">Cargando episodios…</p>`;
       try {
         const episodes = await onExpandSeason(seasonNumber);
         // If the user's next episode is in this season, we store its air
@@ -2209,7 +2209,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
       }
       if (unreleasedCount > 0) {
         const ok = window.confirm(
-          `Â«${item.title}Â» Â· Temporada ${seasonNumber}: ${unreleasedCount} episodio(s) sin estrenar (sin fecha oficial o con fecha futura). ¿Marcarlos todos igualmente como vistos?`
+          `«${item.title}» · Temporada ${seasonNumber}: ${unreleasedCount} episodio(s) sin estrenar (sin fecha oficial o con fecha futura). ¿Marcarlos todos igualmente como vistos?`
         );
         if (!ok) return;
       }
@@ -2243,7 +2243,7 @@ export function openTvModal(item, seasonsMeta, progress, callbacks, recommendati
     rewatchBtn.addEventListener("click", async () => {
       if (
         !window.confirm(
-          `¿Volver a ver Â«${item.title}Â» desde el principio? Se guardará el visionado anterior en el historial.`
+          `¿Volver a ver «${item.title}» desde el principio? Se guardará el visionado anterior en el historial.`
         )
       ) {
         return;
@@ -2320,7 +2320,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
     return;
   }
 
-  const metaLine = [item.author, item.year].filter(Boolean).join(" Â· ");
+  const metaLine = [item.author, item.year].filter(Boolean).join(" · ");
   const editionNote =
     item.editionsCount > 1
       ? `<p class="book-confirm__editions">${item.editionsCount} ediciones encontradas</p>`
@@ -2356,7 +2356,7 @@ export function openBookConfirmModal(item, { onConfirm, onCancel }) {
             .map(
               (desc, i) => `
             <button type="button" class="desc-picker__item ${i === 0 ? "is-selected" : ""}" data-index="${i}">
-              <p class="desc-picker__text">${escapeHtml(desc.length > 250 ? desc.slice(0, 250) + "â€¦" : desc)}</p>
+              <p class="desc-picker__text">${escapeHtml(desc.length > 250 ? desc.slice(0, 250) + "…" : desc)}</p>
             </button>`
             )
             .join("")}
@@ -2475,7 +2475,7 @@ export function renderNotifications(listEl, badgeEl, emptyEl, notifications, { o
       (n, index) => `
       <div class="notif-row ${n.read ? "" : "is-unread"}">
         <span class="notif-row__text">${escapeHtml(n.message)}</span>
-        <button type="button" class="notif-row__delete" data-index="${index}" aria-label="Borrar">âœ•</button>
+        <button type="button" class="notif-row__delete" data-index="${index}" aria-label="Borrar">✕</button>
       </div>`
     )
     .join("");
@@ -2524,7 +2524,7 @@ export function showUndoToast(title, onUndo) {
 
   const toast = document.getElementById("toast");
   toast.innerHTML = `
-    <span>Â«${escapeHtml(title)}Â» se eliminaráâ€¦</span>
+    <span>«${escapeHtml(title)}» se eliminará…</span>
     <button class="toast__btn">Deshacer</button>
   `;
   toast.classList.add("toast--undo");

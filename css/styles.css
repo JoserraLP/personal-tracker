@@ -95,7 +95,43 @@
    #c99a4e ≈ 8.4:1, --stamp-dark #cf6655 ≈ 4.8:1 (AA);
    dark status backgrounds with paper text ≈ 10:1 (AAA).
    ========================================================= */
-[data-theme="black"] {
+[data-theme="black"] 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] {
+  --ink: #000000;
+  --ink-raised: #0a0a0a;
+  --paper-dim: #111111;
+  --white: #0f0f0f;
+
+  /* Subtle light borders over dark surfaces */
+  --paper-line: rgba(241, 234, 217, 0.28);
+
+  /* Paper tints (translucent light): hovers, focus, divider lines
+     and shadows over the now-dark surfaces */
+  --ink-alpha-06: rgba(241, 234, 217, 0.06);
+  --ink-alpha-08: rgba(241, 234, 217, 0.08);
+  --ink-alpha-10: rgba(241, 234, 217, 0.10);
+  --ink-alpha-15: rgba(241, 234, 217, 0.15);
+  --ink-alpha-20: rgba(241, 234, 217, 0.20);
+
+  /* Card states in dark version: same semantic shade with dark
+     background (the stamps of the cards, which stay light on paper,
+     use the hardcoded original hex values in the overrides) */
+  --bg-state-en_curso: #12372f;
+  --bg-state-completado: #33291a;
+  --bg-state-standby: #26241e;
+  --bg-state-abandonado: #3d1f18;
+
+  /* Dark accents → light variants legible over the dark surfaces (their uses on light backgrounds are already covered by the stamp overrides) */
+  --teal-reel-dark: #4f9c8e;
+  --ochre-spine-dark: #c99a4e;
+  --stamp-dark: #cf6655;
+  --games-dark: #9a7bc4;
+}
+{
   --ink: #000000;
   --ink-raised: #0a0a0a;
   --paper-dim: #111111;
@@ -363,19 +399,67 @@
 [data-theme="black"] .gym-summary-chip.is-active,
 [data-theme="black"] .gym-summary-card,
 [data-theme="black"] .settings-card,
-[data-theme="black"] .global-search__results {
+[data-theme="black"] .global-search__results 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+
+
+[data-theme="dark"], [data-theme="black"] .skip-link,
+[data-theme="dark"], [data-theme="black"] .btn--primary,
+[data-theme="dark"], [data-theme="black"] .library-card,
+[data-theme="dark"], [data-theme="black"] .app-sidebar,
+[data-theme="dark"], [data-theme="black"] .back-to-top,
+[data-theme="dark"], [data-theme="black"] .tab.is-active,
+[data-theme="dark"], [data-theme="black"] .modal__card,
+[data-theme="dark"], [data-theme="black"] .modal__close,
+[data-theme="dark"], [data-theme="black"] .toast,
+[data-theme="dark"], [data-theme="black"] .notif-dropdown,
+[data-theme="dark"], [data-theme="black"] .profile-dropdown,
+[data-theme="dark"], [data-theme="black"] .stat-tile,
+[data-theme="dark"], [data-theme="black"] .chart-card,
+[data-theme="dark"], [data-theme="black"] .profile-subtab.is-active,
+[data-theme="dark"], [data-theme="black"] .friend-subtab.is-active,
+[data-theme="dark"], [data-theme="black"] .friend-card,
+[data-theme="dark"], [data-theme="black"] .friend-chip.is-active,
+[data-theme="dark"], [data-theme="black"] .gym-summary-chip.is-active,
+[data-theme="dark"], [data-theme="black"] .gym-summary-card,
+[data-theme="dark"], [data-theme="black"] .settings-card,
+[data-theme="dark"], [data-theme="black"] .global-search__results {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
   border: 1px solid var(--paper-alpha-20);
 }
 
 /* Primary button hover: light tint over the dark surface */
-[data-theme="black"] .btn--primary:hover {
+[data-theme="black"] .btn--primary:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .btn--primary:hover {
+  background: var(--paper-alpha-14);
+}
+{
   background: var(--paper-alpha-14);
 }
 
 /* Active tab icon: followed --ink (now #000, invisible) */
-[data-theme="black"] .tab.is-active svg {
+[data-theme="black"] .tab.is-active svg 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .tab.is-active svg {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
@@ -390,12 +474,38 @@
 [data-theme="black"] .global-search__item-status.chip,
 [data-theme="black"] .global-search__type-btn:hover,
 [data-theme="black"] .global-search__clear:hover,
-[data-theme="black"] .switch__input:focus-visible + .switch__slider {
+[data-theme="black"] .switch__input:focus-visible + .switch__slider 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .app-sidebar__link,
+[data-theme="dark"], [data-theme="black"] .app-sidebar__close:hover,
+[data-theme="dark"], [data-theme="black"] .modal__close:hover,
+[data-theme="dark"], [data-theme="black"] .profile-dropdown__item,
+[data-theme="dark"], [data-theme="black"] .btn--outline,
+[data-theme="dark"], [data-theme="black"] .global-search__item-title,
+[data-theme="dark"], [data-theme="black"] .global-search__friend-name,
+[data-theme="dark"], [data-theme="black"] .global-search__item-status.chip,
+[data-theme="dark"], [data-theme="black"] .global-search__type-btn:hover,
+[data-theme="dark"], [data-theme="black"] .global-search__clear:hover,
+[data-theme="dark"], [data-theme="black"] .switch__input:focus-visible + .switch__slider {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
 /* Modal close: soft ink legible over the dark chip */
-[data-theme="black"] .modal__close {
+[data-theme="black"] .modal__close 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .modal__close {
+  color: var(--ink-soft);
+}
+{
   color: var(--ink-soft);
 }
 
@@ -404,7 +514,19 @@
 [data-theme="black"] .notif-dropdown__header .btn-link,
 [data-theme="black"] .auth-error,
 [data-theme="black"] .btn--danger,
-[data-theme="black"] .notif-row__delete:hover {
+[data-theme="black"] .notif-row__delete:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .profile-dropdown__item--logout,
+[data-theme="dark"], [data-theme="black"] .notif-dropdown__header .btn-link,
+[data-theme="dark"], [data-theme="black"] .auth-error,
+[data-theme="dark"], [data-theme="black"] .btn--danger,
+[data-theme="dark"], [data-theme="black"] .notif-row__delete:hover {
+  color: var(--stamp-dark);
+}
+{
   color: var(--stamp-dark);
 }
 /* .btn--danger hover is not touched: its background becomes   --stamp and the text --paper (5.33:1), as in dark mode */
@@ -412,7 +534,19 @@
 /* Menu pills and selects (issue #220): in pure black no   override is needed — --ink-raised is #0a0a0a (nearly black   background) with light --paper text and --paper-alpha-30   border, and the hover uses --paper-alpha-10 (light tint on   black). The delete pill uses --stamp-dark from the rule above   and its hover fills with --stamp. */
 
 /* Notification rows: on the dark dropdown, a different shade   and a subtle border to separate them */
-[data-theme="black"] .notif-row {
+[data-theme="black"] .notif-row 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+
+
+
+[data-theme="dark"], [data-theme="black"] .notif-row {
+  background: var(--ink);
+  border: 1px solid var(--paper-alpha-10);
+}
+{
   background: var(--ink);
   border: 1px solid var(--paper-alpha-10);
 }
@@ -420,54 +554,175 @@
 /* "Mark as watched" and "manual entry" buttons of the global   search: light accent over the dark dropdown */
 [data-theme="black"] .global-search__item-seen,
 [data-theme="black"] .global-search__item-seen:disabled,
-[data-theme="black"] .global-search__manual-add {
+[data-theme="black"] .global-search__manual-add 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .global-search__item-seen,
+[data-theme="dark"], [data-theme="black"] .global-search__item-seen:disabled,
+[data-theme="dark"], [data-theme="black"] .global-search__manual-add {
+  color: var(--teal-reel-dark);
+}
+{
   color: var(--teal-reel-dark);
 }
 [data-theme="black"] .global-search__item-seen,
-[data-theme="black"] .global-search__item-seen:disabled {
+[data-theme="black"] .global-search__item-seen:disabled 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .global-search__item-seen,
+[data-theme="dark"], [data-theme="black"] .global-search__item-seen:disabled {
+  border-color: var(--teal-reel-dark);
+}
+{
   border-color: var(--teal-reel-dark);
 }
 
 /* Hover of accent buttons (light background + dark ink):   the light variants of the accents as background keep AA   contrast with the black ink */
 [data-theme="black"] .toast__btn:hover,
-[data-theme="black"] .global-search__item-add:hover {
+[data-theme="black"] .global-search__item-add:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .toast__btn:hover,
+[data-theme="dark"], [data-theme="black"] .global-search__item-add:hover {
   background: var(--teal-reel-dark);
   color: var(--ink);
 }
-[data-theme="black"] .global-search__item-add--books:hover {
+{
+  background: var(--teal-reel-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .global-search__item-add--books:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .global-search__item-add--books:hover {
   background: var(--ochre-spine-dark);
   color: var(--ink);
 }
-[data-theme="black"] .global-search__item-add--games:hover {
+{
+  background: var(--ochre-spine-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .global-search__item-add--games:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .global-search__item-add--games:hover {
+  background: var(--games-dark);
+  color: var(--ink);
+}
+{
   background: var(--games-dark);
   color: var(--ink);
 }
 
 /* Active tab accent bar: light variant of the accent for   the 3:1 graphic threshold over the dark surface */
-[data-theme="black"] .tab--tv.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
-[data-theme="black"] .tab--movies.is-active { box-shadow: inset 0 3px 0 var(--stamp-dark); }
-[data-theme="black"] .tab--books.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
-[data-theme="black"] .tab--games.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
+[data-theme="black"] .tab--tv.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .tab--tv.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
+{ box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
+[data-theme="black"] .tab--movies.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .tab--movies.is-active { box-shadow: inset 0 3px 0 var(--stamp-dark); }
+{ box-shadow: inset 0 3px 0 var(--stamp-dark); }
+[data-theme="black"] .tab--books.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .tab--books.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+{ box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+[data-theme="black"] .tab--games.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .tab--games.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
+{ box-shadow: inset 0 3px 0 var(--games-dark); }
 /* Shopping tab (ADR-105): light variant of the ochre (3:1 threshold) */
-[data-theme="black"] .tab--wishlist.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+[data-theme="black"] .tab--wishlist.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .tab--wishlist.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+{ box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
 /* Recipes tabs (issue #208): same pattern as the Ocio ones,   reusing the palette accents with their light variants for   pure black mode. */
-[data-theme="black"] .tab--recipes.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
-[data-theme="black"] .tab--ingredients.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
-[data-theme="black"] .tab--menu.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
-[data-theme="black"] .tab--shopping.is-active { box-shadow: inset 0 3px 0 var(--stamp-dark); }
+[data-theme="black"] .tab--recipes.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .tab--recipes.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+{ box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+[data-theme="black"] .tab--ingredients.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .tab--ingredients.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
+{ box-shadow: inset 0 3px 0 var(--games-dark); }
+[data-theme="black"] .tab--menu.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .tab--menu.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
+{ box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
+[data-theme="black"] .tab--shopping.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .tab--shopping.is-active { box-shadow: inset 0 3px 0 var(--stamp-dark); }
+{ box-shadow: inset 0 3px 0 var(--stamp-dark); }
 /* Gym tabs (issue #62): same pattern as the rest. Summary   (issue #269) reuses the violet of video games. */
-[data-theme="black"] .tab--gym-summary.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
-[data-theme="black"] .tab--gym-workouts.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
-[data-theme="black"] .tab--gym-exercises.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+[data-theme="black"] .tab--gym-summary.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .tab--gym-summary.is-active { box-shadow: inset 0 3px 0 var(--games-dark); }
+{ box-shadow: inset 0 3px 0 var(--games-dark); }
+[data-theme="black"] .tab--gym-workouts.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .tab--gym-workouts.is-active { box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
+{ box-shadow: inset 0 3px 0 var(--teal-reel-dark); }
+[data-theme="black"] .tab--gym-exercises.is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .tab--gym-exercises.is-active { box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
+{ box-shadow: inset 0 3px 0 var(--ochre-spine-dark); }
 
 /* Global search group title icons: light accents over the   dark dropdown (in dark mode they were already on paper,   not on ink) */
-[data-theme="black"] .global-search__group-title--tv svg { color: var(--teal-reel-dark); }
-[data-theme="black"] .global-search__group-title--movies svg { color: var(--stamp-dark); }
-[data-theme="black"] .global-search__group-title--books svg { color: var(--ochre-spine-dark); }
-[data-theme="black"] .global-search__group-title--games svg { color: var(--games-dark); }
+[data-theme="black"] .global-search__group-title--tv svg 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .global-search__group-title--tv svg { color: var(--teal-reel-dark); }
+{ color: var(--teal-reel-dark); }
+[data-theme="black"] .global-search__group-title--movies svg 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .global-search__group-title--movies svg { color: var(--stamp-dark); }
+{ color: var(--stamp-dark); }
+[data-theme="black"] .global-search__group-title--books svg 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .global-search__group-title--books svg { color: var(--ochre-spine-dark); }
+{ color: var(--ochre-spine-dark); }
+[data-theme="black"] .global-search__group-title--games svg 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .global-search__group-title--games svg { color: var(--games-dark); }
+{ color: var(--games-dark); }
 
 /* Toggle switch: the knob becomes dark (it was still paper) */
-[data-theme="black"] .switch__slider::before {
+[data-theme="black"] .switch__slider::before 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .switch__slider::before {
+  background: var(--ink-raised);
+  border: 1px solid var(--paper-alpha-30);
+}
+{
   background: var(--ink-raised);
   border: 1px solid var(--paper-alpha-30);
 }
@@ -2996,7 +3251,16 @@ body.is-back-to-top-visible .back-to-top {
   width: 0;
 }
 
-[data-theme="black"] .supermarket-chip {
+[data-theme="black"] .supermarket-chip 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .supermarket-chip {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
@@ -3645,7 +3909,16 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--white);
 }
 
-[data-theme="black"] .shopping-week-chip.is-checked {
+[data-theme="black"] .shopping-week-chip.is-checked 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .shopping-week-chip.is-checked {
+  background: var(--teal-reel-dark);
+  border-color: var(--teal-reel-dark);
+  color: var(--ink);
+}
+{
   background: var(--teal-reel-dark);
   border-color: var(--teal-reel-dark);
   color: var(--ink);
@@ -3663,7 +3936,14 @@ body.is-back-to-top-visible .back-to-top {
   outline-offset: 1px;
 }
 
-[data-theme="black"] .shopping-week-chip:focus-within {
+[data-theme="black"] .shopping-week-chip:focus-within 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .shopping-week-chip:focus-within {
+  outline-color: var(--teal-reel-dark);
+}
+{
   outline-color: var(--teal-reel-dark);
 }
 
@@ -3700,11 +3980,25 @@ body.is-back-to-top-visible .back-to-top {
   opacity: 0.9;
 }
 
-[data-theme="black"] .shopping-line-wrap {
+[data-theme="black"] .shopping-line-wrap 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .shopping-line-wrap {
+  background: var(--stamp-dark);
+}
+{
   background: var(--stamp-dark);
 }
 
-[data-theme="black"] .shopping-line__swipe-icon {
+[data-theme="black"] .shopping-line__swipe-icon 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .shopping-line__swipe-icon {
+  color: var(--ink);
+}
+{
   color: var(--ink);
 }
 
@@ -3916,7 +4210,14 @@ body.is-back-to-top-visible .back-to-top {
   font-size: 0.8rem;
 }
 
-[data-theme="black"] .shopping-excluded__btn {
+[data-theme="black"] .shopping-excluded__btn 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .shopping-excluded__btn {
+  color: var(--teal-reel-dark);
+}
+{
   color: var(--teal-reel-dark);
 }
 
@@ -4165,14 +4466,32 @@ body.is-back-to-top-visible .back-to-top {
   color: var(--white);
 }
 
-[data-theme="black"] .recipe-form__chip.is-checked {
+[data-theme="black"] .recipe-form__chip.is-checked 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-form__chip.is-checked {
+  background: var(--teal-reel-dark);
+  border-color: var(--teal-reel-dark);
+  color: var(--ink);
+}
+{
   background: var(--teal-reel-dark);
   border-color: var(--teal-reel-dark);
   color: var(--ink);
 }
 
 [data-theme="black"] .ingredients-filter__all.is-checked,
-[data-theme="black"] .ingredients-filter__item.is-checked {
+[data-theme="black"] .ingredients-filter__item.is-checked 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .ingredients-filter__all.is-checked,
+[data-theme="dark"], [data-theme="black"] .ingredients-filter__item.is-checked {
+  background: var(--games-dark);
+  color: var(--ink);
+}
+{
   background: var(--games-dark);
   color: var(--ink);
 }
@@ -5112,13 +5431,31 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="white"] .shopping-line__remove { color: var(--stamp); }
 
 /* Dark family overrides in pure black (same surfaces as the   rest of the app: --ink-raised with paper text). */
-[data-theme="black"] .recipe-card {
+[data-theme="black"] .recipe-card 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-card {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
   border: 1px solid var(--paper-alpha-20);
 }
 
-[data-theme="black"] .recipe-card__badge {
+[data-theme="black"] .recipe-card__badge 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-card__badge {
+  background: var(--ochre-spine);
+  color: var(--ink);
+}
+{
   background: var(--ochre-spine);
   color: var(--ink);
 }
@@ -5140,81 +5477,220 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="black"] .menu-grid__cell--head,
 [data-theme="black"] .menu-grid__cell--day small,
 [data-theme="black"] .recipe-form__hint,
-[data-theme="black"] .recipe-form__paso-num {
+[data-theme="black"] .recipe-form__paso-num 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-card__meta,
+[data-theme="dark"], [data-theme="black"] .ingredient-group__title,
+[data-theme="dark"], [data-theme="black"] .ingredients-count,
+[data-theme="dark"], [data-theme="black"] .ingredient-modal__used,
+[data-theme="dark"], [data-theme="black"] .ingredient-modal__cat-hint,
+[data-theme="dark"], [data-theme="black"] .ingredient-modal__label,
+[data-theme="dark"], [data-theme="black"] .ingredient-modal__text,
+[data-theme="dark"], [data-theme="black"] .menu-weekly__hint,
+[data-theme="dark"], [data-theme="black"] .menu-weekly__empty,
+[data-theme="dark"], [data-theme="black"] .shopping-line__qty,
+[data-theme="dark"], [data-theme="black"] .shopping-deleted,
+[data-theme="dark"], [data-theme="black"] .shopping-excluded,
+[data-theme="dark"], [data-theme="black"] .shopping-hint,
+[data-theme="dark"], [data-theme="black"] .menu-comensales,
+[data-theme="dark"], [data-theme="black"] .menu-grid__cell--head,
+[data-theme="dark"], [data-theme="black"] .menu-grid__cell--day small,
+[data-theme="dark"], [data-theme="black"] .recipe-form__hint,
+[data-theme="dark"], [data-theme="black"] .recipe-form__paso-num {
+  color: var(--ink-soft);
+}
+{
   color: var(--ink-soft);
 }
 
 /* Cards and filter panel: paper surfaces → dark surfaces   (pattern of the recipe cards in pure black). */
-[data-theme="black"] .ingredient-card {
+[data-theme="black"] .ingredient-card 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .ingredient-card {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
   border: 1px solid var(--paper-alpha-20);
 }
 
-[data-theme="black"] .ingredients-filter__panel {
+[data-theme="black"] .ingredients-filter__panel 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .ingredients-filter__panel {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
   border: 1px solid var(--paper-alpha-20);
 }
 
 [data-theme="black"] .ingredients-filter__all,
-[data-theme="black"] .ingredients-filter__item {
+[data-theme="black"] .ingredients-filter__item 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .ingredients-filter__all,
+[data-theme="dark"], [data-theme="black"] .ingredients-filter__item {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
 [data-theme="black"] .ingredients-filter__item:hover,
-[data-theme="black"] .ingredients-filter__all:hover {
+[data-theme="black"] .ingredients-filter__all:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .ingredients-filter__item:hover,
+[data-theme="dark"], [data-theme="black"] .ingredients-filter__all:hover {
+  background: var(--paper-alpha-10);
+}
+{
   background: var(--paper-alpha-10);
 }
 
 /* In pure black the generic hover (--paper-alpha-10 over dark   background) would beat .is-checked and leave --ink text   illegible: the hover of a checked item keeps the dark violet   background. */
 [data-theme="black"] .ingredients-filter__all.is-checked:hover,
-[data-theme="black"] .ingredients-filter__item.is-checked:hover {
+[data-theme="black"] .ingredients-filter__item.is-checked:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .ingredients-filter__all.is-checked:hover,
+[data-theme="dark"], [data-theme="black"] .ingredients-filter__item.is-checked:hover {
+  background: var(--games-dark);
+}
+{
   background: var(--games-dark);
 }
 
 /* Recipes filter (issue #234): in pure black the panel uses dark   surface (--ink-raised) and paper text, like the Ingredients   filter. The generic hover (--paper-alpha-10) would beat   .is-checked and leave --white text illegible: the hover of a   checked item keeps the ochre (--ochre-spine-dark is the light   variant #c99a4e in pure black with near-black text, contrast   ≈ 7.4:1). */
-[data-theme="black"] .recipes-filter__panel {
+[data-theme="black"] .recipes-filter__panel 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipes-filter__panel {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border: 1px solid var(--paper-alpha-20);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
   border: 1px solid var(--paper-alpha-20);
 }
 
 [data-theme="black"] .recipes-filter__all,
-[data-theme="black"] .recipes-filter__item {
+[data-theme="black"] .recipes-filter__item 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipes-filter__all,
+[data-theme="dark"], [data-theme="black"] .recipes-filter__item {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
 [data-theme="black"] .recipes-filter__item:hover,
-[data-theme="black"] .recipes-filter__all:hover {
+[data-theme="black"] .recipes-filter__all:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipes-filter__item:hover,
+[data-theme="dark"], [data-theme="black"] .recipes-filter__all:hover {
+  background: var(--paper-alpha-10);
+}
+{
   background: var(--paper-alpha-10);
 }
 
 [data-theme="black"] .recipes-filter__all.is-checked:hover,
-[data-theme="black"] .recipes-filter__item.is-checked:hover {
+[data-theme="black"] .recipes-filter__item.is-checked:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipes-filter__all.is-checked:hover,
+[data-theme="dark"], [data-theme="black"] .recipes-filter__item.is-checked:hover {
+  background: var(--ochre-spine-dark);
+}
+{
   background: var(--ochre-spine-dark);
 }
 
-[data-theme="black"] .ingredient-modal__link {
+[data-theme="black"] .ingredient-modal__link 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .ingredient-modal__link {
+  color: var(--teal-reel-dark);
+}
+{
   color: var(--teal-reel-dark);
 }
 
 [data-theme="black"] .ingredient-modal__field input,
-[data-theme="black"] .ingredient-modal__field select {
+[data-theme="black"] .ingredient-modal__field select 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .ingredient-modal__field input,
+[data-theme="dark"], [data-theme="black"] .ingredient-modal__field select {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
 }
 
 /* Diners number of the picker in pure black: the base uses   --paper-dim/--ink, which in this theme are nearly black   (invisible text ≈ 1.07:1); it inverts like the other form   fields (pattern of ingredient-modal__field). */
-[data-theme="black"] .recipe-pick__comensales input {
+[data-theme="black"] .recipe-pick__comensales input 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-pick__comensales input {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
 }
 
 /* Picker search field in pure black: without an override, the   base (--ink-raised) would have the same background as the   modal (also --ink-raised in this theme), and the field   wouldn't be distinguishable from the modal; the other inputs'   pattern is used (--ink + light border), same block as   .recipe-pick__comensales input. */
-[data-theme="black"] .recipe-pick__search {
+[data-theme="black"] .recipe-pick__search 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-pick__search {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
@@ -5222,7 +5698,17 @@ body.is-back-to-top-visible .back-to-top {
 
 /* Destination selects (day / meal) in pure black: the base uses   --paper-dim/--ink, nearly black in this theme (invisible text
    ≈ 1.07:1 over the #111 modal); they invert like the other   fields, same block as .recipe-pick__search. */
-[data-theme="black"] .recipe-pick__field select {
+[data-theme="black"] .recipe-pick__field select 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-pick__field select {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
@@ -5230,13 +5716,30 @@ body.is-back-to-top-visible .back-to-top {
 
 /* Picker labels and "Whole week" notice in pure black: the   base uses --ink (#000) and would be invisible over the dark   modal; paper, pattern of .recipe-pick__empty. */
 [data-theme="black"] .recipe-pick__field,
-[data-theme="black"] .recipe-pick__week-hint {
+[data-theme="black"] .recipe-pick__week-hint 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-pick__field,
+[data-theme="dark"], [data-theme="black"] .recipe-pick__week-hint {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
 /* Empty-list message of the picker in pure black: the base uses   --ink (the content ink), which in this theme is #000 and
    would be invisible over the dark modal (--ink-raised): it   returns to paper, pattern of .recipe-view__meta in pure black. */
-[data-theme="black"] .recipe-pick__empty {
+[data-theme="black"] .recipe-pick__empty 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-pick__empty {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
@@ -5244,35 +5747,87 @@ body.is-back-to-top-visible .back-to-top {
    ≈ 1.07:1 over the #111 background); it returns to the dark chip   with paper text, pattern of .recipe-card in pure black. The
    hover keeps the accent in the teal light variant (#4f9c8e ≈
    6.6:1). */
-[data-theme="black"] .recipe-pick__card {
+[data-theme="black"] .recipe-pick__card 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-pick__card {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
 }
 
 [data-theme="black"] .recipe-pick__card:hover,
-[data-theme="black"] .recipe-pick__card:focus-visible {
+[data-theme="black"] .recipe-pick__card:focus-visible 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-pick__card:hover,
+[data-theme="dark"], [data-theme="black"] .recipe-pick__card:focus-visible {
+  border-color: var(--teal-reel-dark);
+}
+{
   border-color: var(--teal-reel-dark);
 }
 
 /* Picker filter pills in pure black: same inversion as the   card (the light base would be #000 text on a #111 background). */
-[data-theme="black"] .recipe-pick .recipes-filter__btn {
+[data-theme="black"] .recipe-pick .recipes-filter__btn 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-pick .recipes-filter__btn {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
 }
 
 /* Diners row of the card in pure black: the base uses --ink   (#000) and would be invisible over the dark card; light soft   ink, pattern of .menu-weekly__hint (≈ 6.2:1, AA). */
-[data-theme="black"] .recipe-pick__comensales {
+[data-theme="black"] .recipe-pick__comensales 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-pick__comensales {
+  color: var(--ink-soft);
+}
+{
   color: var(--ink-soft);
 }
 
 /* Search field placeholder in pure black: the base uses --ink   (#000) and would be invisible over a field that is also --ink   (#000); light soft ink (#948a76 ≈ 6.2:1, AA). */
-[data-theme="black"] .recipe-pick__search::placeholder {
+[data-theme="black"] .recipe-pick__search::placeholder 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-pick__search::placeholder {
+  color: var(--ink-soft);
+}
+{
   color: var(--ink-soft);
 }
 
-[data-theme="black"] .recipe-form__import {
+[data-theme="black"] .recipe-form__import 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-form__import {
+  background: var(--paper-alpha-10);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--paper-alpha-10);
   border-color: var(--paper-alpha-20);
 }
@@ -5282,7 +5837,21 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="black"] .recipe-form__newtag input,
 [data-theme="black"] .recipe-form__paso input,
 [data-theme="black"] .recipe-form__ingrediente input,
-[data-theme="black"] .recipe-form__ingrediente select {
+[data-theme="black"] .recipe-form__ingrediente select 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-form__field input,
+[data-theme="dark"], [data-theme="black"] .recipe-form__field textarea,
+[data-theme="dark"], [data-theme="black"] .recipe-form__newtag input,
+[data-theme="dark"], [data-theme="black"] .recipe-form__paso input,
+[data-theme="dark"], [data-theme="black"] .recipe-form__ingrediente input,
+[data-theme="dark"], [data-theme="black"] .recipe-form__ingrediente select {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
@@ -5290,60 +5859,153 @@ body.is-back-to-top-visible .back-to-top {
 
 /* Ingredient combobox in pure black (issue #240): the dropdown   uses dark surface (--ink-raised) and paper text, pattern of
    the filter panels; hover/is-active a translucent light tint   (--paper-alpha-10, paper text over it ≈ AA). */
-[data-theme="black"] .ing-combo__list {
+[data-theme="black"] .ing-combo__list 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .ing-combo__list {
+  background: var(--ink-raised);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
 }
 
 [data-theme="black"] .ing-combo__list [role="option"]:hover,
-[data-theme="black"] .ing-combo__list [role="option"].is-active {
+[data-theme="black"] .ing-combo__list [role="option"].is-active 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .ing-combo__list [role="option"]:hover,
+[data-theme="dark"], [data-theme="black"] .ing-combo__list [role="option"].is-active {
+  background: var(--paper-alpha-10);
+  color: var(--paper);
+}
+{
   background: var(--paper-alpha-10);
   color: var(--paper);
 }
 
-[data-theme="black"] .ing-combo__toggle {
+[data-theme="black"] .ing-combo__toggle 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .ing-combo__toggle {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
 /* The "No matches…" message returns to paper in pure black (the   base --ink would be #000 ink over the dark surface of the list). */
-[data-theme="black"] .ing-combo__list .ing-combo__empty {
+[data-theme="black"] .ing-combo__list .ing-combo__empty 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .ing-combo__list .ing-combo__empty {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
-[data-theme="black"] .recipe-form__chip {
+[data-theme="black"] .recipe-form__chip 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-form__chip {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
 }
 
-[data-theme="black"] .recipe-form__fieldset {
+[data-theme="black"] .recipe-form__fieldset 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-form__fieldset {
+  border-color: var(--paper-alpha-20);
+}
+{
   border-color: var(--paper-alpha-20);
 }
 
 /* Recipe read-mode view (issue #236) in pure black: the tag pills   use the light variants (teal #4f9c8e ≈ 6.6:1 and ochre #c99a4e   ≈ 7.4:1 over ink) with near-black text (--ink), pattern of   .recipe-form__chip.is-checked; links use the teal light   variant like .ingredient-modal__link. The recipe cards share   the same pairs (grouped selectors). */
 [data-theme="black"] .recipe-view__tag--alergeno,
-[data-theme="black"] .recipe-card__tag--alergeno {
+[data-theme="black"] .recipe-card__tag--alergeno 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-view__tag--alergeno,
+[data-theme="dark"], [data-theme="black"] .recipe-card__tag--alergeno {
+  background: var(--teal-reel-dark);
+  color: var(--ink);
+}
+{
   background: var(--teal-reel-dark);
   color: var(--ink);
 }
 
 [data-theme="black"] .recipe-view__tag--tipo,
-[data-theme="black"] .recipe-card__tag--tipo {
+[data-theme="black"] .recipe-card__tag--tipo 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-view__tag--tipo,
+[data-theme="dark"], [data-theme="black"] .recipe-card__tag--tipo {
+  background: var(--ochre-spine-dark);
+  color: var(--ink);
+}
+{
   background: var(--ochre-spine-dark);
   color: var(--ink);
 }
 
-[data-theme="black"] .recipe-view__link {
+[data-theme="black"] .recipe-view__link 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-view__link {
+  color: var(--teal-reel-dark);
+}
+{
   color: var(--teal-reel-dark);
 }
 
 /* In pure black the ink is #000 over the modal surface   (--ink-raised): the secondary text returns to paper like the rest. */
-[data-theme="black"] .recipe-view__meta {
+[data-theme="black"] .recipe-view__meta 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-view__meta {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
-[data-theme="black"] .recipe-form__import-row input {
+[data-theme="black"] .recipe-form__import-row input 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .recipe-form__import-row input {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
@@ -5352,21 +6014,52 @@ body.is-back-to-top-visible .back-to-top {
 /* Recipe card of the cells in pure black: the base's   translucent paper tint already works over the dark cell; it   is restated to group it with the rest of the theme's
    surfaces. Hover/focus keeps the accent in the teal light
    variant (pattern of .recipe-pick__card in pure black). */
-[data-theme="black"] .menu-meal__card {
+[data-theme="black"] .menu-meal__card 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .menu-meal__card {
+  background: var(--paper-alpha-10);
+}
+{
   background: var(--paper-alpha-10);
 }
 
 [data-theme="black"] .menu-meal__card:hover,
-[data-theme="black"] .menu-meal__card:focus-visible {
+[data-theme="black"] .menu-meal__card:focus-visible 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .menu-meal__card:hover,
+[data-theme="dark"], [data-theme="black"] .menu-meal__card:focus-visible {
+  border-color: var(--teal-reel-dark);
+}
+{
   border-color: var(--teal-reel-dark);
 }
 
 /* Pure black: same hover marking with inner shadow; the swipe's   background never shows through (issue #225, iteration 3). */
-[data-theme="black"] .shopping-line-wrap:hover .shopping-line__content {
+[data-theme="black"] .shopping-line-wrap:hover .shopping-line__content 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .shopping-line-wrap:hover .shopping-line__content {
+  box-shadow: inset 0 0 0 999px var(--paper-alpha-10);
+}
+{
   box-shadow: inset 0 0 0 999px var(--paper-alpha-10);
 }
 
-[data-theme="black"] .shopping-line-wrap--hogar .shopping-line__content {
+[data-theme="black"] .shopping-line-wrap--hogar .shopping-line__content 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .shopping-line-wrap--hogar .shopping-line__content {
+  border-left-color: var(--ochre-spine);
+}
+{
   border-left-color: var(--ochre-spine);
 }
 
@@ -5374,12 +6067,28 @@ body.is-back-to-top-visible .back-to-top {
    ingredient-modal__field). .shopping-btn--ghost and   .shopping-line__remove:hover don't need overrides: the base   already works in pure black. */
 [data-theme="black"] .shopping-extra-form__row input,
 [data-theme="black"] .shopping-extra-form__row select,
-[data-theme="black"] .shopping-extra-form__row .ing-combo .ing-nombre { background: var(--ink); }
+[data-theme="black"] .shopping-extra-form__row .ing-combo .ing-nombre 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .shopping-extra-form__row input,
+[data-theme="dark"], [data-theme="black"] .shopping-extra-form__row select,
+[data-theme="dark"], [data-theme="black"] .shopping-extra-form__row .ing-combo .ing-nombre { background: var(--ink); }
+{ background: var(--ink); }
 
 /* Shopping list checkboxes in pure black: the red accent   switches to the light variant (--stamp-dark #cf6655) to keep
    the 3:1 graphic threshold over black (episode-checkbox
    pattern). */
-[data-theme="black"] .shopping-line__main input[type="checkbox"] {
+[data-theme="black"] .shopping-line__main input[type="checkbox"] 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .shopping-line__main input[type="checkbox"] {
+  accent-color: var(--stamp-dark);
+}
+{
   accent-color: var(--stamp-dark);
 }
 
@@ -5387,7 +6096,19 @@ body.is-back-to-top-visible .back-to-top {
 
 /* The cards become the raised dark surface (same pattern   as .recipe-card in pure black: paper text over --ink-raised). */
 [data-theme="black"] .gym-workout-card,
-[data-theme="black"] .gym-exercise-card {
+[data-theme="black"] .gym-exercise-card 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+
+
+[data-theme="dark"], [data-theme="black"] .gym-workout-card,
+[data-theme="dark"], [data-theme="black"] .gym-exercise-card {
+  background: var(--ink-raised);
+  color: var(--paper);
+}
+{
   background: var(--ink-raised);
   color: var(--paper);
 }
@@ -5404,7 +6125,24 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="black"] .gym-exercise-block input[type="text"],
 [data-theme="black"] .gym-series-row input,
 [data-theme="black"] .gym-summary-range__trigger,
-[data-theme="black"] .gym-summary-range__popover {
+[data-theme="black"] .gym-summary-range__popover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .gym-form__field input,
+[data-theme="dark"], [data-theme="black"] .gym-form__field select,
+[data-theme="dark"], [data-theme="black"] .gym-form__field textarea,
+[data-theme="dark"], [data-theme="black"] .gym-exercise-block select,
+[data-theme="dark"], [data-theme="black"] .gym-exercise-block input[type="text"],
+[data-theme="dark"], [data-theme="black"] .gym-series-row input,
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__trigger,
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__popover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--paper-alpha-20);
+}
+{
   background: var(--ink);
   color: var(--paper);
   border-color: var(--paper-alpha-20);
@@ -5416,47 +6154,123 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="black"] .gym-summary-range__cal-title,
 [data-theme="black"] .gym-summary-range__cal-weekday,
 [data-theme="black"] .gym-summary-range__cal-nav,
-[data-theme="black"] .gym-summary-range__day {
+[data-theme="black"] .gym-summary-range__day 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__label,
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__value,
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__cal-title,
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__cal-weekday,
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__cal-nav,
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__day {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
 /* Calendar hover in pure black: light tint over the dark   surface (--paper-dim #111 would be invisible). */
 [data-theme="black"] .gym-summary-range__cal-nav:hover,
-[data-theme="black"] .gym-summary-range__day:hover {
+[data-theme="black"] .gym-summary-range__day:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__cal-nav:hover,
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__day:hover {
+  background: var(--paper-alpha-10);
+}
+{
   background: var(--paper-alpha-10);
 }
 
 /* Range endpoints in pure black: accent in its light variant and
    ink text (the base variant #7a5a9e with paper text would give   ~2:1); intermediate days use a neutral light tint because   violet at 22 % over black is barely visible. The hover keeps   the endpoint state (rule after the generic hover one). */
-[data-theme="black"] .gym-summary-range__day--selected {
+[data-theme="black"] .gym-summary-range__day--selected 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__day--selected {
   background: var(--games-dark);
   color: var(--ink);
 }
-[data-theme="black"] .gym-summary-range__day--selected:hover {
+{
   background: var(--games-dark);
   color: var(--ink);
 }
-[data-theme="black"] .gym-summary-range__day--in-range {
+[data-theme="black"] .gym-summary-range__day--selected:hover 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__day--selected:hover {
+  background: var(--games-dark);
+  color: var(--ink);
+}
+{
+  background: var(--games-dark);
+  color: var(--ink);
+}
+[data-theme="black"] .gym-summary-range__day--in-range 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__day--in-range {
+  background: var(--paper-alpha-14);
+  color: var(--paper);
+}
+{
   background: var(--paper-alpha-14);
   color: var(--paper);
 }
 
 /* The open trigger marks its border with the light accent. */
-[data-theme="black"] .gym-summary-range__trigger[aria-expanded="true"] {
+[data-theme="black"] .gym-summary-range__trigger[aria-expanded="true"] 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .gym-summary-range__trigger[aria-expanded="true"] {
+  border-color: var(--games-dark);
+}
+{
   border-color: var(--games-dark);
 }
 
 /* The builder's exercise panel uses the light border of the   rest of the surfaces in pure black. */
-[data-theme="black"] .gym-exercise-block {
+[data-theme="black"] .gym-exercise-block 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .gym-exercise-block {
+  border-color: var(--paper-alpha-20);
+}
+{
   border-color: var(--paper-alpha-20);
 }
 
 /* The "+ Add set" button (dashed border and soft text) and the   muscle group chip keep their contrast over black: paper text. */
-[data-theme="black"] .gym-add-series-btn {
+[data-theme="black"] .gym-add-series-btn 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+
+[data-theme="dark"], [data-theme="black"] .gym-add-series-btn {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
-[data-theme="black"] .gym-muscle-chip {
+[data-theme="black"] .gym-muscle-chip 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+
+[data-theme="dark"], [data-theme="black"] .gym-muscle-chip {
+  color: var(--paper);
+}
+{
   color: var(--paper);
 }
 
@@ -5572,7 +6386,13 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="white"] .auth-screen .library-card {
   background: var(--white);
 }
-[data-theme="black"] .auth-screen .library-card {
+[data-theme="black"] .auth-screen .library-card 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .auth-screen .library-card {
+  background: var(--ink-raised);
+}
+{
   background: var(--ink-raised);
 }
 
@@ -5586,6 +6406,104 @@ body.is-back-to-top-visible .back-to-top {
 [data-theme="black"] .profile-dropdown,
 [data-theme="black"] .global-search__results,
 [data-theme="black"] .toast,
-[data-theme="black"] .back-to-top {
+[data-theme="black"] .back-to-top 
+/* ADR-113: la familia oscura por defecto comparte los overrides de negro puro */
+
+[data-theme="dark"], [data-theme="black"] .modal__card,
+[data-theme="dark"], [data-theme="black"] .notif-dropdown,
+[data-theme="dark"], [data-theme="black"] .profile-dropdown,
+[data-theme="dark"], [data-theme="black"] .global-search__results,
+[data-theme="dark"], [data-theme="black"] .toast,
+[data-theme="dark"], [data-theme="black"] .back-to-top {
+  border-color: var(--paper-alpha-20);
+}
+{
+  border-color: var(--paper-alpha-20);
+}
+
+/* =========================================================
+   ADR-113 — Unificación de UI bajo el skin IMDb (ADR-112)
+   =========================================================
+   Con los overrides de negro puro compartidos con la familia
+   oscura, todas las superficies de Recetas/Gimnasio/Perfil/
+   Ajustes usan el mismo lenguaje que las fichas de Ocio:
+   superficies sólidas por familia, hairline y radio de tarjeta.
+   Esta capa solo unifica el armazón (radio/borde/sombra); los
+   colores interiores ya están cubiertos por familia.
+   
+   Nota de limpieza: se retira del armazón el radio ticket de
+   3px en las superficies de lista; el --radius del CDN queda
+   para inputs nativos (date pickers, checkboxes) que no tienen
+   superficie del catálogo.
+   ========================================================= */
+
+.recipe-card,
+.gym-workout-card,
+.gym-exercise-card,
+.stat-tile,
+.chart-card,
+.settings-card,
+.ingredient-card,
+.ingredient-group,
+.ingredients-filter__panel,
+.recipes-filter__panel,
+.shopping-group,
+.shopping-extra-form,
+.menu-grid__cell,
+.menu-weekly,
+.ing-combo__list,
+.friend-card,
+.library-card {
+  border-radius: var(--radius-card);
+  box-shadow: none;
+  border: 1px solid var(--paper-alpha-30);
+}
+[data-theme="light"] .recipe-card,
+[data-theme="white"] .recipe-card,
+[data-theme="light"] .gym-workout-card,
+[data-theme="white"] .gym-workout-card,
+[data-theme="light"] .gym-exercise-card,
+[data-theme="white"] .gym-exercise-card,
+[data-theme="light"] .stat-tile,
+[data-theme="white"] .stat-tile,
+[data-theme="light"] .chart-card,
+[data-theme="white"] .chart-card,
+[data-theme="light"] .settings-card,
+[data-theme="white"] .settings-card,
+[data-theme="light"] .ingredient-card,
+[data-theme="white"] .ingredient-card,
+[data-theme="light"] .ingredient-group,
+[data-theme="white"] .ingredient-group,
+[data-theme="light"] .ingredients-filter__panel,
+[data-theme="white"] .ingredients-filter__panel,
+[data-theme="light"] .recipes-filter__panel,
+[data-theme="white"] .recipes-filter__panel,
+[data-theme="light"] .shopping-group,
+[data-theme="white"] .shopping-group,
+[data-theme="light"] .shopping-extra-form,
+[data-theme="white"] .shopping-extra-form,
+[data-theme="light"] .menu-grid__cell,
+[data-theme="white"] .menu-grid__cell,
+[data-theme="light"] .menu-weekly,
+[data-theme="white"] .menu-weekly,
+[data-theme="light"] .ing-combo__list,
+[data-theme="white"] .ing-combo__list,
+[data-theme="light"] .friend-card,
+[data-theme="white"] .friend-card,
+[data-theme="light"] .library-card,
+[data-theme="white"] .library-card {
+  border-color: var(--ink-alpha-15);
+}
+[data-theme="black"] .recipe-card,
+[data-theme="black"] .gym-workout-card,
+[data-theme="black"] .gym-exercise-card,
+[data-theme="black"] .ingredient-card,
+[data-theme="black"] .ingredients-filter__panel,
+[data-theme="black"] .recipes-filter__panel,
+[data-theme="black"] .shopping-group,
+[data-theme="black"] .shopping-extra-form,
+[data-theme="black"] .menu-grid__cell,
+[data-theme="black"] .menu-weekly,
+[data-theme="black"] .ing-combo__list {
   border-color: var(--paper-alpha-20);
 }
