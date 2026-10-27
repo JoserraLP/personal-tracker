@@ -420,6 +420,7 @@ const EN_TEXT_EXTRA = {
   "Ítem añadido a la lista.": "Item added to the list.",
   "Ahora no": "Not now",
   "Elige una valoración (de 1 a 5 estrellas, con medias).": "Choose a rating (1 to 5 stars, with halves).",
+  "Elige una valoración (de 1 a 10).": "Choose a rating (1 to 10).",
   "No se pudo abrir la valoración:": "Could not open the rating:",
   "Marcado deshecho.": "Mark undone.",
   "Desmarcado.": "Unmarked.",
