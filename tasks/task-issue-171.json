@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 171,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/171",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/171",
     "title": "Consistencia en la información de videojuegos"
   },
   "pr": {
     "number": 180,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/180",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/180",
     "title": "[feature] Consistencia en la información de videojuegos — valoración IGDB, tráiler y plataformas como chips",
     "branch": "content/issue-171-consistencia-info-videojuegos",
     "commit": "8a4a01c",

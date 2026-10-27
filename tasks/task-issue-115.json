@@ -26,7 +26,7 @@
   ],
   "issue": {
     "number": 115,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/115",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/115",
     "title": "Marcar ítems vistos al buscar"
   },
   "notes": {
@@ -38,7 +38,7 @@
   },
   "pr": {
     "number": 160,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/160",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/160",
     "title": "[feature] Marcar ítems vistos al buscar y valorarlos (issue #115)",
     "branch": "feature/issue-115-marcar-visto-al-buscar",
     "commit": "2544e6f"

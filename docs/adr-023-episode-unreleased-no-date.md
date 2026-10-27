@@ -19,7 +19,7 @@ The four failure points detected with `nextEpisodeToAir = null`:
 3. **Individual checkbox in the series modal** (`js/ui.js`): it only blocked when `airDate` existed and was in the future; an episode without a date (T2E1) was marked as watched without confirmation.
 4. **Season's "Marcar todo"** (`js/ui.js`): it did not check release dates at all.
 
-Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27
+Related issue: #27 — https://github.com/gonzalitojh/personal-tracker/issues/27
 
 ## Decision
 
@@ -116,4 +116,4 @@ When marking an entire season (`season-mark-all`, only when marking, not un-mark
 | `js/modal-handlers.js` | New callback `onUpdateNextEpisodeAirDate` (fire-and-forget): mutates `item.nextEpisodeAirDate` and persists in Firestore without throwing |
 | `docs/adr-023-episode-unreleased-no-date.md` | **New**: this document |
 
-Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27
+Related issue: #27 — https://github.com/gonzalitojh/personal-tracker/issues/27

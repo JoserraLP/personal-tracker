@@ -98,12 +98,12 @@ export const PLACEHOLDER_COVER =
 /* ---------- Screens ---------- */
 
 // Placeholder of the global search bar (issue #46): on entry it
-// shows "Mi Registro" and after 3.5 s it switches to the default
+// shows "Personal Tracker" and after 3.5 s it switches to the default
 // placeholder. The timer is cleared on logout. The default
 // placeholder no longer mentions friends: the search is scoped to
 // the section (issue #206) and only restores in the access screen.
 export const DEFAULT_SEARCH_PLACEHOLDER = "Buscar películas, series, libros y videojuegos...";
-const SEARCH_BRAND_PLACEHOLDER = "Mi Registro";
+const SEARCH_BRAND_PLACEHOLDER = "Personal Tracker";
 const SEARCH_PLACEHOLDER_SWITCH_MS = 3500;
 let searchPlaceholderTimer = null;
 
@@ -161,7 +161,7 @@ export function showApp(user) {
   document.getElementById("app-header")?.classList.remove("hidden");
   document.getElementById("user-avatar").src = user.photoURL || PLACEHOLDER_COVER;
 
-  // Animated placeholder: "Mi Registro" → section placeholder
+  // Animated placeholder: "Personal Tracker" → section placeholder
   const searchInput = getGlobalSearchInput();
   if (searchInput) {
     clearTimeout(searchPlaceholderTimer);

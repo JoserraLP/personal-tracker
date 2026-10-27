@@ -63,7 +63,7 @@ studies, and fulfills `tasks/task-issue-184.json`'s definition of done
 («ADR documenting the study and its conclusion, with 'Related
 issue: #184'»).
 
-Related issue: #184 — https://github.com/gonzalitojh/Registro-personal/issues/184
+Related issue: #184 — https://github.com/gonzalitojh/personal-tracker/issues/184
 
 ## Decision
 

@@ -61,7 +61,7 @@ retrospectively, as ADR-065 and ADR-067 did for their studies, and fulfills
 `tasks/task-issue-183.json`'s definition of done («ADR documentando
 la decisión/conclusión del estudio (with 'Related issue: #183')»).
 
-Related issue: #183 — https://github.com/gonzalitojh/Registro-personal/issues/183
+Related issue: #183 — https://github.com/gonzalitojh/personal-tracker/issues/183
 
 ## Decision
 
@@ -267,4 +267,4 @@ state, verified in the study (section 3).
 
 Related to: docs/estudio-almacenamiento-minimo.md
 
-Related issue: #183 — https://github.com/gonzalitojh/Registro-personal/issues/183
+Related issue: #183 — https://github.com/gonzalitojh/personal-tracker/issues/183

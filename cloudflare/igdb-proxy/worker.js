@@ -1,5 +1,5 @@
 // =============================================================
-// Proxy de IGDB (Twitch) para la app Registro-personal.
+// Proxy de IGDB (Twitch) para la app personal-tracker.
 //
 // IGDB no permite peticiones directas desde el navegador (no hay
 // CORS) y su Client Secret NO puede exponerse en una SPA. Este

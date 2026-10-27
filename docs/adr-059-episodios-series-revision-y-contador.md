@@ -36,7 +36,7 @@ The implementation is validated (QA PASS) and scanned (security PASS);
 the user manual was updated in the same task (rule 3 of
 AGENTS.md). This ADR documents the decision retrospectively.
 
-Related issue: #133 — https://github.com/gonzalitojh/Registro-personal/issues/133
+Related issue: #133 — https://github.com/gonzalitojh/personal-tracker/issues/133
 
 ## Decision
 
@@ -274,4 +274,4 @@ centered, no border). With `times === 1` the classic tick remains.
 | `tasks/task-issue-133.json` | Task file of the task (title/description, change plan, acceptance criteria and the `issue` block with issue #133) |
 | `docs/adr-059-episodios-series-revision-y-contador.md` | **New**: this document |
 
-Related issue: #133 — https://github.com/gonzalitojh/Registro-personal/issues/133
+Related issue: #133 — https://github.com/gonzalitojh/personal-tracker/issues/133

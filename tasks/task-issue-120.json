@@ -20,7 +20,7 @@
   ],
   "issue": {
     "number": 120,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/120",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/120",
     "title": "Auto-resolución: no se puede reanudar una issue en status: blocked ni iterar por comentario antes de la promoción a main"
   },
   "implemented_files": [
@@ -48,7 +48,7 @@
   },
   "pr": {
     "number": 121,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/121",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/121",
     "title": "Reanudar issues bloqueadas en auto-resolve y reanudación manual vía dispatch (issue #120)",
     "branch": "fix/issue-120-reanudar-issues-bloqueadas",
     "closes": "Closes #120"

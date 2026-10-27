@@ -18,7 +18,7 @@ The issue asks to organize the display differently: **by tabs**
 (explicitly without search: «no hace falta búsqueda, pero sí filtros de
 estados»).
 
-Related issue: #49 — https://github.com/gonzalitojh/Registro-personal/issues/49
+Related issue: #49 — https://github.com/gonzalitojh/personal-tracker/issues/49
 
 ## Decision
 
@@ -172,4 +172,4 @@ set varies by scope and **in movies it matches the personal view**
   `.friend-detail__section` is in the historical ADR
   `docs/adr-009-light-mode.md`.
 
-Related issue: #49 — https://github.com/gonzalitojh/Registro-personal/issues/49
+Related issue: #49 — https://github.com/gonzalitojh/personal-tracker/issues/49

@@ -15,7 +15,7 @@ to replace the use of the Google Books or OpenLibrary API with a scraper of the
 GoodReads website. This scraper must comply with all GoodReads terms and
 conditions and respect the rules stated in the robots.txt file, as well as not
 overload the target servers.] —
-https://github.com/gonzalitojh/Registro-personal/issues/50
+https://github.com/gonzalitojh/personal-tracker/issues/50
 
 ## Status
 

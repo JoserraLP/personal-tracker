@@ -34,7 +34,7 @@ in the same task (`docs/manual-de-usuario.md` §14, rule 3 of
 AGENTS.md). This ADR documents the decision retrospectively, like the
 recent ones (ADR-059, ADR-060, ADR-061, ADR-062, ADR-063).
 
-Related issue: #43 — https://github.com/gonzalitojh/Registro-personal/issues/43
+Related issue: #43 — https://github.com/gonzalitojh/personal-tracker/issues/43
 
 ## Decision
 
@@ -282,4 +282,4 @@ The existing modes keep their ratio: dark 15.2:1 and light 12.9:1
 | `tasks/task-issue-43.json` | **Modified**: the task's state (implemented → QA validated → security scanned) with the `pr` block and issue #43 |
 | `docs/adr-064-modos-negro-puro-y-blanco-puro.md` | **New**: this document |
 
-Related issue: #43 — https://github.com/gonzalitojh/Registro-personal/issues/43
+Related issue: #43 — https://github.com/gonzalitojh/personal-tracker/issues/43

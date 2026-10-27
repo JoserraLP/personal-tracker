@@ -23,7 +23,7 @@
   ],
   "issue": {
     "number": 118,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/118",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/118",
     "title": "Filtros colecciones"
   },
   "validation": {
@@ -57,7 +57,7 @@
   ],
   "pr": {
     "number": 125,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/125",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/125",
     "title": "[style] Filtros colecciones",
     "branch": "style/issue-118-filtros-colecciones",
     "commit": "f1e9b52",

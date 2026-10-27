@@ -20,12 +20,12 @@
   ],
   "issue": {
     "number": 256,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/256",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/256",
     "title": "Ocultación barra superior y pestañas"
   },
   "pr": {
     "number": 258,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/258",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/258",
     "title": "style: auto-ocultado de cabecera y pestañas en la sección de Recetas (issue #256)",
     "branch": "style/issue-256-ocultacion-barracion-recetas",
     "commit": "6cc57fd",

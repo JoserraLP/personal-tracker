@@ -81,7 +81,7 @@ function generateIcsString(events) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Mi Registro//ES",
+    "PRODID:-//Personal Tracker//ES",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
   ];

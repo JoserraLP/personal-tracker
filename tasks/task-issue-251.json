@@ -24,12 +24,12 @@
   ],
   "issue": {
     "number": 251,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/251",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/251",
     "title": "Unidad de medida en recetas"
   },
   "pr": {
     "number": 252,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/252",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/252",
     "title": "[content] Unidad de medida de los ingredientes de receta como desplegable (g, Kg, mL, L, Unidades) (issue #251)",
     "branch": "content/issue-251-unidad-medida-recetas",
     "commit": "cec8200",

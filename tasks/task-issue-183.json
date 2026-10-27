@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 183,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/183",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/183",
     "title": "Estudio almacenamiento mínimo"
   },
   "pr": {
     "number": 189,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/189",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/189",
     "title": "docs: estudio de almacenamiento mínimo — híbrido A2 + pasada mínima A5-a para futura implementación (issue #183)",
     "branch": "docs/issue-183-estudio-almacenamiento-minimo",
     "commit": "a7c0dfe",

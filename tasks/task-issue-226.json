@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 226,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/226",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/226",
     "title": "Relanzar auto-resolve-issues"
   },
   "pr": {
     "number": 229,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/229",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/229",
     "title": "feat: relanzamiento automático en fallo + cola de ejecuciones en auto-resolve-issues (issue #226)",
     "branch": "refactor/issue-226-relanzar-auto-resolve",
     "commit": "d377e05",

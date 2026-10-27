@@ -15,7 +15,7 @@
   "definition of done": "Planificación, implementación, validación, seguridad, ADR (con 'Related issue: #240') y PR sin keyword de cierre contra la rama `content/issue-64-seccion-recetas` (no contra dev).",
   "issue": {
     "number": 240,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/240",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/240",
     "title": "Edición de ingredientes en receta"
   },
   "plan": {
@@ -34,7 +34,7 @@
   },
   "pr": {
     "number": 241,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/241",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/241",
     "title": "[content] Ingredientes de receta elegidos del catálogo con buscador (issue #240)",
     "branch": "content/issue-240-edicion-ingredientes-receta",
     "commit": "c6dfeef",

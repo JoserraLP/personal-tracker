@@ -21,12 +21,12 @@
   ],
   "issue": {
     "number": 134,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/134",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/134",
     "title": "Iconos en desplegable del perfil"
   },
   "pr": {
     "number": 155,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/155",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/155",
     "title": "style: iconos en el menú de perfil y en el buscador global (issue #134)",
     "branch": "style/issue-134-iconos-desplegable-perfil",
     "commit": "581861c",

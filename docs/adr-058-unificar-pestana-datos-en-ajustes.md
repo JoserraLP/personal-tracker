@@ -32,7 +32,7 @@ The implementation is validated (QA PASS) and scanned (security PASS);
 the user manual was already updated in the same task (rule 3 of
 AGENTS.md). This ADR documents the decision retrospectively.
 
-Related issue: #135 — https://github.com/gonzalitojh/Registro-personal/issues/135
+Related issue: #135 — https://github.com/gonzalitojh/personal-tracker/issues/135
 
 ## Decision
 
@@ -185,4 +185,4 @@ Routing consequences:
 | `tasks/task-issue-135.json` | Task file of the task (title/description, change plan, acceptance criteria and the `issue` block with issue #135) |
 | `docs/adr-058-unificar-pestana-datos-en-ajustes.md` | **New**: this document |
 
-Related issue: #135 — https://github.com/gonzalitojh/Registro-personal/issues/135
+Related issue: #135 — https://github.com/gonzalitojh/personal-tracker/issues/135

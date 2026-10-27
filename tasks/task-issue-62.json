@@ -24,7 +24,7 @@
   ],
   "issue": {
     "number": 62,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/62",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/62",
     "title": "Nueva sección de gimnasio"
   },
   "notes": {
@@ -49,7 +49,7 @@
   },
   "pr": {
     "number": 262,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/262",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/262",
     "title": "feat(gym): nueva sección de gimnasio (#62)",
     "branch": "feat/issue-62-seccion-gimnasio",
     "commit": "da6de6e",

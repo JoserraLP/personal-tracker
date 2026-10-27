@@ -158,7 +158,7 @@ The implementation is validated
   (the
   ADR-093).
 
-Related issue: #256 — https://github.com/gonzalitojh/Registro-personal/issues/256
+Related issue: #256 — https://github.com/gonzalitojh/personal-tracker/issues/256
 
 ## Decision
 
@@ -443,4 +443,4 @@ automatically.
 | `docs/manual-de-usuario.md` | **Modified**: §3 (the header and the tab bar hide when scrolling down in Ocio **and Recipes**) and §3.2 (the auto-hiding on the Recipes' 4 tabs; the "Back to the top" button with the active tab's toolbar; the profile keeps its own header) — AGENTS.md's rule 3 |
 | `docs/adr-094-ocultar-navegacion-recetas.md` | **New**: this document |
 
-Related issue: #256 — https://github.com/gonzalitojh/Registro-personal/issues/256
+Related issue: #256 — https://github.com/gonzalitojh/personal-tracker/issues/256

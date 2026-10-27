@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 75,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/75",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/75",
     "title": "Ajustes en barra lateral"
   },
   "pr": {
     "number": 91,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/91",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/91",
     "title": "[style] Ajustes en la barra lateral y eliminación de botones ⚙️/☀️🌙 de la cabecera (issue #75)",
     "branch": "style/issue-75-ajustes-barra-lateral",
     "commit": "5800c8c",

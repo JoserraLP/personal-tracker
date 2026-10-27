@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 275,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/275",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/275",
     "title": "Evitar zoom"
   },
   "pr": {
     "number": 277,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/277",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/277",
     "title": "fix: nunca zoom en ninguna interacción — font-size 16px y touch-action (issue #275)",
     "branch": "fix/issue-275-evitar-zoom",
     "commit": "3271182"

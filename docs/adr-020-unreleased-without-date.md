@@ -18,7 +18,7 @@ Issue #27 establishes the criterion: **no release date ⇒ the item is assumed N
 
 The affected points were: item creation (`awaitingRelease` flag), marking as watched (movie modal and quick actions), series' unreleased next episode badge (`isNextEpisodeUnreleased`) and the daily backfill check.
 
-Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27
+Related issue: #27 — https://github.com/gonzalitojh/personal-tracker/issues/27
 
 ## Decision
 
@@ -105,4 +105,4 @@ In `checkForUpdates`, if an item has no date, is not watched and does not have `
 | `service-worker.js` | `js/release.js` added to `STATIC_ASSETS` for static precache |
 | `docs/adr-020-unreleased-without-date.md` | **New**: this document |
 
-Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27
+Related issue: #27 — https://github.com/gonzalitojh/personal-tracker/issues/27

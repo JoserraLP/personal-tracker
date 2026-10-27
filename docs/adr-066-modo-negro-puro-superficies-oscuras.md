@@ -34,7 +34,7 @@ of AGENTS.md). This ADR documents the decision **retrospectively**,
 like the recent ones (ADR-059 to ADR-065), **extending ADR-064 and
 ADR-009**.
 
-Related issue: #165 — https://github.com/gonzalitojh/Registro-personal/issues/165
+Related issue: #165 — https://github.com/gonzalitojh/personal-tracker/issues/165
 
 ## Decision
 
@@ -249,4 +249,4 @@ are pre-existing in `main`, not introduced in this branch).
 | `tasks/task-issue-165.json` | **Modified**: the task's state (implemented → QA PASS validated on the 7 criteria → security scan PASS) with the `pr` block and issue #165 |
 | `docs/adr-066-modo-negro-puro-superficies-oscuras.md` | **New**: this document |
 
-Related issue: #165 — https://github.com/gonzalitojh/Registro-personal/issues/165
+Related issue: #165 — https://github.com/gonzalitojh/personal-tracker/issues/165

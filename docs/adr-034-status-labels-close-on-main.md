@@ -18,7 +18,7 @@ The SDD flow's code was still using the old scheme: the `scripts/gh-issue.sh` he
 
 In addition, the requirement about closure changed: the original problem (issue #74) was that on completing a PR the issue was neither marked nor closed, but the user expanded the requirement with an explicit rule: the issue is **NOT closed nor moved to `status: done` when the PR is made**. The closure and the transition to `done` must happen **ONLY** when the user promotes `dev` to `main` (merge or direct push to `main`). The old workflow `issue-done-on-merge.yml` (which triggered on `pull_request: closed` and closed issues when merging PRs into `dev`) was removed.
 
-Related issue: #74 — https://github.com/gonzalitojh/Registro-personal/issues/74
+Related issue: #74 — https://github.com/gonzalitojh/personal-tracker/issues/74
 
 ## Decision
 
@@ -95,4 +95,4 @@ Both `set-state` and the workflow remove residual `ai-*` labels when they appear
 | `docs/adr-029-issue-done-on-merge.md` | Supersession note regarding the labels scheme and closure (points to this ADR) |
 | `docs/adr-034-status-labels-close-on-main.md` | **New**: this document |
 
-Related issue: #74 — https://github.com/gonzalitojh/Registro-personal/issues/74
+Related issue: #74 — https://github.com/gonzalitojh/personal-tracker/issues/74

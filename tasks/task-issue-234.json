@@ -26,7 +26,7 @@
   ],
   "issue": {
     "number": 234,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/234",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/234",
     "title": "Mejoras pestaña recetas"
   },
   "plan": {
@@ -43,7 +43,7 @@
     ]
   },
   "pr": {
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/235",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/235",
     "number": 235,
     "branch": "style/issue-234-mejoras-pestana-recetas"
   }

@@ -27,7 +27,7 @@
   ],
   "issue": {
     "number": 236,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/236",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/236",
     "title": "Ventana recetas modo lectura"
   },
   "plan": {
@@ -48,7 +48,7 @@
   },
   "pr": {
     "number": 239,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/239",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/239",
     "title": "Ventana recetas modo lectura (issue #236)",
     "branch": "style/issue-236-ventana-recetas-lectura",
     "commit": "cfb368b",

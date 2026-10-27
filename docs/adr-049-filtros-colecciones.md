@@ -50,7 +50,7 @@ Previous state of the code:
 - Minimum `font-size` of 16px in selects guaranteed by ADR-042
   (issue #92): the `.sort-select` was already at `1rem`.
 
-Related issue: #118 — https://github.com/gonzalitojh/Registro-personal/issues/118
+Related issue: #118 — https://github.com/gonzalitojh/personal-tracker/issues/118
 
 ## Decision
 
@@ -278,4 +278,4 @@ markup.
 | `js/app.js` | **Unchanged**: `.filter-chips`/`.sort-select`/`.view-toggle` selectors intact; the tab-change focus guard `if (heading)` is harmless without an `h2` (accepted residue) |
 | `docs/adr-049-filtros-colecciones.md` | **New**: this document |
 
-Related issue: #118 — https://github.com/gonzalitojh/Registro-personal/issues/118
+Related issue: #118 — https://github.com/gonzalitojh/personal-tracker/issues/118

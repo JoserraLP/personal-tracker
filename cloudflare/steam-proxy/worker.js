@@ -1,5 +1,5 @@
 // =============================================================
-// Steam Web API proxy for the Registro-personal app.
+// Steam Web API proxy for the personal-tracker app.
 //
 // The Steam API (api.steampowered.com) requires a STEAM_API_KEY
 // that CANNOT be exposed in a SPA, and its responses DO NOT carry the

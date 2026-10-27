@@ -29,7 +29,7 @@ controls the default scopes, not `workflows`). It is only granted by
 declaring it in the workflow's YAML (or with a user PAT with that scope,
 rejected because it requires manual secret rotation).
 
-Related issue: #141 — https://github.com/gonzalitojh/Registro-personal/issues/141
+Related issue: #141 — https://github.com/gonzalitojh/personal-tracker/issues/141
 
 ## Decision
 
@@ -117,4 +117,4 @@ jobs, steps and comments remain identical.
 | `docs/adr-053-workflows-permission-github-actions.md` | **New**: this document |
 | `docs/manual-de-usuario.md` | **Unchanged** (internal CI change, not visible to the user) |
 
-Related issue: #141 — https://github.com/gonzalitojh/Registro-personal/issues/141
+Related issue: #141 — https://github.com/gonzalitojh/personal-tracker/issues/141

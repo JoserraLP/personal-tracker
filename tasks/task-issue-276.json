@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 276,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/276",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/276",
     "title": "Medias estrellas de valoración"
   },
   "pr": {
     "number": 278,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/278",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/278",
     "title": "Medias estrellas de valoración (issue #276)",
     "branch": "feature/issue-276-medias-estrellas",
     "commit": "6e00853",

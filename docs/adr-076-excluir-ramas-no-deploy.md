@@ -217,4 +217,4 @@ revert (without reintroducing ADR-041's limitation).
 | `README.md` | **Modified**: section 6 — a bullet documenting the exclusion prefix (it is not served in the hub, a push does not fire the workflow, the "keep unmergeable branches" use case) and the header line reworded to «each push of any branch» |
 | `docs/adr-076-excluir-ramas-no-deploy.md` | **New**: this document |
 
-Related issue: #198 — https://github.com/gonzalitojh/Registro-personal/issues/198
+Related issue: #198 — https://github.com/gonzalitojh/personal-tracker/issues/198

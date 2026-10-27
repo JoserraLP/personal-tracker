@@ -14,7 +14,7 @@ The data already existed at the API layer: `getSeasonEpisodes()` in `js/api-movi
 
 The community badge already had a consolidated visual language (`.community-rating` with `__label` label and `__value` value in `ocio/ocio.css`), but its base size was meant for cards, not for dense episode rows: a **compact variant** was needed without duplicating the badge's HTML.
 
-Related issue: #45 — https://github.com/gonzalitojh/Registro-personal/issues/45
+Related issue: #45 — https://github.com/gonzalitojh/personal-tracker/issues/45
 
 ## Decision
 
@@ -96,4 +96,4 @@ All measurements in `rem` (relative units, responsiveness criterion of AGENTS.md
 | `ocio/ocio.css` | Compact variant `.community-rating--sm` (gap 0.25rem, `flex-shrink: 0`, sizes in rem: label 0.5rem / value 0.7rem) reusing the tokens of the base `.community-rating` |
 | `docs/adr-031-community-episode-rating.md` | **New**: this document |
 
-Related issue: #45 — https://github.com/gonzalitojh/Registro-personal/issues/45
+Related issue: #45 — https://github.com/gonzalitojh/personal-tracker/issues/45

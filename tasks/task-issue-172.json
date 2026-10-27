@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 172,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/172",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/172",
     "title": "Pestaña de videojuegos en amigos"
   },
   "pr": {
     "number": 182,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/182",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/182",
     "title": "feat: pestaña de videojuegos en amigos (issue #172)",
     "branch": "feat/issue-172-pestana-videojuegos-amigos",
     "commit": "481e64c",

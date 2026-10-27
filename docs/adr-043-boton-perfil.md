@@ -35,7 +35,7 @@ managed from `js/profile.js`:
   considered "inside" the menu, which is exactly the goal (pressing the
   name toggles the menu).
 
-Related issue: #94 — https://github.com/gonzalitojh/Registro-personal/issues/94
+Related issue: #94 — https://github.com/gonzalitojh/personal-tracker/issues/94
 
 ## Decision
 
@@ -217,4 +217,4 @@ to the user):
 | `js/profile.js` | **Unchanged** (click-outside with `profileMenuWrap.contains`; the name inside the button is covered by construction) |
 | `docs/adr-043-boton-perfil.md` | **New**: this document |
 
-Related issue: #94 — https://github.com/gonzalitojh/Registro-personal/issues/94
+Related issue: #94 — https://github.com/gonzalitojh/personal-tracker/issues/94

@@ -19,7 +19,7 @@
   ],
   "issue": {
     "number": 268,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/268",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/268",
     "title": "Salir del perfil"
   },
   "plan": {
@@ -52,7 +52,7 @@
   "adr": "docs/adr-097-salir-perfil-gimnasio.md (Related issue: #268)",
   "pr": {
     "number": 272,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/272",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/272",
     "title": "fix(profile): la flecha de volver del perfil regresa a Gimnasio (#268)",
     "branch": "fix/issue-268-salir-perfil",
     "base": "feat/issue-62-seccion-gimnasio",

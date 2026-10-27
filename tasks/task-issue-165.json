@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 165,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/165",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/165",
     "title": "Perfeccionamiento modos de visualización"
   },
   "pr": {
     "number": 167,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/167",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/167",
     "title": "[style] Modo negro puro con superficies oscuras (issue #165)",
     "branch": "style/issue-165-modos-visualizacion",
     "commit": "59cfc75",

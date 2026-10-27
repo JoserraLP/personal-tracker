@@ -25,12 +25,12 @@
   ],
   "issue": {
     "number": 280,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/280",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/280",
     "title": "Otras películas de la saga"
   },
   "pr": {
     "number": 281,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/281",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/281",
     "title": "Otras películas de la saga (issue #280)",
     "branch": "feature/issue-280-otras-peliculas-saga",
     "commit": "556eb1a",

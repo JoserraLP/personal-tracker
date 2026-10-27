@@ -24,7 +24,7 @@
   ],
   "issue": {
     "number": 200,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/200",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/200",
     "title": "Rehacer el almacenamiento de datos"
   },
   "progress": {
@@ -61,7 +61,7 @@
   },
   "pr": {
     "number": 254,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/254",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/254",
     "title": "feat: almacenamiento mínimo A2 y pasada diaria mínima A5-a (issue #200)",
     "branch": "refactor/issue-200-almacenamiento-minimo",
     "base": "dev",

@@ -88,7 +88,7 @@ ADR-096, the
 ADR-097, the
 ADR-098).
 
-Related issue: #275 — https://github.com/gonzalitojh/Registro-personal/issues/275
+Related issue: #275 — https://github.com/gonzalitojh/personal-tracker/issues/275
 
 ## Decision
 
@@ -288,4 +288,4 @@ To invalidate the service worker's cache and force the new CSSs' delivery.
 | `scripts/audit-input-font-sizes.py` | **New**: an audit that detects `input`/`select`/`textarea` selectors with a `font-size < 16px` on both stylesheets and verifies the two global rules' presence (the ADR-042's inputs and the #275's `touch-action`); an exit 0/1 for CI/pre-commit |
 | `docs/adr-099-no-zoom-interacciones-touch-action.md` | **New**: this document |
 
-Related issue: #275 — https://github.com/gonzalitojh/Registro-personal/issues/275
+Related issue: #275 — https://github.com/gonzalitojh/personal-tracker/issues/275

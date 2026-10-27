@@ -20,12 +20,12 @@
   ],
   "issue": {
     "number": 257,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/257",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/257",
     "title": "Comentarios workflows."
   },
   "pr": {
     "number": 259,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/259",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/259",
     "title": "fix: la sesión SDD publica PRs/comentarios/labels como github-actions[bot] (issue #257)",
     "branch": "fix/issue-257-comentarios-github-actions",
     "commit": "c2ee800",

@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 209,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/209",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/209",
     "title": "Pestaña de ingredientes"
   },
   "pr": {
     "number": 216,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/216",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/216",
     "title": "[style] Pestaña de Ingredientes extraída de Recetas (issue #209)"
   }
 }

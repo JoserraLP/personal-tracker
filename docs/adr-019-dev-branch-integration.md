@@ -17,7 +17,7 @@ To solve this, the user created the `dev` branch as the **integration branch**, 
 1. **User's part (done)**: creation of the `dev` branch on the remote and a session logged in at Cloudflare Pages for deployment of the development environment.
 2. **Agent's part (this task)**: configure the agents so that ALL PRs target `dev` as base branch (instead of `main`).
 
-Related issue: #20 — https://github.com/gonzalitojh/Registro-personal/issues/20
+Related issue: #20 — https://github.com/gonzalitojh/personal-tracker/issues/20
 
 ## Decision
 

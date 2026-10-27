@@ -13,12 +13,12 @@
   "definition_of_done": "Planificación realizada, implementación completada, validación QA superada, escaneo de seguridad sin hallazgos HIGH, ADR documentado (con «Related issue: #195»), PR creada contra dev sin keyword de cierre, issue #195 con label actualizado a su estado final.",
   "issue": {
     "number": 195,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/195",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/195",
     "title": "Correos permitidos"
   },
   "pr": {
     "number": 196,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/196",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/196",
     "title": "refactor: correos permitidos solo en firestore.rules (issue #195)",
     "branch": "refactor/issue-195-correos-permitidos",
     "commit": "3b0e492",

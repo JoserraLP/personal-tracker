@@ -19,12 +19,12 @@
   ],
   "issue": {
     "number": 245,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/245",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/245",
     "title": "Comentarios en error de auto-resolve-issues"
   },
   "pr": {
     "number": 247,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/247",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/247",
     "title": "fix: comentarios de fallo de auto-resolve-issues publicados por github-actions[bot] (issue #245)",
     "branch": "fix/issue-245-comentarios-fallo-github-actions",
     "commit": "40a2627",

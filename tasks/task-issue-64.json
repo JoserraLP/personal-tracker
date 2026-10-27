@@ -31,12 +31,12 @@
   ],
   "issue": {
     "number": 64,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/64",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/64",
     "title": "Nueva sección de recetas"
   },
   "pr": {
     "number": 202,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/202",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/202",
     "title": "Sección de recetas: menú semanal y lista de la compra (issue #64)",
     "branch": "content/issue-64-seccion-recetas",
     "commit": "abaecc1",

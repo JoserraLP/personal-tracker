@@ -160,6 +160,6 @@ of the flow stay intact.
 | `.github/workflows/auto-resolve-issues.yml` | **Modified**: in the "Relaunch or return to the queue on session failure" step, the two `gh issue comment`s (the `return_to_queue` function and the relaunch's notice) use `GH_TOKEN="$GITHUB_TOKEN"` (the author: `github-actions[bot]`); explanatory comments of the why (issue #245) in the workflow's header and on the step; the other operations (the labels' set-state, `gh workflow run`) keep using the job's `GH_TOKEN` (the PAT) |
 | `README.md` | **Modified**: section 6, point 6 — a note about the failure comments' author (`github-actions[bot]`, they do not re-fire the workflow) |
 | `docs/adr-078-comentarios-fallo-github-actions.md` | **New**: this document |
-| `tasks/task-issue-245.json` | Task file of the task (title/description with the root cause, acceptance criteria AC1–AC5, DoD and the `issue` block with issue #245 — https://github.com/gonzalitojh/Registro-personal/issues/245) |
+| `tasks/task-issue-245.json` | Task file of the task (title/description with the root cause, acceptance criteria AC1–AC5, DoD and the `issue` block with issue #245 — https://github.com/gonzalitojh/personal-tracker/issues/245) |
 
 Related issue: #245

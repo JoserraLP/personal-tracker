@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 145,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/145",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/145",
     "title": "Mejoras de auto-resolve-issues"
   },
   "previousPr": {
     "number": 146,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/146",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/146",
     "title": "refactor: watchdog y transcripción de subagentes en auto-resolve-issues (issue #145)",
     "branch": "refactor/issue-145-auto-resolve-mejoras",
     "commit": "9cb782b",
@@ -36,7 +36,7 @@
   },
   "pr": {
     "number": 150,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/150",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/150",
     "title": "refactor: watchdog por actividad BD y streaming de subagentes en auto-resolve-issues (issue #145, iteración 2)",
     "branch": "refactor/issue-145-auto-resolve-iteracion2",
     "commit": "7997544",

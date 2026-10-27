@@ -49,7 +49,7 @@ review of PR #158 (QA 9/9, security PASS; the wrapping of the click/focus
 listeners was hardened). This ADR documents the decision
 retrospectively, like the recent ones (ADR-059).
 
-Related issue: #137 — https://github.com/gonzalitojh/Registro-personal/issues/137
+Related issue: #137 — https://github.com/gonzalitojh/personal-tracker/issues/137
 
 ## Decision
 
@@ -269,4 +269,4 @@ flow is untouched, no content reflows.
 | `docs/manual-de-usuario.md` | **Modified**: §3 (the header and tabs "hide on scrolling down and return on scrolling up", no longer «always visible») and new §3.2 «La cabecera y las pestañas al hacer scroll» (hiding on scrolling down, the floating «Volver arriba» button, the navigation is never hidden while in use) — AGENTS.md's rule 3 |
 | `docs/adr-060-ocultar-navegacion-al-desplazar.md` | **New**: this document |
 
-Related issue: #137 — https://github.com/gonzalitojh/Registro-personal/issues/137
+Related issue: #137 — https://github.com/gonzalitojh/personal-tracker/issues/137

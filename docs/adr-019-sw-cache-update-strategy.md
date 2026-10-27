@@ -17,7 +17,7 @@ The PWA installed on mobile **did not reflect new changes after each deploy**: t
 
 The goal was for the installed PWA to receive the changes of each deploy reliably and automatically, without requiring the user's manual interaction (the old update toast) nor uninstalling/reinstalling the app.
 
-Related issue: #25 — https://github.com/gonzalitojh/Registro-personal/issues/25
+Related issue: #25 — https://github.com/gonzalitojh/personal-tracker/issues/25
 
 ## Decision
 
@@ -29,7 +29,7 @@ Adopt a service worker cache update strategy based on **explicit asset versionin
 - **`fetchWithTimeout(request, ms = 3000)`**: helper that rejects the request if it takes longer than 3 s. It is used **ONLY for navigation**.
 - **`networkFirst(request, timeoutMs = null)`**: now takes an optional `timeoutMs` (`null` for APIs → no timeout, avoiding false "offline" on slow networks) and returns `{ response, fromNetwork }` so the caller knows the origin of the response. It keeps the 50-entry limit in the dynamic cache and the fallbacks (cache → app shell for navigation → `503` JSON for APIs).
 - **Reordered fetch handler**: first the network-only exceptions (Firestore writes and auth endpoints), then the **`navigate` block with network-first + timeout (3000 ms) BEFORE the own-path cache-first**, and then the remaining strategies (cache-first for own/static/CDN/posters, network-first for APIs). The old `navigate` block at the end of the handler was removed.
-- **Refresh of the canonical entry**: when a navigation responds `fromNetwork === true`, `/Registro-personal/index.html` is rewritten in `CACHE_STATIC` with the fresh response, so the offline fallback never lags behind the last deploy. If the response came from cache (timeout/offline), it is not touched.
+- **Refresh of the canonical entry**: when a navigation responds `fromNetwork === true`, `/personal-tracker/index.html` is rewritten in `CACHE_STATIC` with the fresh response, so the offline fallback never lags behind the last deploy. If the response came from cache (timeout/offline), it is not touched.
 - **`STATIC_ASSETS` updated**: the 6 missing modules were added (`activity-feed.js`, `export-backup.js`, `export-ics.js`, `focus-utils.js`, `global-search.js`, `settings.js`) and asset URLs were versioned with `?v=20260803` (`styles.css`, `ocio.css`, `app.js` and the `ocio/*.html` fragments).
 
 ### 2. `js/sw-register.js`: reliable registration and auto-apply of updates

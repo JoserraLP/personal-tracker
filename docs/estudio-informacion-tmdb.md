@@ -11,7 +11,7 @@ without implementing anything, of all the information that can be extracted
 from the TMDB API, organized by sections, to know how far the idea of building
 a kind of _IMDB_ or _TMDB_ inside the web app can go: querying much more
 information about movies, series, actors, directors, etc.
-https://github.com/gonzalitojh/Registro-personal/issues/184
+https://github.com/gonzalitojh/personal-tracker/issues/184
 
 ## Status
 

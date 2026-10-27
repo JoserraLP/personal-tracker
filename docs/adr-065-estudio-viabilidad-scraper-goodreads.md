@@ -34,7 +34,7 @@ recent ADRs (ADR-059 to ADR-064), and fulfills
 `tasks/task-issue-50.json`'s definition of done («ADR documentando la
 decisión/conclusión del estudio»).
 
-Related issue: #50 — https://github.com/gonzalitojh/Registro-personal/issues/50
+Related issue: #50 — https://github.com/gonzalitojh/personal-tracker/issues/50
 
 ## Decision
 
@@ -160,4 +160,4 @@ independent fronts:
 
 Related to: docs/estudio-viabilidad-scraper-goodreads.md
 
-Related issue: #50 — https://github.com/gonzalitojh/Registro-personal/issues/50
+Related issue: #50 — https://github.com/gonzalitojh/personal-tracker/issues/50

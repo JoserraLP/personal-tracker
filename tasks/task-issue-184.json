@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 184,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/184",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/184",
     "title": "Estudio información TMDB"
   },
   "pr": {
     "number": 190,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/190",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/190",
     "title": "docs: estudio información TMDB — factible montar un IMDB/TMDB desde el cliente, alcance por fases (issue #184)",
     "branch": "docs/issue-184-estudio-informacion-tmdb",
     "commit": "0fad02c",

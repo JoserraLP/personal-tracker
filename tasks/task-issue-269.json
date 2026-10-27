@@ -30,11 +30,11 @@
   ],
   "issue": {
     "number": 269,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/269",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/269",
     "title": "Nueva pestaña Resumen"
   },
   "pr": {
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/274",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/274",
     "number": 274,
     "base": "feat/issue-62-seccion-gimnasio"
   }

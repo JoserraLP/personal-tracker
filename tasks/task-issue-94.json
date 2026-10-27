@@ -18,12 +18,12 @@
   ],
   "issue": {
     "number": 94,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/94",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/94",
     "title": "Botón del perfil"
   },
   "pr": {
     "number": 104,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/104",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/104",
     "title": "[fix] Botón del perfil: foto y nombre clicables (issue #94)",
     "branch": "fix/issue-94-boton-perfil",
     "commit": "8f8045b",

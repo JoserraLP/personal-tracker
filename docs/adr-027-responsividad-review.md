@@ -19,7 +19,7 @@ The project already had the «Responsividad obligatoria» rule defined in `AGENT
 
 The architect's audit detected real overflows in several components at mobile viewports (~360 px) and ultra-small widths (< 340 px): the toast (long messages and undo-type ones), episode names, the grids (library, statistics, friends), the library search, the detail modal header, the notification and settings rows, the profile's 5 sub-tabs and the app header. In addition, several card and result texts used `nowrap` + ellipsis, truncating essential content on mobile.
 
-Related issue: #41 — https://github.com/gonzalitojh/Registro-personal/issues/41
+Related issue: #41 — https://github.com/gonzalitojh/personal-tracker/issues/41
 
 ## Decision
 
@@ -112,4 +112,4 @@ The review does **not** alter previously documented decisions:
 | `scripts/bump-version.sh` | **Used** (unchanged) to run the version bump |
 | `docs/adr-027-responsividad-review.md` | **New**: this document |
 
-Related issue: #41 — https://github.com/gonzalitojh/Registro-personal/issues/41
+Related issue: #41 — https://github.com/gonzalitojh/personal-tracker/issues/41

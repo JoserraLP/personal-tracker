@@ -4,13 +4,13 @@
   "status": "published",
   "pr": {
     "number": 40,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/40",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/40",
     "title": "docs: reglas generales del agente en AGENTS.md (issue #19)"
   },
   "decision": "Regla general en AGENTS.md de la raíz del proyecto: opencode lo carga automáticamente para TODOS los agentes (libre, subagentes, build/plan). Alternativas descartadas: agente concreto (solo aplica cuando se invoca), config global ~/.config (no viaja con el repo), .opencode/AGENTS.md (depende de versión). Refuerzo en qa-reviewer.md para que valide la regla en tareas UI. Anchos de verificación: 360/768/1280 px. Sin referencia en README (basta ADR). Alcance estricto: solo responsividad.",
   "issue": {
     "number": 19,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/19",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/19",
     "title": "Reglas del agente"
   },
   "acceptance criteria": [

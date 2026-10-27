@@ -34,7 +34,7 @@ any component fails, including a subagent; (2) a time limit avoiding
 getting stuck on a single step (~10 minutes suggested, adjusted to the
 observed runs); (3) the subagents' logs also visible in the action's log.
 
-Related issue: #145 — https://github.com/gonzalitojh/Registro-personal/issues/145
+Related issue: #145 — https://github.com/gonzalitojh/personal-tracker/issues/145
 
 ## Decision
 
@@ -194,4 +194,4 @@ The rest of the flow is not altered (AC7): micro-commits, PR branch against
 | `docs/adr-054-watchdog-sesion-opencode-y-logs-subagentes.md` | **New**: this document |
 | `docs/manual-de-usuario.md` | **Unchanged** (internal CI change, not visible to the user) |
 
-Related issue: #145 — https://github.com/gonzalitojh/Registro-personal/issues/145
+Related issue: #145 — https://github.com/gonzalitojh/personal-tracker/issues/145

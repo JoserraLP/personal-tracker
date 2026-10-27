@@ -28,7 +28,7 @@ managed from `js/profile.js`, which uses
 **independent of the button's internal content**, so removing the
 `<span>` does not affect that logic.
 
-Related issue: #107 — https://github.com/gonzalitojh/Registro-personal/issues/107
+Related issue: #107 — https://github.com/gonzalitojh/personal-tracker/issues/107
 
 ## Decision
 
@@ -168,4 +168,4 @@ to the user):
 | `js/profile.js` | **Unchanged** (id/class selectors and click-outside independent of the button's content) |
 | `docs/adr-046-eliminar-nombre-boton-perfil.md` | **New**: this document |
 
-Related issue: #107 — https://github.com/gonzalitojh/Registro-personal/issues/107
+Related issue: #107 — https://github.com/gonzalitojh/personal-tracker/issues/107

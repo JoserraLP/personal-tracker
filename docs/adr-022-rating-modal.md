@@ -32,7 +32,7 @@ In addition, the window must work both from the detail modal (which stays
 open underneath) and from quick actions (list button and swipe), where
 there is no modal behind.
 
-Related issue: #21 — https://github.com/gonzalitojh/Registro-personal/issues/21
+Related issue: #21 — https://github.com/gonzalitojh/personal-tracker/issues/21
 
 ## Decision
 
@@ -247,4 +247,4 @@ modal (z-index 50).
 | `css/styles.css` | `.modal--top` (z-index 70); `.toast` moves to z-index 80 (comment updated) |
 | `service-worker.js` | `js/rating-modal.js` added to `STATIC_ASSETS` |
 
-Related issue: #21 — https://github.com/gonzalitojh/Registro-personal/issues/21
+Related issue: #21 — https://github.com/gonzalitojh/personal-tracker/issues/21

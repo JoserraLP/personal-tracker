@@ -19,7 +19,7 @@ The workflow `.github/workflows/issues-done-on-dev.yml` managed issue closure wi
 
 Issue #143 asks: when merging a PR into `dev`, **ONLY** the issue that PR resolves should be closed and marked `status: done`; if possible without a workflow, remove `issues-done-on-dev`; and if an action is needed (it is needed), remove the "Closes #N" instruction from the PRs and modify the workflow.
 
-Related issue: #143 — https://github.com/gonzalitojh/Registro-personal/issues/143
+Related issue: #143 — https://github.com/gonzalitojh/personal-tracker/issues/143
 
 ## Decision
 
@@ -106,4 +106,4 @@ The manual fallback is now based on the PR's state, not on the `dev` → `main` 
 | `docs/adr-019-dev-branch-integration.md` | Note: the "Closes #N" auto-close claim on any branch is refuted (ADR-029/this ADR) |
 | `docs/adr-018-gh-issues-integration.md` | Existing note expanded: later supersession of closure by this ADR (closure on merge to `dev`) |
 
-Related issue: #143 — https://github.com/gonzalitojh/Registro-personal/issues/143
+Related issue: #143 — https://github.com/gonzalitojh/personal-tracker/issues/143

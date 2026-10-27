@@ -24,7 +24,7 @@
   ],
   "issue": {
     "number": 157,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/157",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/157",
     "title": "Cambiar botón de volver"
   },
   "notes": {
@@ -35,7 +35,7 @@
   },
   "pr": {
     "number": 159,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/159",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/159",
     "title": "[style] Botón de volver del perfil como flecha sin recuadro (issue #157)",
     "branch": "style/issue-157-boton-volver-flecha",
     "commit": "80c1564",

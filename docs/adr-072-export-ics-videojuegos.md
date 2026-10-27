@@ -35,7 +35,7 @@ flag is not a reliable source to know whether a game is still pending
 release; the `playLog` is the source of truth (the same predicate as
 issue #175's daily run).
 
-Related issue: #176 — https://github.com/gonzalitojh/Registro-personal/issues/176
+Related issue: #176 — https://github.com/gonzalitojh/personal-tracker/issues/176
 
 ## Decision
 
@@ -217,4 +217,4 @@ also applies to the games' events, and the toasts
 - Themes and responsiveness: PASS — a purely textual change, with no
   new colors nor layout (AGENTS.md's rules 2 and 4).
 
-Related issue: #176 — https://github.com/gonzalitojh/Registro-personal/issues/176
+Related issue: #176 — https://github.com/gonzalitojh/personal-tracker/issues/176

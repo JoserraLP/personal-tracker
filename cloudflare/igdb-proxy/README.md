@@ -1,4 +1,4 @@
-# Proxy de IGDB para Registro-personal (Cloudflare Worker)
+# Proxy de IGDB para personal-tracker (Cloudflare Worker)
 
 IGDB (Twitch) no permite peticiones desde el navegador: no tiene CORS y
 exige un **Client Secret** que **no puede exponerse en una SPA**. Este

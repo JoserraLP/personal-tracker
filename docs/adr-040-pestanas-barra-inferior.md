@@ -95,7 +95,7 @@ movies and books: the tab bar and the **top bar (side menu, search, bell,
 profile) remain fixed and always visible on all devices**, and **each tab
 has a different color** on all device types and in both themes.
 
-Related issue: #79 — https://github.com/gonzalitojh/Registro-personal/issues/79
+Related issue: #79 — https://github.com/gonzalitojh/personal-tracker/issues/79
 
 **Historical note**: this ADR documents the tabs' move out of the header
 (documented as part of the main screen in ADR-032 and ADR-038) to a fixed
@@ -480,4 +480,4 @@ new logic nor refactors.
 | `service-worker.js` | `STATIC_ASSETS` with `?v=20260815` (styles, ocio.css, app.js, `ocio/*.html`); invalidates `20260814` and older caches |
 | `docs/adr-040-pestanas-barra-inferior.md` | **Updated**: this document (final decision after the user's feedback in the issue, iterations 2, 3 and 4) |
 
-Related issue: #79 — https://github.com/gonzalitojh/Registro-personal/issues/79
+Related issue: #79 — https://github.com/gonzalitojh/personal-tracker/issues/79

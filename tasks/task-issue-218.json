@@ -23,12 +23,12 @@
   ],
   "issue": {
     "number": 218,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/218",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/218",
     "title": "Mejora de visualización pestaña de ingredientes"
   },
   "pr": {
     "number": 219,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/219",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/219",
     "base": "content/issue-64-seccion-recetas"
   }
 }

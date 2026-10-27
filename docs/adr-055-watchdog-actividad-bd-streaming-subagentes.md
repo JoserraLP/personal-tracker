@@ -36,7 +36,7 @@ reopened the issue with comments asking for:
 5. Confirm whether the `/.opencode/agents` agents are used and reduce the
    "Build the session prompt" step to a **minimum-token prompt**.
 
-Related issue: #145 — https://github.com/gonzalitojh/Registro-personal/issues/145
+Related issue: #145 — https://github.com/gonzalitojh/personal-tracker/issues/145
 
 ## Decision
 
@@ -282,4 +282,4 @@ watchdog's `exit 1` keeps activating `wip-save` and `rollback` (issue
 | `docs/adr-055-watchdog-actividad-bd-streaming-subagentes.md` | **New**: this document |
 | `docs/manual-de-usuario.md` | **Unchanged** (internal CI change, not visible to the user; precedent ADR-054) |
 
-Related issue: #145 — https://github.com/gonzalitojh/Registro-personal/issues/145
+Related issue: #145 — https://github.com/gonzalitojh/personal-tracker/issues/145

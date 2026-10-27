@@ -32,12 +32,12 @@
   ],
   "issue": {
     "number": 126,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/126",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/126",
     "title": "Action de resolución de issues"
   },
   "pr": {
     "number": 131,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/131",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/131",
     "title": "[fix] Auto-resolve-issues: deploy tras sesión, comentario en PR de iteración, sin trigger pull_request y logs legibles (issue #126)",
     "branch": "fix/issue-126-auto-resolve-deploy-iteracion-triggers",
     "commit": "9f433b5",

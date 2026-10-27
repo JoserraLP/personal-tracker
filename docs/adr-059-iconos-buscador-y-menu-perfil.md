@@ -31,7 +31,7 @@ The implementation is validated (QA PASS, 6/6 criteria) and scanned
 same task (AGENTS.md's rule 3). This ADR documents the decision
 retrospectively.
 
-Related issue: #134 — https://github.com/gonzalitojh/Registro-personal/issues/134
+Related issue: #134 — https://github.com/gonzalitojh/personal-tracker/issues/134
 
 ## Decision
 
@@ -194,4 +194,4 @@ Branch `style/issue-134-iconos-desplegable-perfil` with 4 micro-commits:
 | `docs/manual-de-usuario.md` | **Modified**: §7.2 (the search's results group with the same icons as the tabs, each in its color, and 👤 for friends) and §13 (each option of the profile menu carries its icon) — AGENTS.md's rule 3 |
 | `docs/adr-059-iconos-buscador-y-menu-perfil.md` | **New**: this document |
 
-Related issue: #134 — https://github.com/gonzalitojh/Registro-personal/issues/134
+Related issue: #134 — https://github.com/gonzalitojh/personal-tracker/issues/134

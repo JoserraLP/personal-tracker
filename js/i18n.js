@@ -29,8 +29,8 @@ const SUPPORTED = { es: "Español", en: "English" };
 // -------------------------------------------------------------
 const EN_TEXT = {
   // Brand / login
-  "Mi Registro — pelis, series, libros, videojuegos, recetas y gimnasio":
-    "Mi Registro — movies, TV shows, books, video games, recipes and gym",
+  "Personal Tracker — pelis, series, libros, videojuegos, recetas y gimnasio":
+    "Personal Tracker — movies, TV shows, books, video games, recipes and gym",
   "Saltar al contenido principal": "Skip to main content",
   "Ficha de socio": "Member card",
   "Un cuaderno privado para lo que ves y lo que lees.":
@@ -434,7 +434,7 @@ const EN_TEXT_EXTRA = {
   "La sincronización se abortó. Revisa tu conexión e inténtalo de nuevo.": "The sync was aborted. Check your connection and try again.",
   "Preparando copia de seguridad…": "Preparing backup…",
   "Copia de seguridad descargada.": "Backup downloaded.",
-  "El archivo no tiene el formato de copia de seguridad de Mi Registro.": "The file does not have the Mi Registro backup format.",
+  "El archivo no tiene el formato de copia de seguridad de Personal Tracker.": "The file does not have the Personal Tracker backup format.",
   "Restaurando datos…": "Restoring data…",
   "Preparando calendario…": "Preparing calendar…",
   "No hay estrenos próximos que exportar.": "There are no upcoming releases to export.",

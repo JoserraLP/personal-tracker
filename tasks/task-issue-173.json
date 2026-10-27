@@ -21,12 +21,12 @@
   ],
   "issue": {
     "number": 173,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/173",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/173",
     "title": "Actividad / feed de videojuegos."
   },
   "pr": {
     "number": 185,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/185",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/185",
     "title": "feat: videojuegos en el feed de actividad (issue #173)",
     "branch": "feat/issue-173-actividad-feed-videojuegos",
     "commit": "c03900d",

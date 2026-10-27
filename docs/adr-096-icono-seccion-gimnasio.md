@@ -132,7 +132,7 @@ The implementation is validated
   (the
   ADR-093, ADR-094, ADR-095).
 
-Related issue: #263 — https://github.com/gonzalitojh/Registro-personal/issues/263
+Related issue: #263 — https://github.com/gonzalitojh/personal-tracker/issues/263
 
 ## Decision
 
@@ -392,7 +392,7 @@ meets the convention and was not the issue's target.
   acceptance criteria, the
   DoD and the
   `issue` block with the
-  #263 — https://github.com/gonzalitojh/Registro-personal/issues/263) |
+  #263 — https://github.com/gonzalitojh/personal-tracker/issues/263) |
 | `docs/adr-096-icono-seccion-gimnasio.md` | **New**: this document |
 
-Related issue: #263 — https://github.com/gonzalitojh/Registro-personal/issues/263
+Related issue: #263 — https://github.com/gonzalitojh/personal-tracker/issues/263

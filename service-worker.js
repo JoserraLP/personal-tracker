@@ -1,5 +1,5 @@
 // =============================================================
-// Service Worker — Mi Registro (PWA offline support)
+// Service Worker — Personal Tracker (PWA offline support)
 // Strategies: Cache First for static assets, Network First for
 // external APIs, Network Only for writes and authentication
 // endpoints, and Network Only with timeout for Firestore GET
@@ -94,7 +94,7 @@ const STATIC_ASSETS = [
   './ocio/libros.html?v=20261030',
   './ocio/videojuegos.html?v=20261030',
   './ocio/compras.html?v=20261030',
-  './ocio/experiences.html?v=20261031',
+  './ocio/experiences.html?v=20261031b',
 ];
 
 // -------------------------------------------------------------
@@ -398,7 +398,7 @@ self.addEventListener('message', (event) => {
     const { id, message } = event.data || {};
     if (!id || typeof message !== 'string' || !message) return;
     event.waitUntil(
-      self.registration.showNotification('Mi Registro', {
+      self.registration.showNotification('Personal Tracker', {
         body: message,
         icon: resolved('./resources/icon.png'),
         badge: resolved('./resources/icon.png'),

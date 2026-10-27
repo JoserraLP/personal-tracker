@@ -19,7 +19,7 @@
   ],
   "issue": {
     "number": 263,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/263",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/263",
     "title": "Icono sección"
   },
   "plan": {
@@ -49,7 +49,7 @@
   "adr": "docs/adr-096-icono-seccion-gimnasio.md (Related issue: #263)",
   "pr": {
     "number": 264,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/264",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/264",
     "title": "style(gym): nuevo icono de la sección Gimnasio (#263)",
     "branch": "style/issue-263-icono-seccion",
     "base": "feat/issue-62-seccion-gimnasio",

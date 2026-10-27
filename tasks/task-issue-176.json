@@ -22,12 +22,12 @@
   ],
   "issue": {
     "number": 176,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/176",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/176",
     "title": "Exportación ICS de videojuegos"
   },
   "pr": {
     "number": 188,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/188",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/188",
     "title": "[feature] Videojuegos en la exportación ICS (issue #176)",
     "branch": "feat/issue-176-export-ics-videojuegos",
     "commit": "d5b5585"

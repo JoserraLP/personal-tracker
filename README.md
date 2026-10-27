@@ -1,4 +1,4 @@
-# Mi Registro [My Tracker]
+# Personal Tracker [My Tracker]
 
 Personal tracker (and now also shared among friends) of movies, series and
 books, to replace TV Time. Static web app (HTML + CSS + JS with native

@@ -19,12 +19,12 @@
   ],
   "issue": {
     "number": 215,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/215",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/215",
     "title": "Arreglar vista de menú"
   },
   "pr": {
     "number": 217,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/217",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/217",
     "title": "fix: pestaña de menú sin solapamientos (issue #215)",
     "branch": "fix/issue-215-vista-menu",
     "commit": "44c408f",

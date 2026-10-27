@@ -21,12 +21,12 @@
   ],
   "issue": {
     "number": 243,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/243",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/243",
     "title": "Problemas en pestaña ingredientes"
   },
   "pr": {
     "number": 244,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/244",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/244",
     "title": "fix(recetas): botones de la pestaña ingredientes rotos + pasada diaria abortada (issue #243)",
     "branch": "fix/issue-243-referenceerrors-ingredientes",
     "commit": "a220782",

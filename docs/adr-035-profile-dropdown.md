@@ -43,7 +43,7 @@ from `focus-utils.js`), implemented in `notifications-setup.js`.
 behavior, where the avatar opened Estadísticas directly and logout was a
 fixed button in the header.
 
-Related issue: #76 — https://github.com/gonzalitojh/Registro-personal/issues/76
+Related issue: #76 — https://github.com/gonzalitojh/personal-tracker/issues/76
 
 ## Decision
 
@@ -199,4 +199,4 @@ the non-invited email case).
 | `docs/manual-de-usuario.md` | «Salir» button replaced by the avatar's menu (sections 2, 3, 13 and 14) |
 | `docs/adr-035-profile-dropdown.md` | **New**: this document |
 
-Related issue: #76 — https://github.com/gonzalitojh/Registro-personal/issues/76
+Related issue: #76 — https://github.com/gonzalitojh/personal-tracker/issues/76

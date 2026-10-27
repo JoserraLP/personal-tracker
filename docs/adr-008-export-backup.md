@@ -4,7 +4,7 @@
 Accepted
 
 ## Context
-Users of "Mi Registro" accumulate personal data in Firestore
+Users of "Personal Tracker" accumulate personal data in Firestore
 (movies, series, books, profile, notifications) with no way
 to obtain a backup of it. If a user wanted
 to back up their information, there was no way to do it from the interface.
@@ -24,7 +24,7 @@ The exported JSON file follows this structure:
 {
   "exportDate": "2026-07-28T12:00:00.000Z",
   "version": "1",
-  "source": "Mi Registro",
+  "source": "Personal Tracker",
   "user": {
     "uid": "...",
     "email": "...",

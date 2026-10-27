@@ -27,12 +27,12 @@
   ],
   "issue": {
     "number": 43,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/43",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/43",
     "title": "Ampliación modos claro y oscuro"
   },
   "pr": {
     "number": 162,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/162",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/162",
     "title": "feat: cuatro modos de tema — negro puro y blanco puro (issue #43)",
     "branch": "style/issue-43-modos-negro-puro-blanco-puro",
     "commit": "995e244",

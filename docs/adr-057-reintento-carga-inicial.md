@@ -28,7 +28,7 @@ API fallback). The Firestore SDK receives that 503 as a subscription
 error and fires `onError` — even if the user is merely
 without network at that moment.
 
-Related issue: #147 — https://github.com/gonzalitojh/Registro-personal/issues/147
+Related issue: #147 — https://github.com/gonzalitojh/personal-tracker/issues/147
 
 ## Decision
 
@@ -206,4 +206,4 @@ reconnection. As part of the final decision, `retry()` now does
 | `docs/manual-de-usuario.md` | **Modified**: sections 15 and 18 — the web retries by itself for a few seconds on transient connection failures on entry (AGENTS.md's rule 3) |
 | `docs/adr-057-reintento-carga-inicial.md` | **New**: this document |
 
-Related issue: #147 — https://github.com/gonzalitojh/Registro-personal/issues/147
+Related issue: #147 — https://github.com/gonzalitojh/personal-tracker/issues/147

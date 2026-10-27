@@ -24,13 +24,13 @@
   ],
   "issue": {
     "number": 97,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/97",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/97",
     "title": "Ocultar secciones"
   },
   "plan": "Plan del task-architect aplicado: SECTION_REGISTRY en settings.js, DEFAULT_SETTINGS.visibleSections/visibleTabs, guards (última sección/pestaña), card Secciones y pestañas, applyTabVisibility + guard activatePanel, refreshNavigation, renderSidebar + botón engranaje (#btn-header-settings) cuando ≤1 sección visible, normalización de URLs (replaceState) y consumidores (profile close, onGoOcio), sync Firestore extendida, ADR-067 y manual.",
   "pr": {
     "number": 170,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/170",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/170",
     "title": "[feature] Ocultar secciones y pestañas desde Ajustes",
     "branch": "feat/issue-97-ocultar-secciones",
     "closes": "#97"

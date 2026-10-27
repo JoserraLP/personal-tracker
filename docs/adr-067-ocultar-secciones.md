@@ -167,4 +167,4 @@ that read a fresh `loadSettings()` on every call.
   20260839.
 - `docs/manual-de-usuario.md`: sections 3 and 14.
 
-Related issue: #97 — https://github.com/gonzalitojh/Registro-personal/issues/97
+Related issue: #97 — https://github.com/gonzalitojh/personal-tracker/issues/97

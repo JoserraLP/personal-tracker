@@ -4,7 +4,7 @@
   "status": "review",
   "issue": {
     "number": 44,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/44",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/44",
     "title": "Mejora de cambios de estado de tareas"
   },
   "acceptance criteria": [
@@ -27,7 +27,7 @@
   "adr": "docs/adr-029-issue-done-on-merge.md creado (Related issue: #44, numeración 029 sin colisión).",
   "pr": {
     "number": 58,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/58",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/58",
     "title": "refactor: mejora de cambios de estado de tareas (issue #44)",
     "branch": "refactor/issue-44-task-status-automation",
     "commit": "5790632",

@@ -163,4 +163,4 @@ guarantees the task is really completed.
   restriction (missing `workflows` permission in the session token; the
   fix would be unpublishable by the sessions themselves).
 
-Related issue: #314 — https://github.com/gonzalitojh/Registro-personal/issues/314
+Related issue: #314 — https://github.com/gonzalitojh/personal-tracker/issues/314

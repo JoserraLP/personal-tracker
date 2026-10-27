@@ -1162,4 +1162,4 @@ last
   findings (0
   HIGH/MEDIUM/LOW).
 
-Related issue: #225 (https://github.com/gonzalitojh/Registro-personal/issues/225)
+Related issue: #225 (https://github.com/gonzalitojh/personal-tracker/issues/225)

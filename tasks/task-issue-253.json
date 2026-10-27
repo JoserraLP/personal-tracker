@@ -24,12 +24,12 @@
   ],
   "issue": {
     "number": 253,
-    "url": "https://github.com/gonzalitojh/Registro-personal/issues/253",
+    "url": "https://github.com/gonzalitojh/personal-tracker/issues/253",
     "title": "Cerrar barra de búsqueda"
   },
   "pr": {
     "number": 255,
-    "url": "https://github.com/gonzalitojh/Registro-personal/pull/255",
+    "url": "https://github.com/gonzalitojh/personal-tracker/pull/255",
     "title": "[feature] Cerrar barra de búsqueda con la X del botón hamburguesa",
     "branch": "feat/issue-253-cierra-busqueda",
     "commit": "963bb58",

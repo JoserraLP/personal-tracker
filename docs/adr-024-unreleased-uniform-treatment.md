@@ -19,7 +19,7 @@ The issue's previous fixes (ADR-020 / PR #33 and ADR-023 / PR #36) had centraliz
 3. **Series between seasons without a persisted datum**: if `nextEpisodeAirDate` had not yet been saved (neither season expansion nor backfill with `next_episode_to_air` present), the series showed no label, stripes or relegation, because `getNextEpisodeAirInfo` found no source.
 4. **The movie badge had no stripes CSS class**: `item-card__upcoming--episode` only covered the episode case; the movie badge with `awaitingRelease` used the generic class without the distinctive stripe style.
 
-Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27
+Related issue: #27 — https://github.com/gonzalitojh/personal-tracker/issues/27
 
 ## Decision
 
@@ -118,4 +118,4 @@ Extending `release.js` with a TV confirmation message based on `getNextEpisodeAi
 | `js/quick-actions.js` | `quickMarkMovie` and `saveTvProgress`: idempotent cleanup `awaitingRelease: false` in the Firestore payload and in the in-memory object |
 | `docs/adr-024-unreleased-uniform-treatment.md` | **New**: this document |
 
-Related issue: #27 — https://github.com/gonzalitojh/Registro-personal/issues/27
+Related issue: #27 — https://github.com/gonzalitojh/personal-tracker/issues/27

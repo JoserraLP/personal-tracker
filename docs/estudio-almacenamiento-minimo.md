@@ -10,7 +10,7 @@
 study, without implementing anything, on the possibility of storing a minimal
 set of information in the database, so that most of the information is pulled
 directly from the APIs (TMDB, Google Books, Open Library, IGDB).
-https://github.com/gonzalitojh/Registro-personal/issues/183
+https://github.com/gonzalitojh/personal-tracker/issues/183
 
 ## Status
 
@@ -812,4 +812,4 @@ section 6; the app has no telemetry to measure them.
 
 ---
 
-Related issue: #183 — https://github.com/gonzalitojh/Registro-personal/issues/183
+Related issue: #183 — https://github.com/gonzalitojh/personal-tracker/issues/183
