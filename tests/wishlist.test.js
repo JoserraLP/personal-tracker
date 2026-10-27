@@ -1,21 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { validateWishlistDraft, sanitizeUrl, formatWishlistPrice } from "../js/wishlist.js";
+import { validateWishlistDraft, sanitizeListUrl, formatWishlistPrice } from "../js/section-lists.js";
 
-describe("sanitizeUrl", () => {
+describe("sanitizeListUrl", () => {
   it("deja pasar las URLs http(s) explícitas", () => {
-    expect(sanitizeUrl("https://ejemplo.com/pc?x=1")).toBe("https://ejemplo.com/pc?x=1");
-    expect(sanitizeUrl("http://ejemplo.com")).toBe("http://ejemplo.com");
+    expect(sanitizeListUrl("https://ejemplo.com/pc?x=1")).toBe("https://ejemplo.com/pc?x=1");
+    expect(sanitizeListUrl("http://ejemplo.com")).toBe("http://ejemplo.com");
   });
 
   it("anteponen https:// a dominios sin esquema", () => {
-    expect(sanitizeUrl("www.dominio.com/producto")).toBe("https://www.dominio.com/producto");
-    expect(sanitizeUrl("dominio.es")).toBe("https://dominio.es");
+    expect(sanitizeListUrl("www.dominio.com/producto")).toBe("https://www.dominio.com/producto");
+    expect(sanitizeListUrl("dominio.es")).toBe("https://dominio.es");
   });
 
   it("devuelve null para basura o vacío", () => {
-    expect(sanitizeUrl(null)).toBeNull();
-    expect(sanitizeUrl("")).toBeNull();
-    expect(sanitizeUrl("no es una url")).toBeNull();
+    expect(sanitizeListUrl(null)).toBeNull();
+    expect(sanitizeListUrl("")).toBeNull();
+    expect(sanitizeListUrl("no es una url")).toBeNull();
   });
 });
 
