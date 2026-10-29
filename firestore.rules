@@ -1,0 +1,122 @@
+rules_version = '2';
+
+// =============================================================
+// Modelo: cualquier correo de la lista puede registrarse y usar la
+// app. Como el acceso ya está controlado por esa lista, todos los
+// usuarios registrados se consideran "amigos" entre sí:
+//   - Cada uno solo puede ESCRIBIR sus propios datos.
+//   - Cualquiera de la lista puede LEER los datos de cualquier otro
+//     (para la sección de Amigos).
+//   - Las notificaciones son privadas: cada uno solo ve las suyas.
+//
+// IMPORTANTE (issue #195): este archivo es la ÚNICA fuente de verdad
+// para la lista de correos autorizados (se eliminó js/allowed-emails.js,
+// que la duplicaba y se desincronizaba). La web comprueba el acceso
+// contra estas reglas al iniciar sesión: quien no esté en la lista de
+// abajo recibe el aviso «Tu correo no está en la lista de invitados» y
+// se le cierra la sesión.
+//
+// Para añadir o quitar un amigo: edita SOLO la lista de isAllowedUser()
+// de abajo y vuelve a pegar este archivo completo en Firebase console →
+// Firestore Database → Reglas → Publicar. No hay ningún otro sitio
+// donde mantener correos.
+// =============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAllowedUser() {
+      return request.auth != null && request.auth.token.email in [
+        "djoserralozanopinilla@gmail.com"
+      ];
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      // El perfil (nombre, foto, email) lo puede ver cualquier usuario
+      // autorizado, para poder listar "amigos". Solo el dueño lo edita.
+      allow read: if isAllowedUser();
+      allow write: if isAllowedUser() && isOwner(userId);
+
+      match /movies/{itemId} {
+        allow read: if isAllowedUser();
+        allow write: if isAllowedUser() && isOwner(userId);
+      }
+
+      match /series/{itemId} {
+        allow read: if isAllowedUser();
+        allow write: if isAllowedUser() && isOwner(userId);
+      }
+
+      match /books/{itemId} {
+        allow read: if isAllowedUser();
+        allow write: if isAllowedUser() && isOwner(userId);
+      }
+
+      match /games/{itemId} {
+        allow read: if isAllowedUser();
+        allow write: if isAllowedUser() && isOwner(userId);
+      }
+
+      // Sección de recetas (issue #64): recetas, catálogo de
+      // ingredientes, menús semanales y etiquetas propias. Mismo
+      // patrón que el resto: lectura entre amigos autorizados,
+      // escritura solo del dueño.
+      match /recipes/{itemId} {
+        allow read: if isAllowedUser();
+        allow write: if isAllowedUser() && isOwner(userId);
+      }
+
+      match /ingredients/{itemId} {
+        allow read: if isAllowedUser();
+        allow write: if isAllowedUser() && isOwner(userId);
+      }
+
+      match /menus/{itemId} {
+        allow read: if isAllowedUser();
+        allow write: if isAllowedUser() && isOwner(userId);
+      }
+
+      match /tags/{itemId} {
+        allow read: if isAllowedUser();
+        allow write: if isAllowedUser() && isOwner(userId);
+      }
+
+      // Sección de gimnasio (issue #62): entrenos y catálogo de
+      // ejercicios. Mismo patrón que el resto: lectura entre amigos
+      // autorizados, escritura solo del dueño.
+      match /gym-workouts/{itemId} {
+        allow read: if isAllowedUser();
+        allow write: if isAllowedUser() && isOwner(userId);
+      }
+
+      match /gym-exercises/{itemId} {
+        allow read: if isAllowedUser();
+        allow write: if isAllowedUser() && isOwner(userId);
+      }
+
+      // Lista de deseos (Compras): cosas que comprar con precio,
+      // descripción, URL y foto (por URL). A diferencia del registro
+      // de ocio, es una lista PRIVADA: solo el dueño la lee o
+      // escribe (nadie más la necesita).
+      match /wishlist/{itemId} {
+        allow read, write: if isAllowedUser() && isOwner(userId);
+      }
+
+      // Experiences (Experiences tab): exper done or to do some day
+      // with title, description, date and done mark. Private list
+      // like the wishlist: only the owner reads or writes it.
+      match /experiences/{itemId} {
+        allow read, write: if isAllowedUser() && isOwner(userId);
+      }
+
+      // Las notificaciones son privadas: nadie más puede leerlas.
+      match /notifications/{notifId} {
+        allow read, write: if isAllowedUser() && isOwner(userId);
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+name: deploy-pages
+
+# Único workflow del repositorio: despliegue automático de GitHub Pages.
+#
+# Disparo: fusión (merge) sobre `dev` desde cualquier rama de origen que
+# NO sea `main`. Se publica el estado resultante en `dev` tras la fusión
+# (checkout explícito de la rama, sin depender del sha del evento).
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [dev] # filtra por la rama base (destino) de la PR
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Una sola ejecución a la vez para Pages; si llega otra, se cancela.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    # Solo despliega si la PR se fusionó (no solo se cerró), el destino
+    # es `dev` y la rama de origen NO es `main`.
+    if: |
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'dev' &&
+      github.event.pull_request.head.ref != 'main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+      - name: Subir artefacto de Pages
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Desplegar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
