@@ -14,6 +14,12 @@ describe("normalizeEmail (spec 001, §2.1)", () => {
     expect(normalizeEmail(null)).toBe("");
     expect(normalizeEmail(undefined)).toBe("");
   });
+
+  it("escenario 5 (contrato §2.1): valores no string → \"\" / false", () => {
+    expect(normalizeEmail(123)).toBe("");
+    expect(isEmailAllowed(123)).toBe(false);
+    expect(isEmailAllowed({})).toBe(false);
+  });
 });
 
 describe("isEmailAllowed (spec 001, §2.1)", () => {

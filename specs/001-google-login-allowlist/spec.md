@@ -32,7 +32,7 @@ export function isEmailAllowed(email?: string|null, list: string[] = ALLOWED_EMA
 - `js/firebase.js` existente, sin cambios: Auth con `GoogleAuthProvider` (popup), SDK modular 10.13.0 desde CDN, `firebaseConfig` de `js/config.js`.
 
 ### 2.4 Datos y enforcement en servidor (`firestore.rules`)
-- `isAllowedUser()` mantiene la **copia de servidor** de la misma lista (protección de datos); las dos listas se sincronizan a mano (documentado en el propio fichero y en el README).
+- `isAllowedUser()` mantiene la **copia de servidor** de la misma lista y exige `request.auth.token.email_verified == true` (endurecimiento tras la revisión de seguridad); las dos listas se sincronizan a mano (documentado en el propio fichero y en el README).
 - Las colecciones heredadas del proyecto anterior quedan FUERA de alcance de este spec (se redefinirán en specs futuros de datos).
 
 ### 2.5 Despliegue
@@ -54,13 +54,14 @@ export function isEmailAllowed(email?: string|null, list: string[] = ALLOWED_EMA
 | Task ID | Role | Component | Spec Reference | Status |
 |---|---|---|---|---|
 | T1 | Spec Architect | `specs/001-google-login-allowlist/spec.md` | §1–4 | done |
-| T2 | Junior Dev 1 (Frontend) | `index.html`, `css/app.css`, `js/app.js` | §2.2, esc. 1, 2, 3, 6, 8 | pending |
-| T3 | Junior Dev 2 (Backend) | `js/allowed-emails.js` | §2.1, esc. 4, 5 | pending |
-| T4 | QA & Test Engineer | `tests/allowed-emails.test.js` (`npm test`) | esc. 4, 5 | pending |
-| T5 | DevOps & Release | sincronizar `firestore.rules`, `README.md`, PR y merge a `dev` | §2.4, esc. 7 | pending |
-| T6 | Reviewer + Security | auditoría del PR contra el spec | todos | pending |
+| T2 | Junior Dev 1 (Frontend) | `index.html`, `css/app.css`, `js/app.js` | §2.2, esc. 1, 2, 3, 6, 8 | done |
+| T3 | Junior Dev 2 (Backend) | `js/allowed-emails.js` | §2.1, esc. 4, 5 | done |
+| T4 | QA & Test Engineer | `tests/allowed-emails.test.js` (`npm test`) | esc. 4, 5 | done |
+| T5 | DevOps & Release | sincronizar `firestore.rules`, `README.md`, PR y merge a `dev` | §2.4, esc. 7 | in-progress |
+| T6 | Reviewer + Security | auditoría del PR contra el spec | todos | done |
 
 ## 5. Decisiones y notas
 - La lista de correos NO es un secreto: la protección real de datos es de servidor (`firestore.rules`); el fichero web es puerta de UX. Ambas listas deben editarse juntas.
 - El dominio de GitHub Pages ya está autorizado en Firebase Auth (mismo proyecto Firebase y misma URL que el proyecto anterior).
 - El cambio de correo autorizado exige: editar `js/allowed-emails.js` (web) + `isAllowedUser()` de `firestore.rules` y publicar las reglas en Firebase console.
+- Revisión (T6): hallazgos aplicados — contrato estricto de `normalizeEmail` para valores no string, corrección del comentario obsoleto de `js/config.js`, `overflow-wrap` y fallback `100vh` en CSS, y `email_verified` en `isAllowedUser()`. `admin@admin.es` queda en ambas listas como semilla del requisito (retirable cuando deje de hacer falta).

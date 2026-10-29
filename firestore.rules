@@ -23,10 +23,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAllowedUser() {
-      return request.auth != null && request.auth.token.email in [
-        "admin@admin.es",
-        "djoserralozanopinilla@gmail.com"
-      ];
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          "admin@admin.es",
+          "djoserralozanopinilla@gmail.com"
+        ];
     }
 
     function isOwner(userId) {

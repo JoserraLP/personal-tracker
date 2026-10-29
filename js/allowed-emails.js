@@ -22,7 +22,7 @@ export const ALLOWED_EMAILS = [
 // Normaliza un correo para comparación: sin espacios y en
 // minúsculas. Devuelve "" para null/undefined/valores no string.
 export function normalizeEmail(email) {
-  return String(email == null ? "" : email).trim().toLowerCase();
+  return typeof email === "string" ? email.trim().toLowerCase() : "";
 }
 
 // ¿Está el correo en la lista de autorizados? Comparación exacta
