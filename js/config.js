@@ -25,9 +25,9 @@ export const firebaseConfig = {
 };
 
 
-  // The list of who can log in lives ONLY in the
-  // isAllowedUser() rule of firestore.rules (issue #195):
-  // js/allowed-emails.js, which duplicated it, was removed.
+  // The list of who can log in lives in TWO synced places (spec 001):
+  // js/allowed-emails.js (web access gate) and isAllowedUser() in
+  // firestore.rules (server-side data protection). Edit both together.
 
   // TMDB API key (free, non-commercial)
 // Get it at https://www.themoviedb.org/settings/api
