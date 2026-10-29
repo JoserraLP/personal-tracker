@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#171512">
+  <meta name="description" content="Personal Tracker">
+  <title>Personal Tracker</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./resources/icon.png">
+  <link rel="apple-touch-icon" href="./resources/icon.png">
+  <link rel="stylesheet" href="./css/app.css">
+</head>
+<body>
+  <main class="shell">
+    <section id="view-loading" class="view view--loading">
+      <p class="muted">Cargando…</p>
+    </section>
+
+    <section id="view-login" class="view" hidden>
+      <h1 class="title">Personal Tracker</h1>
+      <p class="subtitle">Acceso restringido a la lista de invitados.</p>
+      <button id="btn-login" class="btn btn--google" type="button">
+        <span class="btn__icon" aria-hidden="true">G</span>
+        Entrar con Google
+      </button>
+      <p id="login-error" class="error" hidden></p>
+    </section>
+
+    <section id="view-allowed" class="view" hidden>
+      <img id="user-photo" class="avatar" src="./resources/icon.png" alt="" hidden>
+      <h1 class="title">Hola, <span id="user-name">invitado</span></h1>
+      <p id="user-email" class="subtitle"></p>
+      <p class="muted">La aplicación crecerá a partir de los próximos specs.</p>
+      <button id="btn-logout" class="btn" type="button">Salir</button>
+    </section>
+
+    <section id="view-denied" class="view" hidden>
+      <h1 class="title">Acceso no autorizado</h1>
+      <p class="subtitle">Tu correo no está en la lista de invitados.</p>
+      <button id="btn-back" class="btn" type="button">Volver</button>
+    </section>
+  </main>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
