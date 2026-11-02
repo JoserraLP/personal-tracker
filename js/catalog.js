@@ -155,6 +155,16 @@ function toTextList(value) {
     .filter((entry) => entry.length > 0);
 }
 
+/**
+ * Normaliza la fecha de finalización/visionado (REQ-008, AC-005):
+ * ausente, null o cadena vacía → null (igual que el resto de campos
+ * opcionales); el resto se convierte con el helper de fechas del store.
+ */
+function toItemDate(value) {
+  if (value === null || value === undefined || value === "") return null;
+  return toStoreDate(value);
+}
+
 function normalizeSource(source) {
   if (!source || typeof source !== "object" || Array.isArray(source)) return null;
   const provider = typeof source.provider === "string" ? source.provider.trim() : "";
@@ -517,6 +527,7 @@ export function normalizeItem(mediaType, data = {}) {
     status: typeof src.status === "string" && src.status ? src.status : "pending",
     rating: toNumber(src.rating),
     review: toText(src.review),
+    completedAt: toItemDate(src.completedAt),
     durationMinutes: toNumber(src.durationMinutes),
     source: normalizeSource(src.source),
   };
@@ -836,9 +847,55 @@ function requireUid(auth) {
   return uid;
 }
 
-function docToItem(snapshot) {
+/**
+ * Convierte un valor de fecha a un objeto `Date` de JS (CAMINO DE LECTURA,
+ * REQ-008 / AC-005 / DB-007): los `Timestamp` de Firestore llegan con
+ * `.toDate()`; los `Date`, las cadenas ISO y los epoch se reconstruyen.
+ * Valores ausentes, nulos o inválidos (NaN) → null.
+ * @param {*} value
+ * @returns {Date|null}
+ */
+export function tsToDate(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value.toDate === "function") {
+    const date = value.toDate();
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? date : null;
+  }
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : new Date(value.getTime());
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+}
+
+/** Campos de fecha del documento que se normalizan al leer. */
+const READ_DATE_FIELDS = Object.freeze(["completedAt", "createdAt", "updatedAt"]);
+
+/**
+ * Materializa un documento de Firestore como ítem del catálogo: convierte
+ * TODOS los campos de fecha (`completedAt`, `createdAt`, `updatedAt` y el
+ * `date` de cada sesión embebida) a objetos `Date` de JS, para que la UI
+ * pueda hacer `new Date(...).toISOString()` sin RangeError.
+ * No muta el documento original.
+ */
+export function docToItem(snapshot) {
   const data = snapshot.data() || {};
-  return { id: snapshot.id, ...data };
+  const item = { id: snapshot.id, ...data };
+  for (const field of READ_DATE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(item, field)) {
+      item[field] = tsToDate(item[field]);
+    }
+  }
+  if (Array.isArray(item.sessions)) {
+    item.sessions = item.sessions.map((session) => {
+      if (!session || typeof session !== "object" || Array.isArray(session)) return session;
+      return { ...session, date: tsToDate(session.date) };
+    });
+  }
+  return item;
 }
 
 function buildUpdatePayload(current, next) {
@@ -977,7 +1034,8 @@ export async function updateItem(mediaType, itemId, patch = {}) {
   const ref = doc(db, "users", uid, collectionNameFor(mediaType), itemId);
   const snapshot = await getDoc(ref);
   if (!snapshot.exists()) throw new Error("El ítem no existe.");
-  const current = { id: snapshot.id, ...(snapshot.data() || {}) };
+  // Lectura normalizada (Timestamps → Date) antes de fusionar el parche.
+  const current = docToItem(snapshot);
   const merged = { ...current, ...(patch || {}) };
   delete merged.id;
   const item = normalizeItem(mediaType, merged);
