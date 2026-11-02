@@ -47,6 +47,10 @@ export const IGDB_COVER_BASE_URL =
 export const IGDB_DEFAULT_LIMIT = 10;
 export const IGDB_MAX_LIMIT = 25;
 export const IGDB_SYNOPSIS_MAX = 2000;
+// Metadatos de detalle (API-003, §4.1): límites de DB-002.
+export const IGDB_MAX_PLATFORMS = 10;
+export const IGDB_MAX_DEVELOPERS = 10;
+export const IGDB_MAX_COMPANY_NAME = 200;
 
 // =============================================================
 // PARTE PURA (sin red)
@@ -142,6 +146,127 @@ export function normalizeIgdbGame(raw) {
     genres: [],
     durationMinutes: null,
   };
+}
+
+// =============================================================
+// PARTE PURA — METADATOS DE DETALLE (API-003, §4.1)
+// =============================================================
+//
+// ItemMetadata (§4.1):
+//   { title?, year?, posterUrl?, backdropUrl?, synopsis?,
+//     genres[], durationMinutes?, director?, cast[], platforms[],
+//     developers[], publisher?, authors[], pageCount?, seasons?,
+//     episodes?, tagline?, language? }
+// · Los campos ESCALARES ausentes → null (nunca undefined).
+// · Los campos de LISTA ausentes → [] (lista vacía).
+// · Límites de DB-002: platforms ≤10, developers ≤10,
+//   publisher ≤200.
+
+// Recorta un texto a un máximo de caracteres ("" si no hay texto).
+function truncateText(text, max) {
+  const value = asText(text);
+  if (!value) return "";
+  return value.length <= max ? value : value.slice(0, max);
+}
+
+// Plataformas de IGDB → string[] (nombres, máx. 10, DB-002).
+export function igdbPlatformNames(platforms) {
+  const list = Array.isArray(platforms) ? platforms : [];
+  const names = list
+    .map((entry) => asText(entry && typeof entry === "object" ? entry.name : entry))
+    .filter((name) => name !== "")
+    .map((name) => truncateText(name, IGDB_MAX_COMPANY_NAME));
+  return Array.from(new Set(names)).slice(0, IGDB_MAX_PLATFORMS);
+}
+
+// Empresas implicadas de IGDB → string[].
+// role: 'developer' | 'publisher' (flags de involved_companies).
+export function igdbCompanyNames(companies, role) {
+  const list = Array.isArray(companies) ? companies : [];
+  const names = list
+    .filter((entry) => entry && typeof entry === "object")
+    .filter((entry) => entry[role] === true)
+    .map((entry) => {
+      const company =
+        entry.company && typeof entry.company === "object" ? entry.company : {};
+      return asText(company.name || entry.name);
+    })
+    .filter((name) => name !== "")
+    .map((name) => truncateText(name, IGDB_MAX_COMPANY_NAME));
+  return Array.from(new Set(names)).slice(0, IGDB_MAX_DEVELOPERS);
+}
+
+// Editorial del juego → string | null (DB-002: ≤200).
+export function igdbPublisherName(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+
+  const publishers = Array.isArray(source.publishers) ? source.publishers : [];
+  for (const entry of publishers) {
+    const name = asText(entry && typeof entry === "object" ? entry.name : entry);
+    if (name) return truncateText(name, IGDB_MAX_COMPANY_NAME);
+  }
+
+  const involved = Array.isArray(source.involved_companies)
+    ? source.involved_companies
+    : [];
+  for (const entry of involved) {
+    if (!entry || typeof entry !== "object" || entry.publisher !== true) continue;
+    const company =
+      entry.company && typeof entry.company === "object" ? entry.company : {};
+    const name = asText(company.name || entry.name);
+    if (name) return truncateText(name, IGDB_MAX_COMPANY_NAME);
+  }
+  return null;
+}
+
+// Metadatos de un JUEGO de IGDB → ItemMetadata (API-003).
+export function normalizeIgdbGameMetadata(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const cover =
+    source.cover && typeof source.cover === "object" ? source.cover : {};
+  const involved = Array.isArray(source.involved_companies)
+    ? source.involved_companies
+    : [];
+  return {
+    title: asText(source.name) || null,
+    year: igdbYear(source.first_release_date),
+    posterUrl: igdbCoverUrl(cover.image_id),
+    backdropUrl: null,
+    synopsis: clampSynopsis(source.summary || source.story),
+    genres: [],
+    durationMinutes: null,
+    director: null,
+    cast: [],
+    platforms: igdbPlatformNames(source.platforms),
+    developers: igdbCompanyNames(involved, "developer"),
+    publisher: igdbPublisherName(source),
+    authors: [],
+    pageCount: null,
+    seasons: null,
+    episodes: null,
+    tagline: null,
+    language: null,
+  };
+}
+
+// Consulta Apicalypse del detalle por id:
+//   where id = 1025; fields ...; limit 1;
+// (el proxy la reenvía tal cual a https://api.igdb.com/v4/games).
+export function buildIgdbDetailQuery(id) {
+  const fields = [
+    "id",
+    "name",
+    "summary",
+    "story",
+    "first_release_date",
+    "cover.image_id",
+    "platforms.name",
+    "involved_companies.company.name",
+    "involved_companies.developer",
+    "involved_companies.publisher",
+    "publishers.name",
+  ].join(", ");
+  return `where id = ${Number(id)}; fields ${fields}; limit 1;`;
 }
 
 // =============================================================
@@ -255,4 +380,56 @@ export async function searchIgdbGames(query, options = {}) {
     .map((raw) => normalizeIgdbGame(raw))
     .filter((item) => item.title !== "");
   return { ok: true, items };
+}
+
+// =============================================================
+// DETALLE — METADATOS (§4.1, API-003, AC-004/AC-009)
+// =============================================================
+//
+// Contrato:
+//   { ok: true,  item: ItemMetadata }
+//   { ok: true,  item: ItemMetadata, partial: true }
+//   { ok: false, provider: 'igdb', code, message }
+//   code ∈ 'timeout' | 'unauthorized' | 'rate_limited'
+//         | 'not_found' | 'unknown'
+//
+// Detalle de un JUEGO por id externo: POST {IGDB_PROXY_URL}/v4/games
+// con la consulta Apicalypse «where id = …».
+// options: { timeoutMs = 8000 }
+export async function fetchIgdbGameMetadata(id, options = {}) {
+  // El id puede llegar como número (catalog.js) o como string numérico
+  // (Firestore / formulario): se acepta cualquiera de los dos, con trim
+  // previo si es string. Un id vacío o no numérico → not_found.
+  const rawId = typeof id === "string" ? id.trim() : id;
+  const igdbId = Number(rawId);
+  if (!Number.isFinite(igdbId) || igdbId <= 0) {
+    return igdbError("not_found", "Falta el identificador de IGDB.");
+  }
+
+  const endpoint = igdbGamesEndpoint();
+  if (!endpoint) {
+    return igdbError(
+      "unknown",
+      "Falta IGDB_PROXY_URL en js/config.js: configura el proxy de IGDB (cloudflare/igdb-proxy/README.md)."
+    );
+  }
+
+  const res = await requestJson(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
+    body: buildIgdbDetailQuery(igdbId),
+    timeoutMs: options.timeoutMs,
+  });
+  if (!res.ok) {
+    return igdbError(res.code, res.message);
+  }
+
+  const results = Array.isArray(res.data) ? res.data : [];
+  if (results.length === 0) {
+    return igdbError(
+      "not_found",
+      `IGDB no encontró el juego con id ${igdbId}.`
+    );
+  }
+  return { ok: true, item: normalizeIgdbGameMetadata(results[0]) };
 }

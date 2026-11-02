@@ -32,10 +32,16 @@ import {
   addItemSession,
   updateItemSession,
   removeItemSession,
+  computeDashboardStats,
+  validateMetadata,
+  normalizeMetadata,
+  isMetadataFresh,
+  updateItemMetadata,
+  METADATA_SOURCES,
 } from "./catalog.js";
-import { searchTmdbMovies, searchTmdbTv, searchTmdbAnime } from "./api-tmdb.js";
-import { searchIgdbGames } from "./api-games.js";
-import { searchGoogleBooks } from "./api-books.js";
+import { searchTmdbMovies, searchTmdbTv, searchTmdbAnime, fetchTmdbMovieMetadata, fetchTmdbTvMetadata, fetchTmdbMetadata } from "./api-tmdb.js";
+import { searchIgdbGames, fetchIgdbGameMetadata } from "./api-games.js";
+import { searchGoogleBooks, fetchGoogleBookMetadata } from "./api-books.js";
 
 // =============================================================
 // Spec 001 — Puerta de login (INTACTA)
@@ -127,7 +133,8 @@ watchAuthState(async (user) => {
 // =============================================================
 
 // --- Estado del catálogo ------------------------------------
-let activeMediaType = MEDIA_TYPES[0];
+const DASHBOARD_KEY = "dashboard";
+let activeMediaType = DASHBOARD_KEY;
 let currentItems = [];
 let unsubscribeFn = null;
 let catalogInitialized = false;
@@ -142,6 +149,10 @@ let filterStatus = "";
 let filterMinRating = "";
 let filterYear = "";
 let sortOption = DEFAULT_SORT;
+
+// --- Dashboard (spec 003) -----------------------------------
+let dashboardUnsubscribes = [];
+let dashboardItemsByType = {};
 
 // --- Helpers de seguridad (MED #3) --------------------------
 
@@ -174,22 +185,33 @@ const btnAddItem = document.getElementById("btn-add-item");
 const loadMoreWrapEl = document.getElementById("catalog-load-more-wrap");
 const btnLoadMore = document.getElementById("btn-load-more");
 
+// Dashboard DOM (spec 003)
+const dashboardPanel = document.getElementById("dashboard-panel");
+const dashboardStatsEl = document.getElementById("dashboard-stats");
+const dashboardRecentAddedEl = document.getElementById("dashboard-recent-added");
+const dashboardRecentCompletedEl = document.getElementById("dashboard-recent-completed");
+const dashboardErrorEl = document.getElementById("dashboard-error");
+const dashboardLoadingEl = document.getElementById("dashboard-loading");
+
 // --- Inicialización de controles estáticos ------------------
 
 function buildTabs() {
   tabsContainer.innerHTML = "";
-  MEDIA_TYPES.forEach((type, index) => {
+
+  // Dashboard tab (spec 003, REQ-001, AC-001) — primera pestaña
+  const allTabs = [DASHBOARD_KEY, ...MEDIA_TYPES];
+  const tabLabels = { [DASHBOARD_KEY]: "Dashboard", ...MEDIA_TYPE_LABELS };
+
+  allTabs.forEach((type) => {
     const tab = document.createElement("button");
     tab.type = "button";
     tab.className = "catalog__tab";
     tab.setAttribute("role", "tab");
     tab.setAttribute("aria-selected", type === activeMediaType ? "true" : "false");
     tab.setAttribute("tabindex", type === activeMediaType ? "0" : "-1");
-    // LOW #4: el panel usa aria-labelledby="tab-active", así que
-    // la pestaña activa debe tener ese id desde la carga inicial.
     tab.id = type === activeMediaType ? "tab-active" : `tab-${type}`;
-    tab.setAttribute("aria-controls", "catalog-panel");
-    tab.textContent = MEDIA_TYPE_LABELS[type];
+    tab.setAttribute("aria-controls", type === DASHBOARD_KEY ? "dashboard-panel" : "catalog-panel");
+    tab.textContent = tabLabels[type];
     tab.dataset.mediaType = type;
     tab.addEventListener("click", () => switchTab(type));
     tabsContainer.appendChild(tab);
@@ -272,7 +294,8 @@ function handleTabsKeydown(event) {
 // --- Cambio de pestaña --------------------------------------
 
 function switchTab(mediaType) {
-  if (!MEDIA_TYPES.includes(mediaType) || mediaType === activeMediaType) return;
+  const validTabs = [DASHBOARD_KEY, ...MEDIA_TYPES];
+  if (!validTabs.includes(mediaType) || mediaType === activeMediaType) return;
   activeMediaType = mediaType;
 
   // Actualizar ARIA en pestañas (LOW #4: mantener id="tab-active" en la activa)
@@ -285,23 +308,34 @@ function switchTab(mediaType) {
     else if (tab.id === "tab-active") tab.id = `tab-${tab.dataset.mediaType}`;
   });
 
-  // Resetear filtros al cambiar de pestaña
-  filterStatus = "";
-  filterStatusEl.value = "";
-  filterMinRating = "";
-  filterRatingEl.value = "";
-  filterYear = "";
-  filterYearEl.value = "";
-  sortOption = DEFAULT_SORT;
-  sortEl.value = DEFAULT_SORT;
+  if (mediaType === DASHBOARD_KEY) {
+    // Mostrar dashboard, ocultar catálogo por tipo
+    showDashboardView(true);
+    subscribeToDashboard();
+  } else {
+    // Mostrar catálogo por tipo, ocultar dashboard
+    showDashboardView(false);
+    // Cancelar suscripciones del dashboard
+    dashboardUnsubscribeAll();
 
-  // Resetear paginación
-  paginationHasMore = false;
-  paginationLastDoc = null;
-  updateLoadMoreVisibility();
+    // Resetear filtros al cambiar de pestaña
+    filterStatus = "";
+    filterStatusEl.value = "";
+    filterMinRating = "";
+    filterRatingEl.value = "";
+    filterYear = "";
+    filterYearEl.value = "";
+    sortOption = DEFAULT_SORT;
+    sortEl.value = DEFAULT_SORT;
 
-  // Re-suscribir a la nueva colección
-  subscribeToCurrentTab();
+    // Resetear paginación
+    paginationHasMore = false;
+    paginationLastDoc = null;
+    updateLoadMoreVisibility();
+
+    // Re-suscribir a la nueva colección
+    subscribeToCurrentTab();
+  }
 }
 
 // --- Suscripción al store -----------------------------------
@@ -324,18 +358,24 @@ async function subscribeToCurrentTab() {
         const incoming = items || [];
         // LOW #4 (Q-003): si el usuario cargó páginas extra vía "Cargar más",
         // preservar esos ítems adicionales; reemplazar solo la primera página.
-        if (currentItems.length > incoming.length) {
+        const hadExtraItems = currentItems.length > incoming.length;
+        if (hadExtraItems) {
           currentItems = incoming.concat(currentItems.slice(incoming.length));
         } else {
           currentItems = incoming;
         }
         // MED #2: capturar cursor de paginación (Q-003/§6)
+        // F-001: NO resetear paginationLastDoc si preservamos ítems extra
         if (meta && typeof meta === "object") {
           paginationHasMore = Boolean(meta.hasMore);
-          paginationLastDoc = meta.lastDoc || null;
+          if (!hadExtraItems) {
+            paginationLastDoc = meta.lastDoc || null;
+          }
         } else {
           paginationHasMore = false;
-          paginationLastDoc = null;
+          if (!hadExtraItems) {
+            paginationLastDoc = null;
+          }
         }
         updateLoadMoreVisibility();
         showLoading(false);
@@ -368,9 +408,10 @@ async function loadMoreItems() {
   try {
     const result = await listItems(activeMediaType, { startAfter: paginationLastDoc });
     const newItems = result.items || [];
-    // Concatenar manteniendo el orden (la suscripción inicial ya
-    // ordena por updatedAt desc; las páginas siguientes también).
-    currentItems = currentItems.concat(newItems);
+    // F-001: deduplicar por id al concatenar (evitar ítems repetidos)
+    const existingIds = new Set(currentItems.map((item) => item.id));
+    const uniqueNewItems = newItems.filter((item) => !existingIds.has(item.id));
+    currentItems = currentItems.concat(uniqueNewItems);
     paginationHasMore = Boolean(result.hasMore);
     paginationLastDoc = result.lastDoc || null;
     updateLoadMoreVisibility();
@@ -400,7 +441,216 @@ async function catalogUnsubscribe() {
 
 function catalogCleanup() {
   catalogUnsubscribe();
+  dashboardUnsubscribeAll();
   catalogInitialized = false;
+}
+
+// =============================================================
+// Spec 003 — Dashboard (REQ-001, UI-001, AC-001, AC-005, D-005)
+// =============================================================
+
+function showDashboardView(visible) {
+  if (dashboardPanel) dashboardPanel.hidden = !visible;
+  if (panel) panel.hidden = visible;
+}
+
+async function dashboardUnsubscribeAll() {
+  for (const unsub of dashboardUnsubscribes) {
+    if (typeof unsub === "function") {
+      try { await unsub(); } catch { /* ignore */ }
+    }
+  }
+  dashboardUnsubscribes = [];
+  dashboardItemsByType = {};
+}
+
+async function subscribeToDashboard() {
+  await dashboardUnsubscribeAll();
+  dashboardItemsByType = {};
+
+  if (dashboardLoadingEl) dashboardLoadingEl.hidden = false;
+  if (dashboardErrorEl) dashboardErrorEl.hidden = true;
+  if (dashboardStatsEl) dashboardStatsEl.innerHTML = "";
+  if (dashboardRecentAddedEl) dashboardRecentAddedEl.innerHTML = "";
+  if (dashboardRecentCompletedEl) dashboardRecentCompletedEl.innerHTML = "";
+
+  let pendingCount = MEDIA_TYPES.length;
+
+  for (const mediaType of MEDIA_TYPES) {
+    try {
+      // MED #1 (REQ-005/AC-005): límite alto para que las estadísticas no queden
+      // truncadas cuando hay >100 ítems por tipo (el default es 100).
+      const unsub = await subscribeItems(mediaType, {
+        limitCount: 1000,
+        onItems(items) {
+          dashboardItemsByType[mediaType] = items || [];
+          pendingCount--;
+          renderDashboard();
+          if (dashboardLoadingEl && pendingCount <= 0) {
+            dashboardLoadingEl.hidden = true;
+          }
+        },
+        onError(error) {
+          pendingCount--;
+          if (dashboardErrorEl) {
+            dashboardErrorEl.textContent = "Error al cargar estadísticas: " + (error?.message || "desconocido");
+            dashboardErrorEl.hidden = false;
+          }
+          if (dashboardLoadingEl && pendingCount <= 0) {
+            dashboardLoadingEl.hidden = true;
+          }
+        },
+      });
+      dashboardUnsubscribes.push(unsub);
+    } catch (error) {
+      pendingCount--;
+      if (dashboardErrorEl) {
+        dashboardErrorEl.textContent = "Error al suscribirse: " + (error?.message || "desconocido");
+        dashboardErrorEl.hidden = false;
+      }
+    }
+  }
+}
+
+function renderDashboard() {
+  const stats = computeDashboardStats(dashboardItemsByType);
+
+  // --- StatCards (D-005, D-007) ---
+  if (dashboardStatsEl) {
+    let html = "";
+
+    // Totales por tipo
+    html += `<h4 class="dashboard__section-title">Por tipo</h4>`;
+    html += `<div class="dashboard__stats-grid">`;
+    for (const type of MEDIA_TYPES) {
+      const count = stats.totalsByType[type] || 0;
+      html += `
+        <div class="stat-card">
+          <span class="stat-card__label">${escapeHtml(MEDIA_TYPE_LABELS[type])}</span>
+          <span class="stat-card__value">${count}</span>
+        </div>`;
+    }
+    html += `</div>`;
+
+    // Totales por estado
+    html += `<h4 class="dashboard__section-title">Por estado</h4>`;
+    html += `<div class="dashboard__stats-grid">`;
+    for (const status of ITEM_STATUSES) {
+      const count = stats.totalsByStatus[status] || 0;
+      html += `
+        <div class="stat-card">
+          <span class="stat-card__label">${escapeHtml(STATUS_LABELS[status])}</span>
+          <span class="stat-card__value">${count}</span>
+        </div>`;
+    }
+    html += `</div>`;
+
+    // Media de valoración, horas jugadas, completados
+    html += `<h4 class="dashboard__section-title">Resumen</h4>`;
+    html += `<div class="dashboard__stats-grid">`;
+    const avgRating = stats.averageRating !== null
+      ? stats.averageRating.toFixed(1)
+      : "—";
+    html += `
+      <div class="stat-card">
+        <span class="stat-card__label">Media valoración</span>
+        <span class="stat-card__value stat-card__value--rating">${escapeHtml(avgRating)}</span>
+      </div>`;
+    html += `
+      <div class="stat-card">
+        <span class="stat-card__label">Horas jugadas</span>
+        <span class="stat-card__value stat-card__value--accent">${stats.totalHoursPlayed}</span>
+      </div>`;
+    html += `
+      <div class="stat-card">
+        <span class="stat-card__label">Completados</span>
+        <span class="stat-card__value stat-card__value--accent">${stats.completedCount}</span>
+      </div>`;
+    html += `</div>`;
+
+    dashboardStatsEl.innerHTML = html;
+  }
+
+  // --- Listas recientes (D-005) ---
+  renderRecentList(dashboardRecentAddedEl, stats.recentlyAdded, "createdAt");
+  renderRecentList(dashboardRecentCompletedEl, stats.recentlyCompleted, "completedAt");
+}
+
+function renderRecentList(container, items, dateField) {
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (!items || items.length === 0) {
+    const li = document.createElement("li");
+    li.className = "dashboard__recent-empty";
+    li.textContent = "Nada por aquí todavía.";
+    container.appendChild(li);
+    return;
+  }
+
+  for (const item of items) {
+    const li = document.createElement("li");
+    li.className = "dashboard__recent-item";
+    li.dataset.mediaType = item.mediaType || "";
+    li.dataset.itemId = item.id || "";
+    li.tabIndex = 0;
+    li.setAttribute("role", "button");
+    li.setAttribute("aria-label", `Ver ficha de ${item.title || "elemento"}`);
+
+    // Click abre la ficha existente (mismo flujo que las tarjetas)
+    const openDetail = () => {
+      if (item.mediaType && item.id) {
+        openItemDetail(item.mediaType, item.id);
+      }
+    };
+    li.addEventListener("click", openDetail);
+    li.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openDetail();
+      }
+    });
+
+    // Póster mini o placeholder
+    if (item.posterUrl) {
+      const img = document.createElement("img");
+      img.className = "dashboard__recent-poster";
+      img.src = item.posterUrl;
+      img.alt = "";
+      img.loading = "lazy";
+      li.appendChild(img);
+    } else {
+      const placeholder = document.createElement("div");
+      placeholder.className = "dashboard__recent-placeholder";
+      placeholder.setAttribute("aria-hidden", "true");
+      placeholder.textContent = "🎬";
+      li.appendChild(placeholder);
+    }
+
+    // Info
+    const info = document.createElement("div");
+    info.className = "dashboard__recent-info";
+
+    const name = document.createElement("span");
+    name.className = "dashboard__recent-name";
+    name.textContent = item.title || "Sin título";
+    info.appendChild(name);
+
+    const meta = document.createElement("div");
+    meta.className = "dashboard__recent-meta";
+    const metaParts = [];
+    if (item.year) metaParts.push(String(item.year));
+    const statusLabel = STATUS_LABELS[item.status] || item.status;
+    metaParts.push(statusLabel);
+    if (typeof item.rating === "number" && Number.isFinite(item.rating)) {
+      metaParts.push(`★ ${item.rating}`);
+    }
+    meta.textContent = metaParts.join(" · ");
+    info.appendChild(meta);
+
+    li.appendChild(info);
+    container.appendChild(li);
+  }
 }
 
 // --- Render de la lista -------------------------------------
@@ -644,7 +894,15 @@ function catalogInit() {
   buildYearFilter();
   buildSortSelect();
   updateLoadMoreVisibility();
-  subscribeToCurrentTab();
+
+  // Dashboard es la pestaña inicial (spec 003, AC-001)
+  if (activeMediaType === DASHBOARD_KEY) {
+    showDashboardView(true);
+    subscribeToDashboard();
+  } else {
+    showDashboardView(false);
+    subscribeToCurrentTab();
+  }
 }
 
 // =============================================================
@@ -1130,6 +1388,7 @@ function renderDetail(item) {
   const eReview = escapeHtml(item.review || "");
   const eStatus = escapeHtml(item.status || "pending");
   const ePosterUrl = escapeHtml(item.posterUrl || "");
+  const eBackdropUrl = escapeHtml(item.backdropUrl || "");
   const eYear = escapeHtml(item.year ?? "");
   const eRatingValue = item.rating !== undefined && item.rating !== null ? escapeHtml(item.rating) : "";
   const eCompletedAt = item.completedAt ? escapeHtml(new Date(item.completedAt).toISOString().split("T")[0]) : "";
@@ -1145,25 +1404,40 @@ function renderDetail(item) {
   const ePagesRead = escapeHtml(item.pagesRead ?? "");
   const ePagesTotal = escapeHtml(item.pagesTotal ?? "");
   
+  // Géneros como chips (UI-003)
+  const genres = item.genres && Array.isArray(item.genres) ? item.genres : [];
+  const genresHtml = genres.length > 0 
+    ? `<div class="detail__genres">${genres.map(g => `<span class="detail__genre-chip">${escapeHtml(g)}</span>`).join("")}</div>`
+    : "";
+  
+  // Tagline si existe
+  const tagline = item.tagline ? `<p class="detail__tagline">${escapeHtml(item.tagline)}</p>` : "";
+  
   let html = `
     <div class="detail">
-      <div class="detail__header">
-        ${
-          item.posterUrl
-            ? `<img src="${ePosterUrl}" alt="" class="detail__poster">`
-            : `<div class="detail__poster detail__poster--placeholder" aria-hidden="true">🎬</div>`
-        }
-        <div class="detail__info">
-          <h3 class="detail__title">${eTitle}</h3>
-          <div class="detail__meta">
-            ${item.year ? `<span>${eYear}</span>` : ""}
-            ${item.author ? `<span>${eAuthor}</span>` : ""}
-            <span class="catalog-badge catalog-badge--${eStatus}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</span>
-            ${typeof item.rating === "number" ? `<span style="color: #fdd663;">★ ${eRatingValue}/10</span>` : ""}
+      <div class="detail__hero">
+        ${item.backdropUrl ? `<div class="detail__backdrop" style="background-image: url('${eBackdropUrl}')"></div>` : ""}
+        <div class="detail__hero-content">
+          ${
+            item.posterUrl
+              ? `<img src="${ePosterUrl}" alt="" class="detail__poster">`
+              : `<div class="detail__poster detail__poster--placeholder" aria-hidden="true">🎬</div>`
+          }
+          <div class="detail__info">
+            <h3 class="detail__title">${eTitle}${item.year ? ` <span class="detail__year">(${eYear})</span>` : ""}</h3>
+            ${genresHtml}
+            ${tagline}
+            <div class="detail__meta">
+              ${item.author ? `<span>${eAuthor}</span>` : ""}
+              <span class="catalog-badge catalog-badge--${eStatus}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</span>
+              ${typeof item.rating === "number" ? `<span class="detail__rating">★ ${eRatingValue}/10</span>` : ""}
+            </div>
+            ${item.synopsis ? `<p class="detail__synopsis">${eSynopsis}</p>` : ""}
           </div>
-          ${item.synopsis ? `<p class="detail__synopsis">${eSynopsis}</p>` : ""}
         </div>
       </div>
+      
+      <div id="metadata-section" class="detail__section"></div>
       
       <form id="detail-form" class="form" novalidate>
         <div id="detail-errors" class="form-errors" hidden role="alert"></div>
@@ -1275,6 +1549,9 @@ function renderDetail(item) {
   
   detailContent.innerHTML = html;
   
+  // Render metadata section (T-005)
+  renderMetadataSection(item);
+  
   // Rating scale interaction
   const ratingButtons = detailContent.querySelectorAll(".rating-scale__button");
   const ratingInput = detailContent.querySelector('input[name="rating"]');
@@ -1301,6 +1578,543 @@ function renderDetail(item) {
   detailForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     await saveDetail(item.mediaType, item.id);
+  });
+}
+
+// =============================================================
+// T-005 — Metadata Section (REQ-004, AC-004, AC-008, AC-009)
+// =============================================================
+
+function renderMetadataSection(item, forceRefresh) {
+  const metadataSection = document.getElementById("metadata-section");
+  if (!metadataSection) return;
+  
+  const mediaType = item.mediaType || activeMediaType;
+  const provider = item.source?.provider;
+  const externalId = item.source?.externalId;
+  
+  // MED #3 (REQ-009): si se fuerza refetch, omitir isMetadataFresh
+  if (!forceRefresh && isMetadataFresh(item)) {
+    // Render cached metadata
+    renderMetadataContent(item, item, null);
+    return;
+  }
+  
+  // Check if we can fetch metadata
+  if (provider && externalId && provider !== "manual") {
+    // Show loading state
+    metadataSection.innerHTML = `
+      <div class="metadata-loading">
+        <p class="muted">Cargando información adicional…</p>
+      </div>
+    `;
+    
+    // Fetch metadata
+    fetchMetadataForItem(item, mediaType, provider, externalId);
+  } else {
+    // No provider or manual source - show manual form directly
+    renderMetadataContent(item, null, null);
+  }
+}
+
+async function fetchMetadataForItem(item, mediaType, provider, externalId) {
+  const metadataSection = document.getElementById("metadata-section");
+  if (!metadataSection) return;
+  
+  try {
+    let result;
+    
+    // Route to appropriate fetch function based on provider
+    if (provider === "tmdb") {
+      if (mediaType === "movie") {
+        result = await fetchTmdbMovieMetadata(externalId);
+      } else if (mediaType === "series" || mediaType === "anime") {
+        result = await fetchTmdbTvMetadata(externalId);
+      } else {
+        result = await fetchTmdbMetadata(mediaType, externalId);
+      }
+    } else if (provider === "igdb") {
+      result = await fetchIgdbGameMetadata(externalId);
+    } else if (provider === "googlebooks") {
+      result = await fetchGoogleBookMetadata(externalId);
+    } else {
+      // Unknown provider - show manual form
+      renderMetadataContent(item, null, null);
+      return;
+    }
+    
+    if (!result.ok) {
+      // Handle error
+      renderMetadataError(item, result);
+      return;
+    }
+    
+    // Success - render metadata
+    const metadata = result.item;
+    const isPartial = result.partial === true;
+    
+    // Try to cache metadata (non-blocking, AC-009)
+    let cacheWriteFailed = false;
+    try {
+      await updateItemMetadata(mediaType, item.id, metadata, provider);
+      // Update currentDetailItem with cached metadata
+      const updated = await getItem(mediaType, item.id);
+      currentDetailItem = updated;
+    } catch (cacheError) {
+      // MED #2 (REQ-010/AC-009, §4.1 «fallo de escritura de caché»):
+      // aviso visible con botón de reintento.
+      cacheWriteFailed = true;
+      console.warn("No se pudo cachear la metadata:", cacheError);
+    }
+    
+    renderMetadataContent(item, metadata, isPartial ? "partial" : null, cacheWriteFailed ? { mediaType, provider, itemId: item.id } : null);
+    
+  } catch (error) {
+    // Unexpected error
+    renderMetadataError(item, { ok: false, provider, code: "unknown", message: error.message || "Error desconocido" });
+  }
+}
+
+function renderMetadataError(item, errorResult) {
+  const metadataSection = document.getElementById("metadata-section");
+  if (!metadataSection) return;
+  
+  const code = errorResult.code || "unknown";
+  let message = "No se pudo cargar la información adicional.";
+  
+  if (code === "not_found") {
+    message = "No se encontró en la base de datos externa.";
+  } else if (code === "rate_limited") {
+    message = "Demasiadas solicitudes. Inténtalo de nuevo en unos minutos.";
+  } else if (code === "unauthorized") {
+    message = "Error de autenticación con el proveedor externo.";
+  } else if (code === "timeout") {
+    message = "La solicitud tardó demasiado. Inténtalo de nuevo.";
+  }
+  
+  metadataSection.innerHTML = `
+    <div class="metadata-error">
+      <p class="metadata-error__message">${escapeHtml(message)}</p>
+      <div class="metadata-error__actions">
+        <button type="button" class="btn btn--secondary" id="btn-retry-metadata">Reintentar</button>
+        <button type="button" class="btn btn--secondary" id="btn-manual-metadata">Añadir manualmente</button>
+      </div>
+    </div>
+  `;
+  
+  // Retry button
+  const btnRetry = document.getElementById("btn-retry-metadata");
+  if (btnRetry) {
+    btnRetry.addEventListener("click", () => {
+      const provider = item.source?.provider;
+      const externalId = item.source?.externalId;
+      if (provider && externalId) {
+        renderMetadataSection(item);
+      }
+    });
+  }
+  
+  // Manual form button
+  const btnManual = document.getElementById("btn-manual-metadata");
+  if (btnManual) {
+    btnManual.addEventListener("click", () => {
+      openMetadataForm(item, null);
+    });
+  }
+}
+
+function renderMetadataContent(item, metadata, warning, cacheFailureInfo) {
+  const metadataSection = document.getElementById("metadata-section");
+  if (!metadataSection) return;
+  
+  const mediaType = item.mediaType || activeMediaType;
+  
+  // Use metadata if available, otherwise use item fields
+  const data = metadata || item;
+  
+  let html = "";
+  
+  // MED #2 (REQ-010/AC-009): aviso visible si falló la escritura de caché
+  if (cacheFailureInfo) {
+    html += `
+      <div class="metadata-error" style="margin-bottom:12px;">
+        <p class="metadata-error__message">No se pudo guardar la información en caché.</p>
+        <div class="metadata-error__actions">
+          <button type="button" class="btn btn--secondary" id="btn-retry-cache">Reintentar</button>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Warning for partial data
+  if (warning === "partial") {
+    html += `<div class="metadata-warning">Información incompleta.</div>`;
+  }
+  
+  // Progress info by type
+  const progressHtml = renderProgressInfo(item, mediaType);
+  if (progressHtml) {
+    html += progressHtml;
+  }
+  
+  // Director (movies, series, anime)
+  if (data.director && (mediaType === "movie" || mediaType === "series" || mediaType === "anime")) {
+    html += `
+      <div class="metadata-field">
+        <span class="metadata-field__label">Director</span>
+        <span class="metadata-field__value">${escapeHtml(data.director)}</span>
+      </div>
+    `;
+  }
+  
+  // Cast list
+  if (data.cast && Array.isArray(data.cast) && data.cast.length > 0) {
+    html += `
+      <div class="metadata-field metadata-field--cast">
+        <span class="metadata-field__label">Reparto</span>
+        <div class="metadata-cast-list">
+          ${data.cast.slice(0, 10).map(name => `<span class="metadata-cast-item">${escapeHtml(name)}</span>`).join("")}
+        </div>
+      </div>
+    `;
+  }
+  
+  // Publishers/Developers/Platforms (games)
+  if (mediaType === "game") {
+    if (data.developers && Array.isArray(data.developers) && data.developers.length > 0) {
+      html += `
+        <div class="metadata-field">
+          <span class="metadata-field__label">Desarrollador</span>
+          <span class="metadata-field__value">${escapeHtml(data.developers.join(", "))}</span>
+        </div>
+      `;
+    }
+    if (data.publisher) {
+      html += `
+        <div class="metadata-field">
+          <span class="metadata-field__label">Editorial</span>
+          <span class="metadata-field__value">${escapeHtml(data.publisher)}</span>
+        </div>
+      `;
+    }
+    if (data.platforms && Array.isArray(data.platforms) && data.platforms.length > 0) {
+      html += `
+        <div class="metadata-field">
+          <span class="metadata-field__label">Plataformas</span>
+          <span class="metadata-field__value">${escapeHtml(data.platforms.join(", "))}</span>
+        </div>
+      `;
+    }
+  }
+  
+  // Authors (books)
+  if (mediaType === "book" && data.authors && Array.isArray(data.authors) && data.authors.length > 0) {
+    html += `
+      <div class="metadata-field">
+        <span class="metadata-field__label">Autores</span>
+        <span class="metadata-field__value">${escapeHtml(data.authors.join(", "))}</span>
+      </div>
+    `;
+  }
+  
+  // Page count (books)
+  if (mediaType === "book" && data.pageCount) {
+    html += `
+      <div class="metadata-field">
+        <span class="metadata-field__label">Páginas</span>
+        <span class="metadata-field__value">${escapeHtml(data.pageCount)}</span>
+      </div>
+    `;
+  }
+  
+  // Seasons/Episodes (series, anime)
+  if ((mediaType === "series" || mediaType === "anime") && (data.seasons || data.episodes)) {
+    const parts = [];
+    if (data.seasons) parts.push(`${data.seasons} temporada${data.seasons !== 1 ? "s" : ""}`);
+    if (data.episodes) parts.push(`${data.episodes} episodio${data.episodes !== 1 ? "s" : ""}`);
+    html += `
+      <div class="metadata-field">
+        <span class="metadata-field__label">Episodios</span>
+        <span class="metadata-field__value">${escapeHtml(parts.join(", "))}</span>
+      </div>
+    `;
+  }
+  
+  // Language
+  if (data.language) {
+    html += `
+      <div class="metadata-field">
+        <span class="metadata-field__label">Idioma</span>
+        <span class="metadata-field__value">${escapeHtml(data.language)}</span>
+      </div>
+    `;
+  }
+  
+  // Edit metadata button
+  html += `
+    <div class="metadata-actions">
+      <button type="button" class="btn btn--secondary" id="btn-edit-metadata">Editar metadata</button>
+    </div>
+  `;
+  
+  if (html) {
+    metadataSection.innerHTML = `
+      <h4 class="detail__section-title">Información adicional</h4>
+      <div class="metadata-content">
+        ${html}
+      </div>
+      <div class="metadata-actions">
+        <button type="button" class="btn btn--secondary" id="btn-refresh-metadata">Refrescar metadata</button>
+      </div>
+    `;
+  } else {
+    metadataSection.innerHTML = `
+      <h4 class="detail__section-title">Información adicional</h4>
+      <div class="metadata-content">
+        <p class="muted">Sin información adicional.</p>
+        <button type="button" class="btn btn--secondary" id="btn-edit-metadata">Añadir manualmente</button>
+      </div>
+      <div class="metadata-actions">
+        <button type="button" class="btn btn--secondary" id="btn-refresh-metadata">Refrescar metadata</button>
+      </div>
+    `;
+  }
+  
+  // MED #3 (REQ-009): botón «Refrescar metadata» siempre visible
+  const btnRefresh = document.getElementById("btn-refresh-metadata");
+  if (btnRefresh) {
+    btnRefresh.addEventListener("click", () => {
+      renderMetadataSection(item, true);
+    });
+  }
+  
+  // Edit metadata button
+  const btnEdit = document.getElementById("btn-edit-metadata");
+  if (btnEdit) {
+    btnEdit.addEventListener("click", () => {
+      openMetadataForm(item, metadata);
+    });
+  }
+  
+  // MED #2: botón de reintento de escritura de caché
+  const btnRetryCache = document.getElementById("btn-retry-cache");
+  if (btnRetryCache && cacheFailureInfo) {
+    btnRetryCache.addEventListener("click", async () => {
+      btnRetryCache.disabled = true;
+      btnRetryCache.textContent = "Reintentando…";
+      try {
+        await updateItemMetadata(cacheFailureInfo.mediaType, cacheFailureInfo.itemId, metadata || item, cacheFailureInfo.provider);
+        const updated = await getItem(cacheFailureInfo.mediaType, cacheFailureInfo.itemId);
+        currentDetailItem = updated;
+        renderMetadataContent(updated, metadata || item, warning, null);
+      } catch (err) {
+        btnRetryCache.disabled = false;
+        btnRetryCache.textContent = "Reintentar";
+        console.warn("Reintento de caché falló:", err);
+      }
+    });
+  }
+}
+
+function renderProgressInfo(item, mediaType) {
+  const parts = [];
+  
+  if (mediaType === "movie" && item.durationMinutes) {
+    parts.push(`${item.durationMinutes} min`);
+  }
+  
+  if ((mediaType === "series" || mediaType === "anime")) {
+    const nextEp = nextEpisodeLabel(item);
+    if (nextEp) {
+      return `
+        <div class="metadata-progress">
+          <span class="metadata-progress__label">Siguiente episodio:</span>
+          <span class="metadata-progress__value">${escapeHtml(nextEp)}</span>
+        </div>
+      `;
+    }
+  }
+  
+  if (mediaType === "game") {
+    if (item.hoursPlayed) parts.push(`${item.hoursPlayed}h jugadas`);
+    if (item.completionPercent) parts.push(`${item.completionPercent}% completado`);
+    if (item.platform) parts.push(item.platform);
+    if (item.achievementsUnlocked && item.achievementsTotal) {
+      parts.push(`${item.achievementsUnlocked}/${item.achievementsTotal} logros`);
+    }
+  }
+  
+  if (mediaType === "book") {
+    if (item.pagesRead && item.pagesTotal) {
+      parts.push(`${item.pagesRead}/${item.pagesTotal} páginas`);
+    }
+  }
+  
+  if (parts.length > 0) {
+    return `
+      <div class="metadata-progress">
+        <span class="metadata-progress__value">${escapeHtml(parts.join(" · "))}</span>
+      </div>
+    `;
+  }
+  
+  return "";
+}
+
+function openMetadataForm(item, existingMetadata) {
+  const mediaType = item.mediaType || activeMediaType;
+  const data = existingMetadata || {};
+  
+  // Pre-fill form with existing metadata or item fields
+  const formData = {
+    director: data.director || "",
+    cast: data.cast && Array.isArray(data.cast) ? data.cast.join("\n") : "",
+    backdropUrl: data.backdropUrl || item.backdropUrl || "",
+    tagline: data.tagline || "",
+    platforms: data.platforms && Array.isArray(data.platforms) ? data.platforms.join("\n") : "",
+    developers: data.developers && Array.isArray(data.developers) ? data.developers.join("\n") : "",
+    publisher: data.publisher || "",
+    authors: data.authors && Array.isArray(data.authors) ? data.authors.join("\n") : "",
+    pageCount: data.pageCount || "",
+    seasons: data.seasons || "",
+    episodes: data.episodes || "",
+    language: data.language || "",
+  };
+  
+  const formHtml = `
+    <form id="metadata-form" class="form" novalidate>
+      <div id="metadata-form-errors" class="form-errors" hidden role="alert"></div>
+      
+      <label class="form-field">
+        <span class="form-field__label">Director</span>
+        <input type="text" name="director" class="form-field__input" value="${escapeHtml(formData.director)}" maxlength="200">
+      </label>
+      
+      <label class="form-field">
+        <span class="form-field__label">Reparto (un nombre por línea)</span>
+        <textarea name="cast" class="form-field__textarea" rows="4">${escapeHtml(formData.cast)}</textarea>
+      </label>
+      
+      <label class="form-field">
+        <span class="form-field__label">URL del backdrop</span>
+        <input type="url" name="backdropUrl" class="form-field__input" value="${escapeHtml(formData.backdropUrl)}" placeholder="https://…">
+      </label>
+      
+      <label class="form-field">
+        <span class="form-field__label">Tagline</span>
+        <input type="text" name="tagline" class="form-field__input" value="${escapeHtml(formData.tagline)}" maxlength="300">
+      </label>
+      
+      ${mediaType === "game" ? `
+        <label class="form-field">
+          <span class="form-field__label">Plataformas (una por línea)</span>
+          <textarea name="platforms" class="form-field__textarea" rows="3">${escapeHtml(formData.platforms)}</textarea>
+        </label>
+        
+        <label class="form-field">
+          <span class="form-field__label">Desarrolladores (uno por línea)</span>
+          <textarea name="developers" class="form-field__textarea" rows="3">${escapeHtml(formData.developers)}</textarea>
+        </label>
+        
+        <label class="form-field">
+          <span class="form-field__label">Editorial</span>
+          <input type="text" name="publisher" class="form-field__input" value="${escapeHtml(formData.publisher)}" maxlength="200">
+        </label>
+      ` : ""}
+      
+      ${mediaType === "book" ? `
+        <label class="form-field">
+          <span class="form-field__label">Autores (uno por línea)</span>
+          <textarea name="authors" class="form-field__textarea" rows="3">${escapeHtml(formData.authors)}</textarea>
+        </label>
+        
+        <label class="form-field">
+          <span class="form-field__label">Número de páginas</span>
+          <input type="number" name="pageCount" class="form-field__input" value="${escapeHtml(formData.pageCount)}" min="0">
+        </label>
+      ` : ""}
+      
+      ${(mediaType === "series" || mediaType === "anime") ? `
+        <label class="form-field">
+          <span class="form-field__label">Temporadas</span>
+          <input type="number" name="seasons" class="form-field__input" value="${escapeHtml(formData.seasons)}" min="0">
+        </label>
+        
+        <label class="form-field">
+          <span class="form-field__label">Episodios</span>
+          <input type="number" name="episodes" class="form-field__input" value="${escapeHtml(formData.episodes)}" min="0">
+        </label>
+      ` : ""}
+      
+      <label class="form-field">
+        <span class="form-field__label">Idioma</span>
+        <input type="text" name="language" class="form-field__input" value="${escapeHtml(formData.language)}" maxlength="50">
+      </label>
+      
+      <div class="modal__footer">
+        <button type="submit" class="btn btn--primary">Guardar</button>
+        <button type="button" class="btn" id="btn-cancel-metadata">Cancelar</button>
+      </div>
+    </form>
+  `;
+  
+  const metadataSection = document.getElementById("metadata-section");
+  if (!metadataSection) return;
+  
+  metadataSection.innerHTML = `
+    <h4 class="detail__section-title">Editar metadata</h4>
+    ${formHtml}
+  `;
+  
+  const metadataForm = document.getElementById("metadata-form");
+  const metadataFormErrors = document.getElementById("metadata-form-errors");
+  
+  // Cancel button
+  document.getElementById("btn-cancel-metadata").addEventListener("click", () => {
+    renderMetadataSection(item);
+  });
+  
+  // Form submit
+  metadataForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    
+    const formData = new FormData(metadataForm);
+    
+    // Parse textarea fields (one per line)
+    const parseLines = (text) => text.split("\n").map(l => l.trim()).filter(l => l);
+    
+    const metadata = {
+      director: formData.get("director") || null,
+      cast: parseLines(formData.get("cast") || ""),
+      backdropUrl: formData.get("backdropUrl") || null,
+      tagline: formData.get("tagline") || null,
+      platforms: parseLines(formData.get("platforms") || ""),
+      developers: parseLines(formData.get("developers") || ""),
+      publisher: formData.get("publisher") || null,
+      authors: parseLines(formData.get("authors") || ""),
+      pageCount: formData.get("pageCount") ? Number(formData.get("pageCount")) : null,
+      seasons: formData.get("seasons") ? Number(formData.get("seasons")) : null,
+      episodes: formData.get("episodes") ? Number(formData.get("episodes")) : null,
+      language: formData.get("language") || null,
+    };
+    
+    // Validate metadata
+    const validation = validateMetadata(metadata);
+    if (!validation.valid) {
+      metadataFormErrors.innerHTML = `<ul>${validation.errors.map(e => `<li>${escapeHtml(e)}</li>`).join("")}</ul>`;
+      metadataFormErrors.hidden = false;
+      return;
+    }
+    
+    try {
+      await updateItemMetadata(mediaType, item.id, metadata, "manual");
+      const updated = await getItem(mediaType, item.id);
+      currentDetailItem = updated;
+      renderDetail(updated);
+    } catch (error) {
+      metadataFormErrors.innerHTML = `<ul><li>${escapeHtml(error.message || "No se pudo guardar la metadata.")}</li></ul>`;
+      metadataFormErrors.hidden = false;
+    }
   });
 }
 

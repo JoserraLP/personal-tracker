@@ -7,9 +7,12 @@
 //     constantes de tipos y estados, mapa tipo→colección, validación
 //     de campos (DB-001..DB-006 / REQ-014), cálculo de «siguiente
 //     episodio» (DB-003 / DB-006), helpers de sesiones embebidas
-//     (DB-007 / D-004) y comparadores de filtro/orden (REQ-012 / Q-003).
+//     (DB-007 / D-004), comparadores de filtro/orden (REQ-012 / Q-003),
+//     metadata adicional (DB-002 / REQ-004 / REQ-009 / AC-004 / AC-008)
+//     y estadísticas del dashboard (REQ-005 / AC-005).
 //
-//  2) PARTE STORE (Firestore): CRUD de ítems y de sesiones.
+//  2) PARTE STORE (Firestore): CRUD de ítems, de sesiones y de la
+//     caché de metadata (updateItemMetadata).
 //     Las funciones de store hacen `await import("./firebase.js")`
 //     DENTRO de cada función (nunca import estático) para que este
 //     fichero se pueda importar en Node/vitest sin red: el módulo de
@@ -17,9 +20,9 @@
 //
 // Colecciones (REQ-003, D-006):
 //   users/{uid}/movies | series | games | books | anime
-// Spec: spec.md (raíz) — REQ-001..003, REQ-008..014,
-//       DB-001..DB-007, AC-002, AC-005..008, AC-010, AC-016, AC-017,
-//       D-003, D-004, Q-003.
+// Spec: spec.md (raíz) — REQ-001..005, REQ-008..014,
+//       DB-001..DB-007, AC-002, AC-004..008, AC-010, AC-016, AC-017,
+//       D-003, D-004, D-005, Q-003.
 // =============================================================
 
 // -------------------------------------------------------------
@@ -831,8 +834,362 @@ export function sortItems(items, sortBy = DEFAULT_SORT, direction) {
   }
 }
 
+// -------------------------------------------------------------
+// 8. Metadata adicional (DB-002, REQ-004, REQ-009, AC-004, AC-008)
+//
+// Los campos de metadata son OPCIONALES: si no vienen, se serializan
+// como null (§4.1). La validación solo comprueba tipos y rangos.
+// -------------------------------------------------------------
+
+/** Fuentes de metadata admitidas (DB-002). */
+export const METADATA_SOURCES = Object.freeze(["tmdb", "igdb", "googlebooks", "manual"]);
+
+/** Validez de la caché de metadata en días (REQ-009, AC-008). */
+export const METADATA_CACHE_TTL_DAYS = 30;
+
+/** Validez de la caché de metadata en milisegundos (REQ-009, AC-008). */
+export const METADATA_CACHE_TTL_MS = METADATA_CACHE_TTL_DAYS * 24 * 60 * 60 * 1000;
+
+// Límites de los campos de metadata (DB-002).
+const METADATA_LIMITS = Object.freeze({
+  DIRECTOR_MAX: 200,
+  CAST_MAX: 20,
+  CAST_ENTRY_MAX: 100,
+  TAGLINE_MAX: 300,
+  PLATFORMS_MAX: 10,
+  DEVELOPERS_MAX: 10,
+  PUBLISHER_MAX: 200,
+  AUTHORS_MAX: 10,
+  LANGUAGE_MAX: 50,
+});
+
+/** Campos de metadata embebidos que se escriben en el documento (DB-002). */
+const METADATA_FIELDS = Object.freeze([
+  "director",
+  "cast",
+  "backdropUrl",
+  "tagline",
+  "platforms",
+  "developers",
+  "publisher",
+  "authors",
+  "pageCount",
+  "seasons",
+  "episodes",
+  "language",
+]);
+
+/** ¿La fuente de metadata es válida? (DB-002) */
+export function isMetadataSource(source) {
+  return typeof source === "string" && METADATA_SOURCES.includes(source);
+}
+
+/** Texto recortado; vacío/absente/no textual → null. */
+function toTrimmedText(value) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Lista de textos recortados; si el valor no es un array → null
+ * (campo ausente). Las entradas no textuales se descartan.
+ */
+function toMetadataList(value) {
+  if (!Array.isArray(value)) return null;
+  return value
+    .filter((entry) => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+/**
+ * Valida la metadata adicional de un ítem (DB-002, REQ-004, AC-004).
+ * Todos los campos son opcionales: solo se validan los presentes.
+ * @param {object} metadata
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function validateMetadata(metadata) {
+  const errors = [];
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return { valid: false, errors: ["La metadata debe ser un objeto."] };
+  }
+
+  // director (DB-002): string ≤200
+  if (metadata.director !== undefined && metadata.director !== null) {
+    if (typeof metadata.director !== "string") {
+      errors.push("El director debe ser texto.");
+    } else if (metadata.director.trim().length > METADATA_LIMITS.DIRECTOR_MAX) {
+      errors.push(
+        `El director no puede superar los ${METADATA_LIMITS.DIRECTOR_MAX} caracteres.`,
+      );
+    }
+  }
+
+  // cast (DB-002): string[] ≤20, cada entrada ≤100
+  if (metadata.cast !== undefined && metadata.cast !== null) {
+    if (!Array.isArray(metadata.cast)) {
+      errors.push("El reparto debe ser una lista.");
+    } else {
+      if (metadata.cast.length > METADATA_LIMITS.CAST_MAX) {
+        errors.push(
+          `No se pueden guardar más de ${METADATA_LIMITS.CAST_MAX} nombres en el reparto.`,
+        );
+      }
+      metadata.cast.forEach((entry, index) => {
+        if (typeof entry !== "string") {
+          errors.push(`El reparto ${index + 1} debe ser texto.`);
+        } else if (entry.trim().length > METADATA_LIMITS.CAST_ENTRY_MAX) {
+          errors.push(
+            `El reparto ${index + 1} no puede superar los ${METADATA_LIMITS.CAST_ENTRY_MAX} caracteres.`,
+          );
+        }
+      });
+    }
+  }
+
+  // backdropUrl (DB-002): URL válida (http/https) o null
+  if (metadata.backdropUrl !== undefined && metadata.backdropUrl !== null) {
+    if (typeof metadata.backdropUrl !== "string") {
+      errors.push("El fondo (backdropUrl) debe ser una URL (texto).");
+    } else if (
+      metadata.backdropUrl.trim().length > 0 &&
+      !/^https?:\/\/\S+$/i.test(metadata.backdropUrl.trim())
+    ) {
+      errors.push("El fondo (backdropUrl) debe ser una URL válida (http/https).");
+    }
+  }
+
+  // tagline (DB-002): string ≤300
+  if (metadata.tagline !== undefined && metadata.tagline !== null) {
+    if (typeof metadata.tagline !== "string") {
+      errors.push("El tagline debe ser texto.");
+    } else if (metadata.tagline.trim().length > METADATA_LIMITS.TAGLINE_MAX) {
+      errors.push(`El tagline no puede superar los ${METADATA_LIMITS.TAGLINE_MAX} caracteres.`);
+    }
+  }
+
+  // platforms / developers / authors (DB-002): string[] ≤10
+  for (const field of ["platforms", "developers", "authors"]) {
+    const value = metadata[field];
+    if (value === undefined || value === null) continue;
+    if (!Array.isArray(value)) {
+      errors.push(`El campo ${field} debe ser una lista.`);
+      continue;
+    }
+    const max =
+      field === "platforms"
+        ? METADATA_LIMITS.PLATFORMS_MAX
+        : field === "developers"
+          ? METADATA_LIMITS.DEVELOPERS_MAX
+          : METADATA_LIMITS.AUTHORS_MAX;
+    if (value.length > max) {
+      errors.push(`No se pueden guardar más de ${max} elementos en ${field}.`);
+    }
+    if (value.some((entry) => typeof entry !== "string")) {
+      errors.push(`Cada elemento de ${field} debe ser texto.`);
+    }
+  }
+
+  // publisher (DB-002): string ≤200
+  if (metadata.publisher !== undefined && metadata.publisher !== null) {
+    if (typeof metadata.publisher !== "string") {
+      errors.push("La editorial (publisher) debe ser texto.");
+    } else if (metadata.publisher.trim().length > METADATA_LIMITS.PUBLISHER_MAX) {
+      errors.push(
+        `La editorial (publisher) no puede superar los ${METADATA_LIMITS.PUBLISHER_MAX} caracteres.`,
+      );
+    }
+  }
+
+  // pageCount / seasons / episodes (DB-002): number ≥0
+  for (const field of ["pageCount", "seasons", "episodes"]) {
+    const value = metadata[field];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      errors.push(`El campo ${field} debe ser un número.`);
+    } else if (value < 0) {
+      errors.push(`El campo ${field} no puede ser negativo.`);
+    }
+  }
+
+  // language (DB-002): string ≤50
+  if (metadata.language !== undefined && metadata.language !== null) {
+    if (typeof metadata.language !== "string") {
+      errors.push("El idioma (language) debe ser texto.");
+    } else if (metadata.language.trim().length > METADATA_LIMITS.LANGUAGE_MAX) {
+      errors.push(
+        `El idioma (language) no puede superar los ${METADATA_LIMITS.LANGUAGE_MAX} caracteres.`,
+      );
+    }
+  }
+
+  // metadataSource (DB-002): enum
+  if (metadata.metadataSource !== undefined && metadata.metadataSource !== null) {
+    if (!isMetadataSource(metadata.metadataSource)) {
+      errors.push(
+        `Fuente de metadata inválida: "${metadata.metadataSource}". Valores permitidos: ${METADATA_SOURCES.join(", ")}.`,
+      );
+    }
+  }
+
+  // metadataFetchedAt (DB-002): timestamp
+  if (metadata.metadataFetchedAt !== undefined && metadata.metadataFetchedAt !== null) {
+    if (!isUsableDate(metadata.metadataFetchedAt)) {
+      errors.push("El campo metadataFetchedAt debe ser una fecha válida.");
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/** Atajo booleano de validateMetadata(). */
+export function isValidMetadata(metadata) {
+  return validateMetadata(metadata).valid;
+}
+
+/**
+ * Normaliza la metadata (ItemMetadata, §4.1): recorta textos, convierte
+ * números y serializa como `null` los campos opcionales que no vienen
+ * (los arrays ausentes también → null). No muta el objeto recibido.
+ * @param {object} input
+ * @returns {object} ItemMetadata normalizado
+ */
+export function normalizeMetadata(input = {}) {
+  const src = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  return {
+    title: toTrimmedText(src.title),
+    year: toNumber(src.year),
+    posterUrl: toTrimmedText(src.posterUrl),
+    backdropUrl: toTrimmedText(src.backdropUrl),
+    synopsis: toTrimmedText(src.synopsis),
+    genres: toMetadataList(src.genres),
+    durationMinutes: toNumber(src.durationMinutes),
+    director: toTrimmedText(src.director),
+    cast: toMetadataList(src.cast),
+    platforms: toMetadataList(src.platforms),
+    developers: toMetadataList(src.developers),
+    publisher: toTrimmedText(src.publisher),
+    authors: toMetadataList(src.authors),
+    pageCount: toNumber(src.pageCount),
+    seasons: toNumber(src.seasons),
+    episodes: toNumber(src.episodes),
+    tagline: toTrimmedText(src.tagline),
+    language: toTrimmedText(src.language),
+    metadataSource: isMetadataSource(src.metadataSource) ? src.metadataSource : null,
+  };
+}
+
+/**
+ * ¿La caché de metadata sigue vigente? (REQ-009, AC-008)
+ * Solo es fresca si `metadataFetchedAt` existe y es anterior a
+ * METADATA_CACHE_TTL_DAYS días. Ausente, null o ≥ TTL → false.
+ * @param {object} item ítem materializado (docToItem)
+ * @param {Date} now momento de referencia (por defecto, ahora)
+ * @returns {boolean}
+ */
+export function isMetadataFresh(item, now = new Date()) {
+  if (!item || typeof item !== "object") return false;
+  const fetchedAt = toMillis(item.metadataFetchedAt);
+  if (!fetchedAt) return false;
+  const nowMs = now instanceof Date ? now.getTime() : toMillis(now);
+  const reference = Number.isFinite(nowMs) && nowMs > 0 ? nowMs : Date.now();
+  const age = reference - fetchedAt;
+  if (age < 0) return true;
+  return age < METADATA_CACHE_TTL_MS;
+}
+
+// -------------------------------------------------------------
+// 9. Estadísticas del dashboard (REQ-005, AC-005, D-005)
+//
+// Función PURA: no toca Firestore ni el DOM; trabaja sobre los ítems
+// ya materializados con docToItem.
+// -------------------------------------------------------------
+
+/** Número de ítems en las listas de «recientes» (AC-005). */
+export const RECENT_ITEMS_LIMIT = 5;
+
+/**
+ * Calcula las estadísticas del dashboard (REQ-005, AC-005, D-005).
+ * @param {object} itemsByType `{ movie:[], series:[], game:[], book:[], anime:[] }`
+ * @returns {{
+ *   totalsByType: object,
+ *   totalsByStatus: object,
+ *   averageRating: number|null,
+ *   totalHoursPlayed: number,
+ *   completedCount: number,
+ *   recentlyAdded: object[],
+ *   recentlyCompleted: object[]
+ * }}
+ */
+export function computeDashboardStats(itemsByType = {}) {
+  const source =
+    itemsByType && typeof itemsByType === "object" && !Array.isArray(itemsByType)
+      ? itemsByType
+      : {};
+
+  const totalsByType = {};
+  for (const type of MEDIA_TYPES) totalsByType[type] = 0;
+  const totalsByStatus = {};
+  for (const status of ITEM_STATUSES) totalsByStatus[status] = 0;
+
+  // Aplana los ítems manteniendo el tipo (el de la clave o el del ítem).
+  const entries = [];
+  for (const key of Object.keys(source)) {
+    const list = Array.isArray(source[key]) ? source[key] : [];
+    const bucketType = MEDIA_TYPES.includes(key) ? key : null;
+    for (const item of list) {
+      if (!item || typeof item !== "object") continue;
+      const itemType =
+        bucketType || (MEDIA_TYPES.includes(item.mediaType) ? item.mediaType : null);
+      if (itemType) totalsByType[itemType] += 1;
+      entries.push({ item, type: itemType });
+    }
+  }
+
+  let ratingSum = 0;
+  let ratedCount = 0;
+  let totalHoursPlayed = 0;
+  let completedCount = 0;
+
+  for (const { item, type } of entries) {
+    if (isStatus(item.status)) totalsByStatus[item.status] += 1;
+    if (item.status === "completed") completedCount += 1;
+    // AC-005: la media usa SOLO los ítems valorados (sin rating → fuera).
+    if (typeof item.rating === "number" && Number.isFinite(item.rating)) {
+      ratingSum += item.rating;
+      ratedCount += 1;
+    }
+    if (type === "game") {
+      const hours = toNumber(item.hoursPlayed);
+      if (hours !== null && hours >= 0) totalHoursPlayed += hours;
+    }
+  }
+
+  const recentlyAdded = entries
+    .map((entry) => entry.item)
+    .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
+    .slice(0, RECENT_ITEMS_LIMIT);
+
+  const recentlyCompleted = entries
+    .filter((entry) => isUsableDate(entry.item.completedAt))
+    .map((entry) => entry.item)
+    .sort((a, b) => toMillis(b.completedAt) - toMillis(a.completedAt))
+    .slice(0, RECENT_ITEMS_LIMIT);
+
+  return {
+    totalsByType,
+    totalsByStatus,
+    averageRating: ratedCount > 0 ? ratingSum / ratedCount : null,
+    totalHoursPlayed,
+    completedCount,
+    recentlyAdded,
+    recentlyCompleted,
+  };
+}
+
 // =============================================================
-// 8. STORE (Firestore) — REQ-003, REQ-013, AC-002, AC-017, Q-003
+// 10. STORE (Firestore) — REQ-003, REQ-013, AC-002, AC-017, Q-003
 //
 // Import DINÁMICO de "./firebase.js" dentro de cada función: este
 // módulo se puede importar en Node/vitest sin red; el SDK de
@@ -872,7 +1229,12 @@ export function tsToDate(value) {
 }
 
 /** Campos de fecha del documento que se normalizan al leer. */
-const READ_DATE_FIELDS = Object.freeze(["completedAt", "createdAt", "updatedAt"]);
+const READ_DATE_FIELDS = Object.freeze([
+  "completedAt",
+  "createdAt",
+  "updatedAt",
+  "metadataFetchedAt",
+]);
 
 /**
  * Materializa un documento de Firestore como ítem del catálogo: convierte
@@ -924,6 +1286,30 @@ function toStoreDate(value) {
 
 function toStoreSessions(sessions) {
   return sessions.map((session) => ({ ...session, date: toStoreDate(session.date) }));
+}
+
+/**
+ * Resuelve la fuente de metadata (DB-002): `source` explícito → la del
+ * propio metadata → "manual". Lanza Error (con .errors) si el valor
+ * no pertenece al enum.
+ */
+function resolveMetadataSource(source, fallback) {
+  let candidate = source;
+  if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
+    candidate = candidate.provider ?? candidate.metadataSource ?? null;
+  }
+  if (candidate === undefined || candidate === null || candidate === "") {
+    candidate = fallback;
+  }
+  if (candidate === undefined || candidate === null || candidate === "") {
+    return "manual";
+  }
+  if (!isMetadataSource(candidate)) {
+    throw validationError([
+      `Fuente de metadata inválida: "${candidate}". Valores permitidos: ${METADATA_SOURCES.join(", ")}.`,
+    ]);
+  }
+  return candidate;
 }
 
 /** Uid del usuario autenticado actual (null si no hay sesión). */
@@ -1117,4 +1503,47 @@ export async function removeItemSession(mediaType, itemId, sessionId) {
   const sessions = toStoreSessions(removeSession(current.sessions || [], sessionId));
   await updateDoc(ref, { sessions, updatedAt: serverTimestamp() });
   return sessions;
+}
+
+/**
+ * Guarda (cachea) la metadata adicional de un ítem (DB-002, REQ-004,
+ * REQ-009, AC-004, AC-008):
+ *  - valida con validateMetadata() (lanza Error con `.errors`);
+ *  - normaliza con normalizeMetadata();
+ *  - escribe los campos de metadata + `metadataSource` +
+ *    `metadataFetchedAt` (Date) + `updatedAt`;
+ *  - devuelve el ítem materializado (docToItem).
+ * Los campos base del ítem (title/year/posterUrl/synopsis/genres/
+ * durationMinutes) solo se escriben si vienen informados, para no
+ * borrar los existentes con un null.
+ * @returns {Promise<object>} el ítem con la metadata ya guardada
+ */
+export async function updateItemMetadata(mediaType, itemId, metadata, source) {
+  const { db, auth, doc, getDoc, updateDoc, serverTimestamp } = await import("./firebase.js");
+  const uid = requireUid(auth);
+  const result = validateMetadata(metadata);
+  if (!result.valid) throw validationError(result.errors);
+  const normalized = normalizeMetadata(metadata);
+  const metadataSource = resolveMetadataSource(source, normalized.metadataSource);
+  const ref = doc(db, "users", uid, collectionNameFor(mediaType), itemId);
+  const snapshot = await getDoc(ref);
+  if (!snapshot.exists()) throw new Error("El ítem no existe.");
+
+  const payload = {
+    metadataSource,
+    metadataFetchedAt: new Date(),
+    updatedAt: typeof serverTimestamp === "function" ? serverTimestamp() : new Date(),
+  };
+  for (const field of METADATA_FIELDS) payload[field] = normalized[field];
+  // Campos base del ítem: solo si vienen informados.
+  if (normalized.title !== null) payload.title = normalized.title;
+  if (normalized.year !== null) payload.year = normalized.year;
+  if (normalized.posterUrl !== null) payload.posterUrl = normalized.posterUrl;
+  if (normalized.synopsis !== null) payload.synopsis = normalized.synopsis;
+  if (normalized.genres !== null) payload.genres = normalized.genres;
+  if (normalized.durationMinutes !== null) payload.durationMinutes = normalized.durationMinutes;
+
+  await updateDoc(ref, payload);
+  const updated = await getDoc(ref);
+  return docToItem(updated);
 }
