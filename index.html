@@ -39,6 +39,25 @@
           <!-- Las pestañas se generan en JS -->
         </div>
 
+        <!-- Dashboard (spec 003, REQ-001, UI-001) -->
+        <div id="dashboard-panel" role="tabpanel" aria-labelledby="tab-active" class="catalog__panel dashboard" hidden>
+          <p id="dashboard-error" class="error" hidden></p>
+          <div id="dashboard-loading" class="catalog__state" hidden>
+            <p class="muted">Cargando estadísticas…</p>
+          </div>
+          <div id="dashboard-stats" class="dashboard__stats" aria-live="polite"></div>
+          <div id="dashboard-recent" class="dashboard__recent">
+            <section class="dashboard__recent-section">
+              <h3 class="dashboard__recent-title">Añadidos recientemente</h3>
+              <ul id="dashboard-recent-added" class="dashboard__recent-list" aria-live="polite"></ul>
+            </section>
+            <section class="dashboard__recent-section">
+              <h3 class="dashboard__recent-title">Completados recientemente</h3>
+              <ul id="dashboard-recent-completed" class="dashboard__recent-list" aria-live="polite"></ul>
+            </section>
+          </div>
+        </div>
+
         <div id="catalog-panel" role="tabpanel" aria-labelledby="tab-active" class="catalog__panel">
           <div class="catalog__toolbar">
             <div class="catalog__filters" id="catalog-filters">
