@@ -27,12 +27,63 @@
       <p id="login-error" class="error" hidden></p>
     </section>
 
-    <section id="view-allowed" class="view" hidden>
+    <section id="view-allowed" class="view view--allowed" hidden>
       <img id="user-photo" class="avatar" src="./resources/icon.png" alt="" hidden>
       <h1 class="title">Hola, <span id="user-name">invitado</span></h1>
       <p id="user-email" class="subtitle"></p>
-      <p class="muted">La aplicación crecerá a partir de los próximos specs.</p>
       <button id="btn-logout" class="btn" type="button">Salir</button>
+
+      <!-- Catálogo (T-005 / spec 002) -->
+      <div id="catalog-root" class="catalog">
+        <div class="catalog__tabs" id="catalog-tabs" role="tablist" aria-label="Tipos de catálogo">
+          <!-- Las pestañas se generan en JS -->
+        </div>
+
+        <div id="catalog-panel" role="tabpanel" aria-labelledby="tab-active" class="catalog__panel">
+          <div class="catalog__toolbar">
+            <div class="catalog__filters" id="catalog-filters">
+              <label class="catalog__filter">
+                <span class="sr-only">Estado</span>
+                <select id="catalog-filter-status" class="catalog__select">
+                  <option value="">Todos los estados</option>
+                </select>
+              </label>
+              <label class="catalog__filter">
+                <span class="sr-only">Valoración mínima</span>
+                <select id="catalog-filter-rating" class="catalog__select">
+                  <option value="">Cualquier valoración</option>
+                </select>
+              </label>
+              <label class="catalog__filter">
+                <span class="sr-only">Año</span>
+                <input id="catalog-filter-year" type="number" class="catalog__select" placeholder="Año" min="1888" max="2100">
+              </label>
+              <label class="catalog__filter">
+                <span class="sr-only">Ordenar por</span>
+                <select id="catalog-sort" class="catalog__select">
+                </select>
+              </label>
+            </div>
+            <button id="btn-add-item" class="btn btn--add" type="button">Añadir</button>
+          </div>
+
+          <p id="catalog-error" class="error" hidden></p>
+
+          <div id="catalog-loading" class="catalog__state" hidden>
+            <p class="muted">Cargando…</p>
+          </div>
+
+          <div id="catalog-empty" class="catalog__state" hidden>
+            <p class="muted">No hay elementos todavía. Pulsa «Añadir» para empezar.</p>
+          </div>
+
+          <ul id="catalog-list" class="catalog__list" aria-live="polite"></ul>
+
+          <div id="catalog-load-more-wrap" class="catalog__load-more" hidden>
+            <button id="btn-load-more" class="btn btn--secondary" type="button">Cargar más</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section id="view-denied" class="view" hidden>
@@ -41,6 +92,85 @@
       <button id="btn-back" class="btn" type="button">Volver</button>
     </section>
   </main>
+
+  <!-- Modal de búsqueda (UI-003) -->
+  <div id="search-modal" class="modal" hidden aria-modal="true" role="dialog" aria-labelledby="search-modal-title">
+    <div class="modal__backdrop" data-close-modal></div>
+    <div class="modal__dialog">
+      <header class="modal__header">
+        <h2 id="search-modal-title" class="modal__title">Buscar</h2>
+        <button type="button" class="modal__close" data-close-modal aria-label="Cerrar">×</button>
+      </header>
+      <div class="modal__body">
+        <label class="form-field">
+          <span class="form-field__label">Título</span>
+          <input type="search" id="search-input" class="form-field__input" placeholder="Escribe para buscar…" autocomplete="off">
+        </label>
+        <div id="search-status" class="search-status" aria-live="polite"></div>
+        <ul id="search-results" class="search-results" aria-live="polite"></ul>
+      </div>
+      <footer class="modal__footer">
+        <button type="button" id="btn-manual-form" class="btn btn--secondary">Alta manual</button>
+        <button type="button" class="btn" data-close-modal>Cancelar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Modal de formulario manual (UI-004) -->
+  <div id="manual-modal" class="modal" hidden aria-modal="true" role="dialog" aria-labelledby="manual-modal-title">
+    <div class="modal__backdrop" data-close-modal></div>
+    <div class="modal__dialog">
+      <header class="modal__header">
+        <h2 id="manual-modal-title" class="modal__title">Alta manual</h2>
+        <button type="button" class="modal__close" data-close-modal aria-label="Cerrar">×</button>
+      </header>
+      <form id="manual-form" class="modal__body form" novalidate>
+        <div id="manual-errors" class="form-errors" hidden role="alert"></div>
+        <label class="form-field">
+          <span class="form-field__label">Título *</span>
+          <input type="text" name="title" class="form-field__input" required maxlength="200">
+        </label>
+        <label class="form-field">
+          <span class="form-field__label">Año</span>
+          <input type="number" name="year" class="form-field__input" min="1888" max="2100">
+        </label>
+        <label class="form-field">
+          <span class="form-field__label">Géneros (separados por coma)</span>
+          <input type="text" name="genres" class="form-field__input" placeholder="Acción, Drama">
+        </label>
+        <label class="form-field">
+          <span class="form-field__label">Duración (minutos)</span>
+          <input type="number" name="durationMinutes" class="form-field__input" min="0">
+        </label>
+        <label class="form-field">
+          <span class="form-field__label">URL del póster</span>
+          <input type="url" name="posterUrl" class="form-field__input" placeholder="https://…">
+        </label>
+        <label class="form-field">
+          <span class="form-field__label">Sinopsis</span>
+          <textarea name="synopsis" class="form-field__textarea" maxlength="2000" rows="3"></textarea>
+        </label>
+        <div id="manual-type-fields"></div>
+        <footer class="modal__footer">
+          <button type="submit" class="btn btn--primary">Guardar</button>
+          <button type="button" class="btn" data-close-modal>Cancelar</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de ficha/edición (UI-002) -->
+  <div id="detail-modal" class="modal" hidden aria-modal="true" role="dialog" aria-labelledby="detail-modal-title">
+    <div class="modal__backdrop" data-close-modal></div>
+    <div class="modal__dialog modal__dialog--wide">
+      <header class="modal__header">
+        <h2 id="detail-modal-title" class="modal__title">Ficha</h2>
+        <button type="button" class="modal__close" data-close-modal aria-label="Cerrar">×</button>
+      </header>
+      <div id="detail-content" class="modal__body"></div>
+    </div>
+  </div>
+
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
