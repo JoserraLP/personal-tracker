@@ -5,8 +5,10 @@ rules_version = '2';
 // app. Como el acceso ya está controlado por esa lista, todos los
 // usuarios registrados se consideran "amigos" entre sí:
 //   - Cada uno solo puede ESCRIBIR sus propios datos.
-//   - Cualquiera de la lista puede LEER los datos de cualquier otro
+//   - El perfil de usuario lo puede leer cualquiera de la lista
 //     (para la sección de Amigos).
+//   - Los datos de ocio (movies, series, books, games, anime) son
+//     PRIVADOS: solo el dueño puede leerlos o escribirlos (D-006).
 //   - Las notificaciones son privadas: cada uno solo ve las suyas.
 //
 // IMPORTANTE (spec 001): la lista de correos autorizados vive en DOS
@@ -17,6 +19,9 @@ rules_version = '2';
 //      servidor: esta copia es la que Firestore realmente exige.
 // Para añadir o quitar un invitado: edita AMBAS listas y publica
 // estas reglas en Firebase console → Firestore Database → Reglas.
+//
+// IMPORTANTE: publicar estas reglas es manual — Firebase console →
+// Firestore Database → Reglas.
 // =============================================================
 
 service cloud.firestore {
@@ -41,30 +46,30 @@ service cloud.firestore {
       allow read: if isAllowedUser();
       allow write: if isAllowedUser() && isOwner(userId);
 
+      // Datos de ocio: privados del propietario (owner-only).
       match /movies/{itemId} {
-        allow read: if isAllowedUser();
-        allow write: if isAllowedUser() && isOwner(userId);
+        allow read, write: if isAllowedUser() && isOwner(userId);
       }
 
       match /series/{itemId} {
-        allow read: if isAllowedUser();
-        allow write: if isAllowedUser() && isOwner(userId);
+        allow read, write: if isAllowedUser() && isOwner(userId);
       }
 
       match /books/{itemId} {
-        allow read: if isAllowedUser();
-        allow write: if isAllowedUser() && isOwner(userId);
+        allow read, write: if isAllowedUser() && isOwner(userId);
       }
 
       match /games/{itemId} {
-        allow read: if isAllowedUser();
-        allow write: if isAllowedUser() && isOwner(userId);
+        allow read, write: if isAllowedUser() && isOwner(userId);
+      }
+
+      match /anime/{itemId} {
+        allow read, write: if isAllowedUser() && isOwner(userId);
       }
 
       // Sección de recetas (issue #64): recetas, catálogo de
-      // ingredientes, menús semanales y etiquetas propias. Mismo
-      // patrón que el resto: lectura entre amigos autorizados,
-      // escritura solo del dueño.
+      // ingredientes, menús semanales y etiquetas propias.
+      // Lectura entre amigos autorizados, escritura solo del dueño.
       match /recipes/{itemId} {
         allow read: if isAllowedUser();
         allow write: if isAllowedUser() && isOwner(userId);
