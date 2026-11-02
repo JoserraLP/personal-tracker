@@ -49,6 +49,16 @@
                 </select>
               </label>
               <label class="catalog__filter">
+                <span class="sr-only">Valoración mínima</span>
+                <select id="catalog-filter-rating" class="catalog__select">
+                  <option value="">Cualquier valoración</option>
+                </select>
+              </label>
+              <label class="catalog__filter">
+                <span class="sr-only">Año</span>
+                <input id="catalog-filter-year" type="number" class="catalog__select" placeholder="Año" min="1888" max="2100">
+              </label>
+              <label class="catalog__filter">
                 <span class="sr-only">Ordenar por</span>
                 <select id="catalog-sort" class="catalog__select">
                 </select>
@@ -68,6 +78,10 @@
           </div>
 
           <ul id="catalog-list" class="catalog__list" aria-live="polite"></ul>
+
+          <div id="catalog-load-more-wrap" class="catalog__load-more" hidden>
+            <button id="btn-load-more" class="btn btn--secondary" type="button">Cargar más</button>
+          </div>
         </div>
       </div>
     </section>

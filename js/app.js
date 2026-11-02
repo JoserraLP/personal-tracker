@@ -17,6 +17,7 @@ import {
   SORT_OPTIONS,
   DEFAULT_SORT,
   subscribeItems,
+  listItems,
   setItemStatus,
   deleteItem,
   filterItems,
@@ -131,20 +132,47 @@ let currentItems = [];
 let unsubscribeFn = null;
 let catalogInitialized = false;
 
+// Paginación por cursor (Q-003 / MED #2)
+let paginationHasMore = false;
+let paginationLastDoc = null;
+let isLoadingMore = false;
+
 // Filtros en memoria
 let filterStatus = "";
+let filterMinRating = "";
+let filterYear = "";
 let sortOption = DEFAULT_SORT;
+
+// --- Helpers de seguridad (MED #3) --------------------------
+
+/**
+ * Escapa caracteres especiales de HTML para evitar inyección
+ * cuando se renderizan cadenas de origen externo (REQ-014).
+ */
+function escapeHtml(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 // --- Referencias DOM ----------------------------------------
 const tabsContainer = document.getElementById("catalog-tabs");
 const panel = document.getElementById("catalog-panel");
 const filterStatusEl = document.getElementById("catalog-filter-status");
+const filterRatingEl = document.getElementById("catalog-filter-rating");
+const filterYearEl = document.getElementById("catalog-filter-year");
 const sortEl = document.getElementById("catalog-sort");
 const listEl = document.getElementById("catalog-list");
 const loadingEl = document.getElementById("catalog-loading");
 const emptyEl = document.getElementById("catalog-empty");
 const errorEl = document.getElementById("catalog-error");
 const btnAddItem = document.getElementById("btn-add-item");
+const loadMoreWrapEl = document.getElementById("catalog-load-more-wrap");
+const btnLoadMore = document.getElementById("btn-load-more");
 
 // --- Inicialización de controles estáticos ------------------
 
@@ -157,7 +185,9 @@ function buildTabs() {
     tab.setAttribute("role", "tab");
     tab.setAttribute("aria-selected", type === activeMediaType ? "true" : "false");
     tab.setAttribute("tabindex", type === activeMediaType ? "0" : "-1");
-    tab.id = `tab-${type}`;
+    // LOW #4: el panel usa aria-labelledby="tab-active", así que
+    // la pestaña activa debe tener ese id desde la carga inicial.
+    tab.id = type === activeMediaType ? "tab-active" : `tab-${type}`;
     tab.setAttribute("aria-controls", "catalog-panel");
     tab.textContent = MEDIA_TYPE_LABELS[type];
     tab.dataset.mediaType = type;
@@ -178,6 +208,22 @@ function buildStatusFilter() {
     option.textContent = STATUS_LABELS[status];
     filterStatusEl.appendChild(option);
   });
+}
+
+function buildRatingFilter() {
+  // LOW #5: filtro de valoración mínima (REQ-012).
+  filterRatingEl.innerHTML = '<option value="">Cualquier valoración</option>';
+  for (let n = 1; n <= 10; n++) {
+    const option = document.createElement("option");
+    option.value = String(n);
+    option.textContent = `≥ ${n}`;
+    filterRatingEl.appendChild(option);
+  }
+}
+
+function buildYearFilter() {
+  // LOW #5: filtro de año (REQ-012). Input libre (number) en el HTML.
+  filterYearEl.value = "";
 }
 
 function buildSortSelect() {
@@ -229,7 +275,7 @@ function switchTab(mediaType) {
   if (!MEDIA_TYPES.includes(mediaType) || mediaType === activeMediaType) return;
   activeMediaType = mediaType;
 
-  // Actualizar ARIA en pestañas
+  // Actualizar ARIA en pestañas (LOW #4: mantener id="tab-active" en la activa)
   const tabs = tabsContainer.querySelectorAll('[role="tab"]');
   tabs.forEach((tab) => {
     const isActive = tab.dataset.mediaType === mediaType;
@@ -242,8 +288,17 @@ function switchTab(mediaType) {
   // Resetear filtros al cambiar de pestaña
   filterStatus = "";
   filterStatusEl.value = "";
+  filterMinRating = "";
+  filterRatingEl.value = "";
+  filterYear = "";
+  filterYearEl.value = "";
   sortOption = DEFAULT_SORT;
   sortEl.value = DEFAULT_SORT;
+
+  // Resetear paginación
+  paginationHasMore = false;
+  paginationLastDoc = null;
+  updateLoadMoreVisibility();
 
   // Re-suscribir a la nueva colección
   subscribeToCurrentTab();
@@ -256,14 +311,33 @@ async function subscribeToCurrentTab() {
   await catalogUnsubscribe();
 
   currentItems = [];
+  paginationHasMore = false;
+  paginationLastDoc = null;
+  updateLoadMoreVisibility();
   renderList();
   showLoading(true);
   hideError();
 
   try {
     unsubscribeFn = await subscribeItems(activeMediaType, {
-      onItems(items) {
-        currentItems = items || [];
+      onItems(items, meta) {
+        const incoming = items || [];
+        // LOW #4 (Q-003): si el usuario cargó páginas extra vía "Cargar más",
+        // preservar esos ítems adicionales; reemplazar solo la primera página.
+        if (currentItems.length > incoming.length) {
+          currentItems = incoming.concat(currentItems.slice(incoming.length));
+        } else {
+          currentItems = incoming;
+        }
+        // MED #2: capturar cursor de paginación (Q-003/§6)
+        if (meta && typeof meta === "object") {
+          paginationHasMore = Boolean(meta.hasMore);
+          paginationLastDoc = meta.lastDoc || null;
+        } else {
+          paginationHasMore = false;
+          paginationLastDoc = null;
+        }
+        updateLoadMoreVisibility();
         showLoading(false);
         renderList();
       },
@@ -276,6 +350,41 @@ async function subscribeToCurrentTab() {
     showLoading(false);
     showError("Error al suscribirse: " + (error?.message || "desconocido"));
   }
+}
+
+// --- Paginación por cursor (MED #2 / Q-003) -----------------
+
+function updateLoadMoreVisibility() {
+  if (!loadMoreWrapEl || !btnLoadMore) return;
+  loadMoreWrapEl.hidden = !paginationHasMore;
+  btnLoadMore.disabled = isLoadingMore;
+  btnLoadMore.textContent = isLoadingMore ? "Cargando…" : "Cargar más";
+}
+
+async function loadMoreItems() {
+  if (!paginationHasMore || !paginationLastDoc || isLoadingMore) return;
+  isLoadingMore = true;
+  updateLoadMoreVisibility();
+  try {
+    const result = await listItems(activeMediaType, { startAfter: paginationLastDoc });
+    const newItems = result.items || [];
+    // Concatenar manteniendo el orden (la suscripción inicial ya
+    // ordena por updatedAt desc; las páginas siguientes también).
+    currentItems = currentItems.concat(newItems);
+    paginationHasMore = Boolean(result.hasMore);
+    paginationLastDoc = result.lastDoc || null;
+    updateLoadMoreVisibility();
+    renderList();
+  } catch (error) {
+    showError("No se pudo cargar la siguiente página: " + (error?.message || "error"));
+  } finally {
+    isLoadingMore = false;
+    updateLoadMoreVisibility();
+  }
+}
+
+if (btnLoadMore) {
+  btnLoadMore.addEventListener("click", loadMoreItems);
 }
 
 async function catalogUnsubscribe() {
@@ -297,9 +406,11 @@ function catalogCleanup() {
 // --- Render de la lista -------------------------------------
 
 function renderList() {
-  // Aplicar filtro y orden en cliente (AC-016)
+  // Aplicar filtro y orden en cliente (AC-016, LOW #5)
   const filters = {};
   if (filterStatus) filters.status = filterStatus;
+  if (filterMinRating) filters.minRating = Number(filterMinRating);
+  if (filterYear) filters.year = Number(filterYear);
 
   const filtered = filterItems(currentItems, filters);
   const sorted = sortItems(filtered, sortOption);
@@ -501,6 +612,22 @@ filterStatusEl.addEventListener("change", () => {
   renderList();
 });
 
+filterRatingEl.addEventListener("change", () => {
+  filterMinRating = filterRatingEl.value;
+  renderList();
+});
+
+// LOW #5: filtro de año con debounce para no re-renderizar en cada tecla.
+let filterYearDebounce = null;
+filterYearEl.addEventListener("input", () => {
+  clearTimeout(filterYearDebounce);
+  filterYearDebounce = setTimeout(() => {
+    const raw = filterYearEl.value.trim();
+    filterYear = raw;
+    renderList();
+  }, 300);
+});
+
 sortEl.addEventListener("change", () => {
   sortOption = sortEl.value;
   renderList();
@@ -513,7 +640,10 @@ function catalogInit() {
   catalogInitialized = true;
   buildTabs();
   buildStatusFilter();
+  buildRatingFilter();
+  buildYearFilter();
   buildSortSelect();
+  updateLoadMoreVisibility();
   subscribeToCurrentTab();
 }
 
@@ -834,62 +964,77 @@ function renderTypeSpecificFields(mediaType, data = {}) {
   
   if (mediaType === "series" || mediaType === "anime") {
     // Temporada/episodio actuales y totales (AC-006)
+    // MED #3: escapar valores dinámicos para evitar XSS (REQ-014).
+    const eCurrentSeason = escapeHtml(data.currentSeason ?? "");
+    const eCurrentEpisode = escapeHtml(data.currentEpisode ?? "");
+    const eTotalSeasons = escapeHtml(data.totalSeasons ?? "");
+    const eTotalEpisodes = escapeHtml(data.totalEpisodes ?? "");
     manualTypeFields.innerHTML = `
       <label class="form-field">
         <span class="form-field__label">Temporada actual</span>
-        <input type="number" name="currentSeason" class="form-field__input" min="1" value="${data.currentSeason || ""}">
+        <input type="number" name="currentSeason" class="form-field__input" min="1" value="${eCurrentSeason}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Episodio actual</span>
-        <input type="number" name="currentEpisode" class="form-field__input" min="1" value="${data.currentEpisode || ""}">
+        <input type="number" name="currentEpisode" class="form-field__input" min="1" value="${eCurrentEpisode}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Total de temporadas</span>
-        <input type="number" name="totalSeasons" class="form-field__input" min="0" value="${data.totalSeasons || ""}">
+        <input type="number" name="totalSeasons" class="form-field__input" min="0" value="${eTotalSeasons}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Total de episodios</span>
-        <input type="number" name="totalEpisodes" class="form-field__input" min="0" value="${data.totalEpisodes || ""}">
+        <input type="number" name="totalEpisodes" class="form-field__input" min="0" value="${eTotalEpisodes}">
       </label>
     `;
   } else if (mediaType === "game") {
     // Horas, % completado, plataforma, logros (AC-007)
+    // MED #3: escapar valores dinámicos para evitar XSS (REQ-014).
+    const eHoursPlayed = escapeHtml(data.hoursPlayed ?? "");
+    const eCompletionPercent = escapeHtml(data.completionPercent ?? "");
+    const ePlatform = escapeHtml(data.platform || "");
+    const eAchievementsUnlocked = escapeHtml(data.achievementsUnlocked ?? "");
+    const eAchievementsTotal = escapeHtml(data.achievementsTotal ?? "");
     manualTypeFields.innerHTML = `
       <label class="form-field">
         <span class="form-field__label">Horas jugadas</span>
-        <input type="number" name="hoursPlayed" class="form-field__input" min="0" step="0.1" value="${data.hoursPlayed || ""}">
+        <input type="number" name="hoursPlayed" class="form-field__input" min="0" step="0.1" value="${eHoursPlayed}">
       </label>
       <label class="form-field">
         <span class="form-field__label">% completado</span>
-        <input type="number" name="completionPercent" class="form-field__input" min="0" max="100" value="${data.completionPercent || ""}">
+        <input type="number" name="completionPercent" class="form-field__input" min="0" max="100" value="${eCompletionPercent}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Plataforma</span>
-        <input type="text" name="platform" class="form-field__input" value="${data.platform || ""}">
+        <input type="text" name="platform" class="form-field__input" value="${ePlatform}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Logros desbloqueados</span>
-        <input type="number" name="achievementsUnlocked" class="form-field__input" min="0" value="${data.achievementsUnlocked || ""}">
+        <input type="number" name="achievementsUnlocked" class="form-field__input" min="0" value="${eAchievementsUnlocked}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Total de logros</span>
-        <input type="number" name="achievementsTotal" class="form-field__input" min="0" value="${data.achievementsTotal || ""}">
+        <input type="number" name="achievementsTotal" class="form-field__input" min="0" value="${eAchievementsTotal}">
       </label>
     `;
   } else if (mediaType === "book") {
     // Autor y páginas (AC-012)
+    // MED #3: escapar valores dinámicos para evitar XSS (REQ-014).
+    const eAuthor = escapeHtml(data.author || "");
+    const ePagesRead = escapeHtml(data.pagesRead ?? "");
+    const ePagesTotal = escapeHtml(data.pagesTotal ?? "");
     manualTypeFields.innerHTML = `
       <label class="form-field">
         <span class="form-field__label">Autor</span>
-        <input type="text" name="author" class="form-field__input" value="${data.author || ""}">
+        <input type="text" name="author" class="form-field__input" value="${eAuthor}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Páginas leídas</span>
-        <input type="number" name="pagesRead" class="form-field__input" min="0" value="${data.pagesRead || ""}">
+        <input type="number" name="pagesRead" class="form-field__input" min="0" value="${ePagesRead}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Total de páginas</span>
-        <input type="number" name="pagesTotal" class="form-field__input" min="0" value="${data.pagesTotal || ""}">
+        <input type="number" name="pagesTotal" class="form-field__input" min="0" value="${ePagesTotal}">
       </label>
     `;
   }
@@ -934,7 +1079,8 @@ manualForm.addEventListener("submit", async (event) => {
   const validation = validateItem(itemToValidate);
   
   if (!validation.valid) {
-    manualErrors.innerHTML = `<ul>${validation.errors.map((e) => `<li>${e}</li>`).join("")}</ul>`;
+    // MED #3: escapar mensajes de error para evitar XSS (REQ-014).
+    manualErrors.innerHTML = `<ul>${validation.errors.map((e) => `<li>${escapeHtml(e)}</li>`).join("")}</ul>`;
     manualErrors.hidden = false;
     return;
   }
@@ -943,7 +1089,8 @@ manualForm.addEventListener("submit", async (event) => {
     await createItem(activeMediaType, data);
     closeModal("manual-modal");
   } catch (error) {
-    manualErrors.innerHTML = `<ul><li>${error.message || "No se pudo crear el ítem."}</li></ul>`;
+    // MED #3: escapar mensajes de error para evitar XSS (REQ-014).
+    manualErrors.innerHTML = `<ul><li>${escapeHtml(error.message || "No se pudo crear el ítem.")}</li></ul>`;
     manualErrors.hidden = false;
   }
 });
@@ -976,23 +1123,45 @@ async function openItemDetail(mediaType, itemId) {
 function renderDetail(item) {
   const mediaType = item.mediaType || activeMediaType;
   
+  // MED #3: escapar todos los valores dinámicos para evitar XSS (REQ-014).
+  const eTitle = escapeHtml(item.title || "Sin título");
+  const eAuthor = escapeHtml(item.author || "");
+  const eSynopsis = escapeHtml(item.synopsis || "");
+  const eReview = escapeHtml(item.review || "");
+  const eStatus = escapeHtml(item.status || "pending");
+  const ePosterUrl = escapeHtml(item.posterUrl || "");
+  const eYear = escapeHtml(item.year ?? "");
+  const eRatingValue = item.rating !== undefined && item.rating !== null ? escapeHtml(item.rating) : "";
+  const eCompletedAt = item.completedAt ? escapeHtml(new Date(item.completedAt).toISOString().split("T")[0]) : "";
+  const eCurrentSeason = escapeHtml(item.currentSeason ?? "");
+  const eCurrentEpisode = escapeHtml(item.currentEpisode ?? "");
+  const eTotalSeasons = escapeHtml(item.totalSeasons ?? "");
+  const eTotalEpisodes = escapeHtml(item.totalEpisodes ?? "");
+  const eHoursPlayed = escapeHtml(item.hoursPlayed ?? "");
+  const eCompletionPercent = escapeHtml(item.completionPercent ?? "");
+  const ePlatform = escapeHtml(item.platform || "");
+  const eAchievementsUnlocked = escapeHtml(item.achievementsUnlocked ?? "");
+  const eAchievementsTotal = escapeHtml(item.achievementsTotal ?? "");
+  const ePagesRead = escapeHtml(item.pagesRead ?? "");
+  const ePagesTotal = escapeHtml(item.pagesTotal ?? "");
+  
   let html = `
     <div class="detail">
       <div class="detail__header">
         ${
           item.posterUrl
-            ? `<img src="${item.posterUrl}" alt="" class="detail__poster">`
+            ? `<img src="${ePosterUrl}" alt="" class="detail__poster">`
             : `<div class="detail__poster detail__poster--placeholder" aria-hidden="true">🎬</div>`
         }
         <div class="detail__info">
-          <h3 class="detail__title">${item.title || "Sin título"}</h3>
+          <h3 class="detail__title">${eTitle}</h3>
           <div class="detail__meta">
-            ${item.year ? `<span>${item.year}</span>` : ""}
-            ${item.author ? `<span>${item.author}</span>` : ""}
-            <span class="catalog-badge catalog-badge--${item.status || "pending"}">${STATUS_LABELS[item.status] || item.status}</span>
-            ${typeof item.rating === "number" ? `<span style="color: #fdd663;">★ ${item.rating}/10</span>` : ""}
+            ${item.year ? `<span>${eYear}</span>` : ""}
+            ${item.author ? `<span>${eAuthor}</span>` : ""}
+            <span class="catalog-badge catalog-badge--${eStatus}">${escapeHtml(STATUS_LABELS[item.status] || item.status)}</span>
+            ${typeof item.rating === "number" ? `<span style="color: #fdd663;">★ ${eRatingValue}/10</span>` : ""}
           </div>
-          ${item.synopsis ? `<p class="detail__synopsis">${item.synopsis}</p>` : ""}
+          ${item.synopsis ? `<p class="detail__synopsis">${eSynopsis}</p>` : ""}
         </div>
       </div>
       
@@ -1002,7 +1171,7 @@ function renderDetail(item) {
         <label class="form-field">
           <span class="form-field__label">Estado</span>
           <select name="status" class="form-field__select">
-            ${ITEM_STATUSES.map((s) => `<option value="${s}" ${s === item.status ? "selected" : ""}>${STATUS_LABELS[s]}</option>`).join("")}
+            ${ITEM_STATUSES.map((s) => `<option value="${escapeHtml(s)}" ${s === item.status ? "selected" : ""}>${escapeHtml(STATUS_LABELS[s])}</option>`).join("")}
           </select>
         </label>
         
@@ -1013,17 +1182,17 @@ function renderDetail(item) {
               .map((n) => `<button type="button" class="rating-scale__button" data-rating="${n}" aria-pressed="${item.rating === n}" aria-label="${n} de 10">${n}</button>`)
               .join("")}
           </div>
-          <input type="hidden" name="rating" value="${item.rating || ""}">
+          <input type="hidden" name="rating" value="${eRatingValue}">
         </div>
         
         <label class="form-field">
           <span class="form-field__label">Reseña (máx. 500 caracteres)</span>
-          <textarea name="review" class="form-field__textarea" maxlength="500" rows="3">${item.review || ""}</textarea>
+          <textarea name="review" class="form-field__textarea" maxlength="500" rows="3">${eReview}</textarea>
         </label>
         
         <label class="form-field">
           <span class="form-field__label">Fecha de finalización</span>
-          <input type="date" name="completedAt" class="form-field__input" value="${item.completedAt ? new Date(item.completedAt).toISOString().split("T")[0] : ""}">
+          <input type="date" name="completedAt" class="form-field__input" value="${eCompletedAt}">
         </label>
   `;
   
@@ -1031,56 +1200,56 @@ function renderDetail(item) {
   if (mediaType === "series" || mediaType === "anime") {
     const nextEp = nextEpisodeLabel(item);
     html += `
-      ${nextEp ? `<div class="detail__progress"><div class="detail__progress-label">Siguiente episodio:</div><div>${nextEp}</div></div>` : ""}
+      ${nextEp ? `<div class="detail__progress"><div class="detail__progress-label">Siguiente episodio:</div><div>${escapeHtml(nextEp)}</div></div>` : ""}
       <label class="form-field">
         <span class="form-field__label">Temporada actual</span>
-        <input type="number" name="currentSeason" class="form-field__input" min="1" value="${item.currentSeason || ""}">
+        <input type="number" name="currentSeason" class="form-field__input" min="1" value="${eCurrentSeason}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Episodio actual</span>
-        <input type="number" name="currentEpisode" class="form-field__input" min="1" value="${item.currentEpisode || ""}">
+        <input type="number" name="currentEpisode" class="form-field__input" min="1" value="${eCurrentEpisode}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Total de temporadas</span>
-        <input type="number" name="totalSeasons" class="form-field__input" min="0" value="${item.totalSeasons || ""}">
+        <input type="number" name="totalSeasons" class="form-field__input" min="0" value="${eTotalSeasons}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Total de episodios</span>
-        <input type="number" name="totalEpisodes" class="form-field__input" min="0" value="${item.totalEpisodes || ""}">
+        <input type="number" name="totalEpisodes" class="form-field__input" min="0" value="${eTotalEpisodes}">
       </label>
     `;
   } else if (mediaType === "game") {
     html += `
       <label class="form-field">
         <span class="form-field__label">Horas jugadas</span>
-        <input type="number" name="hoursPlayed" class="form-field__input" min="0" step="0.1" value="${item.hoursPlayed || ""}">
+        <input type="number" name="hoursPlayed" class="form-field__input" min="0" step="0.1" value="${eHoursPlayed}">
       </label>
       <label class="form-field">
         <span class="form-field__label">% completado</span>
-        <input type="number" name="completionPercent" class="form-field__input" min="0" max="100" value="${item.completionPercent || ""}">
+        <input type="number" name="completionPercent" class="form-field__input" min="0" max="100" value="${eCompletionPercent}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Plataforma</span>
-        <input type="text" name="platform" class="form-field__input" value="${item.platform || ""}">
+        <input type="text" name="platform" class="form-field__input" value="${ePlatform}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Logros desbloqueados</span>
-        <input type="number" name="achievementsUnlocked" class="form-field__input" min="0" value="${item.achievementsUnlocked || ""}">
+        <input type="number" name="achievementsUnlocked" class="form-field__input" min="0" value="${eAchievementsUnlocked}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Total de logros</span>
-        <input type="number" name="achievementsTotal" class="form-field__input" min="0" value="${item.achievementsTotal || ""}">
+        <input type="number" name="achievementsTotal" class="form-field__input" min="0" value="${eAchievementsTotal}">
       </label>
     `;
   } else if (mediaType === "book") {
     html += `
       <label class="form-field">
         <span class="form-field__label">Páginas leídas</span>
-        <input type="number" name="pagesRead" class="form-field__input" min="0" value="${item.pagesRead || ""}">
+        <input type="number" name="pagesRead" class="form-field__input" min="0" value="${ePagesRead}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Total de páginas</span>
-        <input type="number" name="pagesTotal" class="form-field__input" min="0" value="${item.pagesTotal || ""}">
+        <input type="number" name="pagesTotal" class="form-field__input" min="0" value="${ePagesTotal}">
       </label>
     `;
   }
@@ -1169,7 +1338,8 @@ async function saveDetail(mediaType, itemId) {
   const validation = validateItem(itemToValidate);
   
   if (!validation.valid) {
-    errorsEl.innerHTML = `<ul>${validation.errors.map((e) => `<li>${e}</li>`).join("")}</ul>`;
+    // MED #3: escapar mensajes de error para evitar XSS (REQ-014).
+    errorsEl.innerHTML = `<ul>${validation.errors.map((e) => `<li>${escapeHtml(e)}</li>`).join("")}</ul>`;
     errorsEl.hidden = false;
     return;
   }
@@ -1180,7 +1350,8 @@ async function saveDetail(mediaType, itemId) {
     renderDetail(updated);
     errorsEl.hidden = true;
   } catch (error) {
-    errorsEl.innerHTML = `<ul><li>${error.message || "No se pudo guardar."}</li></ul>`;
+    // MED #3: escapar mensajes de error para evitar XSS (REQ-014).
+    errorsEl.innerHTML = `<ul><li>${escapeHtml(error.message || "No se pudo guardar.")}</li></ul>`;
     errorsEl.hidden = false;
   }
 }
@@ -1196,23 +1367,29 @@ function renderSessions(item) {
     return;
   }
   
+  // MED #3: escapar valores dinámicos (nota, fecha, rating, progreso).
   sessionsList.innerHTML = sessions
     .map((session) => {
       const date = session.date ? new Date(session.date).toLocaleDateString("es-ES") : "Sin fecha";
+      const eDate = escapeHtml(date);
+      const eSessionId = escapeHtml(session.id || "");
+      const eNote = escapeHtml(session.note || "");
+      const eRating = session.rating !== undefined && session.rating !== null ? escapeHtml(session.rating) : "";
+      const eProgress = escapeHtml(session.progress || "");
       return `
-        <div class="session" data-session-id="${session.id}">
+        <div class="session" data-session-id="${eSessionId}">
           <div class="session__header">
-            <span class="session__date">${date}</span>
+            <span class="session__date">${eDate}</span>
             <div class="session__actions">
-              <button type="button" class="btn-edit-session" data-session-id="${session.id}">Editar</button>
-              <button type="button" class="btn-delete-session" data-session-id="${session.id}">Borrar</button>
+              <button type="button" class="btn-edit-session" data-session-id="${eSessionId}">Editar</button>
+              <button type="button" class="btn-delete-session" data-session-id="${eSessionId}">Borrar</button>
             </div>
           </div>
           <div class="session__body">
-            ${session.note ? `<p class="session__note">${session.note}</p>` : ""}
+            ${session.note ? `<p class="session__note">${eNote}</p>` : ""}
             <div class="session__meta">
-              ${session.rating ? `<span>★ ${session.rating}/10</span>` : ""}
-              ${session.progress ? `<span>${session.progress}</span>` : ""}
+              ${session.rating ? `<span>★ ${eRating}/10</span>` : ""}
+              ${session.progress ? `<span>${eProgress}</span>` : ""}
             </div>
           </div>
         </div>
@@ -1254,16 +1431,22 @@ function openSessionForm(mediaType, itemId, session = null) {
   const isEdit = session !== null;
   const title = isEdit ? "Editar sesión" : "Añadir sesión";
   
+  // MED #3: escapar valores dinámicos para evitar XSS (REQ-014).
+  const eDate = session && session.date ? escapeHtml(new Date(session.date).toISOString().split("T")[0]) : "";
+  const eNote = escapeHtml(session?.note || "");
+  const eRatingValue = session?.rating !== undefined && session?.rating !== null ? escapeHtml(session.rating) : "";
+  const eProgress = escapeHtml(session?.progress || "");
+  
   const formHtml = `
     <form id="session-form" class="form" novalidate>
       <div id="session-errors" class="form-errors" hidden role="alert"></div>
       <label class="form-field">
         <span class="form-field__label">Fecha *</span>
-        <input type="date" name="date" class="form-field__input" required value="${session && session.date ? new Date(session.date).toISOString().split("T")[0] : ""}">
+        <input type="date" name="date" class="form-field__input" required value="${eDate}">
       </label>
       <label class="form-field">
         <span class="form-field__label">Nota (máx. 500 caracteres)</span>
-        <textarea name="note" class="form-field__textarea" maxlength="500" rows="3">${session?.note || ""}</textarea>
+        <textarea name="note" class="form-field__textarea" maxlength="500" rows="3">${eNote}</textarea>
       </label>
       <div class="form-field">
         <span class="form-field__label">Valoración (1-10)</span>
@@ -1272,11 +1455,11 @@ function openSessionForm(mediaType, itemId, session = null) {
             .map((n) => `<button type="button" class="rating-scale__button" data-rating="${n}" aria-pressed="${session?.rating === n}" aria-label="${n} de 10">${n}</button>`)
             .join("")}
         </div>
-        <input type="hidden" name="rating" value="${session?.rating || ""}">
+        <input type="hidden" name="rating" value="${eRatingValue}">
       </div>
       <label class="form-field">
         <span class="form-field__label">Progreso</span>
-        <input type="text" name="progress" class="form-field__input" value="${session?.progress || ""}">
+        <input type="text" name="progress" class="form-field__input" value="${eProgress}">
       </label>
       <div class="modal__footer">
         <button type="submit" class="btn btn--primary">${isEdit ? "Guardar" : "Añadir"}</button>
@@ -1346,7 +1529,8 @@ function openSessionForm(mediaType, itemId, session = null) {
       currentDetailItem = updated;
       renderDetail(updated);
     } catch (error) {
-      sessionErrors.innerHTML = `<ul><li>${error.message || "No se pudo guardar la sesión."}</li></ul>`;
+      // MED #3: escapar mensajes de error para evitar XSS (REQ-014).
+      sessionErrors.innerHTML = `<ul><li>${escapeHtml(error.message || "No se pudo guardar la sesión.")}</li></ul>`;
       sessionErrors.hidden = false;
     }
   });

@@ -834,6 +834,18 @@ body {
   color: var(--muted);
 }
 
+/* Cargar más (paginación Q-003) ----------------------------- */
+.catalog__load-more {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 8px;
+}
+
+.catalog__load-more .btn {
+  width: auto;
+  padding: 10px 24px;
+}
+
 /* ============================================================
    Responsive
    ============================================================ */
