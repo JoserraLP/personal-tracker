@@ -478,7 +478,10 @@ async function subscribeToDashboard() {
 
   for (const mediaType of MEDIA_TYPES) {
     try {
+      // MED #1 (REQ-005/AC-005): límite alto para que las estadísticas no queden
+      // truncadas cuando hay >100 ítems por tipo (el default es 100).
       const unsub = await subscribeItems(mediaType, {
+        limitCount: 1000,
         onItems(items) {
           dashboardItemsByType[mediaType] = items || [];
           pendingCount--;
@@ -518,7 +521,7 @@ function renderDashboard() {
 
     // Totales por tipo
     html += `<h4 class="dashboard__section-title">Por tipo</h4>`;
-    html += `<div class="dashboard__stats">`;
+    html += `<div class="dashboard__stats-grid">`;
     for (const type of MEDIA_TYPES) {
       const count = stats.totalsByType[type] || 0;
       html += `
@@ -531,7 +534,7 @@ function renderDashboard() {
 
     // Totales por estado
     html += `<h4 class="dashboard__section-title">Por estado</h4>`;
-    html += `<div class="dashboard__stats">`;
+    html += `<div class="dashboard__stats-grid">`;
     for (const status of ITEM_STATUSES) {
       const count = stats.totalsByStatus[status] || 0;
       html += `
@@ -544,7 +547,7 @@ function renderDashboard() {
 
     // Media de valoración, horas jugadas, completados
     html += `<h4 class="dashboard__section-title">Resumen</h4>`;
-    html += `<div class="dashboard__stats">`;
+    html += `<div class="dashboard__stats-grid">`;
     const avgRating = stats.averageRating !== null
       ? stats.averageRating.toFixed(1)
       : "—";
@@ -1582,7 +1585,7 @@ function renderDetail(item) {
 // T-005 — Metadata Section (REQ-004, AC-004, AC-008, AC-009)
 // =============================================================
 
-function renderMetadataSection(item) {
+function renderMetadataSection(item, forceRefresh) {
   const metadataSection = document.getElementById("metadata-section");
   if (!metadataSection) return;
   
@@ -1590,8 +1593,8 @@ function renderMetadataSection(item) {
   const provider = item.source?.provider;
   const externalId = item.source?.externalId;
   
-  // Check if metadata is fresh (cached)
-  if (isMetadataFresh(item)) {
+  // MED #3 (REQ-009): si se fuerza refetch, omitir isMetadataFresh
+  if (!forceRefresh && isMetadataFresh(item)) {
     // Render cached metadata
     renderMetadataContent(item, item, null);
     return;
@@ -1651,17 +1654,20 @@ async function fetchMetadataForItem(item, mediaType, provider, externalId) {
     const isPartial = result.partial === true;
     
     // Try to cache metadata (non-blocking, AC-009)
+    let cacheWriteFailed = false;
     try {
       await updateItemMetadata(mediaType, item.id, metadata, provider);
       // Update currentDetailItem with cached metadata
       const updated = await getItem(mediaType, item.id);
       currentDetailItem = updated;
     } catch (cacheError) {
-      // Cache write failed - show warning but don't block (AC-009)
+      // MED #2 (REQ-010/AC-009, §4.1 «fallo de escritura de caché»):
+      // aviso visible con botón de reintento.
+      cacheWriteFailed = true;
       console.warn("No se pudo cachear la metadata:", cacheError);
     }
     
-    renderMetadataContent(item, metadata, isPartial ? "partial" : null);
+    renderMetadataContent(item, metadata, isPartial ? "partial" : null, cacheWriteFailed ? { mediaType, provider, itemId: item.id } : null);
     
   } catch (error) {
     // Unexpected error
@@ -1717,7 +1723,7 @@ function renderMetadataError(item, errorResult) {
   }
 }
 
-function renderMetadataContent(item, metadata, warning) {
+function renderMetadataContent(item, metadata, warning, cacheFailureInfo) {
   const metadataSection = document.getElementById("metadata-section");
   if (!metadataSection) return;
   
@@ -1727,6 +1733,18 @@ function renderMetadataContent(item, metadata, warning) {
   const data = metadata || item;
   
   let html = "";
+  
+  // MED #2 (REQ-010/AC-009): aviso visible si falló la escritura de caché
+  if (cacheFailureInfo) {
+    html += `
+      <div class="metadata-error" style="margin-bottom:12px;">
+        <p class="metadata-error__message">No se pudo guardar la información en caché.</p>
+        <div class="metadata-error__actions">
+          <button type="button" class="btn btn--secondary" id="btn-retry-cache">Reintentar</button>
+        </div>
+      </div>
+    `;
+  }
   
   // Warning for partial data
   if (warning === "partial") {
@@ -1845,6 +1863,9 @@ function renderMetadataContent(item, metadata, warning) {
       <div class="metadata-content">
         ${html}
       </div>
+      <div class="metadata-actions">
+        <button type="button" class="btn btn--secondary" id="btn-refresh-metadata">Refrescar metadata</button>
+      </div>
     `;
   } else {
     metadataSection.innerHTML = `
@@ -1853,7 +1874,18 @@ function renderMetadataContent(item, metadata, warning) {
         <p class="muted">Sin información adicional.</p>
         <button type="button" class="btn btn--secondary" id="btn-edit-metadata">Añadir manualmente</button>
       </div>
+      <div class="metadata-actions">
+        <button type="button" class="btn btn--secondary" id="btn-refresh-metadata">Refrescar metadata</button>
+      </div>
     `;
+  }
+  
+  // MED #3 (REQ-009): botón «Refrescar metadata» siempre visible
+  const btnRefresh = document.getElementById("btn-refresh-metadata");
+  if (btnRefresh) {
+    btnRefresh.addEventListener("click", () => {
+      renderMetadataSection(item, true);
+    });
   }
   
   // Edit metadata button
@@ -1861,6 +1893,25 @@ function renderMetadataContent(item, metadata, warning) {
   if (btnEdit) {
     btnEdit.addEventListener("click", () => {
       openMetadataForm(item, metadata);
+    });
+  }
+  
+  // MED #2: botón de reintento de escritura de caché
+  const btnRetryCache = document.getElementById("btn-retry-cache");
+  if (btnRetryCache && cacheFailureInfo) {
+    btnRetryCache.addEventListener("click", async () => {
+      btnRetryCache.disabled = true;
+      btnRetryCache.textContent = "Reintentando…";
+      try {
+        await updateItemMetadata(cacheFailureInfo.mediaType, cacheFailureInfo.itemId, metadata || item, cacheFailureInfo.provider);
+        const updated = await getItem(cacheFailureInfo.mediaType, cacheFailureInfo.itemId);
+        currentDetailItem = updated;
+        renderMetadataContent(updated, metadata || item, warning, null);
+      } catch (err) {
+        btnRetryCache.disabled = false;
+        btnRetryCache.textContent = "Reintentar";
+        console.warn("Reintento de caché falló:", err);
+      }
     });
   }
 }

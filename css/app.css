@@ -1041,6 +1041,13 @@ body {
 
 /* StatCards ------------------------------------------------- */
 .dashboard__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* LOW #4 (UI-001): grid interno para las tarjetas, evita anidar grid dentro de grid */
+.dashboard__stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 10px;
@@ -1253,7 +1260,7 @@ body {
   }
 
   /* Dashboard responsive (AC-006, REQ-006) */
-  .dashboard__stats {
+  .dashboard__stats-grid {
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 8px;
   }
