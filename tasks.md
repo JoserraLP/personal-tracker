@@ -11,19 +11,21 @@ Estados: todo | doing | review | fix | done | blocked.
 | T-004 | dev-frontend | `index.html`, `css/app.css`, `js/app.js` | REQ-001/002/005/006, UI-001, UI-002, AC-001/002/005/006, §6 + F-001 (carry-over spec 002) | Pestaña «Dashboard» PRIMERA con StatCards (totales por tipo/estado, media rating, horas jugadas, completados) y 2 listas de 5 recientes (añadidos `createdAt` desc / completados `completedAt` desc); pestañas por tipo intactas; responsive ≤640px sin scroll horizontal; F-001: cursor de «Cargar más» no se resetea con páginas extra + dedupe por id; login spec 001 intacto | done (relanzamiento verificado con grep; F-001 corregido) |
 | T-005 | dev-frontend | `index.html`, `css/app.css`, `js/app.js` (mismos ficheros, tras T-004) | REQ-003/004/008/010, UI-003, UI-004, AC-003/004/007/008/009, §6, DB-002 | Ficha modal estilo IMDB (backdrop, póster, título/año/géneros, rating, estado, sinopsis, progreso por tipo, sesiones) + `MetadataSection`/`CastList`; al abrir: caché fresca → sin llamada; si no → fetch con loading/error(+reintento)/`partial` con aviso/404 con alta manual; cachear tras fetch vía `updateItemMetadata` (fallo de caché no bloquea); `MetadataForm` manual con validación inline (`metadataSource:"manual"`); foco atrapado + Escape + clic backdrop + foco devuelto; escapado de todo lo dinámico; shell T-004 intacto | done (verificado con grep; 128 verde) |
 | T-006 | qa-engineer | `tests/**` | AC-004/005/008/009 (automatizables) + regresión de los 128 previos | `npm test` en verde (128 previos + nuevos); ≥1 test por AC automatizable nombrado con el ID; AC-001/002/003/006/007 marcados como manuales; sin editar fuentes; sin dependencias nuevas | done (55 tests nuevos; 183 en verde; AC-001/002/003/006/007 manuales) |
-| T-007 | devops | (git only) | §1 | Commits convencionales (`feat(003)`, `test(003)`, `chore(003)`) SIN push (para que T-008 audite un diff real) | doing |
-| T-008 | code-reviewer | (read-only) | todos | Auditoría del diff `dev...HEAD` contra los IDs del spec 003; sin hallazgos HIGH abiertos → aprobar merge | todo |
-| T-009 | devops | (git only) | §1 | Fixes commiteados (si los hay), push, PR a `dev` (o `merge --no-ff`), rama borrada tras fusionar | todo |
+| T-007 | devops | (git only) | §1 | Commits convencionales (`feat(003)`, `test(003)`, `chore(003)`) SIN push (para que T-008 audite un diff real) | done (5 commits + inicial) |
+| T-008 | code-reviewer | (read-only) | todos | Auditoría del diff `dev...HEAD` contra los IDs del spec 003; sin hallazgos HIGH abiertos → aprobar merge | done (veredicto: aprobar con fixes — MED #1 y #2 bloquean) |
+| T-010 | dev-frontend | `index.html`, `css/app.css`, `js/app.js` | REQ-005/AC-005 (MED #1), REQ-010/AC-009 (MED #2), REQ-009 (MED #3), UI-001 (LOW #4) — hallazgos T-008 | Dashboard sin truncar con >100 ítems; aviso visible de fallo de caché con reintento; botón «Refrescar metadata» que omite `isMetadataFresh`; sin anidado de `dashboard__stats`; 183 tests en verde | done (4 fixes aplicados; 183 verde) |
+| T-011 | code-reviewer | (read-only) | REQ-005, REQ-009, REQ-010, UI-001 | verifica los 4 hallazgos de T-008; sin HIGH/MED abiertos → aprobar merge | done (veredicto: APROBAR MERGE; 4/4 OK, sin regresiones) |
+| T-009 | devops | (git only) | §1 | Fixes commiteados (si los hay), push, PR a `dev` (o `merge --no-ff`), rama borrada tras fusionar | done (tras aprobación T-011) |
 
 ## Orden y paralelismo
 1. T-001 (devops).
 2. T-002 ∥ T-003 (ficheros disjuntos).
 3. T-004 → T-005 (mismos ficheros, secuencial).
-4. T-006 (qa) → T-007 (commits) → T-008 (review) → fixes (máx. 2 rondas) → T-009 (push/PR/merge).
+4. T-006 (qa) → T-007 (commits) → T-008 (review) → T-010 (fix r1 UI) → T-011 (re-verificación) → T-009 (push/PR/merge). Si T-011 no aprueba: escalado al usuario (rondas de fix agotadas).
 
 ## Notas de integración
 - El spec vive en la RAÍZ (`spec.md`); grep por ID, no lectura completa.
 - **Sin cambios en `firestore.rules`**: DB-002 son campos embebidos en colecciones ya owner-only del spec 002; las reglas existentes cubren la escritura sin modificación (no hay tarea de reglas).
-- Carry-over **F-001** (LOW, hallazgo T-015 del spec 002, documentado entonces): `js/app.js` resetea `paginationLastDoc` al cursor de la 1ª página en re-fires con páginas extra y «Cargar más» no deduplica por id → fix incluido en T-004.
+- Carry-over **F-001** (LOW, hallazgo T-015 del spec 002): corregido y verificado en T-004 (auditoría T-008: cursor preservado + dedupe por id OK).
 - `js/catalog.js` debe seguir importable en Node sin red (`js/firebase.js` solo vía dynamic import); los clientes API son importables (solo `config.js` + `fetch`).
 - Fix rounds: máx. 2 por tarea; después, escalado al usuario.
