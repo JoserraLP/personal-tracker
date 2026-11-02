@@ -45,6 +45,13 @@ export const TMDB_MAX_GENRES = 10;
 export const TMDB_SYNOPSIS_MAX = 2000;
 export const TMDB_DEFAULT_LIMIT = 10;
 export const TMDB_MAX_LIMIT = 20;
+// Metadatos de detalle (API-001/002, §4.1): límites de DB-002.
+export const TMDB_MAX_CAST = 20;
+export const TMDB_MAX_CAST_NAME = 100;
+export const TMDB_MAX_DIRECTOR = 200;
+export const TMDB_MAX_TAGLINE = 300;
+export const TMDB_MAX_LANGUAGE = 50;
+export const TMDB_BACKDROP_BASE_URL = "https://image.tmdb.org/t/p/w780";
 
 // =============================================================
 // PARTE PURA (sin red)
@@ -264,6 +271,184 @@ export function tmdbDetailUrl(kind, id) {
 }
 
 // =============================================================
+// PARTE PURA — METADATOS DE DETALLE (API-001/002, §4.1)
+// =============================================================
+//
+// ItemMetadata (§4.1):
+//   { title?, year?, posterUrl?, backdropUrl?, synopsis?,
+//     genres[], durationMinutes?, director?, cast[], platforms[],
+//     developers[], publisher?, authors[], pageCount?, seasons?,
+//     episodes?, tagline?, language? }
+// · Los campos ESCALARES ausentes → null (nunca undefined).
+// · Los campos de LISTA ausentes → [] (lista vacía).
+// · Límites de DB-002: cast ≤20 (≤100 por nombre), director ≤200,
+//   tagline ≤300, language ≤50.
+//
+// La normalización es PURA (sin red) para poder testearla sola;
+// el fetch vive en las funciones de detalle (final del archivo).
+
+// Recorta un texto a un máximo de caracteres ("" si no hay texto).
+function truncateText(text, max) {
+  const value = asText(text);
+  if (!value) return "";
+  return value.length <= max ? value : value.slice(0, max);
+}
+
+// Entero ≥ 0 → number | null (páginas, temporadas, episodios).
+function positiveInt(value) {
+  const num = Number(value);
+  return Number.isFinite(num) && num >= 0 ? num : null;
+}
+
+// URL del fondo (backdrop) de TMDB: .../t/p/w780{backdrop_path}.
+export function tmdbBackdropUrl(path) {
+  const value = asText(path);
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  return `${TMDB_BACKDROP_BASE_URL}${value.startsWith("/") ? "" : "/"}${value}`;
+}
+
+// Bloque de créditos de TMDB.
+// Acepta el propio bloque ({cast, crew}) o una respuesta que lo
+// traiga embebido ({credits: {cast, crew}}).
+export function tmdbCreditsBlock(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const nested = raw.credits;
+  if (nested && typeof nested === "object") return nested;
+  if (Array.isArray(raw.cast) || Array.isArray(raw.crew)) return raw;
+  return null;
+}
+
+// Reparto → string[] (nombres, sin duplicados, máx. 20, ≤100 cada uno).
+export function tmdbCastNames(credits) {
+  const block = tmdbCreditsBlock(credits);
+  const list = block && Array.isArray(block.cast) ? block.cast : [];
+  const names = list
+    .map((entry) => asText(entry && typeof entry === "object" ? entry.name : entry))
+    .filter((name) => name !== "")
+    .map((name) => truncateText(name, TMDB_MAX_CAST_NAME));
+  return Array.from(new Set(names)).slice(0, TMDB_MAX_CAST);
+}
+
+// Director (crew con job "Director") → string | null.
+export function tmdbDirectorName(credits) {
+  const block = tmdbCreditsBlock(credits);
+  const crew = block && Array.isArray(block.crew) ? block.crew : [];
+  for (const member of crew) {
+    if (!member || typeof member !== "object") continue;
+    if (!/^director$/i.test(asText(member.job))) continue;
+    const name = asText(member.name);
+    if (name) return truncateText(name, TMDB_MAX_DIRECTOR);
+  }
+  return null;
+}
+
+// Creador de la serie (created_by) → string | null (campo director).
+export function tmdbTvCreator(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const list = Array.isArray(source.created_by) ? source.created_by : [];
+  for (const entry of list) {
+    const name = asText(entry && typeof entry === "object" ? entry.name : entry);
+    if (name) return truncateText(name, TMDB_MAX_DIRECTOR);
+  }
+  return null;
+}
+
+// Etiqueta (tagline) → string | null (≤300, DB-002).
+function tmdbTagline(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const value = truncateText(source.tagline, TMDB_MAX_TAGLINE);
+  return value || null;
+}
+
+// Idioma original → string | null (≤50, DB-002).
+function tmdbLanguage(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const value = truncateText(source.original_language, TMDB_MAX_LANGUAGE);
+  return value || null;
+}
+
+// Metadatos de una PELÍCULA de TMDB → ItemMetadata (API-001).
+export function normalizeTmdbMovieMetadata(raw, credits) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  return {
+    title: firstPresent(asText(source.title), asText(source.original_title)) || null,
+    year: tmdbYear(source.release_date),
+    posterUrl: tmdbPosterUrl(source.poster_path),
+    backdropUrl: tmdbBackdropUrl(source.backdrop_path),
+    synopsis: clampSynopsis(source.overview),
+    genres: tmdbGenreNames(source.genres),
+    durationMinutes: tmdbMovieDuration(source),
+    director: tmdbDirectorName(credits),
+    cast: tmdbCastNames(credits),
+    platforms: [],
+    developers: [],
+    publisher: null,
+    authors: [],
+    pageCount: null,
+    seasons: null,
+    episodes: null,
+    tagline: tmdbTagline(source),
+    language: tmdbLanguage(source),
+  };
+}
+
+// Metadatos de una SERIE/ANIME de TMDB → ItemMetadata (API-002).
+export function normalizeTmdbTvMetadata(raw, credits) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  return {
+    title: firstPresent(asText(source.name), asText(source.original_name)) || null,
+    year: tmdbYear(source.first_air_date),
+    posterUrl: tmdbPosterUrl(source.poster_path),
+    backdropUrl: tmdbBackdropUrl(source.backdrop_path),
+    synopsis: clampSynopsis(source.overview),
+    genres: tmdbGenreNames(source.genres),
+    durationMinutes: tmdbTvDuration(source),
+    director: tmdbTvCreator(source),
+    cast: tmdbCastNames(credits),
+    platforms: [],
+    developers: [],
+    publisher: null,
+    authors: [],
+    pageCount: null,
+    seasons: positiveInt(source.number_of_seasons),
+    episodes: positiveInt(source.number_of_episodes),
+    tagline: tmdbTagline(source),
+    language: tmdbLanguage(source),
+  };
+}
+
+// URL del detalle de PELÍCULA con los créditos embebidos
+// (append_to_response=credits → una sola llamada, API-001).
+export function tmdbMovieMetadataUrl(id) {
+  const params = new URLSearchParams({
+    api_key: TMDB_API_KEY,
+    language: TMDB_LANGUAGE,
+    append_to_response: "credits",
+  });
+  return `${TMDB_BASE_URL}/movie/${encodeURIComponent(asId(id))}?${params.toString()}`;
+}
+
+// URL del detalle de SERIE (API-002).
+export function tmdbTvMetadataUrl(id) {
+  const params = new URLSearchParams({
+    api_key: TMDB_API_KEY,
+    language: TMDB_LANGUAGE,
+  });
+  return `${TMDB_BASE_URL}/tv/${encodeURIComponent(asId(id))}?${params.toString()}`;
+}
+
+// URL de los créditos: '/movie/{id}/credits' o '/tv/{id}/credits'.
+export function tmdbCreditsUrl(kind, id) {
+  const path = kind === "movie" ? "/movie" : "/tv";
+  const params = new URLSearchParams({
+    api_key: TMDB_API_KEY,
+    language: TMDB_LANGUAGE,
+  });
+  return `${TMDB_BASE_URL}${path}/${encodeURIComponent(asId(id))}/credits?${params.toString()}`;
+}
+
+// =============================================================
 // PARTE CON RED (fetch + contrato §4.1)
 // =============================================================
 
@@ -447,4 +632,119 @@ export async function searchTmdbTv(query, options = {}) {
 // animación; todos los resultados vuelven como mediaType 'anime'.
 export async function searchTmdbAnime(query, options = {}) {
   return searchTmdb("anime", query, options);
+}
+
+// =============================================================
+// DETALLE — METADATOS (§4.1, API-001/002, AC-004/AC-009)
+// =============================================================
+//
+// Contrato:
+//   { ok: true,  item: ItemMetadata }
+//   { ok: true,  item: ItemMetadata, partial: true }  ← créditos
+//                                                       incompletos
+//   { ok: false, provider: 'tmdb', code, message }
+//   code ∈ 'timeout' | 'unauthorized' | 'rate_limited'
+//         | 'not_found' | 'unknown'
+//
+// options: { timeoutMs = 8000 }
+
+// Detalle de una PELÍCULA (API-001): /movie/{id} con los créditos
+// embebidos (append_to_response=credits). Si la respuesta no trae
+// créditos se piden aparte; si tampoco llegan → partial: true
+// (AC-009: metadatos disponibles + aviso).
+export async function fetchTmdbMovieMetadata(id, options = {}) {
+  const tmdbId = asId(id);
+  if (!tmdbId) {
+    return tmdbError("not_found", "Falta el identificador de TMDB.");
+  }
+  if (!TMDB_API_KEY) {
+    return tmdbError(
+      "unauthorized",
+      "Falta TMDB_API_KEY en js/config.js."
+    );
+  }
+
+  const res = await requestJson(tmdbMovieMetadataUrl(tmdbId), {
+    timeoutMs: options.timeoutMs,
+  });
+  if (!res.ok) {
+    return tmdbError(res.code, res.message);
+  }
+
+  const data = res.data && typeof res.data === "object" ? res.data : {};
+  let credits = tmdbCreditsBlock(data);
+  if (!credits) {
+    // Fallback: los créditos pueden venir en su propio endpoint.
+    const creditsRes = await requestJson(tmdbCreditsUrl("movie", tmdbId), {
+      timeoutMs: options.timeoutMs,
+    });
+    if (creditsRes.ok) credits = tmdbCreditsBlock(creditsRes.data);
+  }
+
+  const item = normalizeTmdbMovieMetadata(data, credits);
+  return credits ? { ok: true, item } : { ok: true, item, partial: true };
+}
+
+// Detalle de una SERIE/ANIME (API-002): /tv/{id} + /tv/{id}/credits.
+// Fallo parcial (AC-009): si llega el detalle pero no los créditos
+// (o al revés) se devuelve lo disponible con partial: true.
+export async function fetchTmdbTvMetadata(id, options = {}) {
+  const tmdbId = asId(id);
+  if (!tmdbId) {
+    return tmdbError("not_found", "Falta el identificador de TMDB.");
+  }
+  if (!TMDB_API_KEY) {
+    return tmdbError(
+      "unauthorized",
+      "Falta TMDB_API_KEY en js/config.js."
+    );
+  }
+
+  const detailRes = await requestJson(tmdbTvMetadataUrl(tmdbId), {
+    timeoutMs: options.timeoutMs,
+  });
+
+  if (!detailRes.ok) {
+    // 404 → el ítem no existe (error, no parcial).
+    if (detailRes.code === "not_found") {
+      return tmdbError(detailRes.code, detailRes.message);
+    }
+    // El detalle falló: si los créditos sí llegan, se devuelven
+    // como metadatos parciales; si no, es un error.
+    const creditsRes = await requestJson(tmdbCreditsUrl("tv", tmdbId), {
+      timeoutMs: options.timeoutMs,
+    });
+    const credits = creditsRes.ok ? tmdbCreditsBlock(creditsRes.data) : null;
+    if (credits) {
+      return {
+        ok: true,
+        item: normalizeTmdbTvMetadata({}, credits),
+        partial: true,
+      };
+    }
+    return tmdbError(detailRes.code, detailRes.message);
+  }
+
+  const data =
+    detailRes.data && typeof detailRes.data === "object" ? detailRes.data : {};
+
+  const creditsRes = await requestJson(tmdbCreditsUrl("tv", tmdbId), {
+    timeoutMs: options.timeoutMs,
+  });
+  const credits =
+    (creditsRes.ok ? tmdbCreditsBlock(creditsRes.data) : null) ||
+    tmdbCreditsBlock(data);
+
+  const item = normalizeTmdbTvMetadata(data, credits);
+  return credits ? { ok: true, item } : { ok: true, item, partial: true };
+}
+
+// Detalle genérico por tipo de medio.
+// kind: 'movie' (API-001) | 'tv' | 'anime' (API-002).
+export async function fetchTmdbMetadata(kind, id, options = {}) {
+  const type = asText(kind).toLowerCase();
+  if (type === "movie") {
+    return fetchTmdbMovieMetadata(id, options);
+  }
+  return fetchTmdbTvMetadata(id, options);
 }

@@ -40,6 +40,10 @@ export const BOOKS_DEFAULT_LIMIT = 10;
 export const BOOKS_MAX_LIMIT = 40;
 export const BOOKS_MAX_GENRES = 10;
 export const BOOKS_SYNOPSIS_MAX = 2000;
+// Metadatos de detalle (API-004, §4.1): límites de DB-002.
+export const BOOKS_MAX_AUTHORS = 10;
+export const BOOKS_MAX_PUBLISHER = 200;
+export const BOOKS_MAX_LANGUAGE = 50;
 
 // =============================================================
 // PARTE PURA (sin red)
@@ -156,6 +160,77 @@ export function googleBooksUrl(query, options = {}) {
 }
 
 // =============================================================
+// PARTE PURA — METADATOS DE DETALLE (API-004, §4.1)
+// =============================================================
+//
+// ItemMetadata (§4.1):
+//   { title?, year?, posterUrl?, backdropUrl?, synopsis?,
+//     genres[], durationMinutes?, director?, cast[], platforms[],
+//     developers[], publisher?, authors[], pageCount?, seasons?,
+//     episodes?, tagline?, language? }
+// · Los campos ESCALARES ausentes → null (nunca undefined).
+// · Los campos de LISTA ausentes → [] (lista vacía).
+// · Límites de DB-002: authors ≤10, publisher ≤200, language ≤50.
+
+// Recorta un texto a un máximo de caracteres ("" si no hay texto).
+function truncateText(text, max) {
+  const value = asText(text);
+  if (!value) return "";
+  return value.length <= max ? value : value.slice(0, max);
+}
+
+// Autores de Google Books → string[] (nombres, máx. 10, DB-002).
+export function booksAuthorList(authors) {
+  const list = Array.isArray(authors) ? authors : [];
+  const names = list
+    .map((author) => asText(author))
+    .filter((name) => name !== "");
+  return Array.from(new Set(names)).slice(0, BOOKS_MAX_AUTHORS);
+}
+
+// Metadatos de un LIBRO de Google Books → ItemMetadata (API-004).
+export function normalizeBookMetadata(volume) {
+  const source = volume && typeof volume === "object" ? volume : {};
+  const info =
+    source.volumeInfo && typeof source.volumeInfo === "object"
+      ? source.volumeInfo
+      : {};
+  const pages = Number(info.pageCount);
+  const publisher = truncateText(info.publisher, BOOKS_MAX_PUBLISHER);
+  const language = truncateText(info.language, BOOKS_MAX_LANGUAGE);
+  return {
+    title: asText(info.title) || asText(info.subtitle) || null,
+    year: booksYear(info.publishedDate),
+    posterUrl: booksCoverUrl(info.imageLinks),
+    backdropUrl: null,
+    synopsis: booksSynopsis(info.description),
+    genres: booksCategories(info.categories),
+    durationMinutes: null,
+    director: null,
+    cast: [],
+    platforms: [],
+    developers: [],
+    publisher: publisher || null,
+    authors: booksAuthorList(info.authors),
+    pageCount: Number.isFinite(pages) && pages >= 0 ? pages : null,
+    seasons: null,
+    episodes: null,
+    tagline: null,
+    language: language || null,
+  };
+}
+
+// URL del detalle de un volumen: '/volumes/{id}' (+ clave si hay).
+export function googleBooksVolumeUrl(id) {
+  const params = new URLSearchParams();
+  const key = asText(GOOGLE_BOOKS_API_KEY);
+  if (key) params.set("key", key);
+  const query = params.toString();
+  const base = `${GOOGLE_BOOKS_BASE_URL}/${encodeURIComponent(asText(id))}`;
+  return query ? `${base}?${query}` : base;
+}
+
+// =============================================================
 // PARTE CON RED (fetch + contrato §4.1)
 // =============================================================
 
@@ -260,4 +335,40 @@ export async function searchGoogleBooks(query, options = {}) {
     .map((volume) => normalizeBook(volume))
     .filter((item) => item.title !== "");
   return { ok: true, items };
+}
+
+// =============================================================
+// DETALLE — METADATOS (§4.1, API-004, AC-004/AC-009)
+// =============================================================
+//
+// Contrato:
+//   { ok: true,  item: ItemMetadata }
+//   { ok: true,  item: ItemMetadata, partial: true }
+//   { ok: false, provider: 'googlebooks', code, message }
+//   code ∈ 'timeout' | 'unauthorized' | 'rate_limited'
+//         | 'not_found' | 'unknown'
+//
+// Detalle de un LIBRO por id externo: GET /volumes/{id}.
+// options: { timeoutMs = 8000 }
+export async function fetchGoogleBookMetadata(id, options = {}) {
+  const volumeId = asText(id);
+  if (!volumeId) {
+    return booksError("not_found", "Falta el identificador del volumen.");
+  }
+
+  const res = await requestJson(googleBooksVolumeUrl(volumeId), {
+    timeoutMs: options.timeoutMs,
+  });
+  if (!res.ok) {
+    return booksError(res.code, res.message);
+  }
+
+  const data = res.data && typeof res.data === "object" ? res.data : null;
+  if (!data || !data.volumeInfo) {
+    return booksError(
+      "not_found",
+      `Google Books no encontró el volumen ${volumeId}.`
+    );
+  }
+  return { ok: true, item: normalizeBookMetadata(data) };
 }
