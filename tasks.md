@@ -29,3 +29,12 @@ Estados: todo | doing | review | fix | done | blocked.
 - Carry-over **F-001** (LOW, hallazgo T-015 del spec 002): corregido y verificado en T-004 (auditoría T-008: cursor preservado + dedupe por id OK).
 - `js/catalog.js` debe seguir importable en Node sin red (`js/firebase.js` solo vía dynamic import); los clientes API son importables (solo `config.js` + `fetch`).
 - Fix rounds: máx. 2 por tarea; después, escalado al usuario.
+
+## Hotfix post-merge (reporte de usuario: UI bloqueada al inicio, sin interacción posible)
+
+| Task | Owner | Files | Causa raíz / Fix | Done when | Status |
+|---|---|---|---|---|---|
+| T-012 | dev-frontend | `css/app.css`, `js/app.js` | (1) `.modal { display: grid }` (~línea 379) anula el atributo `hidden` de los 3 modales → siempre visibles con `z-index:1000` + backdrop cubriendo la pantalla. Fix: `[hidden] { display: none !important; }` al inicio del CSS. (2) `openModal` añade un listener de Escape a `document` por apertura que `closeModal` no elimina (acumulación). Fix: guardarlo como `modal._handleEscape` y limpiarlo en `closeModal` | Regla `[hidden]` aplicada; `closeModal` elimina el listener de Escape; modales solo visibles al abrirse; 183 tests en verde | done (verificado con grep: regla en css:17, cleanup en app.js:988-990; 183 verde) |
+| T-013 | devops | (git only) | hotfix T-012 | Rama `fix/003-ui-bloqueada` desde `dev` con los cambios del hotfix; 2 commits (`fix(003)` CSS+JS, `chore(003)` tasks.md); SIN push (diff real para T-014) | doing |
+| T-014 | code-reviewer | (read-only) | hotfix T-012 (relaciona REQ-008/AC-007 spec 003: modales y Escape) | Auditoría del diff `dev...HEAD` del hotfix (regla CSS, cleanup de listeners, alcance, regresiones en modales); sin HIGH → aprobar merge | todo |
+| T-015 | devops | (git only) | hotfix T-012 | Push, PR a `dev` (o `merge --no-ff` si no hay `gh`), merge tras aprobación T-014, rama borrada | todo |
