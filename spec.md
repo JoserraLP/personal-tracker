@@ -1,101 +1,94 @@
-# Spec 003: Dashboard estilo IMDB del catálogo
+# Spec 004: Favoritos y colecciones personalizadas
 
 ## 1. Feature Target & Git Context
 - **Target Branch:** `dev`
-- **Feature Branch:** `feat/003-imdb-dashboard`
-- **Scope:** nuevo bloque de presentación sobre el catálogo del spec 002 (datos ya almacenados); solo tras login (spec 001).
+- **Feature Branch:** `feat/004-favorites-collections`
+- **Scope:** nuevo bloque sobre el catálogo (spec 002) y el dashboard (spec 003); solo tras login (spec 001).
 
 ## 2. Vision and scope
-- Goal: dashboard general con resumen/estadísticas del catálogo + pestañas por tipo, cada ítem con ficha modal estilo IMDB (póster grande, sinopsis, rating, metadata adicional, progreso, sesiones), datos extra consultados a APIs públicas con alta manual como fallback.
+- Goal: marcar como favorito cualquier ítem (y capítulos/episodios sueltos con datos propios), verlos en una pestaña global «Favoritos» y en un bloque del dashboard; además crear colecciones personalizadas (p. ej. «Terror», «Comedia») y añadir cualquier ítem a una o varias.
 - Users: único propietario autenticado.
-- Out of scope: amigos/social, recomendaciones, sincronización con streaming, offline completo, edición de metadatos de terceros.
+- Out of scope: compartir colecciones, recomendaciones, sincronización con streaming, offline completo.
 
 ## 3. Requirements
 | ID | Requirement | Priority |
 |---|---|---|
-| REQ-001 | Pestaña «Dashboard» primera: resumen + estadísticas del catálogo. | must |
-| REQ-002 | Pestañas por tipo (pelis, series, juegos, libros, anime) con tarjetas. | must |
-| REQ-003 | Ficha modal estilo IMDB por ítem, abierta al hacer clic en la lista. | must |
-| REQ-004 | Metadata adicional (reparto, director, duración, plataformas, episodios) consultada a APIs; alta manual si no existe. | must |
-| REQ-005 | Estadísticas: totales por tipo/estado, media de valoración, horas jugadas, completados, recientes. | must |
-| REQ-006 | Responsive (móvil) y tema oscuro (variables existentes). | must |
-| REQ-007 | Acceso solo tras login (spec 001), sin gating adicional. | must |
-| REQ-008 | Modal con foco atrapado, Escape y clic en backdrop para cerrar, ARIA roles `dialog`, `tablist`, `tab`, `tabpanel`, `button`; foco devuelve al elemento que abrió el modal. | must |
-| REQ-009 | Caché de metadata en Firestore: válida 30 días; se refresca si `metadataFetchedAt` es null o anterior a 30 días (o si el usuario fuerza reintento). | should |
-| REQ-010 | Indicador de carga y error con reintento en la ficha. | must |
+| REQ-001 | Marcar/desmarcar como favorito cualquier ítem del catálogo (toggle). | must |
+| REQ-002 | Crear favoritos de capítulo/episodio suelto con título, notas, valoración y contador de visionados. | must |
+| REQ-003 | Pestaña global «Favoritos» que lista ítems y capítulos favoritos. | must |
+| REQ-004 | Icono de corazón en tarjeta y ficha modal para alternar favorito. | must |
+| REQ-005 | Bloque «Favoritos» en el dashboard (contador + accesos rápidos). | should |
+| REQ-006 | Crear, editar y borrar colecciones personalizadas (nombre 1-60, descripción ≤300, color hex o nombre corto). | must |
+| REQ-007 | Añadir/quitar cualquier ítem (y capítulo favorito) a una o varias colecciones. | must |
+| REQ-008 | Pestaña «Colecciones» con listado y vista de contenido de cada colección. | must |
+| REQ-010 | Responsive (móvil) y tema oscuro (variables existentes). | must |
+| REQ-011 | Acceso solo tras login (spec 001). | must |
+| REQ-012 | Paginación por cursor en vistas con >200 elementos. | should |
 
 ## 4. Contracts
 
-### 4.1 API (externas, detalle)
-| ID | Provider | Endpoint | Uso | Respuesta |
-|---|---|---|---|---|
-| API-001 | TMDB | `GET /movie/{id}` | detalle de película (reparto, director, duración, géneros) | `ItemMetadata` |
-| API-002 | TMDB | `GET /tv/{id}` + `/credits` | detalle de serie/anime (reparto, creador, temporadas, episodios) | `ItemMetadata` |
-| API-003 | IGDB | `POST /v4/games` (por id) | detalle de juego (plataformas, desarrollador, sinopsis, portada) | `ItemMetadata` |
-| API-004 | Google Books | `GET /volumes/{id}` | detalle de libro (autores, editorial, páginas, categorías) | `ItemMetadata` |
+### 4.1 Data (Firestore)
+Extiende CatalogItem (spec 002, DB-001) y añade entidades nuevas. Todas owner-only.
 
-`ItemMetadata`: `{ title?, year?, posterUrl?, backdropUrl?, synopsis?, genres[], durationMinutes?, director?, cast[], platforms[], developers[], publisher?, authors[], pageCount?, seasons?, episodes?, tagline?, language? }` (campos opcionales; serializados como null).
+| ID | Entidad | Campos (tipo, restricciones) | Relaciones |
+|---|---|---|---|
+| DB-001 | CatalogItem (spec 002) | + `isFavorite` boolean (default false); + `collectionIds` string[] (≤20, cada id de colección existente) | — |
+| DB-002 | FavoriteChapter | `id` string (doc); `parentMediaType` enum (series, anime, book, podcast); `parentItemId` string (req); `season` number? (≥1); `episode` number? (≥1); `title` string (req, 1-200); `notes` string? (≤500); `rating` number? (1-10, entero); `watchCount` number? (≥0, default 0); `isFavorite` boolean (default true); `collectionIds` string[] (≤20); `createdAt`, `updatedAt` timestamp | pertenece a CatalogItem padre. Capítulo favorito no se «desmarca»: borrarlo elimina el favorito. |
+| DB-003 | UserCollection | `id` string (doc); `name` string (req, 1-60); `description` string? (≤300); `color` string? (hex `#RRGGBB` únicamente); `createdAt`, `updatedAt` timestamp | agrupa ítems/chapters por `collectionIds` |
 
-Casos de error (§4.1): `externalId` inexistente (404) → `{ok:false, code:'not_found'}`; rate limit → `rate_limited`; fallo OAuth IGDB → `unauthorized`; fallo parcial de créditos TMDB → metadatos disponibles + aviso; fallo de escritura de caché en Firestore → se muestra sin caché con reintento.
+Colecciones Firestore: `users/{uid}/chapters/{chapterId}`, `users/{uid}/collections/{collectionId}`. Ítems existentes (`movies`, `series`, etc.) reciben los campos nuevos por migración perezosa (ausente → default).
 
-Contrato de error (spec 002, §4.1, fallo normalizado `{ ok:false, provider, code, message }`): `{ ok:false, provider, code, message }` o `{ ok:true, item }`.
+Reglas: `chapters` y `collections` owner-only read+write (igual que el resto). Sin cambios en las reglas de ítems (ya owner-only, spec 002). Validación bloquea: `parentItemId` inexistente, título vacío/>200, rating fuera de 1-10, `collectionIds` con >20 o id inexistente, `name` vacío/>60, `color` inválido, `notes` >500, `description` >300; error de escritura (offline/permisos) muestra mensaje inline con reintento.
 
-### 4.2 Data (Firestore)
-Extiende CatalogItem (spec 002, DB-001) con campos opcionales de metadata (sin romper compatibilidad):
-
-| ID | Entidad | Campos añadidos (tipo, restricciones) |
-|---|---|---|
-| DB-001 | CatalogItem (base, spec 002) | sin cambios |
-| DB-002 | ItemMetadata (embebido) | `director` string? (≤200); `cast` string[] (≤20, cada ≤100); `backdropUrl` string? (URL); `tagline` string? (≤300); `platforms` string[] (≤10); `developers` string[] (≤10); `publisher` string? (≤200); `authors` string[] (≤10); `pageCount` number? (≥0); `seasons` number? (≥0); `episodes` number? (≥0); `language` string? (≤50); `metadataSource` enum (`tmdb`,`igdb`,`googlebooks`,`manual`); `metadataFetchedAt` timestamp? |
-| DB-003 | SeriesItem/AnimeItem | base + metadata + `nextEpisode` (spec 002) |
-
-Reglas: los campos de metadata son opcionales; validación solo de tipos/rangos; escritura owner-only (spec 002, REQ-004).
-
-### 4.3 UI
+### 4.2 UI
 | ID | Pantalla | Componentes | API usada |
 |---|---|---|---|
-| UI-001 | Pestaña Dashboard (primera) | `DashboardView`, `StatCard`, `RecentList`, `StatusChart` | Firestore (agregación en cliente) |
-| UI-002 | Pestañas por tipo | `TypeTabs`, `ItemList`, `ItemCard` (spec 002) | Firestore |
-| UI-003 | Ficha modal IMDB | `ItemModal`, `MetadataSection`, `CastList`, `ProgressSection`, `SessionList` | API-001..004 + Firestore |
-| UI-004 | Edición manual de metadata | `MetadataForm` | Firestore |
+| UI-001 | Pestaña «Favoritos» (global) | `FavoritesView`, `FavoriteCard`, `FavoriteChapterCard` | Firestore |
+| UI-002 | Pestaña «Colecciones» | `CollectionsView`, `CollectionCard`, `CollectionDetail`, `CollectionForm` | Firestore |
+| UI-003 | HeartToggle en tarjeta y modal | `HeartButton` | Firestore (update `isFavorite`) |
+| UI-004 | Bloque «Favoritos» en Dashboard | `FavoritesBlock` (contador + atajos) | Firestore |
+| UI-005 | Añadir a colección | `CollectionPicker` (modal/popover) | Firestore |
 
 ## 5. Acceptance criteria (BDD)
-- AC-001 (REQ-001): Given un usuario autenticado, When abre el catálogo, Then la primera pestaña es «Dashboard» con resumen y estadísticas.
-- AC-002 (REQ-002): Given el dashboard, When cambia a una pestaña de tipo, Then ve las tarjetas de ese tipo.
-- AC-003 (REQ-003): Given una tarjeta, When hace clic, Then se abre el modal IMDB con póster, título, año, géneros, sinopsis, rating y estado.
-- AC-004 (REQ-004): Given un ítem con `source.externalId`, When se abre el modal, Then se consultan metadatos adicionales a la API y se muestran (reparto, director, etc.); si la API falla o no hay id, se permite añadir manualmente; Given alta manual, When se guarda con campos válidos, Then se persiste y se muestra; When campos inválidos, Then se bloquea con mensaje.
-- AC-005 (REQ-005): Given el dashboard, When hay ítems, Then muestra totales por tipo/estado, media de valoración (solo ítems con rating, excluye sin valorar), horas jugadas, completados y recientes (2 listas de 5: añadidos y completados).
-- AC-006 (REQ-006): Given un viewport móvil, When se usa el dashboard y el modal, Then se adaptan sin scroll horizontal.
-- AC-007 (REQ-008): Given el modal abierto, When pulsa Escape o clic en el backdrop, Then se cierra y el foco vuelve al elemento que lo abrió.
-- AC-008 (REQ-009): Given metadatos cacheados con `metadataFetchedAt` < 30 días, When se reabre el modal, Then no se repite la llamada a la API; si es null o ≥30 días, se refresca.
-- AC-009 (REQ-010): Given fallo de red, When se abre el modal, Then muestra error con botón de reintento y opción manual; Given `externalId` inexistente (404), Then muestra error «no encontrado» y permite alta manual; Given API parcial (TMDB credits falla), Then muestra metadatos disponibles y avisa; Given error `rate_limited` o `unauthorized`, Then muestra mensaje específico con reintento; Given fallo de escritura de caché en Firestore, Then se muestra sin caché con reintento.
+- AC-001 (REQ-001): Given un ítem del catálogo, When pulsa el corazón, Then `isFavorite` se alterna y la tarjeta/ficha reflejan el estado.
+- AC-002 (REQ-002): Given un capítulo suelto, When se crea con título (y notas/valoración/visionados opcionales), Then se persiste vinculado al ítem padre y aparece en Favoritos.
+- AC-003 (REQ-003): Given la pestaña «Favoritos», When hay favoritos, Then lista ítems y capítulos favoritos con acceso a su ficha.
+- AC-004 (REQ-004): Given una tarjeta o la ficha modal, When se pulsa el corazón, Then el estado se actualiza y se propaga a la lista y al dashboard.
+- AC-005 (REQ-005): Given el dashboard, When hay favoritos, Then muestra contador y atajos a los 5 favoritos más recientes (por `updatedAt` desc; si empate, por `createdAt` desc).
+- AC-006 (REQ-006): Given el usuario, When crea/edita/borra una colección con nombre 1-60 y color válido, Then se persiste y la lista se actualiza; When nombre vacío o >60 o color inválido, Then se bloquea con mensaje inline.
+- AC-007 (REQ-007): Given un ítem o capítulo, When se añade a una colección, Then `collectionIds` se actualiza y aparece en la vista de la colección; When se quita, Then desaparece y `collectionIds` se actualiza.
+- AC-008 (REQ-008): Given la pestaña «Colecciones», When selecciona una colección, Then muestra sus ítems/capítulos.
+- AC-009 (REQ-006): Given una colección, When se borra, Then se desvincula de todos los ítems/capítulos (sin borrarlos) y desaparece del listado; si falla algún documento, se reporta y se reintenta.
+- AC-010 (REQ-010): Given viewport móvil, When se usan Favoritos y Colecciones, Then se adaptan sin scroll horizontal.
+- AC-011 (REQ-011): Given usuario no autenticado, When intenta acceder, Then redirige a login (spec 001).
+- AC-012 (REQ-012): Given una vista con >200 elementos, When se carga, Then se pagina por cursor sin duplicados.
+- AC-014 (REQ-002): Given un capítulo favorito, When se borra, Then desaparece de Favoritos y no afecta al ítem padre.
 
 ## 6. Non-functional
-- Responsive: breakpoints existentes (mobile ≤640px); modal a pantalla completa en móvil.
-- Accesibilidad: foco atrapado en modal, Escape, ARIA roles (dialog, tablist, tabpanel).
-- Privacidad: metadata en colecciones owner-only (spec 002).
-- Rendimiento: metadata se carga bajo demanda (no en listado); caché en Firestore.
+- Privacidad: `chapters` y `collections` owner-only (lectura y escritura), igual que el resto.
+- Rendimiento: listas hasta 200 ítems por vista sin paginación; a partir de ahí cursor.
+- Accesibilidad: corazón con `aria-pressed` y etiqueta; modales con foco atrapado y Escape.
+- Responsive: breakpoints existentes (≤640px); tema oscuro con variables CSS.
 
 ## 7. Decisions and open questions
-- D-001: dashboard es la primera pestaña (decisión del usuario).
-- D-002: metadata adicional se consulta a APIs y se cachea en Firestore (`metadataFetchedAt`).
-- D-003: alta manual como fallback cuando no hay API o falla.
-- D-004: tema oscuro reutilizando variables CSS existentes.
-- D-005: estadísticas del dashboard = contadores por tipo/estado + media de rating (solo valorados) + horas jugadas + completados + 5 recientes.
-- D-006: metadata embebida en CatalogItem (campos opcionales), no subdocumento.
-- D-007: dashboard usa tarjetas/contadores (sin gráficos externos).
-- Q-001: resuelto (D-005).
+- D-001: favorito de ítem = flag `isFavorite` en CatalogItem (no colección aparte) para simplicidad y migración perezosa.
+- D-002: capítulos favoritos son entidad propia (`FavoriteChapter`) con datos propios, vinculada al padre.
+- D-003: colecciones personalizadas referencian ítems por `collectionIds` embebido en el ítem/capítulo (evita tabla de unión).
+- D-004: al borrar una colección solo se desvincula (no se borran ítems).
+- D-005: pestañas globales «Favoritos» y «Colecciones» se añaden antes de las pestañas por tipo.
+- D-006: capítulo favorito registra `watchCount` propio; no tiene sesiones propias (reutiliza las del padre).
+- D-007: el dashboard incluye bloque de Favoritos (contador + atajos), no de Colecciones.
+- Q-001: resuelto (D-007).
 - Q-002: resuelto (D-006).
-- Q-003: resuelto (D-007).
 
 ## 8. Execution matrix
 | Task ID | Role | Component | Spec Reference | Status |
 |---|---|---|---|---|
 | T1 | Spec Architect | `spec.md` | §1-7 | done |
-| T2 | Tech Lead | `firestore.rules` (metadata fields, sin cambios de reglas) | §4.2 | todo |
-| T3 | Junior Dev 2 (Backend) | clientes de detalle en `js/api-tmdb.js`, `js/api-games.js`, `js/api-books.js` | §4.1, API-001..004 | todo |
-| T4 | Junior Dev 2 (Backend) | `js/catalog.js` (metadata + caché) | §4.2, DB-002, REQ-009 | todo |
-| T5 | Junior Dev 1 (Frontend) | `index.html`, `css/app.css`, `js/app.js` (dashboard, tabs, modal IMDB) | §4.3, UI-001..004 | todo |
-| T6 | QA & Test Engineer | tests unitarios (validación metadata, estadísticas) | REQ-005, AC-005 | todo |
+| T2 | Tech Lead | `firestore.rules` (chapters + collections owner-only) | §4.1 | todo |
+| T3 | Junior Dev 2 (Backend) | `js/catalog.js` (isFavorite, collectionIds, FavoriteChapter, UserCollection, CRUD) | §4.1, DB-001..DB-003 | todo |
+| T4 | Junior Dev 1 (Frontend) | `index.html`, `css/app.css`, `js/app.js` (pestañas Favoritos/Colecciones, corazón, CollectionPicker, CollectionForm) | §4.2, UI-001..UI-005 | todo |
+| T5 | Junior Dev 1 (Frontend) | dashboard (bloque Favoritos) | §4.2, UI-004 | todo |
+| T6 | QA & Test Engineer | tests unitarios (favoritos, colecciones, validación) | REQ-001..REQ-009, AC-001..AC-009 | todo |
 | T7 | DevOps & Release | PR, merge a `dev` | todos | todo |
 | T8 | Reviewer | auditoría contra spec | todos | todo |

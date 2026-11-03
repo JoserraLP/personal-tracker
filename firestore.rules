@@ -67,6 +67,16 @@ service cloud.firestore {
         allow read, write: if isAllowedUser() && isOwner(userId);
       }
 
+      // Capítulos favoritos y colecciones personales (spec 004):
+      // privados del dueño (DB-002, DB-003).
+      match /chapters/{itemId} {
+        allow read, write: if isAllowedUser() && isOwner(userId);
+      }
+
+      match /collections/{itemId} {
+        allow read, write: if isAllowedUser() && isOwner(userId);
+      }
+
       // Sección de recetas (issue #64): recetas, catálogo de
       // ingredientes, menús semanales y etiquetas propias.
       // Lectura entre amigos autorizados, escritura solo del dueño.
