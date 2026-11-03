@@ -46,6 +46,7 @@
             <p class="muted">Cargando estadísticas…</p>
           </div>
           <div id="dashboard-stats" class="dashboard__stats" aria-live="polite"></div>
+          <div id="dashboard-favorites-block" class="dashboard__favorites-block" aria-live="polite"></div>
           <div id="dashboard-recent" class="dashboard__recent">
             <section class="dashboard__recent-section">
               <h3 class="dashboard__recent-title">Añadidos recientemente</h3>
@@ -55,6 +56,53 @@
               <h3 class="dashboard__recent-title">Completados recientemente</h3>
               <ul id="dashboard-recent-completed" class="dashboard__recent-list" aria-live="polite"></ul>
             </section>
+          </div>
+        </div>
+
+        <!-- Favoritos (spec 004, REQ-003, UI-001, D-005) -->
+        <div id="favorites-panel" role="tabpanel" aria-labelledby="tab-active" class="catalog__panel favorites" hidden>
+          <p id="favorites-error" class="error" hidden></p>
+          <div id="favorites-loading" class="catalog__state" hidden>
+            <p class="muted">Cargando favoritos…</p>
+          </div>
+          <div id="favorites-empty" class="catalog__state" hidden>
+            <p class="muted">Aún no tienes favoritos. Pulsa el corazón en cualquier tarjeta para añadirlos.</p>
+          </div>
+          <div id="favorites-content" class="favorites__content">
+            <section class="favorites__section">
+              <h3 class="favorites__section-title">Ítems favoritos</h3>
+              <ul id="favorites-items-list" class="catalog__list" aria-live="polite"></ul>
+            </section>
+            <section class="favorites__section">
+              <h3 class="favorites__section-title">Capítulos favoritos</h3>
+              <ul id="favorites-chapters-list" class="favorites__chapters-list" aria-live="polite"></ul>
+            </section>
+          </div>
+        </div>
+
+        <!-- Colecciones (spec 004, REQ-008, UI-002, D-005) -->
+        <div id="collections-panel" role="tabpanel" aria-labelledby="tab-active" class="catalog__panel collections" hidden>
+          <p id="collections-error" class="error" hidden></p>
+          <div id="collections-loading" class="catalog__state" hidden>
+            <p class="muted">Cargando colecciones…</p>
+          </div>
+          <div id="collections-empty" class="catalog__state" hidden>
+            <p class="muted">No tienes colecciones todavía.</p>
+          </div>
+          <div id="collections-content" class="collections__content">
+            <div class="collections__toolbar">
+              <button id="btn-new-collection" class="btn btn--add" type="button">+ Nueva colección</button>
+            </div>
+            <!-- Vista de listado -->
+            <div id="collections-list-view">
+              <ul id="collections-list" class="collections__list" aria-live="polite"></ul>
+            </div>
+            <!-- Vista de detalle de colección -->
+            <div id="collection-detail-view" hidden>
+              <button id="btn-back-collections" class="btn btn--secondary" type="button">← Volver</button>
+              <div id="collection-detail-header" class="collection-detail__header"></div>
+              <div id="collection-detail-content" class="collection-detail__content"></div>
+            </div>
           </div>
         </div>
 
@@ -187,6 +235,65 @@
         <button type="button" class="modal__close" data-close-modal aria-label="Cerrar">×</button>
       </header>
       <div id="detail-content" class="modal__body"></div>
+    </div>
+  </div>
+
+  <!-- Modal de formulario de colección (spec 004, AC-006) -->
+  <div id="collection-form-modal" class="modal" hidden aria-modal="true" role="dialog" aria-labelledby="collection-form-modal-title">
+    <div class="modal__backdrop" data-close-modal></div>
+    <div class="modal__dialog">
+      <header class="modal__header">
+        <h2 id="collection-form-modal-title" class="modal__title">Nueva colección</h2>
+        <button type="button" class="modal__close" data-close-modal aria-label="Cerrar">×</button>
+      </header>
+      <form id="collection-form" class="modal__body form" novalidate>
+        <div id="collection-form-errors" class="form-errors" hidden role="alert"></div>
+        <label class="form-field">
+          <span class="form-field__label">Nombre *</span>
+          <input type="text" name="name" class="form-field__input" required maxlength="60" placeholder="Ej: Terror">
+        </label>
+        <label class="form-field">
+          <span class="form-field__label">Descripción (máx. 300)</span>
+          <textarea name="description" class="form-field__textarea" maxlength="300" rows="3"></textarea>
+        </label>
+        <label class="form-field">
+          <span class="form-field__label">Color</span>
+          <div class="collection-form__color-row">
+            <input type="color" name="colorPicker" class="collection-form__color-picker" value="#8ab4f8">
+            <input type="text" name="color" class="form-field__input" placeholder="#RRGGBB" maxlength="7">
+          </div>
+        </label>
+        <div id="collection-form-delete-section" class="collection-form__delete-section" hidden>
+          <button type="button" id="btn-delete-collection" class="btn btn--danger">Borrar colección</button>
+          <p id="collection-delete-error" class="error" hidden></p>
+        </div>
+        <div class="modal__footer">
+          <button type="submit" class="btn btn--primary">Guardar</button>
+          <button type="button" class="btn" data-close-modal>Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de selector de colección (spec 004, UI-005, AC-007) -->
+  <div id="collection-picker-modal" class="modal" hidden aria-modal="true" role="dialog" aria-labelledby="collection-picker-modal-title">
+    <div class="modal__backdrop" data-close-modal></div>
+    <div class="modal__dialog">
+      <header class="modal__header">
+        <h2 id="collection-picker-modal-title" class="modal__title">Añadir a colección</h2>
+        <button type="button" class="modal__close" data-close-modal aria-label="Cerrar">×</button>
+      </header>
+      <div class="modal__body">
+        <p id="collection-picker-limit-warning" class="collection-picker__warning" hidden>
+          Este elemento ya está en el máximo de 20 colecciones.
+        </p>
+        <ul id="collection-picker-list" class="collection-picker__list"></ul>
+        <p id="collection-picker-empty" class="muted" hidden>No tienes colecciones todavía.</p>
+      </div>
+      <footer class="modal__footer">
+        <button type="button" id="btn-picker-new-collection" class="btn btn--secondary">+ Nueva colección</button>
+        <button type="button" class="btn" data-close-modal>Cerrar</button>
+      </footer>
     </div>
   </div>
 

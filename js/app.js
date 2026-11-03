@@ -38,6 +38,29 @@ import {
   isMetadataFresh,
   updateItemMetadata,
   METADATA_SOURCES,
+  // Spec 004 — Favoritos y colecciones
+  setItemFavorite,
+  toggleItemFavorite,
+  CHAPTER_PARENT_MEDIA_TYPES,
+  validateFavoriteChapter,
+  normalizeFavoriteChapter,
+  subscribeChapters,
+  listChapters,
+  createChapter,
+  updateChapter,
+  deleteChapter,
+  validateCollection,
+  normalizeCollection,
+  subscribeCollections,
+  listCollections,
+  createCollection,
+  updateCollection,
+  deleteCollection,
+  addTargetToCollection,
+  removeTargetFromCollection,
+  computeFavoritesStats,
+  MAX_COLLECTIONS_PER_TARGET,
+  RECENT_FAVORITES_LIMIT,
 } from "./catalog.js";
 import { searchTmdbMovies, searchTmdbTv, searchTmdbAnime, fetchTmdbMovieMetadata, fetchTmdbTvMetadata, fetchTmdbMetadata } from "./api-tmdb.js";
 import { searchIgdbGames, fetchIgdbGameMetadata } from "./api-games.js";
@@ -134,6 +157,8 @@ watchAuthState(async (user) => {
 
 // --- Estado del catálogo ------------------------------------
 const DASHBOARD_KEY = "dashboard";
+const FAVORITES_KEY = "favorites";
+const COLLECTIONS_KEY = "collections";
 let activeMediaType = DASHBOARD_KEY;
 let currentItems = [];
 let unsubscribeFn = null;
@@ -153,6 +178,20 @@ let sortOption = DEFAULT_SORT;
 // --- Dashboard (spec 003) -----------------------------------
 let dashboardUnsubscribes = [];
 let dashboardItemsByType = {};
+
+// --- Favoritos (spec 004) -----------------------------------
+let favoritesUnsubscribes = [];
+let favoritesItemsByType = {};
+let favoriteChapters = [];
+
+// --- Colecciones (spec 004) ---------------------------------
+let collectionsUnsubscribe = null;
+let collectionsList = [];
+let currentCollectionDetailId = null;
+// Items/chapters suscritos para el detalle de colección
+let collectionDetailUnsubscribes = [];
+let collectionDetailItemsByType = {};
+let collectionDetailChapters = [];
 
 // --- Helpers de seguridad (MED #3) --------------------------
 
@@ -198,9 +237,14 @@ const dashboardLoadingEl = document.getElementById("dashboard-loading");
 function buildTabs() {
   tabsContainer.innerHTML = "";
 
-  // Dashboard tab (spec 003, REQ-001, AC-001) — primera pestaña
-  const allTabs = [DASHBOARD_KEY, ...MEDIA_TYPES];
-  const tabLabels = { [DASHBOARD_KEY]: "Dashboard", ...MEDIA_TYPE_LABELS };
+  // Spec 004 (D-005): orden Dashboard, Favoritos, Colecciones, <5 tipos>
+  const allTabs = [DASHBOARD_KEY, FAVORITES_KEY, COLLECTIONS_KEY, ...MEDIA_TYPES];
+  const tabLabels = {
+    [DASHBOARD_KEY]: "Dashboard",
+    [FAVORITES_KEY]: "Favoritos",
+    [COLLECTIONS_KEY]: "Colecciones",
+    ...MEDIA_TYPE_LABELS,
+  };
 
   allTabs.forEach((type) => {
     const tab = document.createElement("button");
@@ -210,7 +254,7 @@ function buildTabs() {
     tab.setAttribute("aria-selected", type === activeMediaType ? "true" : "false");
     tab.setAttribute("tabindex", type === activeMediaType ? "0" : "-1");
     tab.id = type === activeMediaType ? "tab-active" : `tab-${type}`;
-    tab.setAttribute("aria-controls", type === DASHBOARD_KEY ? "dashboard-panel" : "catalog-panel");
+    tab.setAttribute("aria-controls", getPanelIdForTab(type));
     tab.textContent = tabLabels[type];
     tab.dataset.mediaType = type;
     tab.addEventListener("click", () => switchTab(type));
@@ -219,6 +263,15 @@ function buildTabs() {
 
   // Navegación por teclado (ARIA tablist, §6)
   tabsContainer.addEventListener("keydown", handleTabsKeydown);
+}
+
+function getPanelIdForTab(type) {
+  switch (type) {
+    case DASHBOARD_KEY: return "dashboard-panel";
+    case FAVORITES_KEY: return "favorites-panel";
+    case COLLECTIONS_KEY: return "collections-panel";
+    default: return "catalog-panel";
+  }
 }
 
 function buildStatusFilter() {
@@ -294,7 +347,7 @@ function handleTabsKeydown(event) {
 // --- Cambio de pestaña --------------------------------------
 
 function switchTab(mediaType) {
-  const validTabs = [DASHBOARD_KEY, ...MEDIA_TYPES];
+  const validTabs = [DASHBOARD_KEY, FAVORITES_KEY, COLLECTIONS_KEY, ...MEDIA_TYPES];
   if (!validTabs.includes(mediaType) || mediaType === activeMediaType) return;
   activeMediaType = mediaType;
 
@@ -308,15 +361,28 @@ function switchTab(mediaType) {
     else if (tab.id === "tab-active") tab.id = `tab-${tab.dataset.mediaType}`;
   });
 
+  // Ocultar todos los paneles primero
+  hideAllPanels();
+
   if (mediaType === DASHBOARD_KEY) {
-    // Mostrar dashboard, ocultar catálogo por tipo
-    showDashboardView(true);
+    // Mostrar dashboard
+    showPanel("dashboard-panel");
     subscribeToDashboard();
+  } else if (mediaType === FAVORITES_KEY) {
+    // Mostrar favoritos
+    showPanel("favorites-panel");
+    subscribeToFavorites();
+  } else if (mediaType === COLLECTIONS_KEY) {
+    // Mostrar colecciones
+    showPanel("collections-panel");
+    subscribeToCollections();
   } else {
-    // Mostrar catálogo por tipo, ocultar dashboard
-    showDashboardView(false);
-    // Cancelar suscripciones del dashboard
+    // Mostrar catálogo por tipo
+    showPanel("catalog-panel");
+    // Cancelar suscripciones de otros paneles
     dashboardUnsubscribeAll();
+    favoritesUnsubscribeAll();
+    collectionsUnsubscribeAll();
 
     // Resetear filtros al cambiar de pestaña
     filterStatus = "";
@@ -336,6 +402,19 @@ function switchTab(mediaType) {
     // Re-suscribir a la nueva colección
     subscribeToCurrentTab();
   }
+}
+
+function hideAllPanels() {
+  const panels = ["dashboard-panel", "favorites-panel", "collections-panel", "catalog-panel"];
+  panels.forEach(id => {
+    const panel = document.getElementById(id);
+    if (panel) panel.hidden = true;
+  });
+}
+
+function showPanel(panelId) {
+  const panel = document.getElementById(panelId);
+  if (panel) panel.hidden = false;
 }
 
 // --- Suscripción al store -----------------------------------
@@ -442,6 +521,8 @@ async function catalogUnsubscribe() {
 function catalogCleanup() {
   catalogUnsubscribe();
   dashboardUnsubscribeAll();
+  favoritesUnsubscribeAll();
+  collectionsUnsubscribeAll();
   catalogInitialized = false;
 }
 
@@ -462,11 +543,1011 @@ async function dashboardUnsubscribeAll() {
   }
   dashboardUnsubscribes = [];
   dashboardItemsByType = {};
+  // Spec 004: cancelar suscripción a capítulos del dashboard
+  if (typeof dashboardChaptersUnsubscribe === "function") {
+    try { await dashboardChaptersUnsubscribe(); } catch { /* ignore */ }
+    dashboardChaptersUnsubscribe = null;
+  }
+  dashboardFavoriteChapters = [];
+}
+
+// --- Favoritos (spec 004) -----------------------------------
+
+const favoritesPanel = document.getElementById("favorites-panel");
+const favoritesErrorEl = document.getElementById("favorites-error");
+const favoritesLoadingEl = document.getElementById("favorites-loading");
+const favoritesEmptyEl = document.getElementById("favorites-empty");
+const favoritesItemsListEl = document.getElementById("favorites-items-list");
+const favoritesChaptersListEl = document.getElementById("favorites-chapters-list");
+
+async function favoritesUnsubscribeAll() {
+  for (const unsub of favoritesUnsubscribes) {
+    if (typeof unsub === "function") {
+      try { await unsub(); } catch { /* ignore */ }
+    }
+  }
+  favoritesUnsubscribes = [];
+  favoritesItemsByType = {};
+  favoriteChapters = [];
+}
+
+async function subscribeToFavorites() {
+  await favoritesUnsubscribeAll();
+  // También cancelar dashboard y colecciones
+  dashboardUnsubscribeAll();
+  collectionsUnsubscribeAll();
+
+  favoritesItemsByType = {};
+  favoriteChapters = [];
+
+  if (favoritesLoadingEl) favoritesLoadingEl.hidden = false;
+  if (favoritesErrorEl) favoritesErrorEl.hidden = true;
+  if (favoritesEmptyEl) favoritesEmptyEl.hidden = true;
+  if (favoritesItemsListEl) favoritesItemsListEl.innerHTML = "";
+  if (favoritesChaptersListEl) favoritesChaptersListEl.innerHTML = "";
+
+  let pendingCount = MEDIA_TYPES.length + 1; // 5 tipos + chapters
+
+  // Suscribirse a cada tipo de ítem
+  for (const mediaType of MEDIA_TYPES) {
+    try {
+      const unsub = await subscribeItems(mediaType, {
+        limitCount: 1000,
+        onItems(items) {
+          favoritesItemsByType[mediaType] = items || [];
+          pendingCount--;
+          renderFavorites();
+          if (favoritesLoadingEl && pendingCount <= 0) {
+            favoritesLoadingEl.hidden = true;
+          }
+        },
+        onError(error) {
+          pendingCount--;
+          if (favoritesErrorEl) {
+            favoritesErrorEl.textContent = "Error al cargar favoritos: " + (error?.message || "desconocido");
+            favoritesErrorEl.hidden = false;
+          }
+          if (favoritesLoadingEl && pendingCount <= 0) {
+            favoritesLoadingEl.hidden = true;
+          }
+        },
+      });
+      favoritesUnsubscribes.push(unsub);
+    } catch (error) {
+      pendingCount--;
+      if (favoritesErrorEl) {
+        favoritesErrorEl.textContent = "Error al suscribirse: " + (error?.message || "desconocido");
+        favoritesErrorEl.hidden = false;
+      }
+    }
+  }
+
+  // Suscribirse a capítulos favoritos
+  try {
+    const unsub = await subscribeChapters({
+      limitCount: 1000,
+      onItems(chapters) {
+        favoriteChapters = (chapters || []).filter(ch => ch.isFavorite !== false);
+        pendingCount--;
+        renderFavorites();
+        if (favoritesLoadingEl && pendingCount <= 0) {
+          favoritesLoadingEl.hidden = true;
+        }
+      },
+      onError(error) {
+        pendingCount--;
+        if (favoritesErrorEl) {
+          favoritesErrorEl.textContent = "Error al cargar capítulos: " + (error?.message || "desconocido");
+          favoritesErrorEl.hidden = false;
+        }
+        if (favoritesLoadingEl && pendingCount <= 0) {
+          favoritesLoadingEl.hidden = true;
+        }
+      },
+    });
+    favoritesUnsubscribes.push(unsub);
+  } catch (error) {
+    pendingCount--;
+    if (favoritesErrorEl) {
+      favoritesErrorEl.textContent = "Error al suscribirse a capítulos: " + (error?.message || "desconocido");
+      favoritesErrorEl.hidden = false;
+    }
+  }
+}
+
+function renderFavorites() {
+  if (!favoritesItemsListEl || !favoritesChaptersListEl) return;
+
+  // Recopilar ítems favoritos de todos los tipos
+  const allFavoriteItems = [];
+  for (const mediaType of MEDIA_TYPES) {
+    const items = favoritesItemsByType[mediaType] || [];
+    for (const item of items) {
+      if (item.isFavorite) {
+        allFavoriteItems.push({ ...item, mediaType });
+      }
+    }
+  }
+
+  // Ordenar por updatedAt desc
+  allFavoriteItems.sort((a, b) => {
+    const aDate = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+    const bDate = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+    return bDate - aDate;
+  });
+
+  // Renderizar ítems favoritos
+  favoritesItemsListEl.innerHTML = "";
+  if (allFavoriteItems.length === 0 && favoriteChapters.length === 0) {
+    if (favoritesEmptyEl) favoritesEmptyEl.hidden = false;
+    return;
+  }
+  if (favoritesEmptyEl) favoritesEmptyEl.hidden = true;
+
+  for (const item of allFavoriteItems) {
+    const card = createFavoriteItemCard(item);
+    favoritesItemsListEl.appendChild(card);
+  }
+
+  // Renderizar capítulos favoritos
+  favoritesChaptersListEl.innerHTML = "";
+  for (const chapter of favoriteChapters) {
+    const card = createFavoriteChapterCard(chapter);
+    favoritesChaptersListEl.appendChild(card);
+  }
+}
+
+function createFavoriteItemCard(item) {
+  const li = document.createElement("li");
+  li.className = "catalog-card";
+  li.dataset.mediaType = item.mediaType;
+  li.dataset.itemId = item.id;
+  li.tabIndex = 0;
+  li.setAttribute("role", "button");
+  li.setAttribute("aria-label", `Ver ficha de ${item.title || "elemento"}`);
+
+  // Click abre la ficha
+  const openDetail = (event) => {
+    if (event.target.closest(".catalog-card__actions") || event.target.closest(".heart-button")) return;
+    openItemDetail(item.mediaType, item.id);
+  };
+  li.addEventListener("click", openDetail);
+  li.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openDetail(event);
+    }
+  });
+
+  // Póster o placeholder
+  if (item.posterUrl) {
+    const img = document.createElement("img");
+    img.className = "catalog-card__poster";
+    img.src = item.posterUrl;
+    img.alt = "";
+    img.loading = "lazy";
+    li.appendChild(img);
+  } else {
+    const placeholder = document.createElement("div");
+    placeholder.className = "catalog-card__placeholder";
+    placeholder.setAttribute("aria-hidden", "true");
+    placeholder.textContent = "🎬";
+    li.appendChild(placeholder);
+  }
+
+  // Cuerpo
+  const body = document.createElement("div");
+  body.className = "catalog-card__body";
+
+  const title = document.createElement("h3");
+  title.className = "catalog-card__title";
+  title.textContent = item.title || "Sin título";
+  body.appendChild(title);
+
+  const meta = document.createElement("div");
+  meta.className = "catalog-card__meta";
+
+  if (item.year) {
+    const year = document.createElement("span");
+    year.className = "catalog-card__year";
+    year.textContent = String(item.year);
+    meta.appendChild(year);
+  }
+
+  const status = item.status || "pending";
+  const badge = document.createElement("span");
+  badge.className = `catalog-badge catalog-badge--${status}`;
+  badge.textContent = STATUS_LABELS[status] || status;
+  meta.appendChild(badge);
+
+  if (typeof item.rating === "number" && Number.isFinite(item.rating)) {
+    const rating = document.createElement("span");
+    rating.className = "catalog-card__rating";
+    rating.textContent = `★ ${item.rating}`;
+    rating.setAttribute("aria-label", `Valoración: ${item.rating} sobre 10`);
+    meta.appendChild(rating);
+  }
+
+  body.appendChild(meta);
+  li.appendChild(body);
+
+  // Acciones: corazón + botón colecciones
+  const actions = document.createElement("div");
+  actions.className = "catalog-card__actions";
+
+  // Botón de corazón (UI-003, AC-001, AC-004)
+  const heartBtn = createHeartButton(item.mediaType, item.id, item.isFavorite);
+  actions.appendChild(heartBtn);
+
+  // Botón de colecciones
+  const collectionsBtn = document.createElement("button");
+  collectionsBtn.type = "button";
+  collectionsBtn.className = "btn btn--secondary";
+  collectionsBtn.textContent = "Colecciones";
+  collectionsBtn.style.cssText = "width:auto;padding:6px 10px;font-size:0.8rem;";
+  collectionsBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openCollectionPicker("item", item.id, item.mediaType);
+  });
+  actions.appendChild(collectionsBtn);
+
+  li.appendChild(actions);
+
+  return li;
+}
+
+function createFavoriteChapterCard(chapter) {
+  const li = document.createElement("li");
+  li.className = "favorite-chapter-card";
+  li.tabIndex = 0;
+  li.setAttribute("role", "button");
+  li.setAttribute("aria-label", `Ver ficha del capítulo ${chapter.title || ""}`);
+
+  // Click abre la ficha del padre
+  const openDetail = () => {
+    if (chapter.parentMediaType && chapter.parentItemId) {
+      openItemDetail(chapter.parentMediaType, chapter.parentItemId);
+    }
+  };
+  li.addEventListener("click", openDetail);
+  li.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openDetail();
+    }
+  });
+
+  // Info
+  const info = document.createElement("div");
+  info.className = "favorite-chapter-card__info";
+
+  const title = document.createElement("div");
+  title.className = "favorite-chapter-card__title";
+  title.textContent = chapter.title || "Sin título";
+  info.appendChild(title);
+
+  const meta = document.createElement("div");
+  meta.className = "favorite-chapter-card__meta";
+  const metaParts = [];
+  if (chapter.season != null && chapter.episode != null) {
+    metaParts.push(`S${chapter.season}E${chapter.episode}`);
+  } else if (chapter.season != null) {
+    metaParts.push(`T${chapter.season}`);
+  } else if (chapter.episode != null) {
+    metaParts.push(`E${chapter.episode}`);
+  }
+  if (typeof chapter.watchCount === "number" && chapter.watchCount > 0) {
+    metaParts.push(`Visto ${chapter.watchCount}x`);
+  }
+  // Nombre del padre
+  const parentItem = findParentItem(chapter.parentMediaType, chapter.parentItemId);
+  if (parentItem) {
+    metaParts.push(parentItem.title || "Padre");
+  }
+  meta.textContent = metaParts.join(" · ");
+  info.appendChild(meta);
+
+  li.appendChild(info);
+
+  // Botón de colecciones
+  const collectionsBtn = document.createElement("button");
+  collectionsBtn.type = "button";
+  collectionsBtn.className = "btn btn--secondary";
+  collectionsBtn.textContent = "Colecciones";
+  collectionsBtn.style.cssText = "width:auto;padding:6px 10px;font-size:0.8rem;";
+  collectionsBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openCollectionPicker("chapter", chapter.id, null);
+  });
+  li.appendChild(collectionsBtn);
+
+  return li;
+}
+
+function findParentItem(mediaType, itemId) {
+  if (!mediaType || !itemId) return null;
+  const items = favoritesItemsByType[mediaType] || [];
+  return items.find(i => i.id === itemId) || null;
+}
+
+// --- Heart button (UI-003, AC-001, AC-004) ------------------
+
+function createHeartButton(mediaType, itemId, isFavorite) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "heart-button";
+  btn.setAttribute("aria-pressed", isFavorite ? "true" : "false");
+  btn.setAttribute("aria-label", isFavorite ? "Quitar de favoritos" : "Añadir a favoritos");
+  btn.textContent = isFavorite ? "♥" : "♡";
+
+  btn.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    btn.disabled = true;
+    try {
+      await toggleItemFavorite(mediaType, itemId);
+      // La suscripción en vivo actualizará la UI
+    } catch (error) {
+      console.error("Error al alternar favorito:", error);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  return btn;
+}
+
+// --- Colecciones (spec 004) ---------------------------------
+
+const collectionsPanel = document.getElementById("collections-panel");
+const collectionsErrorEl = document.getElementById("collections-error");
+const collectionsLoadingEl = document.getElementById("collections-loading");
+const collectionsEmptyEl = document.getElementById("collections-empty");
+const collectionsListEl = document.getElementById("collections-list");
+const collectionsListView = document.getElementById("collections-list-view");
+const collectionDetailView = document.getElementById("collection-detail-view");
+const collectionDetailHeaderEl = document.getElementById("collection-detail-header");
+const collectionDetailContentEl = document.getElementById("collection-detail-content");
+const btnNewCollection = document.getElementById("btn-new-collection");
+const btnBackCollections = document.getElementById("btn-back-collections");
+
+async function collectionsUnsubscribeAll() {
+  if (typeof collectionsUnsubscribe === "function") {
+    try { await collectionsUnsubscribe(); } catch { /* ignore */ }
+    collectionsUnsubscribe = null;
+  }
+  for (const unsub of collectionDetailUnsubscribes) {
+    if (typeof unsub === "function") {
+      try { await unsub(); } catch { /* ignore */ }
+    }
+  }
+  collectionDetailUnsubscribes = [];
+  collectionDetailItemsByType = {};
+  collectionDetailChapters = [];
+  collectionsList = [];
+  currentCollectionDetailId = null;
+}
+
+async function subscribeToCollections() {
+  await collectionsUnsubscribeAll();
+  dashboardUnsubscribeAll();
+  favoritesUnsubscribeAll();
+
+  if (collectionsLoadingEl) collectionsLoadingEl.hidden = false;
+  if (collectionsErrorEl) collectionsErrorEl.hidden = true;
+  if (collectionsEmptyEl) collectionsEmptyEl.hidden = true;
+  if (collectionsListEl) collectionsListEl.innerHTML = "";
+
+  // Mostrar vista de listado
+  showCollectionsListView();
+
+  try {
+    collectionsUnsubscribe = await subscribeCollections({
+      limitCount: 1000,
+      onItems(collections) {
+        collectionsList = collections || [];
+        if (collectionsLoadingEl) collectionsLoadingEl.hidden = true;
+        renderCollectionsList();
+        // Si estamos viendo el detalle de una colección, actualizar
+        if (currentCollectionDetailId) {
+          renderCollectionDetail();
+        }
+      },
+      onError(error) {
+        if (collectionsLoadingEl) collectionsLoadingEl.hidden = true;
+        if (collectionsErrorEl) {
+          collectionsErrorEl.textContent = "Error al cargar colecciones: " + (error?.message || "desconocido");
+          collectionsErrorEl.hidden = false;
+        }
+      },
+    });
+  } catch (error) {
+    if (collectionsLoadingEl) collectionsLoadingEl.hidden = true;
+    if (collectionsErrorEl) {
+      collectionsErrorEl.textContent = "Error al suscribirse: " + (error?.message || "desconocido");
+      collectionsErrorEl.hidden = false;
+    }
+  }
+}
+
+function renderCollectionsList() {
+  if (!collectionsListEl) return;
+  collectionsListEl.innerHTML = "";
+
+  if (collectionsList.length === 0) {
+    if (collectionsEmptyEl) collectionsEmptyEl.hidden = false;
+    return;
+  }
+  if (collectionsEmptyEl) collectionsEmptyEl.hidden = true;
+
+  for (const collection of collectionsList) {
+    const card = createCollectionCard(collection);
+    collectionsListEl.appendChild(card);
+  }
+}
+
+function createCollectionCard(collection) {
+  const li = document.createElement("li");
+  li.className = "collection-card";
+  li.tabIndex = 0;
+  li.setAttribute("role", "button");
+  li.setAttribute("aria-label", `Ver colección ${collection.name || ""}`);
+
+  const openDetail = () => {
+    openCollectionDetailView(collection.id);
+  };
+  li.addEventListener("click", openDetail);
+  li.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openDetail();
+    }
+  });
+
+  // Header con punto de color y nombre
+  const header = document.createElement("div");
+  header.className = "collection-card__header";
+
+  if (collection.color) {
+    const dot = document.createElement("span");
+    dot.className = "collection-card__color-dot";
+    dot.style.backgroundColor = collection.color;
+    header.appendChild(dot);
+  }
+
+  const name = document.createElement("h3");
+  name.className = "collection-card__name";
+  name.textContent = collection.name || "Sin nombre";
+  header.appendChild(name);
+
+  li.appendChild(header);
+
+  // Descripción
+  if (collection.description) {
+    const desc = document.createElement("p");
+    desc.className = "collection-card__description";
+    desc.textContent = collection.description;
+    li.appendChild(desc);
+  }
+
+  return li;
+}
+
+function showCollectionsListView() {
+  if (collectionsListView) collectionsListView.hidden = false;
+  if (collectionDetailView) collectionDetailView.hidden = true;
+  currentCollectionDetailId = null;
+}
+
+function showCollectionDetailView() {
+  if (collectionsListView) collectionsListView.hidden = true;
+  if (collectionDetailView) collectionDetailView.hidden = false;
+}
+
+async function openCollectionDetailView(collectionId) {
+  currentCollectionDetailId = collectionId;
+  showCollectionDetailView();
+
+  // Cancelar suscripciones previas del detalle
+  for (const unsub of collectionDetailUnsubscribes) {
+    if (typeof unsub === "function") {
+      try { await unsub(); } catch { /* ignore */ }
+    }
+  }
+  collectionDetailUnsubscribes = [];
+  collectionDetailItemsByType = {};
+  collectionDetailChapters = [];
+
+  if (collectionDetailHeaderEl) collectionDetailHeaderEl.innerHTML = "";
+  if (collectionDetailContentEl) collectionDetailContentEl.innerHTML = '<p class="muted">Cargando…</p>';
+
+  // Suscribirse a ítems de todos los tipos
+  let pendingCount = MEDIA_TYPES.length + 1;
+
+  for (const mediaType of MEDIA_TYPES) {
+    try {
+      const unsub = await subscribeItems(mediaType, {
+        limitCount: 1000,
+        onItems(items) {
+          collectionDetailItemsByType[mediaType] = items || [];
+          pendingCount--;
+          renderCollectionDetail();
+        },
+        onError() {
+          pendingCount--;
+          renderCollectionDetail();
+        },
+      });
+      collectionDetailUnsubscribes.push(unsub);
+    } catch {
+      pendingCount--;
+    }
+  }
+
+  // Suscribirse a capítulos
+  try {
+    const unsub = await subscribeChapters({
+      limitCount: 1000,
+      onItems(chapters) {
+        collectionDetailChapters = chapters || [];
+        pendingCount--;
+        renderCollectionDetail();
+      },
+      onError() {
+        pendingCount--;
+        renderCollectionDetail();
+      },
+    });
+    collectionDetailUnsubscribes.push(unsub);
+  } catch {
+    pendingCount--;
+  }
+}
+
+function renderCollectionDetail() {
+  if (!collectionDetailHeaderEl || !collectionDetailContentEl || !currentCollectionDetailId) return;
+
+  const collection = collectionsList.find(c => c.id === currentCollectionDetailId);
+  if (!collection) {
+    collectionDetailHeaderEl.innerHTML = '<p class="muted">Colección no encontrada.</p>';
+    collectionDetailContentEl.innerHTML = "";
+    return;
+  }
+
+  // Header
+  let headerHtml = '';
+  if (collection.color) {
+    headerHtml += `<span class="collection-detail__color-dot" style="background-color:${escapeHtml(collection.color)}"></span>`;
+  }
+  headerHtml += `<div class="collection-detail__info">`;
+  headerHtml += `<h3 class="collection-detail__name">${escapeHtml(collection.name)}</h3>`;
+  if (collection.description) {
+    headerHtml += `<p class="collection-detail__description">${escapeHtml(collection.description)}</p>`;
+  }
+  headerHtml += `</div>`;
+  headerHtml += `<div class="collection-detail__actions">`;
+  headerHtml += `<button type="button" class="btn btn--secondary" id="btn-edit-collection">Editar</button>`;
+  headerHtml += `</div>`;
+  collectionDetailHeaderEl.innerHTML = headerHtml;
+
+  // Botón editar
+  const btnEdit = document.getElementById("btn-edit-collection");
+  if (btnEdit) {
+    btnEdit.addEventListener("click", () => {
+      openCollectionForm(collection);
+    });
+  }
+
+  // Contenido: ítems y capítulos de esta colección
+  const itemsInCollection = [];
+  for (const mediaType of MEDIA_TYPES) {
+    const items = collectionDetailItemsByType[mediaType] || [];
+    for (const item of items) {
+      if (Array.isArray(item.collectionIds) && item.collectionIds.includes(currentCollectionDetailId)) {
+        itemsInCollection.push({ ...item, mediaType });
+      }
+    }
+  }
+
+  const chaptersInCollection = collectionDetailChapters.filter(ch =>
+    Array.isArray(ch.collectionIds) && ch.collectionIds.includes(currentCollectionDetailId)
+  );
+
+  let contentHtml = '';
+
+  // Sección de ítems
+  contentHtml += '<section class="favorites__section">';
+  contentHtml += '<h4 class="collection-detail__section-title">Ítems</h4>';
+  if (itemsInCollection.length === 0) {
+    contentHtml += '<p class="collection-detail__empty">No hay ítems en esta colección.</p>';
+  } else {
+    contentHtml += '<ul class="catalog__list">';
+    for (const item of itemsInCollection) {
+      contentHtml += renderCollectionItemCard(item);
+    }
+    contentHtml += '</ul>';
+  }
+  contentHtml += '</section>';
+
+  // Sección de capítulos
+  contentHtml += '<section class="favorites__section">';
+  contentHtml += '<h4 class="collection-detail__section-title">Capítulos</h4>';
+  if (chaptersInCollection.length === 0) {
+    contentHtml += '<p class="collection-detail__empty">No hay capítulos en esta colección.</p>';
+  } else {
+    contentHtml += '<ul class="favorites__chapters-list">';
+    for (const chapter of chaptersInCollection) {
+      contentHtml += renderCollectionChapterCard(chapter);
+    }
+    contentHtml += '</ul>';
+  }
+  contentHtml += '</section>';
+
+  collectionDetailContentEl.innerHTML = contentHtml;
+
+  // Attach event listeners to cards
+  attachCollectionCardListeners();
+}
+
+function renderCollectionItemCard(item) {
+  let html = '<li class="catalog-card" data-media-type="' + escapeHtml(item.mediaType) + '" data-item-id="' + escapeHtml(item.id) + '" tabindex="0" role="button">';
+
+  if (item.posterUrl) {
+    html += `<img class="catalog-card__poster" src="${escapeHtml(item.posterUrl)}" alt="" loading="lazy">`;
+  } else {
+    html += '<div class="catalog-card__placeholder" aria-hidden="true">🎬</div>';
+  }
+
+  html += '<div class="catalog-card__body">';
+  html += `<h3 class="catalog-card__title">${escapeHtml(item.title || "Sin título")}</h3>`;
+  html += '<div class="catalog-card__meta">';
+  if (item.year) {
+    html += `<span class="catalog-card__year">${escapeHtml(String(item.year))}</span>`;
+  }
+  const status = item.status || "pending";
+  html += `<span class="catalog-badge catalog-badge--${escapeHtml(status)}">${escapeHtml(STATUS_LABELS[status] || status)}</span>`;
+  html += '</div></div></li>';
+
+  return html;
+}
+
+function renderCollectionChapterCard(chapter) {
+  let html = '<li class="favorite-chapter-card" tabindex="0" role="button">';
+  html += '<div class="favorite-chapter-card__info">';
+  html += `<div class="favorite-chapter-card__title">${escapeHtml(chapter.title || "Sin título")}</div>`;
+  html += '<div class="favorite-chapter-card__meta">';
+  const metaParts = [];
+  if (chapter.season != null && chapter.episode != null) {
+    metaParts.push(`S${chapter.season}E${chapter.episode}`);
+  }
+  if (typeof chapter.watchCount === "number" && chapter.watchCount > 0) {
+    metaParts.push(`Visto ${chapter.watchCount}x`);
+  }
+  html += escapeHtml(metaParts.join(" · "));
+  html += '</div></div></li>';
+  return html;
+}
+
+function attachCollectionCardListeners() {
+  if (!collectionDetailContentEl) return;
+
+  // Item cards
+  collectionDetailContentEl.querySelectorAll(".catalog-card[data-media-type][data-item-id]").forEach(card => {
+    const mediaType = card.dataset.mediaType;
+    const itemId = card.dataset.itemId;
+    const openDetail = () => openItemDetail(mediaType, itemId);
+    card.addEventListener("click", openDetail);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openDetail();
+      }
+    });
+  });
+
+  // Chapter cards
+  collectionDetailContentEl.querySelectorAll(".favorite-chapter-card").forEach((card, index) => {
+    const chaptersInCollection = collectionDetailChapters.filter(ch =>
+      Array.isArray(ch.collectionIds) && ch.collectionIds.includes(currentCollectionDetailId)
+    );
+    const chapter = chaptersInCollection[index];
+    if (chapter) {
+      const openDetail = () => {
+        if (chapter.parentMediaType && chapter.parentItemId) {
+          openItemDetail(chapter.parentMediaType, chapter.parentItemId);
+        }
+      };
+      card.addEventListener("click", openDetail);
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openDetail();
+        }
+      });
+    }
+  });
+}
+
+// --- Collection Form (AC-006) --------------------------------
+
+const collectionFormModal = document.getElementById("collection-form-modal");
+const collectionForm = document.getElementById("collection-form");
+const collectionFormErrors = document.getElementById("collection-form-errors");
+const collectionFormTitle = document.getElementById("collection-form-modal-title");
+const collectionFormDeleteSection = document.getElementById("collection-form-delete-section");
+const collectionDeleteError = document.getElementById("collection-delete-error");
+const btnDeleteCollection = document.getElementById("btn-delete-collection");
+
+let editingCollectionId = null;
+
+function openCollectionForm(collection = null) {
+  editingCollectionId = collection ? collection.id : null;
+
+  if (collectionFormTitle) {
+    collectionFormTitle.textContent = collection ? "Editar colección" : "Nueva colección";
+  }
+
+  if (collectionForm) {
+    collectionForm.reset();
+    if (collection) {
+      collectionForm.name.value = collection.name || "";
+      collectionForm.description.value = collection.description || "";
+      collectionForm.color.value = collection.color || "";
+      if (collectionForm.colorPicker) {
+        collectionForm.colorPicker.value = collection.color || "#8ab4f8";
+      }
+    } else {
+      if (collectionForm.colorPicker) {
+        collectionForm.colorPicker.value = "#8ab4f8";
+      }
+    }
+  }
+
+  if (collectionFormErrors) {
+    collectionFormErrors.hidden = true;
+    collectionFormErrors.innerHTML = "";
+  }
+
+  if (collectionFormDeleteSection) {
+    collectionFormDeleteSection.hidden = !collection;
+  }
+  if (collectionDeleteError) {
+    collectionDeleteError.hidden = true;
+    collectionDeleteError.textContent = "";
+  }
+
+  openModal("collection-form-modal");
+}
+
+// Sync color picker with text input
+if (collectionForm) {
+  const colorPicker = collectionForm.querySelector('input[name="colorPicker"]');
+  const colorText = collectionForm.querySelector('input[name="color"]');
+  if (colorPicker && colorText) {
+    colorPicker.addEventListener("input", () => {
+      colorText.value = colorPicker.value;
+    });
+    colorText.addEventListener("input", () => {
+      const val = colorText.value.trim();
+      if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        colorPicker.value = val;
+      }
+    });
+  }
+}
+
+if (collectionForm) {
+  collectionForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(collectionForm);
+    const data = {
+      name: formData.get("name") || "",
+      description: formData.get("description") || null,
+      color: formData.get("color") || null,
+    };
+
+    // Validar color
+    if (data.color && !/^#[0-9A-Fa-f]{6}$/.test(data.color)) {
+      data.color = null;
+    }
+
+    const normalized = normalizeCollection(data);
+    const validation = validateCollection(normalized);
+
+    if (!validation.valid) {
+      if (collectionFormErrors) {
+        collectionFormErrors.innerHTML = `<ul>${validation.errors.map(e => `<li>${escapeHtml(e)}</li>`).join("")}</ul>`;
+        collectionFormErrors.hidden = false;
+      }
+      return;
+    }
+
+    try {
+      if (editingCollectionId) {
+        await updateCollection(editingCollectionId, data);
+      } else {
+        await createCollection(data);
+      }
+      closeModal("collection-form-modal");
+    } catch (error) {
+      if (collectionFormErrors) {
+        collectionFormErrors.innerHTML = `<ul><li>${escapeHtml(error.message || "No se pudo guardar la colección.")}</li></ul>`;
+        collectionFormErrors.hidden = false;
+      }
+    }
+  });
+}
+
+if (btnDeleteCollection) {
+  btnDeleteCollection.addEventListener("click", async () => {
+    if (!editingCollectionId) return;
+
+    const confirmed = window.confirm("¿Seguro que quieres borrar esta colección? Los ítems no se borrarán, solo se desvincularán.");
+    if (!confirmed) return;
+
+    btnDeleteCollection.disabled = true;
+    if (collectionDeleteError) {
+      collectionDeleteError.hidden = true;
+    }
+
+    try {
+      const result = await deleteCollection(editingCollectionId);
+      if (result.failures && result.failures.length > 0) {
+        // AC-009: mostrar mensaje inline con botón de reintento
+        if (collectionDeleteError) {
+          collectionDeleteError.textContent = `Error al desvincular ${result.failures.length} elemento(s).`;
+          collectionDeleteError.hidden = false;
+          // Añadir botón de reintento
+          const retryBtn = document.createElement("button");
+          retryBtn.type = "button";
+          retryBtn.className = "btn btn--secondary";
+          retryBtn.textContent = "Reintentar";
+          retryBtn.style.cssText = "margin-top:8px;width:auto;padding:6px 12px;font-size:0.85rem;";
+          retryBtn.addEventListener("click", async () => {
+            retryBtn.disabled = true;
+            try {
+              await deleteCollection(editingCollectionId);
+              closeModal("collection-form-modal");
+            } catch (err) {
+              retryBtn.disabled = false;
+            }
+          });
+          collectionDeleteError.appendChild(document.createElement("br"));
+          collectionDeleteError.appendChild(retryBtn);
+        }
+      } else {
+        closeModal("collection-form-modal");
+        // Si estábamos viendo el detalle, volver al listado
+        if (currentCollectionDetailId === editingCollectionId) {
+          showCollectionsListView();
+        }
+      }
+    } catch (error) {
+      if (collectionDeleteError) {
+        collectionDeleteError.textContent = error.message || "No se pudo borrar la colección.";
+        collectionDeleteError.hidden = false;
+      }
+    } finally {
+      btnDeleteCollection.disabled = false;
+    }
+  });
+}
+
+// --- Collection Picker (UI-005, AC-007) ----------------------
+
+const collectionPickerModal = document.getElementById("collection-picker-modal");
+const collectionPickerList = document.getElementById("collection-picker-list");
+const collectionPickerEmpty = document.getElementById("collection-picker-empty");
+const collectionPickerLimitWarning = document.getElementById("collection-picker-limit-warning");
+const btnPickerNewCollection = document.getElementById("btn-picker-new-collection");
+
+let pickerTarget = null; // { kind, id, mediaType }
+
+async function openCollectionPicker(kind, id, mediaType) {
+  pickerTarget = { kind, id, mediaType };
+
+  if (collectionPickerList) collectionPickerList.innerHTML = "";
+  if (collectionPickerEmpty) collectionPickerEmpty.hidden = true;
+  if (collectionPickerLimitWarning) collectionPickerLimitWarning.hidden = true;
+
+  // Obtener el target actual para saber sus collectionIds
+  let currentCollectionIds = [];
+  try {
+    if (kind === "item") {
+      const item = await getItem(mediaType, id);
+      currentCollectionIds = item?.collectionIds || [];
+    } else {
+      // Para capítulos, necesitamos listar y encontrar
+      const result = await listChapters({ limitCount: 1000 });
+      const chapter = (result.chapters || []).find(ch => ch.id === id);
+      currentCollectionIds = chapter?.collectionIds || [];
+    }
+  } catch {
+    // Ignorar error, asumir vacío
+  }
+
+  // Verificar límite
+  if (currentCollectionIds.length >= MAX_COLLECTIONS_PER_TARGET) {
+    if (collectionPickerLimitWarning) collectionPickerLimitWarning.hidden = false;
+  }
+
+  // Renderizar lista de colecciones
+  if (collectionsList.length === 0) {
+    if (collectionPickerEmpty) collectionPickerEmpty.hidden = false;
+  } else {
+    for (const collection of collectionsList) {
+      const isChecked = currentCollectionIds.includes(collection.id);
+      const isDisabled = !isChecked && currentCollectionIds.length >= MAX_COLLECTIONS_PER_TARGET;
+
+      const li = document.createElement("li");
+      li.className = "collection-picker__item";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = isChecked;
+      checkbox.disabled = isDisabled;
+      checkbox.setAttribute("aria-label", `Añadir a ${collection.name}`);
+
+      checkbox.addEventListener("change", async () => {
+        checkbox.disabled = true;
+        try {
+          if (checkbox.checked) {
+            await addTargetToCollection(kind, id, collection.id, mediaType);
+          } else {
+            await removeTargetFromCollection(kind, id, collection.id, mediaType);
+          }
+        } catch (error) {
+          console.error("Error al actualizar colección:", error);
+          checkbox.checked = !checkbox.checked;
+        } finally {
+          checkbox.disabled = false;
+        }
+      });
+
+      li.appendChild(checkbox);
+
+      if (collection.color) {
+        const dot = document.createElement("span");
+        dot.className = "collection-picker__item-color";
+        dot.style.backgroundColor = collection.color;
+        li.appendChild(dot);
+      }
+
+      const name = document.createElement("span");
+      name.className = "collection-picker__item-name";
+      name.textContent = collection.name;
+      li.appendChild(name);
+
+      collectionPickerList.appendChild(li);
+    }
+  }
+
+  openModal("collection-picker-modal");
+}
+
+if (btnPickerNewCollection) {
+  btnPickerNewCollection.addEventListener("click", () => {
+    closeModal("collection-picker-modal");
+    openCollectionForm(null);
+  });
+}
+
+if (btnNewCollection) {
+  btnNewCollection.addEventListener("click", () => {
+    openCollectionForm(null);
+  });
+}
+
+if (btnBackCollections) {
+  btnBackCollections.addEventListener("click", () => {
+    showCollectionsListView();
+  });
 }
 
 async function subscribeToDashboard() {
   await dashboardUnsubscribeAll();
   dashboardItemsByType = {};
+  dashboardFavoriteChapters = [];
 
   if (dashboardLoadingEl) dashboardLoadingEl.hidden = false;
   if (dashboardErrorEl) dashboardErrorEl.hidden = true;
@@ -474,7 +1555,7 @@ async function subscribeToDashboard() {
   if (dashboardRecentAddedEl) dashboardRecentAddedEl.innerHTML = "";
   if (dashboardRecentCompletedEl) dashboardRecentCompletedEl.innerHTML = "";
 
-  let pendingCount = MEDIA_TYPES.length;
+  let pendingCount = MEDIA_TYPES.length + 1; // 5 tipos + chapters
 
   for (const mediaType of MEDIA_TYPES) {
     try {
@@ -508,6 +1589,37 @@ async function subscribeToDashboard() {
         dashboardErrorEl.textContent = "Error al suscribirse: " + (error?.message || "desconocido");
         dashboardErrorEl.hidden = false;
       }
+    }
+  }
+
+  // Spec 004 (AC-005, D-007): suscripción a capítulos favoritos para el dashboard
+  try {
+    dashboardChaptersUnsubscribe = await subscribeChapters({
+      limitCount: 1000,
+      onItems(chapters) {
+        dashboardFavoriteChapters = (chapters || []).filter(ch => ch.isFavorite !== false);
+        pendingCount--;
+        renderDashboard();
+        if (dashboardLoadingEl && pendingCount <= 0) {
+          dashboardLoadingEl.hidden = true;
+        }
+      },
+      onError(error) {
+        pendingCount--;
+        if (dashboardErrorEl) {
+          dashboardErrorEl.textContent = "Error al cargar capítulos: " + (error?.message || "desconocido");
+          dashboardErrorEl.hidden = false;
+        }
+        if (dashboardLoadingEl && pendingCount <= 0) {
+          dashboardLoadingEl.hidden = true;
+        }
+      },
+    });
+  } catch (error) {
+    pendingCount--;
+    if (dashboardErrorEl) {
+      dashboardErrorEl.textContent = "Error al suscribirse a capítulos: " + (error?.message || "desconocido");
+      dashboardErrorEl.hidden = false;
     }
   }
 }
@@ -574,6 +1686,9 @@ function renderDashboard() {
   // --- Listas recientes (D-005) ---
   renderRecentList(dashboardRecentAddedEl, stats.recentlyAdded, "createdAt");
   renderRecentList(dashboardRecentCompletedEl, stats.recentlyCompleted, "completedAt");
+  
+  // Spec 004 (AC-005, D-007): bloque de favoritos
+  renderDashboardFavoritesBlock();
 }
 
 function renderRecentList(container, items, dateField) {
@@ -693,6 +1808,7 @@ function createCard(item) {
   const openDetail = (event) => {
     // No abrir si se hizo click en los controles de la tarjeta
     if (event.target.closest(".catalog-card__actions")) return;
+    if (event.target.closest(".heart-button")) return;
     openItemDetail(item.mediaType || activeMediaType, item.id);
   };
   li.addEventListener("click", openDetail);
@@ -756,6 +1872,13 @@ function createCard(item) {
 
   body.appendChild(meta);
   li.appendChild(body);
+
+  // Corazón (spec 004, UI-003, AC-001, AC-004)
+  const heartContainer = document.createElement("div");
+  heartContainer.className = "catalog-card__heart";
+  const heartBtn = createHeartButton(item.mediaType || activeMediaType, item.id, item.isFavorite);
+  heartContainer.appendChild(heartBtn);
+  li.appendChild(heartContainer);
 
   // Acciones
   const actions = document.createElement("div");
@@ -1420,6 +2543,12 @@ function renderDetail(item) {
   // Tagline si existe
   const tagline = item.tagline ? `<p class="detail__tagline">${escapeHtml(item.tagline)}</p>` : "";
   
+  // Spec 004 (AC-004): botones de corazón y colecciones en la cabecera
+  const isFavorite = item.isFavorite === true;
+  const heartIcon = isFavorite ? "♥" : "♡";
+  const heartLabel = isFavorite ? "Quitar de favoritos" : "Añadir a favoritos";
+  const heartPressed = isFavorite ? "true" : "false";
+  
   let html = `
     <div class="detail">
       <div class="detail__hero">
@@ -1431,7 +2560,13 @@ function renderDetail(item) {
               : `<div class="detail__poster detail__poster--placeholder" aria-hidden="true">🎬</div>`
           }
           <div class="detail__info">
-            <h3 class="detail__title">${eTitle}${item.year ? ` <span class="detail__year">(${eYear})</span>` : ""}</h3>
+            <div class="detail__header-actions">
+              <h3 class="detail__title">${eTitle}${item.year ? ` <span class="detail__year">(${eYear})</span>` : ""}</h3>
+              <div class="detail__action-buttons">
+                <button type="button" class="heart-button" id="btn-detail-heart" aria-pressed="${heartPressed}" aria-label="${heartLabel}">${heartIcon}</button>
+                <button type="button" class="btn btn--secondary" id="btn-detail-collections" style="width:auto;padding:6px 12px;font-size:0.85rem;">Colecciones</button>
+              </div>
+            </div>
             ${genresHtml}
             ${tagline}
             <div class="detail__meta">
@@ -1543,6 +2678,17 @@ function renderDetail(item) {
     </form>
   `;
   
+  // Spec 004 (AC-002, AC-014): capítulos favoritos para series/anime/book
+  if (CHAPTER_PARENT_MEDIA_TYPES.includes(mediaType)) {
+    html += `
+      <div class="detail__section" id="chapters-section">
+        <h4 class="detail__section-title">Capítulos favoritos</h4>
+        <div id="chapters-list" class="chapters-list"></div>
+        <button type="button" id="btn-add-chapter" class="btn btn--secondary">+ Añadir capítulo</button>
+      </div>
+    `;
+  }
+  
   // Sesiones (REQ-011, AC-008)
   html += `
     <div class="detail__section">
@@ -1555,6 +2701,44 @@ function renderDetail(item) {
   html += `</div>`;
   
   detailContent.innerHTML = html;
+  
+  // Spec 004 (AC-004): event listeners para corazón y colecciones en la ficha
+  const btnDetailHeart = document.getElementById("btn-detail-heart");
+  if (btnDetailHeart) {
+    btnDetailHeart.addEventListener("click", async () => {
+      btnDetailHeart.disabled = true;
+      try {
+        await toggleItemFavorite(mediaType, item.id);
+        // Refrescar la ficha para reflejar el nuevo estado
+        const updated = await getItem(mediaType, item.id);
+        currentDetailItem = updated;
+        renderDetail(updated);
+      } catch (error) {
+        console.error("Error al alternar favorito:", error);
+      } finally {
+        btnDetailHeart.disabled = false;
+      }
+    });
+  }
+  
+  const btnDetailCollections = document.getElementById("btn-detail-collections");
+  if (btnDetailCollections) {
+    btnDetailCollections.addEventListener("click", () => {
+      openCollectionPicker("item", item.id, mediaType);
+    });
+  }
+  
+  // Spec 004 (AC-002): renderizar capítulos favoritos
+  if (CHAPTER_PARENT_MEDIA_TYPES.includes(mediaType)) {
+    renderChaptersSection(item);
+    
+    const btnAddChapter = document.getElementById("btn-add-chapter");
+    if (btnAddChapter) {
+      btnAddChapter.addEventListener("click", () => {
+        openChapterForm(mediaType, item.id, null);
+      });
+    }
+  }
   
   // Render metadata section (T-005)
   renderMetadataSection(item);
@@ -2354,5 +3538,333 @@ function openSessionForm(mediaType, itemId, session = null) {
       sessionErrors.innerHTML = `<ul><li>${escapeHtml(error.message || "No se pudo guardar la sesión.")}</li></ul>`;
       sessionErrors.hidden = false;
     }
+  });
+}
+
+// =============================================================
+// Spec 004 — Capítulos favoritos en ficha (AC-002, AC-014)
+// =============================================================
+
+let chaptersUnsubscribe = null;
+let chaptersForCurrentItem = [];
+
+async function renderChaptersSection(item) {
+  const chaptersList = document.getElementById("chapters-list");
+  if (!chaptersList) return;
+  
+  // Cancelar suscripción previa
+  if (typeof chaptersUnsubscribe === "function") {
+    try { await chaptersUnsubscribe(); } catch { /* ignore */ }
+    chaptersUnsubscribe = null;
+  }
+  chaptersForCurrentItem = [];
+  chaptersList.innerHTML = '<p class="muted">Cargando capítulos…</p>';
+  
+  try {
+    chaptersUnsubscribe = await subscribeChapters({
+      limitCount: 1000,
+      onItems(chapters) {
+        // Filtrar por parentItemId
+        chaptersForCurrentItem = (chapters || []).filter(
+          ch => ch.parentItemId === item.id
+        );
+        renderChaptersList(item);
+      },
+      onError(error) {
+        chaptersList.innerHTML = `<p class="error">Error al cargar capítulos: ${escapeHtml(error?.message || "desconocido")}</p>`;
+      },
+    });
+  } catch (error) {
+    chaptersList.innerHTML = `<p class="error">Error al suscribirse a capítulos: ${escapeHtml(error?.message || "desconocido")}</p>`;
+  }
+}
+
+function renderChaptersList(item) {
+  const chaptersList = document.getElementById("chapters-list");
+  if (!chaptersList) return;
+  
+  chaptersList.innerHTML = "";
+  
+  if (chaptersForCurrentItem.length === 0) {
+    chaptersList.innerHTML = '<p class="muted">No hay capítulos favoritos todavía.</p>';
+    return;
+  }
+  
+  for (const chapter of chaptersForCurrentItem) {
+    const card = createChapterCard(chapter, item);
+    chaptersList.appendChild(card);
+  }
+}
+
+function createChapterCard(chapter, parentItem) {
+  const div = document.createElement("div");
+  div.className = "chapter-card";
+  div.dataset.chapterId = chapter.id;
+  
+  // Título
+  const title = document.createElement("div");
+  title.className = "chapter-card__title";
+  title.textContent = chapter.title || "Sin título";
+  div.appendChild(title);
+  
+  // Meta info
+  const meta = document.createElement("div");
+  meta.className = "chapter-card__meta";
+  const metaParts = [];
+  
+  if (chapter.season != null && chapter.episode != null) {
+    metaParts.push(`S${chapter.season}E${chapter.episode}`);
+  } else if (chapter.season != null) {
+    metaParts.push(`T${chapter.season}`);
+  } else if (chapter.episode != null) {
+    metaParts.push(`E${chapter.episode}`);
+  }
+  
+  if (typeof chapter.rating === "number" && Number.isFinite(chapter.rating)) {
+    metaParts.push(`${chapter.rating}/10`);
+  }
+  
+  if (typeof chapter.watchCount === "number" && chapter.watchCount > 0) {
+    metaParts.push(`Visto ${chapter.watchCount} ${chapter.watchCount === 1 ? "vez" : "veces"}`);
+  }
+  
+  meta.textContent = metaParts.join(" · ");
+  div.appendChild(meta);
+  
+  // Notas truncadas
+  if (chapter.notes) {
+    const notes = document.createElement("div");
+    notes.className = "chapter-card__notes";
+    const truncated = chapter.notes.length > 100 ? chapter.notes.substring(0, 100) + "…" : chapter.notes;
+    notes.textContent = truncated;
+    div.appendChild(notes);
+  }
+  
+  // Acciones
+  const actions = document.createElement("div");
+  actions.className = "chapter-card__actions";
+  
+  const editBtn = document.createElement("button");
+  editBtn.type = "button";
+  editBtn.className = "btn btn--secondary";
+  editBtn.textContent = "Editar";
+  editBtn.style.cssText = "width:auto;padding:4px 10px;font-size:0.8rem;";
+  editBtn.addEventListener("click", () => {
+    openChapterForm(parentItem.mediaType || activeMediaType, parentItem.id, chapter);
+  });
+  actions.appendChild(editBtn);
+  
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "btn btn--danger";
+  deleteBtn.textContent = "Borrar";
+  deleteBtn.style.cssText = "width:auto;padding:4px 10px;font-size:0.8rem;";
+  deleteBtn.addEventListener("click", async () => {
+    const confirmed = window.confirm(`¿Seguro que quieres borrar el capítulo «${chapter.title || "este capítulo"}»? Desaparecerá de Favoritos pero no afectará a la serie/libro.`);
+    if (!confirmed) return;
+    deleteBtn.disabled = true;
+    try {
+      await deleteChapter(chapter.id);
+      // La suscripción en vivo actualizará la lista
+    } catch (error) {
+      console.error("Error al borrar capítulo:", error);
+      deleteBtn.disabled = false;
+    }
+  });
+  actions.appendChild(deleteBtn);
+  
+  div.appendChild(actions);
+  
+  return div;
+}
+
+function openChapterForm(parentMediaType, parentItemId, chapter = null) {
+  const isEdit = chapter !== null;
+  const title = isEdit ? "Editar capítulo" : "Nuevo capítulo";
+  
+  // Pre-fill values
+  const eTitle = escapeHtml(chapter?.title || "");
+  const eSeason = chapter?.season != null ? escapeHtml(chapter.season) : "";
+  const eEpisode = chapter?.episode != null ? escapeHtml(chapter.episode) : "";
+  const eNotes = escapeHtml(chapter?.notes || "");
+  const eRating = chapter?.rating != null ? escapeHtml(chapter.rating) : "";
+  const eWatchCount = chapter?.watchCount != null ? escapeHtml(chapter.watchCount) : "0";
+  
+  const formHtml = `
+    <form id="chapter-form" class="form" novalidate>
+      <div id="chapter-form-errors" class="form-errors" hidden role="alert"></div>
+      <label class="form-field">
+        <span class="form-field__label">Título *</span>
+        <input type="text" name="title" class="form-field__input" required maxlength="200" value="${eTitle}">
+      </label>
+      <label class="form-field">
+        <span class="form-field__label">Temporada</span>
+        <input type="number" name="season" class="form-field__input" min="1" value="${eSeason}">
+      </label>
+      <label class="form-field">
+        <span class="form-field__label">Episodio</span>
+        <input type="number" name="episode" class="form-field__input" min="1" value="${eEpisode}">
+      </label>
+      <label class="form-field">
+        <span class="form-field__label">Notas (máx. 500 caracteres)</span>
+        <textarea name="notes" class="form-field__textarea" maxlength="500" rows="3">${eNotes}</textarea>
+      </label>
+      <label class="form-field">
+        <span class="form-field__label">Valoración (1-10)</span>
+        <input type="number" name="rating" class="form-field__input" min="1" max="10" value="${eRating}">
+      </label>
+      <label class="form-field">
+        <span class="form-field__label">Veces visto</span>
+        <input type="number" name="watchCount" class="form-field__input" min="0" value="${eWatchCount}">
+      </label>
+      <div class="modal__footer">
+        <button type="submit" class="btn btn--primary">${isEdit ? "Guardar" : "Añadir"}</button>
+        <button type="button" class="btn" id="btn-cancel-chapter">Cancelar</button>
+      </div>
+    </form>
+  `;
+  
+  // Reemplazar la sección de capítulos con el formulario
+  const chaptersSection = document.getElementById("chapters-section");
+  if (!chaptersSection) return;
+  const originalContent = chaptersSection.innerHTML;
+  chaptersSection.innerHTML = `<h4 class="detail__section-title">${escapeHtml(title)}</h4>${formHtml}`;
+  
+  const chapterForm = document.getElementById("chapter-form");
+  const chapterErrors = document.getElementById("chapter-form-errors");
+  
+  // Cancel button
+  document.getElementById("btn-cancel-chapter").addEventListener("click", () => {
+    chaptersSection.innerHTML = originalContent;
+    // Re-render chapters
+    const item = currentDetailItem;
+    if (item) {
+      renderChaptersSection(item);
+      const btnAddChapter = document.getElementById("btn-add-chapter");
+      if (btnAddChapter) {
+        btnAddChapter.addEventListener("click", () => {
+          openChapterForm(item.mediaType || activeMediaType, item.id, null);
+        });
+      }
+    }
+  });
+  
+  // Form submit
+  chapterForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    
+    const formData = new FormData(chapterForm);
+    const data = {
+      parentMediaType: parentMediaType,
+      parentItemId: parentItemId,
+      title: formData.get("title") || "",
+      season: formData.get("season") ? Number(formData.get("season")) : null,
+      episode: formData.get("episode") ? Number(formData.get("episode")) : null,
+      notes: formData.get("notes") || null,
+      rating: formData.get("rating") ? Number(formData.get("rating")) : null,
+      watchCount: formData.get("watchCount") ? Number(formData.get("watchCount")) : 0,
+    };
+    
+    // Validar
+    const normalized = normalizeFavoriteChapter(data);
+    const validation = validateFavoriteChapter(normalized);
+    
+    if (!validation.valid) {
+      chapterErrors.innerHTML = `<ul>${validation.errors.map(e => `<li>${escapeHtml(e)}</li>`).join("")}</ul>`;
+      chapterErrors.hidden = false;
+      return;
+    }
+    
+    try {
+      if (isEdit) {
+        await updateChapter(chapter.id, data);
+      } else {
+        await createChapter(data);
+      }
+      // La suscripción en vivo actualizará la lista
+      chaptersSection.innerHTML = originalContent;
+      const item = currentDetailItem;
+      if (item) {
+        renderChaptersSection(item);
+        const btnAddChapter = document.getElementById("btn-add-chapter");
+        if (btnAddChapter) {
+          btnAddChapter.addEventListener("click", () => {
+            openChapterForm(item.mediaType || activeMediaType, item.id, null);
+          });
+        }
+      }
+    } catch (error) {
+      chapterErrors.innerHTML = `<ul><li>${escapeHtml(error.message || "No se pudo guardar el capítulo.")}</li></ul>`;
+      chapterErrors.hidden = false;
+    }
+  });
+}
+
+// =============================================================
+// Spec 004 — Bloque Favoritos en Dashboard (AC-005, D-007, REQ-005)
+// =============================================================
+
+let dashboardChaptersUnsubscribe = null;
+let dashboardFavoriteChapters = [];
+
+function renderDashboardFavoritesBlock() {
+  const dashboardFavoritesBlock = document.getElementById("dashboard-favorites-block");
+  if (!dashboardFavoritesBlock) return;
+  
+  // Recopilar ítems favoritos de todos los tipos
+  const allFavoriteItems = [];
+  for (const mediaType of MEDIA_TYPES) {
+    const items = dashboardItemsByType[mediaType] || [];
+    for (const item of items) {
+      if (item.isFavorite) {
+        allFavoriteItems.push({ ...item, mediaType });
+      }
+    }
+  }
+  
+  const stats = computeFavoritesStats(allFavoriteItems, dashboardFavoriteChapters);
+  
+  let html = `<h4 class="dashboard__section-title">Favoritos</h4>`;
+  html += `<div class="dashboard__favorites-summary">`;
+  html += `<span class="dashboard__favorites-count">${stats.count} favorito${stats.count !== 1 ? "s" : ""}</span>`;
+  html += `</div>`;
+  
+  if (stats.recent.length === 0) {
+    html += `<p class="muted">Aún no tienes favoritos.</p>`;
+  } else {
+    html += `<ul class="dashboard__favorites-list">`;
+    for (const entry of stats.recent) {
+      const typeLabel = entry.kind === "chapter" ? "Capítulo" : (MEDIA_TYPE_LABELS[entry.mediaType] || entry.mediaType);
+      html += `<li class="dashboard__favorites-item" data-kind="${escapeHtml(entry.kind)}" data-media-type="${escapeHtml(entry.mediaType || "")}" data-id="${escapeHtml(entry.id || "")}" data-parent-item-id="${escapeHtml(entry.parentItemId || "")}" tabindex="0" role="button">`;
+      html += `<span class="dashboard__favorites-item-title">${escapeHtml(entry.title || "Sin título")}</span>`;
+      html += `<span class="dashboard__favorites-item-type">${escapeHtml(typeLabel)}</span>`;
+      html += `</li>`;
+    }
+    html += `</ul>`;
+  }
+  
+  dashboardFavoritesBlock.innerHTML = html;
+  
+  // Attach click listeners
+  dashboardFavoritesBlock.querySelectorAll(".dashboard__favorites-item").forEach(li => {
+    const openDetail = () => {
+      const kind = li.dataset.kind;
+      const mediaType = li.dataset.mediaType;
+      const id = li.dataset.id;
+      const parentItemId = li.dataset.parentItemId;
+      
+      if (kind === "chapter" && mediaType && parentItemId) {
+        openItemDetail(mediaType, parentItemId);
+      } else if (kind === "item" && mediaType && id) {
+        openItemDetail(mediaType, id);
+      }
+    };
+    li.addEventListener("click", openDetail);
+    li.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openDetail();
+      }
+    });
   });
 }
