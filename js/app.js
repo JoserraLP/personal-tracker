@@ -919,6 +919,8 @@ const modalState = {
 function openModal(modalId) {
   const modal = document.getElementById(modalId);
   if (!modal) return;
+  // Guard early: evitar registrar listeners duplicados si el modal ya está activo
+  if (modalState.activeModal === modal) return;
   
   modalState.previousFocus = document.activeElement;
   modalState.activeModal = modal;
@@ -939,6 +941,7 @@ function openModal(modalId) {
       document.removeEventListener("keydown", handleEscape);
     }
   };
+  modal._handleEscape = handleEscape;
   document.addEventListener("keydown", handleEscape);
   
   // Focus trap: Tab/Shift+Tab
@@ -981,6 +984,10 @@ function closeModal(modalId) {
   if (modal._handleTab) {
     modal.removeEventListener("keydown", modal._handleTab);
     delete modal._handleTab;
+  }
+  if (modal._handleEscape) {
+    document.removeEventListener("keydown", modal._handleEscape);
+    delete modal._handleEscape;
   }
   
   // Restaurar foco

@@ -13,6 +13,9 @@
   --status-abandoned: #ff8a80;
 }
 
+/* El atributo HTML `hidden` siempre debe ganar a cualquier `display` declarado por clase (.modal, load-more, estados de carga, etc.). */
+[hidden] { display: none !important; }
+
 * { box-sizing: border-box; }
 
 html, body { margin: 0; min-height: 100%; }
