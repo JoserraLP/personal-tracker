@@ -100,6 +100,10 @@ const LIMITS = Object.freeze({
   COMPLETION_MIN: 0,
   COMPLETION_MAX: 100,
   EPISODE_MIN: 1,
+  // Colecciones (spec 004, DB-001..DB-003).
+  COLLECTIONS_MAX: 20,
+  COLLECTION_NAME_MAX: 60,
+  COLLECTION_DESCRIPTION_MAX: 300,
 });
 
 // -------------------------------------------------------------
@@ -156,6 +160,46 @@ function toTextList(value) {
     .map((entry) => (typeof entry === "string" ? entry : String(entry)))
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
+}
+
+/**
+ * Normaliza la lista de colecciones de un ítem/capítulo (DB-001, DB-002):
+ * descarta entradas no textuales o vacías y elimina duplicados.
+ * NO recorta el tamaño: el límite de 20 lo bloquea la validación.
+ */
+function toCollectionIds(value) {
+  if (!Array.isArray(value)) return [];
+  const ids = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") continue;
+    const id = entry.trim();
+    if (!id || ids.includes(id)) continue;
+    ids.push(id);
+  }
+  return ids;
+}
+
+/**
+ * Valida `collectionIds` (DB-001, DB-002): string[] ≤20, sin duplicados.
+ * Añade los mensajes de error al array recibido (mismo estilo que el resto
+ * de validaciones de este módulo).
+ */
+function collectCollectionIdsErrors(value, errors) {
+  if (value === undefined || value === null) return;
+  if (!Array.isArray(value)) {
+    errors.push("Las colecciones (collectionIds) deben ser una lista.");
+    return;
+  }
+  if (value.length > LIMITS.COLLECTIONS_MAX) {
+    errors.push(`No se pueden guardar más de ${LIMITS.COLLECTIONS_MAX} colecciones.`);
+  }
+  if (value.some((id) => typeof id !== "string" || id.trim().length === 0)) {
+    errors.push("Cada id de colección debe ser texto.");
+    return;
+  }
+  if (new Set(value.map((id) => id.trim())).size !== value.length) {
+    errors.push("No se pueden repetir ids de colección.");
+  }
 }
 
 /**
@@ -499,6 +543,16 @@ export function validateItem(item) {
     }
   }
 
+  // isFavorite (DB-001, REQ-001): booleano (default false).
+  if (item.isFavorite !== undefined && item.isFavorite !== null) {
+    if (typeof item.isFavorite !== "boolean") {
+      errors.push("El campo isFavorite debe ser booleano.");
+    }
+  }
+
+  // collectionIds (DB-001, REQ-007): string[] ≤20 sin duplicados.
+  collectCollectionIdsErrors(item.collectionIds, errors);
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -533,6 +587,9 @@ export function normalizeItem(mediaType, data = {}) {
     completedAt: toItemDate(src.completedAt),
     durationMinutes: toNumber(src.durationMinutes),
     source: normalizeSource(src.source),
+    // Favoritos y colecciones (spec 004, DB-001): flags embebidos.
+    isFavorite: src.isFavorite === undefined || src.isFavorite === null ? false : src.isFavorite,
+    collectionIds: toCollectionIds(src.collectionIds),
   };
 
   if (type === "series" || type === "anime") {
@@ -1257,6 +1314,10 @@ export function docToItem(snapshot) {
       return { ...session, date: tsToDate(session.date) };
     });
   }
+  // Favoritos y colecciones (spec 004, DB-001): migración perezosa — si el
+  // documento aún no tiene los campos, se materializan con su default.
+  item.isFavorite = item.isFavorite === true;
+  item.collectionIds = toCollectionIds(item.collectionIds);
   return item;
 }
 
@@ -1396,11 +1457,15 @@ export async function getItem(mediaType, itemId) {
  * serverTimestamp y devuelve el ítem con su id.
  */
 export async function createItem(mediaType, data = {}) {
-  const { db, auth, collection, addDoc, serverTimestamp } = await import("./firebase.js");
+  const { db, auth, collection, doc, getDoc, addDoc, serverTimestamp } = await import(
+    "./firebase.js"
+  );
   const uid = requireUid(auth);
   const item = normalizeItem(mediaType, { ...(data || {}), mediaType });
   const result = validateItem(item);
   if (!result.valid) throw validationError(result.errors);
+  // §4.1 «Reglas»: los collectionIds deben existir.
+  await assertCollectionsExist(uid, item.collectionIds, { db, doc, getDoc });
   const payload = {
     ...item,
     createdAt: serverTimestamp(),
@@ -1427,6 +1492,13 @@ export async function updateItem(mediaType, itemId, patch = {}) {
   const item = normalizeItem(mediaType, merged);
   const result = validateItem(item);
   if (!result.valid) throw validationError(result.errors);
+  // §4.1 «Reglas»: solo se comprueban los ids de colección NUEVOS (los ya
+  // presentes no bloquean una edición por un id obsoleto).
+  await assertCollectionsExist(
+    uid,
+    newCollectionIds(current.collectionIds, item.collectionIds),
+    { db, doc, getDoc },
+  );
   const payload = buildUpdatePayload(current, item);
   payload.updatedAt = serverTimestamp();
   await updateDoc(ref, payload);
@@ -1546,4 +1618,914 @@ export async function updateItemMetadata(mediaType, itemId, metadata, source) {
   await updateDoc(ref, payload);
   const updated = await getDoc(ref);
   return docToItem(updated);
+}
+
+// =============================================================
+// 11. FAVORITOS, CAPÍTULOS FAVORITOS Y COLECCIONES (spec 004)
+//
+//  DB-001 → `isFavorite` + `collectionIds` en CatalogItem (integrados en
+//           validateItem / normalizeItem / docToItem, más abajo).
+//  DB-002 → FavoriteChapter  → users/{uid}/chapters/{chapterId}
+//  DB-003 → UserCollection   → users/{uid}/collections/{collectionId}
+//
+//  REQ-001 (toggle de favorito), REQ-002 (capítulos favoritos),
+//  REQ-006 (colecciones), REQ-007 (pertenencia), REQ-012 (paginación),
+//  AC-001, AC-002, AC-005, AC-006, AC-007, AC-009, AC-014.
+//
+//  11.1 PARTE PURA (sin red): validación/normalización de capítulos
+//       favoritos y colecciones + estadísticas de favoritos (AC-005).
+//  11.2 STORE (Firestore): favoritos de ítems, CRUD de capítulos y
+//       colecciones, pertenencia a colecciones y borrado de colección con
+//       desvinculación best-effort (AC-009). Import DINÁMICO de
+//       "./firebase.js" (el módulo sigue siendo importable en Node sin red).
+// =============================================================
+
+// -------------------------------------------------------------
+// 11.1 Constantes y helpers (DB-002, DB-003, AC-005)
+// -------------------------------------------------------------
+
+/**
+ * Tipos de medio admitidos como padre de un capítulo favorito (DB-002).
+ * El catálogo NO tiene podcasts (spec 002 los eliminó), así que el enum
+ * efectivo es series|anime|book (tasks.md «Residuo 1»).
+ */
+export const CHAPTER_PARENT_MEDIA_TYPES = Object.freeze(["series", "anime", "book"]);
+
+/** Máximo de colecciones por ítem o capítulo (DB-001, DB-002). */
+export const MAX_COLLECTIONS_PER_TARGET = 20;
+
+/** Máximo de favoritos recientes que muestra el dashboard (AC-005). */
+export const RECENT_FAVORITES_LIMIT = 5;
+
+/** Colección Firestore de los capítulos favoritos (DB-002). */
+const CHAPTERS_COLLECTION = "chapters";
+
+/** Colección Firestore de las colecciones propias (DB-003). */
+const COLLECTIONS_COLLECTION = "collections";
+
+/** ¿Es un tipo de medio válido como padre de un capítulo favorito? */
+export function isChapterParentMediaType(value) {
+  return typeof value === "string" && CHAPTER_PARENT_MEDIA_TYPES.includes(value);
+}
+
+// -------------------------------------------------------------
+// 11.2 Capítulos favoritos — parte pura (DB-002, REQ-002)
+// -------------------------------------------------------------
+
+/**
+ * Valida un capítulo/episodio favorito (DB-002, REQ-002, AC-002):
+ *  - `parentMediaType`: enum obligatorio (series|anime|book);
+ *  - `parentItemId`: obligatorio;
+ *  - `season` / `episode`: opcionales, ≥1;
+ *  - `title`: obligatorio, 1-200;
+ *  - `notes`: opcional, ≤500;
+ *  - `rating`: opcional, entero 1-10;
+ *  - `watchCount`: opcional, ≥0 (default 0);
+ *  - `isFavorite`: booleano (default true);
+ *  - `collectionIds`: string[] ≤20 sin duplicados.
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function validateFavoriteChapter(chapter) {
+  const errors = [];
+  if (!chapter || typeof chapter !== "object" || Array.isArray(chapter)) {
+    return { valid: false, errors: ["El capítulo favorito debe ser un objeto."] };
+  }
+
+  // parentMediaType (DB-002): enum obligatorio.
+  if (typeof chapter.parentMediaType !== "string" || chapter.parentMediaType.trim().length === 0) {
+    errors.push("El tipo de medio padre (parentMediaType) es obligatorio.");
+  } else if (!isChapterParentMediaType(chapter.parentMediaType)) {
+    errors.push(
+      `parentMediaType inválido: "${chapter.parentMediaType}". Valores permitidos: ${CHAPTER_PARENT_MEDIA_TYPES.join(", ")}.`,
+    );
+  }
+
+  // parentItemId (DB-002): obligatorio.
+  if (typeof chapter.parentItemId !== "string" || chapter.parentItemId.trim().length === 0) {
+    errors.push("El ítem padre (parentItemId) es obligatorio.");
+  }
+
+  // season / episode (DB-002): opcionales, ≥1.
+  for (const field of ["season", "episode"]) {
+    const value = chapter[field];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      errors.push(`El campo ${field} debe ser un número.`);
+    } else if (value < LIMITS.EPISODE_MIN) {
+      errors.push(`El campo ${field} debe ser mayor o igual que ${LIMITS.EPISODE_MIN}.`);
+    }
+  }
+
+  // title (DB-002): obligatorio, 1-200.
+  if (typeof chapter.title !== "string" || chapter.title.trim().length === 0) {
+    errors.push("El título es obligatorio.");
+  } else if (chapter.title.length > LIMITS.TITLE_MAX) {
+    errors.push(`El título no puede superar los ${LIMITS.TITLE_MAX} caracteres.`);
+  }
+
+  // notes (DB-002): opcional, ≤500.
+  if (chapter.notes !== undefined && chapter.notes !== null) {
+    if (typeof chapter.notes !== "string") {
+      errors.push("Las notas deben ser texto.");
+    } else if (chapter.notes.length > LIMITS.NOTE_MAX) {
+      errors.push(`Las notas no pueden superar los ${LIMITS.NOTE_MAX} caracteres.`);
+    }
+  }
+
+  // rating (DB-002): entero 1-10, opcional.
+  if (chapter.rating !== undefined && chapter.rating !== null) {
+    if (typeof chapter.rating !== "number" || !Number.isInteger(chapter.rating)) {
+      errors.push("La valoración debe ser un número entero.");
+    } else if (chapter.rating < LIMITS.RATING_MIN || chapter.rating > LIMITS.RATING_MAX) {
+      errors.push(
+        `La valoración debe estar entre ${LIMITS.RATING_MIN} y ${LIMITS.RATING_MAX}.`,
+      );
+    }
+  }
+
+  // watchCount (DB-002): ≥0.
+  if (chapter.watchCount !== undefined && chapter.watchCount !== null) {
+    if (typeof chapter.watchCount !== "number" || !Number.isFinite(chapter.watchCount)) {
+      errors.push("El contador de visionados debe ser un número.");
+    } else if (chapter.watchCount < 0) {
+      errors.push("El contador de visionados no puede ser negativo.");
+    }
+  }
+
+  // isFavorite (DB-002): booleano (default true).
+  if (
+    chapter.isFavorite !== undefined &&
+    chapter.isFavorite !== null &&
+    typeof chapter.isFavorite !== "boolean"
+  ) {
+    errors.push("El campo isFavorite debe ser booleano.");
+  }
+
+  // collectionIds (DB-001, DB-002): string[] ≤20 sin duplicados.
+  collectCollectionIdsErrors(chapter.collectionIds, errors);
+
+  return { valid: errors.length === 0, errors };
+}
+
+/** Atajo booleano de validateFavoriteChapter(). */
+export function isValidFavoriteChapter(chapter) {
+  return validateFavoriteChapter(chapter).valid;
+}
+
+/**
+ * Normaliza un capítulo favorito (DB-002): recorta textos, convierte
+ * números y aplica los defaults (watchCount 0, isFavorite true,
+ * collectionIds []). Los campos opcionales ausentes → null.
+ * No muta el objeto recibido.
+ */
+export function normalizeFavoriteChapter(data = {}) {
+  const src =
+    data && typeof data === "object" && !Array.isArray(data) ? data : {};
+  const watchCount = toNumber(src.watchCount);
+  return {
+    parentMediaType:
+      typeof src.parentMediaType === "string" ? src.parentMediaType.trim() : null,
+    parentItemId:
+      typeof src.parentItemId === "string" ? src.parentItemId.trim() || null : null,
+    season: toNumber(src.season),
+    episode: toNumber(src.episode),
+    title: typeof src.title === "string" ? src.title.trim() : "",
+    notes: typeof src.notes === "string" ? src.notes.trim() || null : null,
+    rating: toNumber(src.rating),
+    watchCount: watchCount === null ? 0 : watchCount,
+    isFavorite:
+      src.isFavorite === undefined || src.isFavorite === null ? true : src.isFavorite,
+    collectionIds: toCollectionIds(src.collectionIds),
+  };
+}
+
+// -------------------------------------------------------------
+// 11.3 Colecciones propias — parte pura (DB-003, REQ-006)
+// -------------------------------------------------------------
+
+/**
+ * Valida una colección propia (DB-003, REQ-006, AC-006):
+ *  - `name`: obligatorio, 1-60;
+ *  - `description`: opcional, ≤300;
+ *  - `color`: opcional, `#RRGGBB` (hex) o null.
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function validateCollection(collection) {
+  const errors = [];
+  if (!collection || typeof collection !== "object" || Array.isArray(collection)) {
+    return { valid: false, errors: ["La colección debe ser un objeto."] };
+  }
+
+  // name (DB-003): obligatorio, 1-60.
+  if (typeof collection.name !== "string" || collection.name.trim().length === 0) {
+    errors.push("El nombre de la colección es obligatorio.");
+  } else if (collection.name.length > LIMITS.COLLECTION_NAME_MAX) {
+    errors.push(
+      `El nombre no puede superar los ${LIMITS.COLLECTION_NAME_MAX} caracteres.`,
+    );
+  }
+
+  // description (DB-003): opcional, ≤300.
+  if (collection.description !== undefined && collection.description !== null) {
+    if (typeof collection.description !== "string") {
+      errors.push("La descripción debe ser texto.");
+    } else if (collection.description.length > LIMITS.COLLECTION_DESCRIPTION_MAX) {
+      errors.push(
+        `La descripción no puede superar los ${LIMITS.COLLECTION_DESCRIPTION_MAX} caracteres.`,
+      );
+    }
+  }
+
+  // color (DB-003): `#RRGGBB` o null.
+  if (collection.color !== undefined && collection.color !== null) {
+    if (typeof collection.color !== "string") {
+      errors.push("El color debe ser texto.");
+    } else if (!/^#[0-9a-fA-F]{6}$/.test(collection.color.trim())) {
+      errors.push("El color debe tener el formato #RRGGBB.");
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/** Atajo booleano de validateCollection(). */
+export function isValidCollection(collection) {
+  return validateCollection(collection).valid;
+}
+
+/**
+ * Normaliza una colección propia (DB-003): recorta textos y serializa
+ * como `null` los campos opcionales ausentes. No muta el objeto recibido.
+ */
+export function normalizeCollection(data = {}) {
+  const src =
+    data && typeof data === "object" && !Array.isArray(data) ? data : {};
+  return {
+    name: typeof src.name === "string" ? src.name.trim() : "",
+    description:
+      typeof src.description === "string" ? src.description.trim() || null : null,
+    color: typeof src.color === "string" ? src.color.trim() || null : null,
+  };
+}
+
+// -------------------------------------------------------------
+// 11.4 Estadísticas de favoritos — parte pura (REQ-005, AC-005)
+// -------------------------------------------------------------
+
+/**
+ * Calcula las estadísticas de favoritos del dashboard (REQ-005, AC-005).
+ * Función PURA: no toca Firestore ni el DOM.
+ * @param {object[]} favoriteItems ítems con `isFavorite` (materializados)
+ * @param {object[]} favoriteChapters capítulos favoritos (materializados)
+ * @returns {{ count: number, recent: object[] }}
+ *   `count` = total de favoritos; `recent` = hasta 5 entradas mezcladas
+ *   ordenadas por `updatedAt` desc y, en empate, por `createdAt` desc.
+ *   Cada entrada: `{ kind, mediaType, id, title, posterUrl?, parentItemId? }`.
+ */
+export function computeFavoritesStats(favoriteItems = [], favoriteChapters = []) {
+  const items = Array.isArray(favoriteItems)
+    ? favoriteItems.filter((entry) => entry && typeof entry === "object")
+    : [];
+  const chapters = Array.isArray(favoriteChapters)
+    ? favoriteChapters.filter((entry) => entry && typeof entry === "object")
+    : [];
+
+  const entries = [];
+  for (const item of items) {
+    const entry = {
+      kind: "item",
+      mediaType: item.mediaType ?? null,
+      id: item.id ?? null,
+      title: item.title ?? "",
+    };
+    if (typeof item.posterUrl === "string" && item.posterUrl.trim().length > 0) {
+      entry.posterUrl = item.posterUrl;
+    }
+    entries.push({ entry, source: item });
+  }
+  for (const chapter of chapters) {
+    const entry = {
+      kind: "chapter",
+      mediaType: chapter.parentMediaType ?? null,
+      id: chapter.id ?? null,
+      title: chapter.title ?? "",
+    };
+    if (typeof chapter.parentItemId === "string" && chapter.parentItemId.length > 0) {
+      entry.parentItemId = chapter.parentItemId;
+    }
+    entries.push({ entry, source: chapter });
+  }
+
+  entries.sort((a, b) => {
+    const byUpdatedAt = toMillis(b.source.updatedAt) - toMillis(a.source.updatedAt);
+    if (byUpdatedAt !== 0) return byUpdatedAt;
+    return toMillis(b.source.createdAt) - toMillis(a.source.createdAt);
+  });
+
+  return {
+    count: entries.length,
+    recent: entries.slice(0, RECENT_FAVORITES_LIMIT).map((entry) => entry.entry),
+  };
+}
+
+// -------------------------------------------------------------
+// 11.5 STORE — favoritos de ítems (REQ-001, AC-001)
+// -------------------------------------------------------------
+
+/**
+ * Marca / desmarca un ítem como favorito (REQ-001, AC-001, DB-001):
+ * escribe `isFavorite`, refresca `updatedAt` y devuelve el ítem
+ * materializado (docToItem).
+ * @returns {Promise<object>} el ítem materializado
+ */
+export async function setItemFavorite(mediaType, itemId, isFavorite) {
+  if (typeof isFavorite !== "boolean") {
+    throw new Error("El valor de isFavorite debe ser booleano.");
+  }
+  const { db, auth, doc, getDoc, updateDoc, serverTimestamp } = await import(
+    "./firebase.js"
+  );
+  const uid = requireUid(auth);
+  const ref = doc(db, "users", uid, collectionNameFor(mediaType), itemId);
+  const snapshot = await getDoc(ref);
+  if (!snapshot.exists()) throw new Error("El ítem no existe.");
+  await updateDoc(ref, { isFavorite, updatedAt: serverTimestamp() });
+  const updated = await getDoc(ref);
+  return docToItem(updated);
+}
+
+/**
+ * Alterna el favorito de un ítem (REQ-001, AC-001): lee el estado actual,
+ * lo invierte, refresca `updatedAt` y devuelve el ítem materializado.
+ * @returns {Promise<object>} el ítem materializado
+ */
+export async function toggleItemFavorite(mediaType, itemId) {
+  const { db, auth, doc, getDoc, updateDoc, serverTimestamp } = await import(
+    "./firebase.js"
+  );
+  const uid = requireUid(auth);
+  const ref = doc(db, "users", uid, collectionNameFor(mediaType), itemId);
+  const snapshot = await getDoc(ref);
+  if (!snapshot.exists()) throw new Error("El ítem no existe.");
+  const current = docToItem(snapshot);
+  const isFavorite = current.isFavorite !== true;
+  await updateDoc(ref, { isFavorite, updatedAt: serverTimestamp() });
+  const updated = await getDoc(ref);
+  return docToItem(updated);
+}
+
+// -------------------------------------------------------------
+// 11.6 STORE — capítulos favoritos (DB-002, REQ-002, AC-002, AC-014)
+// -------------------------------------------------------------
+
+/**
+ * Materializa un documento de capítulo favorito: convierte `createdAt` y
+ * `updatedAt` a `Date` (tsToDate) y aplica los defaults de DB-002.
+ * No muta el documento original.
+ */
+export function docToChapter(snapshot) {
+  const data = snapshot.data() || {};
+  const chapter = { id: snapshot.id, ...data };
+  chapter.createdAt = tsToDate(chapter.createdAt);
+  chapter.updatedAt = tsToDate(chapter.updatedAt);
+  chapter.isFavorite = chapter.isFavorite !== false;
+  chapter.watchCount =
+    typeof chapter.watchCount === "number" && Number.isFinite(chapter.watchCount)
+      ? chapter.watchCount
+      : 0;
+  chapter.collectionIds = toCollectionIds(chapter.collectionIds);
+  return chapter;
+}
+
+/**
+ * Lista los capítulos favoritos (DB-002, REQ-012): orderBy("updatedAt",
+ * "desc") + limit(100) y cursor opcional `startAfter`.
+ * @returns {Promise<{items: object[], chapters: object[], lastDoc: object|null, hasMore: boolean}>}
+ */
+export async function listChapters(options = {}) {
+  const { limitCount = DEFAULT_PAGE_SIZE, startAfter: cursor = null } = options || {};
+  const { db, auth, collection, getDocs, query, orderBy, limit, startAfter } =
+    await import("./firebase.js");
+  const uid = requireUid(auth);
+  const chaptersRef = collection(db, "users", uid, CHAPTERS_COLLECTION);
+  const constraints = [orderBy("updatedAt", "desc")];
+  if (cursor) constraints.push(startAfter(cursor));
+  constraints.push(limit(limitCount));
+  const snapshot = await getDocs(query(chaptersRef, ...constraints));
+  const docs = snapshot?.docs || [];
+  const items = docs.map(docToChapter);
+  return {
+    items,
+    chapters: items,
+    lastDoc: docs.length > 0 ? docs[docs.length - 1] : null,
+    hasMore: docs.length >= limitCount,
+  };
+}
+
+/**
+ * Suscripción en vivo a los capítulos favoritos (DB-002, REQ-012).
+ * @param {object|Function} optionsOrCallback `{ limitCount, startAfter, onItems, onError }` o la función onItems
+ * @param {object} extraOptions opciones si el 2º parámetro es la función onItems
+ * @returns {Promise<Function>} unsubscribe
+ */
+export async function subscribeChapters(optionsOrCallback = {}, extraOptions = {}) {
+  const options =
+    typeof optionsOrCallback === "function"
+      ? { ...(extraOptions || {}), onItems: optionsOrCallback }
+      : { ...(optionsOrCallback || {}) };
+  const { limitCount = DEFAULT_PAGE_SIZE, startAfter: cursor = null, onItems, onError } =
+    options;
+  const { db, auth, collection, onSnapshot, query, orderBy, limit, startAfter } =
+    await import("./firebase.js");
+  const uid = requireUid(auth);
+  const chaptersRef = collection(db, "users", uid, CHAPTERS_COLLECTION);
+  const constraints = [orderBy("updatedAt", "desc")];
+  if (cursor) constraints.push(startAfter(cursor));
+  constraints.push(limit(limitCount));
+  const chaptersQuery = query(chaptersRef, ...constraints);
+  return onSnapshot(chaptersQuery, {
+    next: (snapshot) => {
+      const docs = snapshot?.docs || [];
+      const items = docs.map(docToChapter);
+      if (typeof onItems === "function") {
+        onItems(items, {
+          items,
+          chapters: items,
+          lastDoc: docs.length > 0 ? docs[docs.length - 1] : null,
+          hasMore: docs.length >= limitCount,
+          error: null,
+        });
+      }
+    },
+    error: (error) => {
+      if (typeof onError === "function") onError(error);
+    },
+  });
+}
+
+/**
+ * Crea un capítulo favorito (DB-002, REQ-002, AC-002): valida, comprueba
+ * que el ítem padre y las colecciones existen (§4.1 «Reglas»), guarda
+ * createdAt/updatedAt con serverTimestamp y devuelve el capítulo con su id.
+ * @returns {Promise<object>}
+ */
+export async function createChapter(data = {}) {
+  const { db, auth, collection, doc, getDoc, addDoc, serverTimestamp } =
+    await import("./firebase.js");
+  const uid = requireUid(auth);
+  const chapter = normalizeFavoriteChapter(data);
+  const result = validateFavoriteChapter(chapter);
+  if (!result.valid) throw validationError(result.errors);
+  await assertParentItemExists(uid, chapter.parentMediaType, chapter.parentItemId, {
+    db,
+    doc,
+    getDoc,
+  });
+  await assertCollectionsExist(uid, chapter.collectionIds, { db, doc, getDoc });
+  const payload = {
+    ...chapter,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const ref = await addDoc(collection(db, "users", uid, CHAPTERS_COLLECTION), payload);
+  return { id: ref.id, ...chapter };
+}
+
+/**
+ * Edita un capítulo favorito (DB-002, REQ-002): lee, fusiona el parche,
+ * normaliza, valida, refresca `updatedAt` y devuelve el capítulo.
+ * @returns {Promise<object>}
+ */
+export async function updateChapter(chapterId, patch = {}) {
+  const { db, auth, doc, getDoc, updateDoc, serverTimestamp } = await import(
+    "./firebase.js"
+  );
+  const uid = requireUid(auth);
+  const ref = doc(db, "users", uid, CHAPTERS_COLLECTION, chapterId);
+  const snapshot = await getDoc(ref);
+  if (!snapshot.exists()) throw new Error("El capítulo favorito no existe.");
+  const current = docToChapter(snapshot);
+  const merged = { ...current, ...(patch || {}) };
+  delete merged.id;
+  const chapter = normalizeFavoriteChapter(merged);
+  const result = validateFavoriteChapter(chapter);
+  if (!result.valid) throw validationError(result.errors);
+  await assertParentItemExists(uid, chapter.parentMediaType, chapter.parentItemId, {
+    db,
+    doc,
+    getDoc,
+  });
+  await assertCollectionsExist(
+    uid,
+    newCollectionIds(current.collectionIds, chapter.collectionIds),
+    { db, doc, getDoc },
+  );
+  const payload = buildUpdatePayload(current, chapter);
+  for (const key of Object.keys(payload)) {
+    if (payload[key] === null && !Object.prototype.hasOwnProperty.call(current, key)) {
+      delete payload[key];
+    }
+  }
+  payload.updatedAt = serverTimestamp();
+  await updateDoc(ref, payload);
+  return { id: chapterId, ...chapter };
+}
+
+/**
+ * Borra un capítulo favorito (DB-002, AC-014): borrarlo elimina el
+ * favorito y NO afecta al ítem padre.
+ * @returns {Promise<boolean>}
+ */
+export async function deleteChapter(chapterId) {
+  const { db, auth, doc, deleteDoc } = await import("./firebase.js");
+  const uid = requireUid(auth);
+  await deleteDoc(doc(db, "users", uid, CHAPTERS_COLLECTION, chapterId));
+  return true;
+}
+
+// -------------------------------------------------------------
+// 11.7 STORE — colecciones propias (DB-003, REQ-006, AC-006, AC-009)
+// -------------------------------------------------------------
+
+/**
+ * Materializa un documento de colección: convierte `createdAt` y
+ * `updatedAt` a `Date` (tsToDate). No muta el documento original.
+ */
+export function docToCollection(snapshot) {
+  const data = snapshot.data() || {};
+  const collection = { id: snapshot.id, ...data };
+  collection.createdAt = tsToDate(collection.createdAt);
+  collection.updatedAt = tsToDate(collection.updatedAt);
+  if (collection.description === undefined) collection.description = null;
+  if (collection.color === undefined) collection.color = null;
+  return collection;
+}
+
+/**
+ * Lista las colecciones propias (DB-003, REQ-012).
+ * @returns {Promise<{items: object[], collections: object[], lastDoc: object|null, hasMore: boolean}>}
+ */
+export async function listCollections(options = {}) {
+  const { limitCount = DEFAULT_PAGE_SIZE, startAfter: cursor = null } = options || {};
+  const { db, auth, collection, getDocs, query, orderBy, limit, startAfter } =
+    await import("./firebase.js");
+  const uid = requireUid(auth);
+  const collectionsRef = collection(db, "users", uid, COLLECTIONS_COLLECTION);
+  const constraints = [orderBy("updatedAt", "desc")];
+  if (cursor) constraints.push(startAfter(cursor));
+  constraints.push(limit(limitCount));
+  const snapshot = await getDocs(query(collectionsRef, ...constraints));
+  const docs = snapshot?.docs || [];
+  const items = docs.map(docToCollection);
+  return {
+    items,
+    collections: items,
+    lastDoc: docs.length > 0 ? docs[docs.length - 1] : null,
+    hasMore: docs.length >= limitCount,
+  };
+}
+
+/**
+ * Suscripción en vivo a las colecciones propias (DB-003, REQ-012).
+ * @param {object|Function} optionsOrCallback `{ limitCount, startAfter, onItems, onError }` o la función onItems
+ * @param {object} extraOptions opciones si el 2º parámetro es la función onItems
+ * @returns {Promise<Function>} unsubscribe
+ */
+export async function subscribeCollections(optionsOrCallback = {}, extraOptions = {}) {
+  const options =
+    typeof optionsOrCallback === "function"
+      ? { ...(extraOptions || {}), onItems: optionsOrCallback }
+      : { ...(optionsOrCallback || {}) };
+  const { limitCount = DEFAULT_PAGE_SIZE, startAfter: cursor = null, onItems, onError } =
+    options;
+  const { db, auth, collection, onSnapshot, query, orderBy, limit, startAfter } =
+    await import("./firebase.js");
+  const uid = requireUid(auth);
+  const collectionsRef = collection(db, "users", uid, COLLECTIONS_COLLECTION);
+  const constraints = [orderBy("updatedAt", "desc")];
+  if (cursor) constraints.push(startAfter(cursor));
+  constraints.push(limit(limitCount));
+  const collectionsQuery = query(collectionsRef, ...constraints);
+  return onSnapshot(collectionsQuery, {
+    next: (snapshot) => {
+      const docs = snapshot?.docs || [];
+      const items = docs.map(docToCollection);
+      if (typeof onItems === "function") {
+        onItems(items, {
+          items,
+          collections: items,
+          lastDoc: docs.length > 0 ? docs[docs.length - 1] : null,
+          hasMore: docs.length >= limitCount,
+          error: null,
+        });
+      }
+    },
+    error: (error) => {
+      if (typeof onError === "function") onError(error);
+    },
+  });
+}
+
+/**
+ * Crea una colección propia (DB-003, REQ-006, AC-006): valida, guarda
+ * createdAt/updatedAt con serverTimestamp y devuelve la colección con su id.
+ * @returns {Promise<object>}
+ */
+export async function createCollection(data = {}) {
+  const { db, auth, collection, addDoc, serverTimestamp } = await import(
+    "./firebase.js"
+  );
+  const uid = requireUid(auth);
+  const entity = normalizeCollection(data);
+  const result = validateCollection(entity);
+  if (!result.valid) throw validationError(result.errors);
+  const payload = {
+    ...entity,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const ref = await addDoc(collection(db, "users", uid, COLLECTIONS_COLLECTION), payload);
+  return { id: ref.id, ...entity };
+}
+
+/**
+ * Edita una colección propia (DB-003, REQ-006, AC-006): lee, fusiona el
+ * parche, normaliza, valida, refresca `updatedAt` y la devuelve.
+ * @returns {Promise<object>}
+ */
+export async function updateCollection(collectionId, patch = {}) {
+  const { db, auth, doc, getDoc, updateDoc, serverTimestamp } = await import(
+    "./firebase.js"
+  );
+  const uid = requireUid(auth);
+  const ref = doc(db, "users", uid, COLLECTIONS_COLLECTION, collectionId);
+  const snapshot = await getDoc(ref);
+  if (!snapshot.exists()) throw new Error("La colección no existe.");
+  const current = docToCollection(snapshot);
+  const merged = { ...current, ...(patch || {}) };
+  delete merged.id;
+  const entity = normalizeCollection(merged);
+  const result = validateCollection(entity);
+  if (!result.valid) throw validationError(result.errors);
+  const payload = buildUpdatePayload(current, entity);
+  payload.updatedAt = serverTimestamp();
+  await updateDoc(ref, payload);
+  return { id: collectionId, ...entity };
+}
+
+/**
+ * Lee los `collectionIds` actuales de un documento para el unlink
+ * best-effort (AC-009): toma los datos del snapshot de la consulta y, si el
+ * snapshot no trae el campo, refresca con `getDoc`.
+ * El unlink es read-modify-write (leer → filtrar → escribir el array
+ * completo): nunca se persiste un "sentinel" de borrado que pise el resto
+ * de ids del documento.
+ * @returns {Promise<string[]>}
+ */
+async function readCollectionIdsForUnlink(ref, docSnapshot, getDoc) {
+  const snapshotData =
+    (typeof docSnapshot?.data === "function" ? docSnapshot.data() : null) || {};
+  const snapshotIds = Array.isArray(snapshotData.collectionIds)
+    ? [...snapshotData.collectionIds]
+    : [];
+  if (snapshotIds.length > 0) return snapshotIds;
+  if (typeof getDoc !== "function") return snapshotIds;
+  try {
+    const fresh = await getDoc(ref);
+    const data = (typeof fresh?.data === "function" ? fresh.data() : null) || {};
+    return Array.isArray(data.collectionIds) ? [...data.collectionIds] : [];
+  } catch {
+    return snapshotIds;
+  }
+}
+
+/**
+ * Borra una colección y DESVINCULA (sin borrar) los ítems y capítulos que
+ * la tenían (DB-003, REQ-006, AC-009, D-004).
+ * La desvinculación es best-effort: si algún documento falla, se informa
+ * en `failures` para que la UI lo reporte y pueda reintentar.
+ * @returns {Promise<{
+ *   deleted: boolean,
+ *   unlinkedItems: number,
+ *   unlinkedChapters: number,
+ *   failures: Array<{ kind: string, id: string, error: Error }>
+ * }>}
+ */
+export async function deleteCollection(collectionId) {
+  const { db, auth, collection, doc, getDoc, getDocs, query, updateDoc, deleteDoc, serverTimestamp } =
+    await import("./firebase.js");
+  const uid = requireUid(auth);
+  const failures = [];
+  let unlinkedItems = 0;
+  let unlinkedChapters = 0;
+
+  // Ítems de las 5 colecciones de tipo (movies, series, games, books, anime).
+  for (const mediaType of MEDIA_TYPES) {
+    const collectionName = TYPE_TO_COLLECTION[mediaType];
+    let docs = [];
+    try {
+      const snapshot = await getDocs(query(collection(db, "users", uid, collectionName)));
+      docs = snapshot?.docs || [];
+    } catch (error) {
+      failures.push({ kind: "item", id: mediaType, scope: "collection", error });
+      continue;
+    }
+    for (const docSnapshot of docs) {
+      const ref = doc(db, "users", uid, collectionName, docSnapshot.id);
+      const ids = await readCollectionIdsForUnlink(ref, docSnapshot, getDoc);
+      if (!ids.includes(collectionId)) continue;
+      try {
+        await updateDoc(ref, {
+          collectionIds: ids.filter((id) => id !== collectionId),
+          updatedAt: serverTimestamp(),
+        });
+        unlinkedItems += 1;
+      } catch (error) {
+        failures.push({ kind: "item", id: docSnapshot.id, mediaType, error });
+      }
+    }
+  }
+
+  // Capítulos favoritos.
+  try {
+    const snapshot = await getDocs(query(collection(db, "users", uid, CHAPTERS_COLLECTION)));
+    const docs = snapshot?.docs || [];
+    for (const docSnapshot of docs) {
+      const ref = doc(db, "users", uid, CHAPTERS_COLLECTION, docSnapshot.id);
+      const ids = await readCollectionIdsForUnlink(ref, docSnapshot, getDoc);
+      if (!ids.includes(collectionId)) continue;
+      try {
+        await updateDoc(ref, {
+          collectionIds: ids.filter((id) => id !== collectionId),
+          updatedAt: serverTimestamp(),
+        });
+        unlinkedChapters += 1;
+      } catch (error) {
+        failures.push({ kind: "chapter", id: docSnapshot.id, error });
+      }
+    }
+  } catch (error) {
+    failures.push({ kind: "chapter", id: CHAPTERS_COLLECTION, scope: "collection", error });
+  }
+
+  await deleteDoc(doc(db, "users", uid, COLLECTIONS_COLLECTION, collectionId));
+  return { deleted: true, unlinkedItems, unlinkedChapters, failures };
+}
+
+// -------------------------------------------------------------
+// 11.8 STORE — pertenencia a colecciones (REQ-007, AC-007)
+// -------------------------------------------------------------
+
+/**
+ * Añade un objetivo (ítem o capítulo favorito) a una colección
+ * (REQ-007, AC-007): deduplica, respeta el límite de 20 colecciones,
+ * refresca `updatedAt` y devuelve el objetivo ya actualizado.
+ * @param {"item"|"chapter"} kind
+ * @param {string} id id del ítem o del capítulo
+ * @param {string} collectionId id de la colección
+ * @param {string} [mediaType] obligatorio si `kind` es "item"
+ * @returns {Promise<object>} el objetivo materializado y actualizado
+ */
+export async function addTargetToCollection(kind, id, collectionId, mediaType) {
+  const targetId = assertTargetId(kind, id, mediaType);
+  const collectionRef = assertCollectionId(collectionId);
+  const { db, auth, doc, getDoc, updateDoc, serverTimestamp } = await import(
+    "./firebase.js"
+  );
+  const uid = requireUid(auth);
+  const isItem = kind === "item";
+  const ref = isItem
+    ? doc(db, "users", uid, collectionNameFor(mediaType), targetId)
+    : doc(db, "users", uid, CHAPTERS_COLLECTION, targetId);
+  const snapshot = await getDoc(ref);
+  if (!snapshot.exists()) {
+    throw new Error(isItem ? "El ítem no existe." : "El capítulo favorito no existe.");
+  }
+  const current = isItem ? docToItem(snapshot) : docToChapter(snapshot);
+  const currentIds = toCollectionIds(current.collectionIds);
+  const nextIds = currentIds.includes(collectionRef)
+    ? currentIds.slice()
+    : [...currentIds, collectionRef];
+  if (nextIds.length > MAX_COLLECTIONS_PER_TARGET) {
+    throw validationError([
+      `No se pueden guardar más de ${MAX_COLLECTIONS_PER_TARGET} colecciones.`,
+    ]);
+  }
+  await updateDoc(ref, { collectionIds: nextIds, updatedAt: serverTimestamp() });
+  const updated = await getDoc(ref);
+  return isItem ? docToItem(updated) : docToChapter(updated);
+}
+
+/**
+ * Quita un objetivo (ítem o capítulo favorito) de una colección
+ * (REQ-007, AC-007): actualiza `collectionIds`, refresca `updatedAt` y
+ * devuelve el objetivo ya actualizado.
+ * @param {"item"|"chapter"} kind
+ * @param {string} id id del ítem o del capítulo
+ * @param {string} collectionId id de la colección
+ * @param {string} [mediaType] obligatorio si `kind` es "item"
+ * @returns {Promise<object>} el objetivo materializado y actualizado
+ */
+export async function removeTargetFromCollection(kind, id, collectionId, mediaType) {
+  const targetId = assertTargetId(kind, id, mediaType);
+  const collectionRef = assertCollectionId(collectionId);
+  const { db, auth, doc, getDoc, updateDoc, serverTimestamp } = await import(
+    "./firebase.js"
+  );
+  const uid = requireUid(auth);
+  const isItem = kind === "item";
+  const ref = isItem
+    ? doc(db, "users", uid, collectionNameFor(mediaType), targetId)
+    : doc(db, "users", uid, CHAPTERS_COLLECTION, targetId);
+  const snapshot = await getDoc(ref);
+  if (!snapshot.exists()) {
+    throw new Error(isItem ? "El ítem no existe." : "El capítulo favorito no existe.");
+  }
+  const current = isItem ? docToItem(snapshot) : docToChapter(snapshot);
+  const nextIds = toCollectionIds(current.collectionIds).filter(
+    (entry) => entry !== collectionRef,
+  );
+  await updateDoc(ref, { collectionIds: nextIds, updatedAt: serverTimestamp() });
+  const updated = await getDoc(ref);
+  return isItem ? docToItem(updated) : docToChapter(updated);
+}
+
+/** Alias de addTargetToCollection() (tasks.md T-003). */
+export function addToCollection(kind, id, collectionId, mediaType) {
+  return addTargetToCollection(kind, id, collectionId, mediaType);
+}
+
+/** Alias de removeTargetFromCollection() (tasks.md T-003). */
+export function removeFromCollection(kind, id, collectionId, mediaType) {
+  return removeTargetFromCollection(kind, id, collectionId, mediaType);
+}
+
+// -------------------------------------------------------------
+// 11.9 Helpers internos del store de favoritos/colecciones
+// -------------------------------------------------------------
+
+/** Valida el `kind` del objetivo y devuelve su id normalizado. */
+function assertTargetId(kind, id, mediaType) {
+  if (kind !== "item" && kind !== "chapter") {
+    throw new Error(`Tipo de objetivo no válido: "${kind}". Valores permitidos: item, chapter.`);
+  }
+  if (typeof id !== "string" || id.trim().length === 0) {
+    throw new Error("El id del objetivo es obligatorio.");
+  }
+  if (kind === "item") {
+    if (!mediaType) {
+      throw new Error("Se necesita el mediaType del ítem para gestionarlo en colecciones.");
+    }
+    collectionNameFor(mediaType); // valida el tipo (lanza si no es válido)
+  }
+  return id.trim();
+}
+
+/** Valida el id de la colección y lo devuelve normalizado. */
+function assertCollectionId(collectionId) {
+  if (typeof collectionId !== "string" || collectionId.trim().length === 0) {
+    throw new Error("El id de la colección es obligatorio.");
+  }
+  return collectionId.trim();
+}
+
+/** Ids de colección NUEVOS (los que no estaban antes) — §4.1 «Reglas». */
+function newCollectionIds(currentIds, nextIds) {
+  const current = toCollectionIds(currentIds);
+  return toCollectionIds(nextIds).filter((entry) => !current.includes(entry));
+}
+
+/**
+ * Comprueba que el ítem padre de un capítulo exista (§4.1 «Reglas»:
+ * «parentItemId inexistente» bloquea la escritura).
+ */
+async function assertParentItemExists(uid, parentMediaType, parentItemId, fb) {
+  if (!isChapterParentMediaType(parentMediaType) || !parentItemId) return;
+  const { db, doc, getDoc } = fb;
+  const snapshot = await getDoc(
+    doc(db, "users", uid, TYPE_TO_COLLECTION[parentMediaType], parentItemId),
+  );
+  const exists = typeof snapshot?.exists === "function" ? snapshot.exists() : false;
+  if (!exists) {
+    throw validationError([`El ítem padre "${parentItemId}" no existe.`]);
+  }
+}
+
+/**
+ * Comprueba que las colecciones referenciadas existan (§4.1 «Reglas»:
+ * «collectionIds con ... id inexistente» bloquea la escritura).
+ */
+async function assertCollectionsExist(uid, collectionIds, fb) {
+  const ids = toCollectionIds(collectionIds);
+  if (ids.length === 0) return;
+  const { db, doc, getDoc } = fb;
+  const missing = [];
+  for (const id of ids) {
+    const snapshot = await getDoc(doc(db, "users", uid, COLLECTIONS_COLLECTION, id));
+    const exists = typeof snapshot?.exists === "function" ? snapshot.exists() : false;
+    if (!exists) missing.push(id);
+  }
+  if (missing.length > 0) {
+    throw validationError([`No existen las colecciones: ${missing.join(", ")}.`]);
+  }
 }
