@@ -5,6 +5,9 @@
 //           Persistencia de denied, botones Entrar/Salir/Volver.
 // Spec 002: pestañas por tipo, lista de tarjetas, filtro/orden en
 //           cliente, cambio de estado y borrado.
+// T-112: orquestación de las 6 vistas de la serie 00-05 desde el nav
+//        principal (00 §2, 02 UI-02/03, 04 UI-20, 05 UI-30).
+//        Todos los textos de UI están en español (REQ-C5).
 // =============================================================
 
 import { login, logout, watchAuthState } from "./firebase.js";
@@ -86,7 +89,215 @@ const btnBack = document.getElementById("btn-back");
 // el logout() automático dispare watchAuthState con null (esc. 3).
 let deniedAccess = false;
 
+// =============================================================
+// T-112 — Navegación principal (00 §2, 02 UI-02/03, 04 UI-20,
+// 05 UI-30, REQ-C5)
+//
+// `index.html` es el app shell y `js/app.js` orquesta las vistas
+// (00 §2). El nav principal expone las 6 vistas de la serie 00-05:
+// Catálogo, Búsqueda, Perfil, Colecciones, Dashboard y
+// Recomendaciones. Cada pestaña del nav tiene su propio contenedor
+// (`#view-*` en index.html). Las pestañas cuya vista todavía no tiene
+// contenido propio (Búsqueda → 02 UI-03 y Recomendaciones → 05 UI-30)
+// quedan `aria-disabled="true"` y no navegan.
+// =============================================================
+
+/** Claves de las vistas de la app, en el orden del nav (REQ-C5). */
+const APP_VIEW_KEYS = Object.freeze([
+  "catalog",
+  "search",
+  "profile",
+  "collections",
+  "dashboard",
+  "recommendations",
+]);
+
+/**
+ * Vistas sin contenido propio implementado todavía: Búsqueda
+ * (02 UI-03, T-115) y Recomendaciones (05 UI-30, T-120).
+ * Su pestaña permanece `aria-disabled="true"`.
+ */
+const APP_VIEW_PENDING = Object.freeze(["search", "recommendations"]);
+
+/** Vista inicial del nav: Dashboard (spec 003, AC-001). */
+const DEFAULT_APP_VIEW = "dashboard";
+
+/** Contenedores de las vistas (uno por pestaña del nav). */
+const appViews = {
+  catalog: document.getElementById("view-catalog"),
+  search: document.getElementById("view-search"),
+  profile: document.getElementById("view-profile"),
+  collections: document.getElementById("view-collections"),
+  dashboard: document.getElementById("view-dashboard"),
+  recommendations: document.getElementById("view-recommendations"),
+};
+
+/** Contenedor del nav principal (`role="tablist"`). */
+const navTabsContainer = document.getElementById("app-nav-tabs");
+
+/** Vista del nav activa. */
+let activeAppView = DEFAULT_APP_VIEW;
+
+/** Tipo de media suscrito actualmente en el catálogo. */
+let subscribedMediaType = null;
+
+/** ¿La vista tiene contenedor y contenido propio disponible? */
+function isAppViewAvailable(key) {
+  return Boolean(appViews[key]) && !APP_VIEW_PENDING.includes(key);
+}
+
+/**
+ * Muestra una vista de la app: oculta el resto de contenedores,
+ * sincroniza el ARIA del nav y carga el contenido de la vista.
+ * @param {string} key Clave de `APP_VIEW_KEYS`.
+ * @returns {boolean} `true` si la vista existe y se ha mostrado.
+ */
+function showAppView(key) {
+  if (!APP_VIEW_KEYS.includes(key) || !appViews[key]) return false;
+
+  activeAppView = key;
+  Object.entries(appViews).forEach(([viewKey, element]) => {
+    if (element) element.hidden = viewKey !== key;
+  });
+
+  syncNavTabs();
+  activateAppViewContent(key);
+  return true;
+}
+
+/**
+ * Carga y muestra el contenido que corresponde a la vista activa.
+ * Cada vista cancela las suscripciones de las demás para no dejar
+ * listeners huérfanos (mismo criterio que las pestañas del catálogo).
+ */
+function activateAppViewContent(key) {
+  hideAllPanels();
+
+  switch (key) {
+    case "catalog":
+      showPanel("catalog-panel");
+      dashboardUnsubscribeAll();
+      favoritesUnsubscribeAll();
+      collectionsUnsubscribeAll();
+      if (subscribedMediaType !== activeMediaType) {
+        subscribeToCurrentTab();
+      }
+      break;
+    case "profile":
+      showPanel("favorites-panel");
+      catalogUnsubscribe();
+      dashboardUnsubscribeAll();
+      collectionsUnsubscribeAll();
+      subscribeToFavorites();
+      break;
+    case "collections":
+      showPanel("collections-panel");
+      catalogUnsubscribe();
+      dashboardUnsubscribeAll();
+      favoritesUnsubscribeAll();
+      subscribeToCollections();
+      break;
+    case "dashboard":
+      showPanel("dashboard-panel");
+      catalogUnsubscribe();
+      favoritesUnsubscribeAll();
+      collectionsUnsubscribeAll();
+      subscribeToDashboard();
+      break;
+    default:
+      // Búsqueda y Recomendaciones: contenido pendiente (T-115/T-120).
+      break;
+  }
+}
+
+/**
+ * Sincroniza `aria-selected`, `tabindex` y `aria-disabled` de las
+ * pestañas del nav principal.
+ */
+function syncNavTabs() {
+  if (!navTabsContainer) return;
+  const tabs = navTabsContainer.querySelectorAll('[role="tab"]');
+  tabs.forEach((tab) => {
+    const key = tab.dataset.view;
+    const isActive = key === activeAppView;
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+    tab.setAttribute("tabindex", isActive ? "0" : "-1");
+    if (isAppViewAvailable(key)) {
+      tab.removeAttribute("aria-disabled");
+    } else {
+      tab.setAttribute("aria-disabled", "true");
+    }
+  });
+}
+
+/** Navegación por teclado del nav principal (patrón ARIA tablist). */
+function handleNavKeydown(event) {
+  if (!navTabsContainer) return;
+  const enabledTabs = Array.from(
+    navTabsContainer.querySelectorAll('[role="tab"]:not([aria-disabled="true"])')
+  );
+  if (enabledTabs.length === 0) return;
+
+  const currentIndex = enabledTabs.indexOf(document.activeElement);
+  if (currentIndex === -1) return;
+
+  let newIndex = currentIndex;
+  switch (event.key) {
+    case "ArrowRight":
+    case "ArrowDown":
+      newIndex = (currentIndex + 1) % enabledTabs.length;
+      break;
+    case "ArrowLeft":
+    case "ArrowUp":
+      newIndex = (currentIndex - 1 + enabledTabs.length) % enabledTabs.length;
+      break;
+    case "Home":
+      newIndex = 0;
+      break;
+    case "End":
+      newIndex = enabledTabs.length - 1;
+      break;
+    default:
+      return;
+  }
+
+  event.preventDefault();
+  const nextTab = enabledTabs[newIndex];
+  nextTab.focus();
+  showAppView(nextTab.dataset.view);
+}
+
+/** Enlaza el nav principal (una sola vez, al cargar el módulo). */
+let appNavInitialized = false;
+
+function initAppNav() {
+  if (appNavInitialized || !navTabsContainer) return;
+  appNavInitialized = true;
+
+  const tabs = navTabsContainer.querySelectorAll('[role="tab"]');
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      // Las pestañas sin vista propia no navegan (aria-disabled).
+      if (tab.getAttribute("aria-disabled") === "true") return;
+      showAppView(tab.dataset.view);
+    });
+  });
+  navTabsContainer.addEventListener("keydown", handleNavKeydown);
+  syncNavTabs();
+}
+
+/**
+ * Muestra una vista. Las vistas de la app (Catálogo, Búsqueda, Perfil,
+ * Colecciones, Dashboard y Recomendaciones) se delegan en
+ * `showAppView()`; loading/login/allowed/denied conservan el
+ * comportamiento original (spec 001).
+ * @param {string} name Nombre de la vista.
+ */
 function show(name) {
+  if (APP_VIEW_KEYS.includes(name)) {
+    showAppView(name);
+    return;
+  }
   Object.entries(views).forEach(([key, view]) => {
     view.hidden = key !== name;
   });
@@ -159,7 +370,9 @@ watchAuthState(async (user) => {
 const DASHBOARD_KEY = "dashboard";
 const FAVORITES_KEY = "favorites";
 const COLLECTIONS_KEY = "collections";
-let activeMediaType = DASHBOARD_KEY;
+// La pestaña interna inicial es el primer tipo de catálogo; la vista
+// inicial del nav principal es el Dashboard (spec 003, AC-001).
+let activeMediaType = MEDIA_TYPES[0];
 let currentItems = [];
 let unsubscribeFn = null;
 let catalogInitialized = false;
@@ -211,7 +424,6 @@ function escapeHtml(value) {
 
 // --- Referencias DOM ----------------------------------------
 const tabsContainer = document.getElementById("catalog-tabs");
-const panel = document.getElementById("catalog-panel");
 const filterStatusEl = document.getElementById("catalog-filter-status");
 const filterRatingEl = document.getElementById("catalog-filter-rating");
 const filterYearEl = document.getElementById("catalog-filter-year");
@@ -225,7 +437,6 @@ const loadMoreWrapEl = document.getElementById("catalog-load-more-wrap");
 const btnLoadMore = document.getElementById("btn-load-more");
 
 // Dashboard DOM (spec 003)
-const dashboardPanel = document.getElementById("dashboard-panel");
 const dashboardStatsEl = document.getElementById("dashboard-stats");
 const dashboardRecentAddedEl = document.getElementById("dashboard-recent-added");
 const dashboardRecentCompletedEl = document.getElementById("dashboard-recent-completed");
@@ -237,16 +448,10 @@ const dashboardLoadingEl = document.getElementById("dashboard-loading");
 function buildTabs() {
   tabsContainer.innerHTML = "";
 
-  // Spec 004 (D-005): orden Dashboard, Favoritos, Colecciones, <5 tipos>
-  const allTabs = [DASHBOARD_KEY, FAVORITES_KEY, COLLECTIONS_KEY, ...MEDIA_TYPES];
-  const tabLabels = {
-    [DASHBOARD_KEY]: "Dashboard",
-    [FAVORITES_KEY]: "Favoritos",
-    [COLLECTIONS_KEY]: "Colecciones",
-    ...MEDIA_TYPE_LABELS,
-  };
-
-  allTabs.forEach((type) => {
+  // Spec 002 (UI-02): las pestañas internas son los tipos de catálogo.
+  // Dashboard, Favoritos y Colecciones pasan a ser vistas del nav
+  // principal (T-112), de modo que aquí sólo quedan los tipos.
+  MEDIA_TYPES.forEach((type) => {
     const tab = document.createElement("button");
     tab.type = "button";
     tab.className = "catalog__tab";
@@ -255,7 +460,7 @@ function buildTabs() {
     tab.setAttribute("tabindex", type === activeMediaType ? "0" : "-1");
     tab.id = type === activeMediaType ? "tab-active" : `tab-${type}`;
     tab.setAttribute("aria-controls", getPanelIdForTab(type));
-    tab.textContent = tabLabels[type];
+    tab.textContent = MEDIA_TYPE_LABELS[type];
     tab.dataset.mediaType = type;
     tab.addEventListener("click", () => switchTab(type));
     tabsContainer.appendChild(tab);
@@ -347,8 +552,22 @@ function handleTabsKeydown(event) {
 // --- Cambio de pestaña --------------------------------------
 
 function switchTab(mediaType) {
-  const validTabs = [DASHBOARD_KEY, FAVORITES_KEY, COLLECTIONS_KEY, ...MEDIA_TYPES];
-  if (!validTabs.includes(mediaType) || mediaType === activeMediaType) return;
+  // Las claves heredadas (Dashboard/Favoritos/Colecciones) son ahora
+  // vistas del nav principal (T-112).
+  if (mediaType === DASHBOARD_KEY) {
+    showAppView("dashboard");
+    return;
+  }
+  if (mediaType === FAVORITES_KEY) {
+    showAppView("profile");
+    return;
+  }
+  if (mediaType === COLLECTIONS_KEY) {
+    showAppView("collections");
+    return;
+  }
+  if (!MEDIA_TYPES.includes(mediaType)) return;
+  if (mediaType === activeMediaType && activeAppView === "catalog") return;
   activeMediaType = mediaType;
 
   // Actualizar ARIA en pestañas (LOW #4: mantener id="tab-active" en la activa)
@@ -361,47 +580,24 @@ function switchTab(mediaType) {
     else if (tab.id === "tab-active") tab.id = `tab-${tab.dataset.mediaType}`;
   });
 
-  // Ocultar todos los paneles primero
-  hideAllPanels();
+  // Resetear filtros al cambiar de pestaña
+  filterStatus = "";
+  filterStatusEl.value = "";
+  filterMinRating = "";
+  filterRatingEl.value = "";
+  filterYear = "";
+  filterYearEl.value = "";
+  sortOption = DEFAULT_SORT;
+  sortEl.value = DEFAULT_SORT;
 
-  if (mediaType === DASHBOARD_KEY) {
-    // Mostrar dashboard
-    showPanel("dashboard-panel");
-    subscribeToDashboard();
-  } else if (mediaType === FAVORITES_KEY) {
-    // Mostrar favoritos
-    showPanel("favorites-panel");
-    subscribeToFavorites();
-  } else if (mediaType === COLLECTIONS_KEY) {
-    // Mostrar colecciones
-    showPanel("collections-panel");
-    subscribeToCollections();
-  } else {
-    // Mostrar catálogo por tipo
-    showPanel("catalog-panel");
-    // Cancelar suscripciones de otros paneles
-    dashboardUnsubscribeAll();
-    favoritesUnsubscribeAll();
-    collectionsUnsubscribeAll();
+  // Resetear paginación
+  paginationHasMore = false;
+  paginationLastDoc = null;
+  updateLoadMoreVisibility();
 
-    // Resetear filtros al cambiar de pestaña
-    filterStatus = "";
-    filterStatusEl.value = "";
-    filterMinRating = "";
-    filterRatingEl.value = "";
-    filterYear = "";
-    filterYearEl.value = "";
-    sortOption = DEFAULT_SORT;
-    sortEl.value = DEFAULT_SORT;
-
-    // Resetear paginación
-    paginationHasMore = false;
-    paginationLastDoc = null;
-    updateLoadMoreVisibility();
-
-    // Re-suscribir a la nueva colección
-    subscribeToCurrentTab();
-  }
+  // La vista Catálogo queda visible en el nav principal; showAppView()
+  // muestra el panel y re-suscribe al tipo activo (T-112).
+  showAppView("catalog");
 }
 
 function hideAllPanels() {
@@ -465,6 +661,7 @@ async function subscribeToCurrentTab() {
         showError("Error al cargar los elementos: " + (error?.message || "desconocido"));
       },
     });
+    subscribedMediaType = activeMediaType;
   } catch (error) {
     showLoading(false);
     showError("Error al suscribirse: " + (error?.message || "desconocido"));
@@ -508,13 +705,17 @@ if (btnLoadMore) {
 }
 
 async function catalogUnsubscribe() {
-  if (typeof unsubscribeFn === "function") {
+  const current = unsubscribeFn;
+  // Liberar el estado antes del `await` para que la vista no reutilice
+  // una suscripción que ya está en curso de cancelarse (T-112).
+  unsubscribeFn = null;
+  subscribedMediaType = null;
+  if (typeof current === "function") {
     try {
-      await unsubscribeFn();
+      await current();
     } catch {
       // Ignorar errores al cancelar
     }
-    unsubscribeFn = null;
   }
 }
 
@@ -524,16 +725,13 @@ function catalogCleanup() {
   favoritesUnsubscribeAll();
   collectionsUnsubscribeAll();
   catalogInitialized = false;
+  // Tras volver a iniciar sesión se muestra la vista inicial (T-112).
+  activeAppView = DEFAULT_APP_VIEW;
 }
 
 // =============================================================
 // Spec 003 — Dashboard (REQ-001, UI-001, AC-001, AC-005, D-005)
 // =============================================================
-
-function showDashboardView(visible) {
-  if (dashboardPanel) dashboardPanel.hidden = !visible;
-  if (panel) panel.hidden = visible;
-}
 
 async function dashboardUnsubscribeAll() {
   for (const unsub of dashboardUnsubscribes) {
@@ -2018,14 +2216,9 @@ function catalogInit() {
   buildSortSelect();
   updateLoadMoreVisibility();
 
-  // Dashboard es la pestaña inicial (spec 003, AC-001)
-  if (activeMediaType === DASHBOARD_KEY) {
-    showDashboardView(true);
-    subscribeToDashboard();
-  } else {
-    showDashboardView(false);
-    subscribeToCurrentTab();
-  }
+  // Vista inicial: Dashboard (spec 003, AC-001), reached desde el nav
+  // principal (T-112). El resto de vistas se cargan al seleccionarlas.
+  showAppView(DEFAULT_APP_VIEW);
 }
 
 // =============================================================
@@ -3868,3 +4061,11 @@ function renderDashboardFavoritesBlock() {
     });
   });
 }
+
+// =============================================================
+// T-112 — Arranque del nav principal (00 §2, REQ-C5).
+// Se enlaza una sola vez al cargar el módulo; las vistas se
+// activan después desde `show()` / `showAppView()`.
+// =============================================================
+
+initAppNav();

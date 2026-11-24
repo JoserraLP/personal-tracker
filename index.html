@@ -33,123 +33,170 @@
       <p id="user-email" class="subtitle"></p>
       <button id="btn-logout" class="btn" type="button">Salir</button>
 
-      <!-- Catálogo (T-005 / spec 002) -->
-      <div id="catalog-root" class="catalog">
-        <div class="catalog__tabs" id="catalog-tabs" role="tablist" aria-label="Tipos de catálogo">
-          <!-- Las pestañas se generan en JS -->
+      <!-- =============================================================
+           Navegación principal (T-112 / 00 §2, REQ-C5).
+           Las 6 vistas de la serie 00-05: Catálogo, Búsqueda, Perfil,
+           Colecciones, Dashboard y Recomendaciones. Las pestañas sin
+           vista propia implementada (Búsqueda → 02 UI-03 y
+           Recomendaciones → 05 UI-30) quedan `aria-disabled="true"`.
+           ============================================================= -->
+      <nav class="app-nav" aria-label="Navegación principal">
+        <div class="catalog__tabs app-nav__tabs" id="app-nav-tabs" role="tablist" aria-label="Vistas principales">
+          <button type="button" role="tab" id="nav-tab-catalog" class="catalog__tab app-nav__tab" data-view="catalog" aria-controls="view-catalog" aria-selected="false" tabindex="-1">Catálogo</button>
+          <button type="button" role="tab" id="nav-tab-search" class="catalog__tab app-nav__tab" data-view="search" aria-controls="view-search" aria-selected="false" tabindex="-1" aria-disabled="true">Búsqueda</button>
+          <button type="button" role="tab" id="nav-tab-profile" class="catalog__tab app-nav__tab" data-view="profile" aria-controls="view-profile" aria-selected="false" tabindex="-1">Perfil</button>
+          <button type="button" role="tab" id="nav-tab-collections" class="catalog__tab app-nav__tab" data-view="collections" aria-controls="view-collections" aria-selected="false" tabindex="-1">Colecciones</button>
+          <button type="button" role="tab" id="nav-tab-dashboard" class="catalog__tab app-nav__tab" data-view="dashboard" aria-controls="view-dashboard" aria-selected="false" tabindex="-1">Dashboard</button>
+          <button type="button" role="tab" id="nav-tab-recommendations" class="catalog__tab app-nav__tab" data-view="recommendations" aria-controls="view-recommendations" aria-selected="false" tabindex="-1" aria-disabled="true">Recomendaciones</button>
         </div>
+      </nav>
 
-        <!-- Dashboard (spec 003, REQ-001, UI-001) -->
-        <div id="dashboard-panel" role="tabpanel" aria-labelledby="tab-active" class="catalog__panel dashboard" hidden>
-          <p id="dashboard-error" class="error" hidden></p>
-          <div id="dashboard-loading" class="catalog__state" hidden>
-            <p class="muted">Cargando estadísticas…</p>
-          </div>
-          <div id="dashboard-stats" class="dashboard__stats" aria-live="polite"></div>
-          <div id="dashboard-favorites-block" class="dashboard__favorites-block" aria-live="polite"></div>
-          <div id="dashboard-recent" class="dashboard__recent">
-            <section class="dashboard__recent-section">
-              <h3 class="dashboard__recent-title">Añadidos recientemente</h3>
-              <ul id="dashboard-recent-added" class="dashboard__recent-list" aria-live="polite"></ul>
-            </section>
-            <section class="dashboard__recent-section">
-              <h3 class="dashboard__recent-title">Completados recientemente</h3>
-              <ul id="dashboard-recent-completed" class="dashboard__recent-list" aria-live="polite"></ul>
-            </section>
-          </div>
-        </div>
+      <!-- Contenedores de las vistas (00 §2) -->
+      <div id="app-views" class="app-views">
 
-        <!-- Favoritos (spec 004, REQ-003, UI-001, D-005) -->
-        <div id="favorites-panel" role="tabpanel" aria-labelledby="tab-active" class="catalog__panel favorites" hidden>
-          <p id="favorites-error" class="error" hidden></p>
-          <div id="favorites-loading" class="catalog__state" hidden>
-            <p class="muted">Cargando favoritos…</p>
+        <!-- Catálogo (T-005 / spec 002, 02 UI-02) -->
+        <section id="view-catalog" class="app-view" role="tabpanel" aria-labelledby="nav-tab-catalog" tabindex="0" hidden>
+          <div id="catalog-root" class="catalog">
+            <div class="catalog__tabs" id="catalog-tabs" role="tablist" aria-label="Tipos de catálogo">
+              <!-- Las pestañas se generan en JS -->
+            </div>
+
+            <div id="catalog-panel" role="tabpanel" aria-labelledby="tab-active" class="catalog__panel">
+              <div class="catalog__toolbar">
+                <div class="catalog__filters" id="catalog-filters">
+                  <label class="catalog__filter">
+                    <span class="sr-only">Estado</span>
+                    <select id="catalog-filter-status" class="catalog__select">
+                      <option value="">Todos los estados</option>
+                    </select>
+                  </label>
+                  <label class="catalog__filter">
+                    <span class="sr-only">Valoración mínima</span>
+                    <select id="catalog-filter-rating" class="catalog__select">
+                      <option value="">Cualquier valoración</option>
+                    </select>
+                  </label>
+                  <label class="catalog__filter">
+                    <span class="sr-only">Año</span>
+                    <input id="catalog-filter-year" type="number" class="catalog__select" placeholder="Año" min="1888" max="2100">
+                  </label>
+                  <label class="catalog__filter">
+                    <span class="sr-only">Ordenar por</span>
+                    <select id="catalog-sort" class="catalog__select">
+                    </select>
+                  </label>
+                </div>
+                <button id="btn-add-item" class="btn btn--add" type="button">Añadir</button>
+              </div>
+
+              <p id="catalog-error" class="error" hidden></p>
+
+              <div id="catalog-loading" class="catalog__state" hidden>
+                <p class="muted">Cargando…</p>
+              </div>
+
+              <div id="catalog-empty" class="catalog__state" hidden>
+                <p class="muted">No hay elementos todavía. Pulsa «Añadir» para empezar.</p>
+              </div>
+
+              <ul id="catalog-list" class="catalog__list" aria-live="polite"></ul>
+
+              <div id="catalog-load-more-wrap" class="catalog__load-more" hidden>
+                <button id="btn-load-more" class="btn btn--secondary" type="button">Cargar más</button>
+              </div>
+            </div>
           </div>
-          <div id="favorites-empty" class="catalog__state" hidden>
-            <p class="muted">Aún no tienes favoritos. Pulsa el corazón en cualquier tarjeta para añadirlos.</p>
+        </section>
+
+        <!-- Búsqueda (spec 002, 02 UI-03) — pendiente de implementación -->
+        <section id="view-search" class="app-view" role="tabpanel" aria-labelledby="nav-tab-search" tabindex="0" hidden>
+          <h2 class="app-view__title">Búsqueda</h2>
+          <p class="muted">La búsqueda en el catálogo estará disponible pronto. Mientras tanto, usa el botón «Añadir» del catálogo para buscar por título.</p>
+        </section>
+
+        <!-- Perfil: los títulos guardados por el usuario -->
+        <section id="view-profile" class="app-view" role="tabpanel" aria-labelledby="nav-tab-profile" tabindex="0" hidden>
+          <h2 class="app-view__title">Tu perfil</h2>
+          <p class="muted">Tus títulos favoritos guardados en esta cuenta.</p>
+
+          <!-- Favoritos (spec 004, REQ-003, UI-001, D-005) -->
+          <div id="favorites-panel" class="catalog__panel favorites" aria-label="Favoritos" hidden>
+            <p id="favorites-error" class="error" hidden></p>
+            <div id="favorites-loading" class="catalog__state" hidden>
+              <p class="muted">Cargando favoritos…</p>
+            </div>
+            <div id="favorites-empty" class="catalog__state" hidden>
+              <p class="muted">Aún no tienes favoritos. Pulsa el corazón en cualquier tarjeta para añadirlos.</p>
+            </div>
+            <div id="favorites-content" class="favorites__content">
+              <section class="favorites__section">
+                <h3 class="favorites__section-title">Ítems favoritos</h3>
+                <ul id="favorites-items-list" class="catalog__list" aria-live="polite"></ul>
+              </section>
+              <section class="favorites__section">
+                <h3 class="favorites__section-title">Capítulos favoritos</h3>
+                <ul id="favorites-chapters-list" class="favorites__chapters-list" aria-live="polite"></ul>
+              </section>
+            </div>
           </div>
-          <div id="favorites-content" class="favorites__content">
-            <section class="favorites__section">
-              <h3 class="favorites__section-title">Ítems favoritos</h3>
-              <ul id="favorites-items-list" class="catalog__list" aria-live="polite"></ul>
-            </section>
-            <section class="favorites__section">
-              <h3 class="favorites__section-title">Capítulos favoritos</h3>
-              <ul id="favorites-chapters-list" class="favorites__chapters-list" aria-live="polite"></ul>
-            </section>
-          </div>
-        </div>
+        </section>
 
         <!-- Colecciones (spec 004, REQ-008, UI-002, D-005) -->
-        <div id="collections-panel" role="tabpanel" aria-labelledby="tab-active" class="catalog__panel collections" hidden>
-          <p id="collections-error" class="error" hidden></p>
-          <div id="collections-loading" class="catalog__state" hidden>
-            <p class="muted">Cargando colecciones…</p>
-          </div>
-          <div id="collections-empty" class="catalog__state" hidden>
-            <p class="muted">No tienes colecciones todavía.</p>
-          </div>
-          <div id="collections-content" class="collections__content">
-            <div class="collections__toolbar">
-              <button id="btn-new-collection" class="btn btn--add" type="button">+ Nueva colección</button>
+        <section id="view-collections" class="app-view" role="tabpanel" aria-labelledby="nav-tab-collections" tabindex="0" hidden>
+          <div id="collections-panel" class="catalog__panel collections" aria-label="Colecciones" hidden>
+            <p id="collections-error" class="error" hidden></p>
+            <div id="collections-loading" class="catalog__state" hidden>
+              <p class="muted">Cargando colecciones…</p>
             </div>
-            <!-- Vista de listado -->
-            <div id="collections-list-view">
-              <ul id="collections-list" class="collections__list" aria-live="polite"></ul>
+            <div id="collections-empty" class="catalog__state" hidden>
+              <p class="muted">No tienes colecciones todavía.</p>
             </div>
-            <!-- Vista de detalle de colección -->
-            <div id="collection-detail-view" hidden>
-              <button id="btn-back-collections" class="btn btn--secondary" type="button">← Volver</button>
-              <div id="collection-detail-header" class="collection-detail__header"></div>
-              <div id="collection-detail-content" class="collection-detail__content"></div>
+            <div id="collections-content" class="collections__content">
+              <div class="collections__toolbar">
+                <button id="btn-new-collection" class="btn btn--add" type="button">+ Nueva colección</button>
+              </div>
+              <!-- Vista de listado -->
+              <div id="collections-list-view">
+                <ul id="collections-list" class="collections__list" aria-live="polite"></ul>
+              </div>
+              <!-- Vista de detalle de colección -->
+              <div id="collection-detail-view" hidden>
+                <button id="btn-back-collections" class="btn btn--secondary" type="button">← Volver</button>
+                <div id="collection-detail-header" class="collection-detail__header"></div>
+                <div id="collection-detail-content" class="collection-detail__content"></div>
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div id="catalog-panel" role="tabpanel" aria-labelledby="tab-active" class="catalog__panel">
-          <div class="catalog__toolbar">
-            <div class="catalog__filters" id="catalog-filters">
-              <label class="catalog__filter">
-                <span class="sr-only">Estado</span>
-                <select id="catalog-filter-status" class="catalog__select">
-                  <option value="">Todos los estados</option>
-                </select>
-              </label>
-              <label class="catalog__filter">
-                <span class="sr-only">Valoración mínima</span>
-                <select id="catalog-filter-rating" class="catalog__select">
-                  <option value="">Cualquier valoración</option>
-                </select>
-              </label>
-              <label class="catalog__filter">
-                <span class="sr-only">Año</span>
-                <input id="catalog-filter-year" type="number" class="catalog__select" placeholder="Año" min="1888" max="2100">
-              </label>
-              <label class="catalog__filter">
-                <span class="sr-only">Ordenar por</span>
-                <select id="catalog-sort" class="catalog__select">
-                </select>
-              </label>
+        <!-- Dashboard (spec 003, REQ-001, UI-001, 04 UI-20) -->
+        <section id="view-dashboard" class="app-view" role="tabpanel" aria-labelledby="nav-tab-dashboard" tabindex="0" hidden>
+          <div id="dashboard-panel" class="catalog__panel dashboard" aria-label="Estadísticas" hidden>
+            <p id="dashboard-error" class="error" hidden></p>
+            <div id="dashboard-loading" class="catalog__state" hidden>
+              <p class="muted">Cargando estadísticas…</p>
             </div>
-            <button id="btn-add-item" class="btn btn--add" type="button">Añadir</button>
+            <div id="dashboard-stats" class="dashboard__stats" aria-live="polite"></div>
+            <div id="dashboard-favorites-block" class="dashboard__favorites-block" aria-live="polite"></div>
+            <div id="dashboard-recent" class="dashboard__recent">
+              <section class="dashboard__recent-section">
+                <h3 class="dashboard__recent-title">Añadidos recientemente</h3>
+                <ul id="dashboard-recent-added" class="dashboard__recent-list" aria-live="polite"></ul>
+              </section>
+              <section class="dashboard__recent-section">
+                <h3 class="dashboard__recent-title">Completados recientemente</h3>
+                <ul id="dashboard-recent-completed" class="dashboard__recent-list" aria-live="polite"></ul>
+              </section>
+            </div>
           </div>
+        </section>
 
-          <p id="catalog-error" class="error" hidden></p>
+        <!-- Recomendaciones (spec 05, 05 UI-30) — pendiente de implementación -->
+        <section id="view-recommendations" class="app-view" role="tabpanel" aria-labelledby="nav-tab-recommendations" tabindex="0" hidden>
+          <h2 class="app-view__title">Recomendaciones</h2>
+          <p class="muted">Las recomendaciones aparecerán cuando valores títulos con 8 puntos o más.</p>
+        </section>
 
-          <div id="catalog-loading" class="catalog__state" hidden>
-            <p class="muted">Cargando…</p>
-          </div>
-
-          <div id="catalog-empty" class="catalog__state" hidden>
-            <p class="muted">No hay elementos todavía. Pulsa «Añadir» para empezar.</p>
-          </div>
-
-          <ul id="catalog-list" class="catalog__list" aria-live="polite"></ul>
-
-          <div id="catalog-load-more-wrap" class="catalog__load-more" hidden>
-            <button id="btn-load-more" class="btn btn--secondary" type="button">Cargar más</button>
-          </div>
-        </div>
       </div>
     </section>
 
