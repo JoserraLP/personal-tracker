@@ -1,4 +1,4 @@
-// Tests QA T-109 (GitHub #55) — spec 03 AC-125..AC-128 / API-13, API-14;
+// Tests QA T-124 (GitHub #70) — spec 03 AC-125..AC-128 / API-13, API-14;
 // spec 01 DB-104, DB-117, DB-123; REQ-206/207/208.
 //
 // Sin red y sin Firebase (API-14): store falso en memoria definido en
