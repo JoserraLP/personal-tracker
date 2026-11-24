@@ -9,7 +9,7 @@ Reglas de descomposición: 1-2 ficheros por tarea, un solo owner, ficheros disju
 
 | Task | Owner | Files | Spec refs | Depends | Done when (resumen BDD) | Status | Issue |
 |---|---|---|---|---|---|---|---|
-| T-101 | devops | `firebase.json`, `firestore.indexes.json` (nuevo) | 01 §2 DB-110..DB-117 | — | Los 8 índices compuestos declarados y validables con `firebase deploy --only firestore:indexes`; JSON válido; `npm test` en verde; solo esos 2 ficheros | todo | #47 |
+| T-101 | devops | `firebase.json`, `firestore.indexes.json` (nuevo) | 01 §2 DB-110..DB-117 | — | Los 8 índices compuestos declarados y validables con `firebase deploy --only firestore:indexes`; JSON válido; `npm test` en verde; solo esos 2 ficheros | done | #47 |
 | T-102 | tech-lead | `firestore.rules` | 01 §3 SEC-01..04; AC-100, AC-101 | — | `catalog/**` read allowlist + write false (AC-101); `users/{uid}/**` AND-combinado owner-only (AC-100); SEC-03 condicional (no rompe docs serie 004); resto de secciones intactas | todo | #48 |
 | T-103 | dev-backend | `js/catalog.js` | 01 §4 DB-120..DB-123; AC-102..104; 00 REQ-C1/C2/C6, REQ-E3 | — | AC-102 normalización idéntica y determinista; AC-103 score 11 ⇒ validation sin escritura; AC-104 coherencia `kind`/`mediaType`; importable en Node sin red; 243 tests previos en verde | todo | #49 |
 | T-104 | qa-engineer | `tests/data-model-validators.test.js` (nuevo) | AC-102, AC-103, AC-104; DB-120..123; REQ-C4 | T-103 | ≥1 `it()` por ID citado; `npm test` verde; sin editar fuentes ni añadir dependencias | todo | #50 |
