@@ -23,6 +23,12 @@
 // Spec: spec.md (raíz) — REQ-001..005, REQ-008..014,
 //       DB-001..DB-007, AC-002, AC-004..008, AC-010, AC-016, AC-017,
 //       D-003, D-004, D-005, Q-003.
+//
+// Modelo de datos de la serie 00-05 (sección 12, parte pura):
+//   specs/01-data-model.md §4 — DB-120 (validateMediaItem),
+//   DB-121 (normalizeTitle), DB-122 (validateEntry),
+//   DB-123 (validateCollection.itemIds); AC-102, AC-103, AC-104;
+//   specs/00-overview.md REQ-C1, REQ-C2, REQ-C6, REQ-E3.
 // =============================================================
 
 // -------------------------------------------------------------
@@ -104,6 +110,7 @@ const LIMITS = Object.freeze({
   COLLECTIONS_MAX: 20,
   COLLECTION_NAME_MAX: 60,
   COLLECTION_DESCRIPTION_MAX: 300,
+  COLLECTION_ITEMS_MAX: 50,
 });
 
 // -------------------------------------------------------------
@@ -1845,6 +1852,31 @@ export function validateCollection(collection) {
     }
   }
 
+  // itemIds (DB-104, DB-123, REQ-206): string[] ≤50, sin duplicados.
+  if (collection.itemIds !== undefined && collection.itemIds !== null) {
+    if (!Array.isArray(collection.itemIds)) {
+      errors.push("Los ítems de la colección (itemIds) deben ser una lista.");
+    } else {
+      if (collection.itemIds.length > LIMITS.COLLECTION_ITEMS_MAX) {
+        errors.push(
+          `No se pueden guardar más de ${LIMITS.COLLECTION_ITEMS_MAX} ítems en una colección.`,
+        );
+      }
+      if (
+        collection.itemIds.some(
+          (id) => typeof id !== "string" || id.trim().length === 0,
+        )
+      ) {
+        errors.push("Cada id de ítem de la colección debe ser texto no vacío.");
+      } else if (
+        new Set(collection.itemIds.map((id) => id.trim())).size !==
+        collection.itemIds.length
+      ) {
+        errors.push("No se pueden repetir ítems (itemIds) en una colección.");
+      }
+    }
+  }
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -2528,4 +2560,586 @@ async function assertCollectionsExist(uid, collectionIds, fb) {
   if (missing.length > 0) {
     throw validationError([`No existen las colecciones: ${missing.join(", ")}.`]);
   }
+}
+
+// =============================================================
+// 12. Modelo de datos de la serie 00-05 — parte pura
+//
+// Specs: 01-data-model.md §4 (DB-120..DB-123), 00-overview.md
+// §4.1 (MediaType/EntryStatus/Result), REQ-C1, REQ-C2, REQ-C6,
+// REQ-E3 y AC-102..AC-104.
+//
+// Todo lo de esta sección es PURO: no importa `firebase.js`, no toca
+// red ni DOM y se puede ejecutar en Node/vitest directamente. Los
+// validadores devuelven `{ valid, errors }`; nunca lanzan, de modo que
+// el repositorio puede cortar la escritura con `code:"validation"`
+// antes de llamar a Firestore (REQ-E3).
+// =============================================================
+
+/** Tipos de medio del modelo `catalog` (DB-101, 00 §4.1). */
+export const MEDIA_ITEM_TYPES = Object.freeze([
+  "SERIES",
+  "ANIME",
+  "MANGA",
+  "BOOK",
+  "AUDIOBOOK",
+  "MOVIE",
+  "GAME",
+]);
+
+/**
+ * Alias de compatibilidad entre el enum legacy de §1 (minúsculas, 5
+ * tipos: `MEDIA_TYPES`) y el enum del modelo 00-05 (mayúsculas, 7
+ * tipos: `MEDIA_ITEM_TYPES`). Resolución REQ-C6: §1 no se reescribe;
+ * `MEDIA_ITEM_TYPES` es la **única fuente de verdad** para
+ * `catalog`/`entries` (DB-120), y este mapa solo traduce datos
+ * heredados de la UI de la serie 004. `MANGA` y `AUDIOBOOK` no tienen
+ * equivalente legacy (→ `null`).
+ */
+export const LEGACY_MEDIA_TYPE_TO_MEDIA_ITEM_TYPE = Object.freeze({
+  movie: "MOVIE",
+  series: "SERIES",
+  game: "GAME",
+  book: "BOOK",
+  anime: "ANIME",
+});
+
+/**
+ * Traduce un tipo legacy de §1 al `MediaType` del modelo 00-05
+ * (REQ-C6, DB-120). Devuelve `null` si no hay equivalencia.
+ * @param {string} legacyMediaType
+ * @returns {string|null}
+ */
+export function legacyMediaTypeToMediaItemType(legacyMediaType) {
+  return LEGACY_MEDIA_TYPE_TO_MEDIA_ITEM_TYPE[legacyMediaType] ?? null;
+}
+
+/** Estados de una entry de tracking (DB-103, 00 §4.1). */
+export const ENTRY_STATUSES = Object.freeze([
+  "PLANNED",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "DROPPED",
+]);
+
+/** Discriminantes de `MediaMetadata` (DB-102). */
+export const MEDIA_METADATA_KINDS = Object.freeze([
+  "episodes",
+  "pages",
+  "duration",
+  "platforms",
+]);
+
+/**
+ * `metadata.kind` que exige cada `mediaType` (DB-102, AC-104).
+ * Es la única fuente de verdad de la coherencia tipo/kind.
+ */
+export const METADATA_KIND_BY_MEDIA_TYPE = Object.freeze({
+  SERIES: "episodes",
+  ANIME: "episodes",
+  MANGA: "pages",
+  BOOK: "pages",
+  AUDIOBOOK: "duration",
+  MOVIE: "duration",
+  GAME: "platforms",
+});
+
+/**
+ * Unidad de `Entry.progress` según `metadata.kind` (DB-103, REQ-204):
+ * episodios, capítulos/páginas, minutos consumidos u horas jugadas.
+ */
+export const PROGRESS_UNIT_BY_METADATA_KIND = Object.freeze({
+  episodes: "episodios",
+  pages: "capítulos o páginas",
+  duration: "minutos",
+  platforms: "horas",
+});
+
+// Límites de los campos del modelo `catalog` (DB-101/DB-102/DB-103/DB-104).
+const DATA_MODEL_LIMITS = Object.freeze({
+  TITLE_MAX: 200,
+  RELEASE_YEAR_MIN: 1888,
+  RELEASE_YEAR_MAX: 2100,
+  GENRES_MAX: 10,
+  AVG_RATING_MIN: 0,
+  AVG_RATING_MAX: 10,
+  CREATOR_MAX: 120,
+  SYNOPSIS_MAX: 2000,
+  PLATFORMS_MAX: 8,
+  ENTRY_SCORE_MIN: 1,
+  ENTRY_SCORE_MAX: 10,
+  ENTRY_REVIEW_MAX: 500,
+  COLLECTION_NAME_MAX: 60,
+  COLLECTION_DESCRIPTION_MAX: 300,
+  COLLECTION_ITEMS_MAX: 50,
+});
+
+/** ¿Es un `MediaType` del modelo `catalog`? (DB-101) */
+export function isMediaItemType(mediaType) {
+  return MEDIA_ITEM_TYPES.includes(mediaType);
+}
+
+/** ¿Es un `EntryStatus` válido? (DB-103) */
+export function isEntryStatus(status) {
+  return ENTRY_STATUSES.includes(status);
+}
+
+/** ¿Es un `metadata.kind` válido? (DB-102) */
+export function isMetadataKind(kind) {
+  return MEDIA_METADATA_KINDS.includes(kind);
+}
+
+/**
+ * `metadata.kind` esperado para un `mediaType` (DB-102, AC-104).
+ * Devuelve `null` si el tipo no pertenece al modelo.
+ * @param {string} mediaType
+ * @returns {"episodes"|"pages"|"duration"|"platforms"|null}
+ */
+export function metadataKindFor(mediaType) {
+  return isMediaItemType(mediaType) ? METADATA_KIND_BY_MEDIA_TYPE[mediaType] : null;
+}
+
+/**
+ * Unidad legible de `Entry.progress` para un `metadata.kind` (DB-103).
+ * @param {string} kind
+ * @returns {string|null}
+ */
+export function progressUnitFor(kind) {
+  return isMetadataKind(kind) ? PROGRESS_UNIT_BY_METADATA_KIND[kind] : null;
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isHttpUrl(value) {
+  return typeof value === "string" && /^https?:\/\/\S+$/i.test(value.trim());
+}
+
+/**
+ * Normaliza un título para búsquedas por prefijo (DB-121, AC-102).
+ *
+ * Orden determinista: `trim` → `toLowerCase()` → quitar acentos
+ * (`NFD` + `\p{Diacritic}`) → sustituir signos de puntuación por
+ * espacio → colapsar espacios → recortar a ≤200 (`titleNormalized`,
+ * DB-101). Misma entrada ⇒ misma salida, sin depender del locale ni
+ * de la red.
+ *
+ * AC-102 **amplía** los pasos literales de DB-121: además de quitar
+ * acentos, convierte la puntuación en espacio para que
+ * `"El Último Signo  (2020)"` ⇒ `"el ultimo signo 2020"` (los
+ * paréntesis no forman parte del título normalizado). El `toLowerCase`
+ * es el de JS (sin locale) para garantizar determinismo.
+ * @param {*} title
+ * @returns {string} título normalizado (≤200); `""` si no es texto
+ */
+export function normalizeTitle(title) {
+  if (typeof title !== "string") return "";
+  return title
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^\p{Letter}\p{Number}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, DATA_MODEL_LIMITS.TITLE_MAX);
+}
+
+/**
+ * Valida la metadata discriminada de un `MediaItem` (DB-102, AC-104).
+ * Añade los mensajes al array recibido.
+ */
+function collectMediaMetadataErrors(metadata, mediaType, errors) {
+  if (!isPlainObject(metadata)) {
+    errors.push("La metadata debe ser un objeto.");
+    return;
+  }
+
+  const kind = metadata.kind;
+  if (!isMetadataKind(kind)) {
+    errors.push(
+      `metadata.kind inválido: "${kind}". Valores permitidos: ${MEDIA_METADATA_KINDS.join(", ")}.`,
+    );
+    return;
+  }
+
+  // AC-104: la coherencia se exige SIEMPRE. Si `mediaType` es inválido
+  // o ausente no se puede comprobar, así que se reporta el error aquí
+  // también (nunca se omite en silencio); validateMediaItem añade su
+  // propio mensaje de mediaType.
+  const expected = metadataKindFor(mediaType);
+  if (!expected) {
+    errors.push(
+      `No se puede comprobar metadata.kind: mediaType inválido o ausente ("${mediaType}").`,
+    );
+  } else if (kind !== expected) {
+    errors.push(
+      `La metadata.kind "${kind}" no es coherente con mediaType "${mediaType}" (se esperaba "${expected}").`,
+    );
+  }
+
+  if (kind === "episodes") {
+    for (const field of ["totalEpisodes", "currentAvailable"]) {
+      const value = metadata[field];
+      if (value === undefined || value === null) continue;
+      if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+        errors.push(`metadata.${field} debe ser un entero mayor o igual que 1.`);
+      }
+    }
+    // DB-102 solo exige totalEpisodes/currentAvailable ≥1; no se
+    // añaden reglas cruzadas que la spec no define.
+  } else if (kind === "pages") {
+    if (metadata.totalChapters !== undefined && metadata.totalChapters !== null) {
+      if (
+        typeof metadata.totalChapters !== "number" ||
+        !Number.isInteger(metadata.totalChapters) ||
+        metadata.totalChapters < 1
+      ) {
+        errors.push("metadata.totalChapters debe ser un entero mayor o igual que 1.");
+      }
+    }
+    if (metadata.totalPages !== undefined && metadata.totalPages !== null) {
+      if (
+        typeof metadata.totalPages !== "number" ||
+        !Number.isInteger(metadata.totalPages) ||
+        metadata.totalPages < 0
+      ) {
+        errors.push("metadata.totalPages debe ser un entero mayor o igual que 0.");
+      }
+    }
+  } else if (kind === "duration") {
+    if (metadata.durationMinutes === undefined || metadata.durationMinutes === null) {
+      errors.push("metadata.durationMinutes es obligatorio para metadata.kind \"duration\".");
+    } else if (
+      typeof metadata.durationMinutes !== "number" ||
+      !Number.isFinite(metadata.durationMinutes) ||
+      metadata.durationMinutes < 0
+    ) {
+      errors.push("metadata.durationMinutes debe ser un número mayor o igual que 0.");
+    }
+  } else if (kind === "platforms") {
+    if (metadata.platforms !== undefined && metadata.platforms !== null) {
+      if (!Array.isArray(metadata.platforms)) {
+        errors.push("metadata.platforms debe ser una lista.");
+      } else {
+        if (metadata.platforms.length > DATA_MODEL_LIMITS.PLATFORMS_MAX) {
+          errors.push(
+            `No se pueden guardar más de ${DATA_MODEL_LIMITS.PLATFORMS_MAX} plataformas.`,
+          );
+        }
+        if (metadata.platforms.some((entry) => typeof entry !== "string")) {
+          errors.push("Cada plataforma debe ser texto.");
+        }
+      }
+    }
+    if (metadata.totalHours !== undefined && metadata.totalHours !== null) {
+      if (
+        typeof metadata.totalHours !== "number" ||
+        !Number.isFinite(metadata.totalHours) ||
+        metadata.totalHours < 0
+      ) {
+        errors.push("metadata.totalHours debe ser un número mayor o igual que 0.");
+      }
+    }
+  }
+}
+
+/**
+ * Valida un `MediaItemInput` antes de escribir `catalog/{mediaId}`
+ * (DB-120, DB-101/DB-102, AC-104). Función pura y sin efectos: no
+ * escribe nada; el repositorio debe abortar con `code:"validation"`
+ * cuando `valid` es `false` (REQ-E3).
+ *
+ * Campos obligatorios: `title` (1-200), `mediaType` (7 tipos, fuente
+ * única `MEDIA_ITEM_TYPES`) y `metadata` (DB-101/DB-102).
+ * Campos opcionales (si vienen, se validan): `id`, `titleNormalized`
+ * (≤200), `coverUrl`, `releaseYear` (1888-2100), `genres` (≤10),
+ * `avgRating` (0-10), `creator` (≤120), `synopsis` (≤2000), `seed`.
+ * `metadata.kind` debe ser coherente con `mediaType` (DB-102, AC-104).
+ *
+ * @param {object} input
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function validateMediaItem(input) {
+  const errors = [];
+  if (!isPlainObject(input)) {
+    return { valid: false, errors: ["El ítem de catálogo debe ser un objeto."] };
+  }
+
+  // mediaType (DB-101): obligatorio, uno de los 7 tipos.
+  if (input.mediaType === undefined || input.mediaType === null) {
+    errors.push("El tipo de medio (mediaType) es obligatorio.");
+  } else if (!isMediaItemType(input.mediaType)) {
+    errors.push(
+      `mediaType inválido: "${input.mediaType}". Valores permitidos: ${MEDIA_ITEM_TYPES.join(", ")}.`,
+    );
+  }
+
+  // title (DB-101): obligatorio, 1-200.
+  if (!isNonEmptyString(input.title)) {
+    errors.push("El título es obligatorio.");
+  } else if (input.title.length > DATA_MODEL_LIMITS.TITLE_MAX) {
+    errors.push(
+      `El título no puede superar los ${DATA_MODEL_LIMITS.TITLE_MAX} caracteres.`,
+    );
+  }
+
+  // id / titleNormalized: texto cuando están presentes.
+  if (input.id !== undefined && input.id !== null && !isNonEmptyString(input.id)) {
+    errors.push("El id del ítem debe ser texto no vacío.");
+  }
+  if (input.titleNormalized !== undefined && input.titleNormalized !== null) {
+    if (typeof input.titleNormalized !== "string") {
+      errors.push("El título normalizado debe ser texto.");
+    } else if (input.titleNormalized.length > DATA_MODEL_LIMITS.TITLE_MAX) {
+      errors.push(
+        `El título normalizado no puede superar los ${DATA_MODEL_LIMITS.TITLE_MAX} caracteres.`,
+      );
+    }
+  }
+
+  // coverUrl (DB-101): URL http/https.
+  if (input.coverUrl !== undefined && input.coverUrl !== null) {
+    if (!isHttpUrl(input.coverUrl)) {
+      errors.push("La portada (coverUrl) debe ser una URL válida (http/https).");
+    }
+  }
+
+  // releaseYear (DB-101): 1888-2100.
+  if (input.releaseYear !== undefined && input.releaseYear !== null) {
+    if (typeof input.releaseYear !== "number" || !Number.isInteger(input.releaseYear)) {
+      errors.push("El año de estreno debe ser un número entero.");
+    } else if (
+      input.releaseYear < DATA_MODEL_LIMITS.RELEASE_YEAR_MIN ||
+      input.releaseYear > DATA_MODEL_LIMITS.RELEASE_YEAR_MAX
+    ) {
+      errors.push(
+        `El año de estreno debe estar entre ${DATA_MODEL_LIMITS.RELEASE_YEAR_MIN} y ${DATA_MODEL_LIMITS.RELEASE_YEAR_MAX}.`,
+      );
+    }
+  }
+
+  // genres (DB-101): string[] ≤10.
+  if (input.genres !== undefined && input.genres !== null) {
+    if (!Array.isArray(input.genres)) {
+      errors.push("Los géneros deben ser una lista.");
+    } else {
+      if (input.genres.length > DATA_MODEL_LIMITS.GENRES_MAX) {
+        errors.push(
+          `No se pueden guardar más de ${DATA_MODEL_LIMITS.GENRES_MAX} géneros.`,
+        );
+      }
+      if (input.genres.some((genre) => typeof genre !== "string")) {
+        errors.push("Cada género debe ser texto.");
+      }
+    }
+  }
+
+  // avgRating (DB-101): 0-10.
+  if (input.avgRating !== undefined && input.avgRating !== null) {
+    if (typeof input.avgRating !== "number" || !Number.isFinite(input.avgRating)) {
+      errors.push("La valoración media (avgRating) debe ser un número.");
+    } else if (
+      input.avgRating < DATA_MODEL_LIMITS.AVG_RATING_MIN ||
+      input.avgRating > DATA_MODEL_LIMITS.AVG_RATING_MAX
+    ) {
+      errors.push(
+        `La valoración media debe estar entre ${DATA_MODEL_LIMITS.AVG_RATING_MIN} y ${DATA_MODEL_LIMITS.AVG_RATING_MAX}.`,
+      );
+    }
+  }
+
+  // creator (DB-101): ≤120.
+  if (input.creator !== undefined && input.creator !== null) {
+    if (typeof input.creator !== "string") {
+      errors.push("El creador (creator) debe ser texto.");
+    } else if (input.creator.length > DATA_MODEL_LIMITS.CREATOR_MAX) {
+      errors.push(
+        `El creador no puede superar los ${DATA_MODEL_LIMITS.CREATOR_MAX} caracteres.`,
+      );
+    }
+  }
+
+  // synopsis (DB-101): ≤2000.
+  if (input.synopsis !== undefined && input.synopsis !== null) {
+    if (typeof input.synopsis !== "string") {
+      errors.push("La sinopsis debe ser texto.");
+    } else if (input.synopsis.length > DATA_MODEL_LIMITS.SYNOPSIS_MAX) {
+      errors.push(
+        `La sinopsis no puede superar los ${DATA_MODEL_LIMITS.SYNOPSIS_MAX} caracteres.`,
+      );
+    }
+  }
+
+  // seed (DB-101): booleano.
+  if (input.seed !== undefined && input.seed !== null && typeof input.seed !== "boolean") {
+    errors.push("El campo seed debe ser booleano.");
+  }
+
+  // metadata (DB-101/DB-102, AC-104): obligatoria; `kind` coherente.
+  if (input.metadata === undefined || input.metadata === null) {
+    errors.push("La metadata es obligatoria (DB-101/DB-102).");
+  } else {
+    collectMediaMetadataErrors(input.metadata, input.mediaType, errors);
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/** Atajo booleano de validateMediaItem(). */
+export function isValidMediaItem(input) {
+  return validateMediaItem(input).valid;
+}
+
+/** Extrae el `kind` de metadata de una entry o de su contexto (DB-102). */
+function extractMetadataKind(source) {
+  if (!isPlainObject(source)) return null;
+  if (typeof source.kind === "string") return source.kind;
+  if (typeof source.metadataKind === "string") return source.metadataKind;
+  if (isPlainObject(source.metadata) && typeof source.metadata.kind === "string") {
+    return source.metadata.kind;
+  }
+  return null;
+}
+
+/**
+ * Valida una `Entry` antes de escribir `users/{uid}/entries/{mediaId}`
+ * (DB-122, DB-103, AC-103, AC-123, REQ-E3). Función pura: no escribe.
+ *
+ * `context` (opcional) aporta el `mediaType`/`metadata` del `MediaItem`
+ * para comprobar la **unidad de `progress`** (DB-103):
+ *   `validateEntry(entry, mediaItem)` o `validateEntry(entry, { metadata })`.
+ * También se acepta `entry.metadata` embebida.
+ *
+ * Reglas: `status` ∈ 4 estados; `score` entero 1-10, `null` o ausente;
+ * `review` ≤500; `progress.current ≥ 0` y `≤ progress.total` si existe;
+ * para `kind` "episodes"/"pages" el progreso es entero; para
+ * "duration"/"platforms" admite decimales; `metadata.kind` debe ser
+ * coherente con `mediaType`.
+ *
+ * @param {object} entry
+ * @param {object|null} [context]
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+export function validateEntry(entry, context = null) {
+  const errors = [];
+  if (!isPlainObject(entry)) {
+    return { valid: false, errors: ["La entry debe ser un objeto."] };
+  }
+
+  const ctx = isPlainObject(context) ? context : {};
+
+  // mediaType (si viene en la entry o en el contexto): enum.
+  const mediaType =
+    entry.mediaType !== undefined && entry.mediaType !== null
+      ? entry.mediaType
+      : ctx.mediaType;
+  if (mediaType !== undefined && mediaType !== null && !isMediaItemType(mediaType)) {
+    errors.push(
+      `mediaType inválido: "${mediaType}". Valores permitidos: ${MEDIA_ITEM_TYPES.join(", ")}.`,
+    );
+  }
+
+  // metadata.kind (entry o contexto): enum y coherencia con mediaType.
+  // Si ambos lados declaran `kind` y discrepan, se reporta el conflicto
+  // en vez de preferir silenciosamente el del contexto.
+  const contextKind = extractMetadataKind(ctx);
+  const entryKind = extractMetadataKind(entry);
+  if (contextKind !== null && entryKind !== null && contextKind !== entryKind) {
+    errors.push(
+      `metadata.kind en conflicto: el contexto indica "${contextKind}" y la entry "${entryKind}".`,
+    );
+  }
+  const kind = contextKind || entryKind;
+  if (kind !== null && !isMetadataKind(kind)) {
+    errors.push(
+      `metadata.kind inválido: "${kind}". Valores permitidos: ${MEDIA_METADATA_KINDS.join(", ")}.`,
+    );
+  } else if (kind !== null && isMediaItemType(mediaType)) {
+    const expected = METADATA_KIND_BY_MEDIA_TYPE[mediaType];
+    if (kind !== expected) {
+      errors.push(
+        `La metadata.kind "${kind}" no es coherente con mediaType "${mediaType}" (se esperaba "${expected}").`,
+      );
+    }
+  }
+
+  // status (DB-103): obligatorio, enum de 4 estados.
+  if (!isEntryStatus(entry.status)) {
+    errors.push(
+      `Estado inválido: "${entry.status}". Valores permitidos: ${ENTRY_STATUSES.join(", ")}.`,
+    );
+  }
+
+  // score (DB-103, AC-103): entero 1-10, null o ausente.
+  if (entry.score !== undefined && entry.score !== null) {
+    if (typeof entry.score !== "number" || !Number.isInteger(entry.score)) {
+      errors.push("La puntuación debe ser un número entero.");
+    } else if (
+      entry.score < DATA_MODEL_LIMITS.ENTRY_SCORE_MIN ||
+      entry.score > DATA_MODEL_LIMITS.ENTRY_SCORE_MAX
+    ) {
+      // Mensaje exacto exigido por AC-103.
+      errors.push(
+        `La puntuación debe estar entre ${DATA_MODEL_LIMITS.ENTRY_SCORE_MIN} y ${DATA_MODEL_LIMITS.ENTRY_SCORE_MAX}`,
+      );
+    }
+  }
+
+  // review (DB-103): ≤500.
+  if (entry.review !== undefined && entry.review !== null) {
+    if (typeof entry.review !== "string") {
+      errors.push("La reseña debe ser texto.");
+    } else if (entry.review.length > DATA_MODEL_LIMITS.ENTRY_REVIEW_MAX) {
+      errors.push(
+        `La reseña no puede superar los ${DATA_MODEL_LIMITS.ENTRY_REVIEW_MAX} caracteres.`,
+      );
+    }
+  }
+
+  // mediaId (DB-103): si viene, texto no vacío.
+  if (entry.mediaId !== undefined && entry.mediaId !== null && !isNonEmptyString(entry.mediaId)) {
+    errors.push("El mediaId de la entry debe ser texto no vacío.");
+  }
+
+  // progress (DB-103, AC-123): current ≥0 y ≤ total; unidad según kind.
+  if (entry.progress !== undefined && entry.progress !== null) {
+    const progress = entry.progress;
+    if (!isPlainObject(progress)) {
+      errors.push("El progreso debe ser un objeto { current, total }.");
+    } else {
+      const checkNumber = (label, value) => {
+        if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+          errors.push(`El progreso ${label} debe ser un número mayor o igual que 0.`);
+          return false;
+        }
+        if ((kind === "episodes" || kind === "pages") && !Number.isInteger(value)) {
+          errors.push(
+            `El progreso ${label} debe ser un número entero (unidad de "${progressUnitFor(kind)}").`,
+          );
+          return false;
+        }
+        return true;
+      };
+
+      const currentOk = checkNumber("current", progress.current);
+      const hasTotal = progress.total !== undefined && progress.total !== null;
+      const totalOk = hasTotal ? checkNumber("total", progress.total) : false;
+      if (currentOk && totalOk && progress.current > progress.total) {
+        errors.push("El progreso actual no puede superar el total.");
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/** Atajo booleano de validateEntry(). */
+export function isValidEntry(entry, context = null) {
+  return validateEntry(entry, context).valid;
 }
