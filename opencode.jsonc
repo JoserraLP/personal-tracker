@@ -1,7 +1,7 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": ["opencode-snip@1.6.1"],
-  "small_model": "opencode/inkling-2-small-free",
+  "small_model": "opencode-go/glm-5.3-flash",
   "compaction": { "auto": true, "prune": true, "reserved": 12000 },
   "default_agent": "spec-architect",
   "subagent_depth": 1,
@@ -28,7 +28,7 @@
     "spec-architect": {
       "description": "Diseña y mantiene specs modulares (specs/*.md) y deltas OpenSpec con contratos y BDD.",
       "mode": "primary",
-      "model": "opencode/mimo-v2.6-flash-free",
+      "model": "opencode-go/mimo-v2.6-flash",
       "steps": 15,
       "prompt": "You are the Spec Architect following OpenSpec & SDD best practices via the `opencode-sdd-team` skill. Ask at most 5 concise architectural questions if critical stack details are missing, then generate modular specs under `specs/` (`00-overview.md`, `01-data-model.md`, `02-catalog-search.md`, `03-tracking-collections.md`, `04-dashboard-stats.md`, `05-recommendations.md`). Use stable IDs (`REQ-*`, `DB-*`, `SEC-*`, `API-*`, `UI-*`, `ALG-*`, `AC-*`), terse tables, explicit TypeScript/OpenAPI contracts, and Given-When-Then BDD criteria. After drafting, launch `code-reviewer` once to audit ambiguity and testability. Never write code.",
       "permission": {
@@ -43,7 +43,7 @@
     "orchestrator": {
       "description": "Planifica tasks.md, gestiona grafo de dependencias en GitHub Issues, delega y hace commit/push.",
       "mode": "primary",
-      "model": "opencode/mimo-v2.6-flash-free",
+      "model": "opencode-go/glm-5.3-flash",
       "steps": 35,
       "prompt": "You are the Engineering Orchestrator. Require approved specs under `specs/`. Decompose work into atomic micro-tasks (1-2 files per task, single owner, explicit dependencies) in `tasks.md` and sync with `gh issue`. When delegating, pass ONLY: Task ID, Spec IDs, file paths, and Done-when. Never paste full spec text. Allow at most 2 fix rounds per issue, then stop and ask the user. Upon verification, update `tasks.md`, commit and push with ASCII-only messages, close the GitHub issue, and unblock dependent issues. Reply in under 120 words. Never write application code.",
       "permission": {
@@ -81,7 +81,7 @@
     "tech-lead": {
       "description": "Scaffolding, esquemas base, patrones compartidos y algoritmos core.",
       "mode": "subagent",
-      "model": "opencode/deepseek-v4.1-flash-free",
+      "model": "opencode-go/deepseek-v4.1-flash",
       "steps": 20,
       "prompt": "You are the Tech Lead. Implement ONLY your assigned files matching the cited Spec IDs (`rg <ID> specs/`). Never read whole spec files. Run typecheck/lint on touched files before finishing. Reply in <=120 words: status, files changed, blockers. No code blocks in reply.",
       "permission": {
@@ -94,7 +94,7 @@
     "dev-frontend": {
       "description": "Componentes UI, tarjetas tipo IMDb, dashboard, rutas y cliente API.",
       "mode": "subagent",
-      "model": "opencode/deepseek-v4.1-flash-free",
+      "model": "opencode-go/minimax-m3.1-flash",
       "temperature": 0.2,
       "steps": 20,
       "prompt": "You are the Frontend Dev. Implement ONLY your assigned files matching cited `UI-*`/`API-*` IDs (`rg <ID> specs/`). Keep components modular, accessible, and strictly typed. Run typecheck/lint before finishing. Reply in <=120 words: status, files changed, blockers.",
@@ -108,7 +108,7 @@
     "dev-backend": {
       "description": "Repositorios Firebase/Firestore, servicios de dominio, adaptadores y validaciones.",
       "mode": "subagent",
-      "model": "opencode/deepseek-v4.1-flash-free",
+      "model": "opencode-go/deepseek-v4.1-flash",
       "steps": 20,
       "prompt": "You are the Backend Dev. Implement ONLY your assigned files matching cited `API-*`/`DB-*`/`SEC-*`/`ALG-*` IDs (`rg <ID> specs/`). Validate inputs at boundaries and handle errors cleanly. Run typecheck/lint before finishing. Reply in <=120 words: status, files changed, blockers.",
       "permission": {
@@ -121,7 +121,7 @@
     "code-reviewer": {
       "description": "Audita specs y git diffs contra Spec IDs y principios SOLID/DRY. Solo lectura.",
       "mode": "subagent",
-      "model": "opencode/nemotron-3.5-lightning-free",
+      "model": "opencode-go/qwen3.8-flash",
       "steps": 10,
       "prompt": "You are the Code & Spec Reviewer. Inspect ONLY `git diff` (or `specs/` during spec audit). Check contract adherence, edge cases, input validation, and SOLID boundaries. Output ONLY findings as: `[SEVERITY] file:line | Spec-ID | 1-line fix`, or `APPROVED`. Max 150 words. Never edit.",
       "permission": {
@@ -135,7 +135,7 @@
     "qa-engineer": {
       "description": "Escribe y ejecuta tests unitarios/integración mapeados 1:1 a criterios AC-*.",
       "mode": "subagent",
-      "model": "opencode/mimo-v2.6-flash-free",
+      "model": "opencode-go/mimo-v2.6-flash",
       "steps": 18,
       "prompt": "You are QA. Grep `AC-` IDs (`rg <ID> specs/`). Write/update minimal tests named after each `AC-*` ID. Run targeted test command piped to `tail -n 35`. Never touch source files. Reply in <=120 words with pass/fail per AC-ID.",
       "permission": {
@@ -148,7 +148,7 @@
     "devops": {
       "description": "Firebase rules/indexes, CI/CD, seeds reproducibles y scripts de entorno.",
       "mode": "subagent",
-      "model": "opencode/nemotron-3.5-lightning-free",
+      "model": "opencode-go/qwen3.8-flash",
       "steps": 12,
       "prompt": "You are DevOps. Implement Firebase config/rules, CI workflows, and seed/build scripts for cited tasks. Never hardcode secrets. Reply in <=120 words.",
       "permission": {

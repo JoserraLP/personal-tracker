@@ -1,0 +1,9 @@
+Failed to connect to IGDB
+
+Vinculación con steam para cargar los juegos directamente (como anteriormente en ajustes)
+
+Añadir experiencias por hacer, hechas, con fecha (solo año) y descripcion
+
+Añadir lista de compras/regalos donde se pueda añadir si ya lo tengo, el enlace, una imagen. Permitir crear mis propias categorías dentro de esta sección para asignarlas a cada item
+
+Libros falla por referer blocked
