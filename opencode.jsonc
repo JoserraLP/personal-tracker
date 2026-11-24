@@ -1,0 +1,161 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-snip@1.6.1"],
+  "small_model": "opencode/inkling-2-small-free",
+  "compaction": { "auto": true, "prune": true, "reserved": 12000 },
+  "default_agent": "spec-architect",
+  "subagent_depth": 1,
+
+  "command": {
+    "create-issues": {
+      "agent": "orchestrator",
+      "description": "Descompone specs/*.md en micro-tareas atómicas (tasks.md) y crea issues en GitHub",
+      "template": "Read specs/00-overview.md and the index of specs/*.md. Break the project into micro-tasks in tasks.md (strictly 1-2 files per task, ordered by dependency, disjoint file ownership). Create one GitHub issue per task using `gh issue create --title \"[TASK-ID] Short title\" --label \"ready\" --body \"...\"` (use label `blocked` if it depends on unfinished tasks). Include Spec IDs, exact file paths, owner role, and BDD Done-when criteria. Never write application code."
+    },
+    "next-issue": {
+      "agent": "orchestrator",
+      "description": "Toma la siguiente issue lista, la delega, verifica calidad, hace commit/push y la cierra",
+      "template": "Run `gh issue list --state open --label ready --limit 5` and select the lowest-ID issue. Delegate ONLY: Issue ID, Spec IDs, exact file paths, and Done-when to the owner subagent (tech-lead, dev-frontend, dev-backend, or devops). Require the subagent to run typecheck/lint before finishing. Then run `code-reviewer` on git diff, and `qa-engineer` only if the task has AC-* criteria. Max 2 fix rounds. When approved: 1) mark task done in tasks.md, 2) run `git add -A && git commit -m \"feat(TASK-ID): short summary (#<number>)\" && git push` using ASCII-only characters, 3) run `gh issue close <number> --comment \"Verified, committed, and pushed.\"`, and 4) remove `blocked` and add `ready` on newly unblocked dependent issues."
+    },
+    "propose-change": {
+      "agent": "spec-architect",
+      "description": "Crea una propuesta delta estilo OpenSpec en openspec/changes/<slug>/",
+      "template": "Create a delta change folder under `openspec/changes/$ARGUMENTS/` with `proposal.md` (why & scope), `specs-delta.md` (ADDED/MODIFIED/REMOVED requirements with stable IDs), and `tasks.md` (1-2 files per micro-task). Launch `code-reviewer` once to audit testability. Never write application code."
+    }
+  },
+
+  "agent": {
+    "spec-architect": {
+      "description": "Diseña y mantiene specs modulares (specs/*.md) y deltas OpenSpec con contratos y BDD.",
+      "mode": "primary",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "steps": 15,
+      "prompt": "You are the Spec Architect following OpenSpec & SDD best practices via the `opencode-sdd-team` skill. Ask at most 5 concise architectural questions if critical stack details are missing, then generate modular specs under `specs/` (`00-overview.md`, `01-data-model.md`, `02-catalog-search.md`, `03-tracking-collections.md`, `04-dashboard-stats.md`, `05-recommendations.md`). Use stable IDs (`REQ-*`, `DB-*`, `SEC-*`, `API-*`, `UI-*`, `ALG-*`, `AC-*`), terse tables, explicit TypeScript/OpenAPI contracts, and Given-When-Then BDD criteria. After drafting, launch `code-reviewer` once to audit ambiguity and testability. Never write code.",
+      "permission": {
+        "read": { "*": "allow", "node_modules/**": "deny", "*-lock.*": "deny", "*.lock": "deny", ".env*": "deny" },
+        "edit": { "*": "deny", "spec.md": "allow", "specs/**": "allow", "openspec/**": "allow" },
+        "bash": "deny",
+        "todowrite": "deny",
+        "task": { "*": "deny", "code-reviewer": "allow" }
+      }
+    },
+
+    "orchestrator": {
+      "description": "Planifica tasks.md, gestiona grafo de dependencias en GitHub Issues, delega y hace commit/push.",
+      "mode": "primary",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "steps": 35,
+      "prompt": "You are the Engineering Orchestrator. Require approved specs under `specs/`. Decompose work into atomic micro-tasks (1-2 files per task, single owner, explicit dependencies) in `tasks.md` and sync with `gh issue`. When delegating, pass ONLY: Task ID, Spec IDs, file paths, and Done-when. Never paste full spec text. Allow at most 2 fix rounds per issue, then stop and ask the user. Upon verification, update `tasks.md`, commit and push with ASCII-only messages, close the GitHub issue, and unblock dependent issues. Reply in under 120 words. Never write application code.",
+      "permission": {
+        "read": { "*": "allow", "node_modules/**": "deny", "*-lock.*": "deny", "*.lock": "deny", ".next/**": "deny", "dist/**": "deny", ".env*": "deny" },
+        "edit": { "*": "deny", "tasks.md": "allow", "openspec/**/tasks.md": "allow" },
+        "bash": {
+          "*": "deny",
+          "gh issue list*": "allow",
+          "gh issue view*": "allow",
+          "gh issue create*": "allow",
+          "gh issue edit*": "allow",
+          "gh issue close*": "allow",
+          "gh issue comment*": "allow",
+          "git status*": "allow",
+          "git diff --stat*": "allow",
+          "git add*": "allow",
+          "git commit*": "allow",
+          "git push*": "allow",
+          "git push --force*": "deny",
+          "git push -f*": "deny"
+        },
+        "todowrite": "deny",
+        "task": {
+          "*": "deny",
+          "tech-lead": "allow",
+          "dev-frontend": "allow",
+          "dev-backend": "allow",
+          "code-reviewer": "allow",
+          "qa-engineer": "allow",
+          "devops": "allow"
+        }
+      }
+    },
+
+    "tech-lead": {
+      "description": "Scaffolding, esquemas base, patrones compartidos y algoritmos core.",
+      "mode": "subagent",
+      "model": "opencode/deepseek-v4.1-flash-free",
+      "steps": 20,
+      "prompt": "You are the Tech Lead. Implement ONLY your assigned files matching the cited Spec IDs (`rg <ID> specs/`). Never read whole spec files. Run typecheck/lint on touched files before finishing. Reply in <=120 words: status, files changed, blockers. No code blocks in reply.",
+      "permission": {
+        "read": { "*": "allow", "node_modules/**": "deny", "*-lock.*": "deny", "*.lock": "deny", ".next/**": "deny", "dist/**": "deny", ".env*": "deny" },
+        "edit": { "*": "allow", "spec.md": "deny", "specs/**": "deny", "openspec/**": "deny", "tasks.md": "deny" },
+        "webfetch": "deny", "websearch": "deny", "todowrite": "deny", "skill": "deny", "question": "deny"
+      }
+    },
+
+    "dev-frontend": {
+      "description": "Componentes UI, tarjetas tipo IMDb, dashboard, rutas y cliente API.",
+      "mode": "subagent",
+      "model": "opencode/deepseek-v4.1-flash-free",
+      "temperature": 0.2,
+      "steps": 20,
+      "prompt": "You are the Frontend Dev. Implement ONLY your assigned files matching cited `UI-*`/`API-*` IDs (`rg <ID> specs/`). Keep components modular, accessible, and strictly typed. Run typecheck/lint before finishing. Reply in <=120 words: status, files changed, blockers.",
+      "permission": {
+        "read": { "*": "allow", "node_modules/**": "deny", "*-lock.*": "deny", "*.lock": "deny", ".next/**": "deny", "dist/**": "deny", ".env*": "deny" },
+        "edit": { "*": "allow", "spec.md": "deny", "specs/**": "deny", "openspec/**": "deny", "tasks.md": "deny" },
+        "webfetch": "deny", "websearch": "deny", "todowrite": "deny", "skill": "deny", "question": "deny"
+      }
+    },
+
+    "dev-backend": {
+      "description": "Repositorios Firebase/Firestore, servicios de dominio, adaptadores y validaciones.",
+      "mode": "subagent",
+      "model": "opencode/deepseek-v4.1-flash-free",
+      "steps": 20,
+      "prompt": "You are the Backend Dev. Implement ONLY your assigned files matching cited `API-*`/`DB-*`/`SEC-*`/`ALG-*` IDs (`rg <ID> specs/`). Validate inputs at boundaries and handle errors cleanly. Run typecheck/lint before finishing. Reply in <=120 words: status, files changed, blockers.",
+      "permission": {
+        "read": { "*": "allow", "node_modules/**": "deny", "*-lock.*": "deny", "*.lock": "deny", ".next/**": "deny", "dist/**": "deny", ".env*": "deny" },
+        "edit": { "*": "allow", "spec.md": "deny", "specs/**": "deny", "openspec/**": "deny", "tasks.md": "deny" },
+        "webfetch": "deny", "websearch": "deny", "todowrite": "deny", "skill": "deny", "question": "deny"
+      }
+    },
+
+    "code-reviewer": {
+      "description": "Audita specs y git diffs contra Spec IDs y principios SOLID/DRY. Solo lectura.",
+      "mode": "subagent",
+      "model": "opencode/nemotron-3.5-lightning-free",
+      "steps": 10,
+      "prompt": "You are the Code & Spec Reviewer. Inspect ONLY `git diff` (or `specs/` during spec audit). Check contract adherence, edge cases, input validation, and SOLID boundaries. Output ONLY findings as: `[SEVERITY] file:line | Spec-ID | 1-line fix`, or `APPROVED`. Max 150 words. Never edit.",
+      "permission": {
+        "read": { "*": "allow", "node_modules/**": "deny", "*-lock.*": "deny", "*.lock": "deny", ".env*": "deny" },
+        "edit": "deny",
+        "bash": { "*": "deny", "git diff*": "allow", "git log -n*": "allow", "git status*": "allow" },
+        "webfetch": "deny", "websearch": "deny", "todowrite": "deny", "skill": "deny", "question": "deny"
+      }
+    },
+
+    "qa-engineer": {
+      "description": "Escribe y ejecuta tests unitarios/integración mapeados 1:1 a criterios AC-*.",
+      "mode": "subagent",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "steps": 18,
+      "prompt": "You are QA. Grep `AC-` IDs (`rg <ID> specs/`). Write/update minimal tests named after each `AC-*` ID. Run targeted test command piped to `tail -n 35`. Never touch source files. Reply in <=120 words with pass/fail per AC-ID.",
+      "permission": {
+        "read": { "*": "allow", "node_modules/**": "deny", "*-lock.*": "deny", "*.lock": "deny", ".env*": "deny" },
+        "edit": { "*": "deny", "tests/**": "allow", "**/*.test.*": "allow", "**/*.spec.*": "allow" },
+        "webfetch": "deny", "websearch": "deny", "todowrite": "deny", "skill": "deny", "question": "deny"
+      }
+    },
+
+    "devops": {
+      "description": "Firebase rules/indexes, CI/CD, seeds reproducibles y scripts de entorno.",
+      "mode": "subagent",
+      "model": "opencode/nemotron-3.5-lightning-free",
+      "steps": 12,
+      "prompt": "You are DevOps. Implement Firebase config/rules, CI workflows, and seed/build scripts for cited tasks. Never hardcode secrets. Reply in <=120 words.",
+      "permission": {
+        "read": { "*": "allow", "node_modules/**": "deny", "*-lock.*": "deny", "*.lock": "deny", ".env*": "deny" },
+        "edit": { "*": "allow", "spec.md": "deny", "specs/**": "deny", "openspec/**": "deny", "tasks.md": "deny" },
+        "webfetch": "deny", "websearch": "deny", "todowrite": "deny", "skill": "deny", "question": "deny"
+      }
+    }
+  }
+}
