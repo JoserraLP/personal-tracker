@@ -1,0 +1,58 @@
+{
+  "indexes": [
+    {
+      "collectionId": "catalog",
+      "fields": [
+        { "fieldPath": "mediaType", "order": "ASC" },
+        { "fieldPath": "titleNormalized", "order": "ASC" }
+      ]
+    },
+    {
+      "collectionId": "catalog",
+      "fields": [
+        { "fieldPath": "mediaType", "order": "ASC" },
+        { "fieldPath": "avgRating", "order": "DESC" }
+      ]
+    },
+    {
+      "collectionId": "catalog",
+      "fields": [
+        { "fieldPath": "mediaType", "order": "ASC" },
+        { "fieldPath": "releaseYear", "order": "DESC" }
+      ]
+    },
+    {
+      "collectionId": "catalog",
+      "fields": [
+        { "fieldPath": "titleNormalized", "order": "ASC" }
+      ]
+    },
+    {
+      "collectionId": "entries",
+      "fields": [
+        { "fieldPath": "updatedAt", "order": "DESC" }
+      ]
+    },
+    {
+      "collectionId": "entries",
+      "fields": [
+        { "fieldPath": "status", "order": "ASC" },
+        { "fieldPath": "updatedAt", "order": "DESC" }
+      ]
+    },
+    {
+      "collectionId": "entries",
+      "fields": [
+        { "fieldPath": "score", "order": "DESC" },
+        { "fieldPath": "updatedAt", "order": "DESC" }
+      ]
+    },
+    {
+      "collectionId": "collections",
+      "fields": [
+        { "fieldPath": "updatedAt", "order": "DESC" }
+      ]
+    }
+  ],
+  "version": 1
+}
