@@ -11,6 +11,10 @@
 // T-115: vista de Búsqueda (02 UI-03, REQ-102): input con debounce
 //        de 300 ms, grid de `MediaCard` y estado vacío «Sin
 //        resultados» (AC-112, AC-113).
+// T-119: vista de Dashboard del modelo 00-05 (04 UI-20..UI-23,
+//        REQ-301..306): KPIs, distribución por tipo, resumen de notas
+//        y actividad reciente; reactiva por snapshot (AC-137) y con
+//        estado vacío «Añade tu primer título» (AC-136).
 // =============================================================
 
 import { login, logout, watchAuthState } from "./firebase.js";
@@ -92,6 +96,7 @@ import { fetchOwnedSteamGames } from "./api-steam.js";
 import {
   MEDIA_TYPES as CATALOG_MEDIA_TYPES,
   MEDIA_TYPE_LABELS as CATALOG_MEDIA_TYPE_LABELS,
+  ENTRY_STATUS_LABELS,
   createMediaCard,
   mountMediaCards,
   updateMediaCard,
@@ -121,6 +126,16 @@ import {
   createCollectionsPanel,
   MAX_COLLECTIONS_MESSAGE,
 } from "./ui/collections-panel.js";
+// T-119 — Servicio de estadísticas del dashboard (spec 04 API-20/21/22,
+// REQ-301..306; AC-130..AC-137): `getStats` hace la lectura agregada y
+// `applySnapshot` recalcula en PURO sobre el catálogo ya cacheado, sin
+// volver a leer (AC-137).
+import {
+  dashboardService,
+  EMPTY_STATE_MESSAGE as DASHBOARD_EMPTY_MESSAGE,
+  RECENT_LIMIT as DASHBOARD_RECENT_LIMIT,
+  timestampToMs as dashboardTimestampToMs,
+} from "./services/dashboard-service.js";
 
 // =============================================================
 // Spec 001 — Puerta de login (INTACTA)
@@ -229,6 +244,7 @@ function activateAppViewContent(key) {
       // cursor (UNA lectura por página, AC-111) y pinta `MediaCard`.
       mountCatalogView();
       dashboardUnsubscribeAll();
+      unsubscribeDashboardStats();
       favoritesUnsubscribeAll();
       collectionsUnsubscribeAll();
       void loadCatalogPage({ append: false });
@@ -238,6 +254,7 @@ function activateAppViewContent(key) {
       // Debounce de 300 ms en el input y grid de `MediaCard`.
       mountSearchView();
       dashboardUnsubscribeAll();
+      unsubscribeDashboardStats();
       favoritesUnsubscribeAll();
       collectionsUnsubscribeAll();
       if (searchView.term !== "") {
@@ -249,6 +266,7 @@ function activateAppViewContent(key) {
     case "profile":
       showPanel("favorites-panel");
       dashboardUnsubscribeAll();
+      unsubscribeDashboardStats();
       collectionsUnsubscribeAll();
       subscribeToFavorites();
       break;
@@ -259,6 +277,7 @@ function activateAppViewContent(key) {
       mountCollectionsPanel();
       void refreshCollectionsPanel();
       dashboardUnsubscribeAll();
+      unsubscribeDashboardStats();
       favoritesUnsubscribeAll();
       // La vista legacy de la spec 004 sigue cargándose en segundo
       // plano: alimenta el picker «Colecciones» de Favoritos y de la
@@ -270,6 +289,12 @@ function activateAppViewContent(key) {
       favoritesUnsubscribeAll();
       collectionsUnsubscribeAll();
       subscribeToDashboard();
+      // T-119 (spec 04 UI-20..UI-23): dashboard del modelo 00-05 sobre
+      // `users/{uid}/entries`. `getStats` hace la lectura agregada y la
+      // suscripción al snapshot recalcula en puro (AC-137).
+      mountDashboardView();
+      void loadDashboardStats();
+      void subscribeToDashboardStats();
       break;
     default:
       // Búsqueda y Recomendaciones: contenido pendiente (T-115/T-120).
@@ -1237,6 +1262,9 @@ function catalogCleanup() {
   // tarjetas ni selectores con datos de otra sesión).
   resetCollectionsPanel();
   dashboardUnsubscribeAll();
+  // T-119: el dashboard (spec 04) se vacía también para no dejar
+  // estadísticas ni suscripciones de otra sesión.
+  resetDashboardView();
   favoritesUnsubscribeAll();
   collectionsUnsubscribeAll();
   catalogInitialized = false;
@@ -4838,6 +4866,672 @@ function renderRecentList(container, items, dateField) {
     li.appendChild(info);
     container.appendChild(li);
   }
+}
+
+// =============================================================
+// T-119 — Vista de Dashboard del modelo 00-05 (spec 04 UI-20..UI-23,
+// REQ-301..REQ-306; AC-130..AC-137)
+//
+// Sustituye a las tarjetas y listas RE legacy (spec 003) por las 4
+// componentes del spec 04, montadas en `#dashboard-view` dentro de
+// `#dashboard-panel` (el marcado vive en JS: `index.html` no cambia):
+//
+//   - `KpiRow` (UI-20): 5 tarjetas KPI (total, en curso, completados,
+//     abandonados, planeados) sobre `users/{uid}/entries` (REQ-301).
+//   - `TypeDistribution` (UI-21): reparto por `catalog.mediaType` con
+//     el % sobre el total (REQ-302), estilo IMDb.
+//   - `ScoreSummary` (UI-22): nota media global y media por tipo; «—»
+//     cuando no hay puntuaciones (REQ-303, AC-133).
+//   - `RecentActivity` (UI-23): las 10 últimas entries por `updatedAt`
+//     desc con fecha RELATIVA en español (REQ-304).
+//
+// Los datos llegan de `dashboardService` (T-110): `getStats(uid)` hace
+// la lectura agregada (API-20) y la suscripción `onSnapshot` a
+// `users/{uid}/entries` recalcula con `applySnapshot()` (API-22,
+// AC-137) SIN volver a ejecutar `getStats` ni a leer el catálogo.
+//
+// Estado vacío (REQ-306, AC-136): KPIs a 0 y el mensaje «Añade tu
+// primer título» visible.
+// =============================================================
+
+/**
+ * Definición de los 5 KPIs del dashboard (UI-20, REQ-301). El orden es
+ * el del contrato `totals` de la spec 04 §2.
+ * @type {ReadonlyArray<{key: string, label: string}>}
+ */
+const DASHBOARD_KPI_DEFS = Object.freeze([
+  { key: "total", label: "En total" },
+  { key: "inProgress", label: "En curso" },
+  { key: "completed", label: "Completados" },
+  { key: "dropped", label: "Abandonados" },
+  { key: "planned", label: "Planeados" },
+]);
+
+/**
+ * Estado de la vista de dashboard (spec 04).
+ * @type {{
+ *   mounted: boolean,
+ *   stats: object|null,
+ *   requestId: number,
+ *   subscriptionId: number,
+ *   unsubscribeSnapshot: Function|null
+ * }}
+ */
+const dashboardViewState = {
+  /** ¿La vista ya está montada en el DOM? */
+  mounted: false,
+  /** Últimas estadísticas calculadas (`DashboardStats`). */
+  stats: null,
+  /** Token de petición: descarta respuestas obsoletas de `getStats`. */
+  requestId: 0,
+  /** Token de la suscripción: invalida suscripciones tardías. */
+  subscriptionId: 0,
+  /** `unsubscribe` de la suscripción al snapshot de entries. */
+  unsubscribeSnapshot: null,
+};
+
+/** Referencias DOM de la vista de dashboard (se rellenan al montar). */
+const dashboardViewDom = {
+  root: null,
+  error: null,
+  loading: null,
+  empty: null,
+  kpis: null,
+  types: null,
+  scores: null,
+  scoresByType: null,
+  activity: null,
+};
+
+/**
+ * Fecha relativa en español (UI-23): «hace 2 días», «ayer», «hace 3
+ * semanas»… Las fechas futuras se expresan con «en» («en 2 días»).
+ * @param {*} value Fecha (ISO, epoch o `Timestamp` de Firestore).
+ * @param {number} [now] Momento de referencia en ms (por defecto, ahora).
+ * @returns {string} Texto relativo; "" si la fecha no es utilizable.
+ */
+function formatRelativeDate(value, now = Date.now()) {
+  const ms = dashboardTimestampToMs(value);
+  if (ms === null || !Number.isFinite(now)) return "";
+  const delta = ms - now;
+  const abs = Math.abs(delta);
+  const future = delta > 0;
+  const prefix = future ? "en" : "hace";
+
+  const minutes = Math.floor(abs / 60000);
+  if (minutes < 1) return future ? "en un momento" : "ahora mismo";
+  if (minutes < 60) {
+    return `${prefix} ${minutes} ${minutes === 1 ? "minuto" : "minutos"}`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${prefix} ${hours} ${hours === 1 ? "hora" : "horas"}`;
+  }
+  const days = Math.floor(hours / 24);
+  if (days === 1) return future ? "mañana" : "ayer";
+  if (days < 7) return `${prefix} ${days} días`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) {
+    return `${prefix} ${weeks} ${weeks === 1 ? "semana" : "semanas"}`;
+  }
+  const months = Math.floor(days / 30);
+  if (months < 12) {
+    return `${prefix} ${months} ${months === 1 ? "mes" : "meses"}`;
+  }
+  const years = Math.floor(days / 365);
+  return `${prefix} ${years} ${years === 1 ? "año" : "años"}`;
+}
+
+/**
+ * Porcentaje con 1 decimal como máximo («50 %», «33.3 %»).
+ * @param {*} pct
+ * @returns {string}
+ */
+function formatDashboardPercent(pct) {
+  if (typeof pct !== "number" || !Number.isFinite(pct)) return "0";
+  return Number.isInteger(pct) ? String(pct) : pct.toFixed(1);
+}
+
+/**
+ * Nota media con 1 decimal, o «—» si no hay puntuaciones (UI-22,
+ * AC-133).
+ * @param {*} average
+ * @returns {string}
+ */
+function formatDashboardScore(average) {
+  if (typeof average !== "number" || !Number.isFinite(average)) return "—";
+  return average.toFixed(1);
+}
+
+/**
+ * Crea una sección con título (para los 4 bloques del dashboard).
+ * @param {string} id Id de la sección.
+ * @param {string} titleId Id del título (referenciado por `aria-labelledby`).
+ * @param {string} titleText Título en español.
+ * @returns {HTMLElement}
+ */
+function createDashboardSection(id, titleId, titleText) {
+  const section = createCatalogElement("section", "dashboard-view__section");
+  section.id = id;
+  section.setAttribute("aria-labelledby", titleId);
+  const title = createCatalogElement("h3", "dashboard__section-title", titleText);
+  title.id = titleId;
+  section.appendChild(title);
+  return section;
+}
+
+/**
+ * Monta la vista de dashboard (spec 04) dentro de `#dashboard-panel`.
+ * Los nodos legacy del spec 003 (`#dashboard-stats`, `#dashboard-recent`)
+ * quedan OCULTOS: sus datos los sustituyen los componentes nuevos. El
+ * bloque de Favoritos (spec 004) se mantiene visible.
+ */
+function mountDashboardView() {
+  if (dashboardViewState.mounted) return;
+  const panel = document.getElementById("dashboard-panel");
+  if (!panel) return;
+
+  // Los nodos legacy del spec 003 quedan superados por los componentes
+  // del spec 04: se ocultan (no se borran) para no romper nada más.
+  const legacyStats = document.getElementById("dashboard-stats");
+  if (legacyStats) legacyStats.hidden = true;
+  const legacyRecent = document.getElementById("dashboard-recent");
+  if (legacyRecent) legacyRecent.hidden = true;
+
+  const root = createCatalogElement("div", "dashboard-view");
+  root.id = "dashboard-view";
+
+  const title = createCatalogElement("h2", "app-view__title", "Estadísticas");
+  root.appendChild(title);
+
+  // Error propio del dashboard (spec 04): el legacy `#dashboard-error`
+  // sigue siendo para el bloque de la spec 004.
+  const error = createCatalogElement("p", "error");
+  error.id = "dashboard-view-error";
+  error.setAttribute("role", "alert");
+  error.hidden = true;
+  root.appendChild(error);
+
+  const loading = createCatalogElement("div", "catalog__state");
+  loading.id = "dashboard-view-loading";
+  loading.hidden = true;
+  loading.appendChild(createCatalogElement("p", "muted", "Cargando estadísticas…"));
+  root.appendChild(loading);
+
+  // Estado vacío (REQ-306, AC-136).
+  const empty = createCatalogElement("p", "dashboard-view__empty");
+  empty.id = "dashboard-view-empty";
+  empty.textContent = DASHBOARD_EMPTY_MESSAGE;
+  empty.hidden = true;
+  root.appendChild(empty);
+
+  // --- UI-20: KpiRow -----------------------------------------
+  const kpiSection = createDashboardSection(
+    "dashboard-view-kpis-section",
+    "dashboard-kpis-title",
+    "Resumen",
+  );
+  const kpis = createCatalogElement("div", "dashboard__stats-grid");
+  kpis.id = "dashboard-kpis";
+  kpis.setAttribute("role", "list");
+  kpis.setAttribute("aria-live", "polite");
+  kpiSection.appendChild(kpis);
+  root.appendChild(kpiSection);
+
+  // --- UI-21: TypeDistribution --------------------------------
+  const typeSection = createDashboardSection(
+    "dashboard-view-types-section",
+    "dashboard-types-title",
+    "Por tipo",
+  );
+  const types = createCatalogElement("ul", "dashboard-view__types");
+  types.id = "dashboard-types";
+  typeSection.appendChild(types);
+  root.appendChild(typeSection);
+
+  // --- UI-22: ScoreSummary ------------------------------------
+  const scoreSection = createDashboardSection(
+    "dashboard-view-scores-section",
+    "dashboard-scores-title",
+    "Valoraciones",
+  );
+  const scores = createCatalogElement("div", "dashboard__stats-grid");
+  scores.id = "dashboard-scores";
+  // Las tarjetas de nota son `role="listitem"`: la lista necesita su
+  // `role="list"` para que no queden huérfanas.
+  scores.setAttribute("role", "list");
+  scoreSection.appendChild(scores);
+  const scoresByType = createCatalogElement("ul", "dashboard-view__score-list");
+  scoresByType.id = "dashboard-scores-by-type";
+  scoreSection.appendChild(scoresByType);
+  root.appendChild(scoreSection);
+
+  // --- UI-23: RecentActivity ----------------------------------
+  const activitySection = createDashboardSection(
+    "dashboard-view-activity-section",
+    "dashboard-activity-title",
+    "Actividad reciente",
+  );
+  const activity = createCatalogElement("ul", "dashboard-view__activity");
+  activity.id = "dashboard-activity";
+  activity.setAttribute("aria-live", "polite");
+  activitySection.appendChild(activity);
+  root.appendChild(activitySection);
+
+  // El bloque de Favoritos (spec 004) queda por debajo del dashboard.
+  const favoritesBlock = document.getElementById("dashboard-favorites-block");
+  if (favoritesBlock && favoritesBlock.parentElement === panel) {
+    panel.insertBefore(root, favoritesBlock);
+  } else {
+    panel.appendChild(root);
+  }
+
+  dashboardViewDom.root = root;
+  dashboardViewDom.error = error;
+  dashboardViewDom.loading = loading;
+  dashboardViewDom.empty = empty;
+  dashboardViewDom.kpis = kpis;
+  dashboardViewDom.types = types;
+  dashboardViewDom.scores = scores;
+  dashboardViewDom.scoresByType = scoresByType;
+  dashboardViewDom.activity = activity;
+
+  dashboardViewState.mounted = true;
+}
+
+/**
+ * Crea una tarjeta KPI (UI-20).
+ * @param {{key: string, label: string}} def Definición del KPI.
+ * @param {number} value Valor a pintar.
+ * @returns {HTMLElement}
+ */
+function createDashboardKpiCard(def, value) {
+  const card = createCatalogElement("div", "stat-card dashboard-view__kpi");
+  card.setAttribute("role", "listitem");
+  card.dataset.kpi = def.key;
+
+  const label = createCatalogElement("span", "stat-card__label", def.label);
+  const amount = createCatalogElement("span", "stat-card__value", String(value));
+  card.append(label, amount);
+  return card;
+}
+
+/**
+ * Pinta los 5 KPIs (UI-20, REQ-301). Sin entries todos valen 0.
+ * @param {object} totals `totals` del contrato de la spec 04 §2.
+ */
+function renderDashboardKpis(totals) {
+  const container = dashboardViewDom.kpis;
+  if (!container) return;
+  const source = totals && typeof totals === "object" ? totals : {};
+  const cards = DASHBOARD_KPI_DEFS.map((def) => {
+    const raw = source[def.key];
+    const value = typeof raw === "number" && Number.isFinite(raw) ? raw : 0;
+    return createDashboardKpiCard(def, value);
+  });
+  container.replaceChildren(...cards);
+}
+
+/**
+ * Crea una fila de la distribución por tipo (UI-21).
+ * @param {string} mediaType Tipo de medio (DB-101).
+ * @param {{count?: number, pct?: number}} data Datos del tipo.
+ * @returns {HTMLElement}
+ */
+function createDashboardTypeRow(mediaType, data) {
+  const bucket = data && typeof data === "object" ? data : {};
+  const count = typeof bucket.count === "number" && Number.isFinite(bucket.count)
+    ? bucket.count
+    : 0;
+  const pct = typeof bucket.pct === "number" && Number.isFinite(bucket.pct)
+    ? bucket.pct
+    : 0;
+  const label = CATALOG_MEDIA_TYPE_LABELS[mediaType] ?? mediaType;
+
+  const li = createCatalogElement("li", "dashboard-view__type");
+  li.dataset.mediaType = mediaType;
+
+  // El tipo de medio se muestra como BADGE (UI-21, «badge y %»).
+  const name = createCatalogElement(
+    "span",
+    "dashboard-view__type-label type-badge",
+    label,
+  );
+
+  // Barra de proporción: es decorativa, el % va en texto (accesible).
+  const bar = createCatalogElement("span", "dashboard-view__type-bar");
+  bar.setAttribute("aria-hidden", "true");
+  const fill = createCatalogElement("span", "dashboard-view__type-bar-fill");
+  fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  bar.appendChild(fill);
+
+  const amount = createCatalogElement(
+    "span",
+    "dashboard-view__type-count",
+    String(count),
+  );
+  const percent = createCatalogElement(
+    "span",
+    "dashboard-view__type-pct",
+    `${formatDashboardPercent(pct)} %`,
+  );
+
+  li.append(name, bar, amount, percent);
+  return li;
+}
+
+/**
+ * Pinta la distribución por tipo con su % (UI-21, REQ-302). Los 7
+ * tipos del modelo (DB-101) salen siempre; los vacíos, a 0.
+ * @param {object} byType `byType` del contrato de la spec 04 §2.
+ */
+function renderDashboardTypes(byType) {
+  const container = dashboardViewDom.types;
+  if (!container) return;
+  const source = byType && typeof byType === "object" ? byType : {};
+  const rows = CATALOG_MEDIA_TYPES.map((mediaType) =>
+    createDashboardTypeRow(mediaType, source[mediaType]),
+  );
+  container.replaceChildren(...rows);
+}
+
+/**
+ * Pinta el resumen de notas: media global, nº de puntuaciones y media
+ * por tipo («—» si `count = 0`, UI-22, AC-133).
+ * @param {object} scores `scores` del contrato de la spec 04 §2.
+ */
+function renderDashboardScores(scores) {
+  const container = dashboardViewDom.scores;
+  const list = dashboardViewDom.scoresByType;
+  if (!container || !list) return;
+  const source = scores && typeof scores === "object" ? scores : {};
+  const count = typeof source.count === "number" && Number.isFinite(source.count)
+    ? source.count
+    : 0;
+  const byType = source.byType && typeof source.byType === "object" ? source.byType : {};
+
+  // Tarjetas globales.
+  const averageCard = createCatalogElement("div", "stat-card dashboard-view__kpi");
+  averageCard.setAttribute("role", "listitem");
+  averageCard.dataset.kpi = "averageScore";
+  averageCard.append(
+    createCatalogElement("span", "stat-card__label", "Nota media"),
+    createCatalogElement(
+      "span",
+      "stat-card__value stat-card__value--rating",
+      formatDashboardScore(source.average),
+    ),
+  );
+
+  const countCard = createCatalogElement("div", "stat-card dashboard-view__kpi");
+  countCard.setAttribute("role", "listitem");
+  countCard.dataset.kpi = "scoreCount";
+  countCard.append(
+    createCatalogElement("span", "stat-card__label", "Puntuaciones"),
+    createCatalogElement("span", "stat-card__value", String(count)),
+  );
+
+  container.replaceChildren(averageCard, countCard);
+
+  // Media por tipo.
+  const rows = CATALOG_MEDIA_TYPES.map((mediaType) => {
+    const bucket =
+      byType[mediaType] && typeof byType[mediaType] === "object"
+        ? byType[mediaType]
+        : { average: null, count: 0 };
+    const bucketCount =
+      typeof bucket.count === "number" && Number.isFinite(bucket.count)
+        ? bucket.count
+        : 0;
+    const li = createCatalogElement("li", "dashboard-view__score");
+    li.dataset.mediaType = mediaType;
+    const label = CATALOG_MEDIA_TYPE_LABELS[mediaType] ?? mediaType;
+    li.append(
+      createCatalogElement("span", "dashboard-view__score-label", label),
+      createCatalogElement(
+        "span",
+        "dashboard-view__score-value",
+        formatDashboardScore(bucket.average),
+      ),
+      createCatalogElement(
+        "span",
+        "dashboard-view__score-count",
+        `${bucketCount} ${bucketCount === 1 ? "puntuación" : "puntuaciones"}`,
+      ),
+    );
+    return li;
+  });
+  list.replaceChildren(...rows);
+}
+
+/**
+ * Crea un elemento de la actividad reciente (UI-23).
+ * @param {{mediaId: string, title: string, status: string, updatedAt: string}} item
+ * @returns {HTMLElement}
+ */
+function createDashboardActivityItem(item) {
+  const li = createCatalogElement("li", "dashboard-view__activity-item");
+  li.dataset.mediaId = item.mediaId;
+
+  const info = createCatalogElement("div", "dashboard-view__activity-info");
+  const title = createCatalogElement(
+    "span",
+    "dashboard-view__activity-title",
+    item.title || "Sin título",
+  );
+  const statusLabel = ENTRY_STATUS_LABELS[item.status] ?? "Sin estado";
+  const relative = formatRelativeDate(item.updatedAt);
+  const meta = createCatalogElement(
+    "span",
+    "dashboard-view__activity-meta",
+    relative ? `${statusLabel} · ${relative}` : statusLabel,
+  );
+  info.append(title, meta);
+  li.appendChild(info);
+  return li;
+}
+
+/**
+ * Pinta las últimas 10 actividades con fecha relativa (UI-23, REQ-304).
+ * @param {object[]} recent Entradas más recientes (`updatedAt` desc).
+ */
+function renderDashboardActivity(recent) {
+  const container = dashboardViewDom.activity;
+  if (!container) return;
+  const items = Array.isArray(recent)
+    ? recent.slice(0, DASHBOARD_RECENT_LIMIT)
+    : [];
+  if (items.length === 0) {
+    const empty = createCatalogElement(
+      "li",
+      "dashboard__recent-empty",
+      "Todavía no hay actividad reciente.",
+    );
+    container.replaceChildren(empty);
+    return;
+  }
+  container.replaceChildren(...items.map(createDashboardActivityItem));
+}
+
+/**
+ * Pinta el dashboard completo a partir de `DashboardStats` (spec 04).
+ * Con 0 entries los KPIs quedan a 0 y se muestra el estado vacío
+ * (REQ-306, AC-136).
+ * @param {object} stats Estadísticas del contrato de la spec 04 §2.
+ */
+function renderDashboardStats(stats) {
+  if (!stats || typeof stats !== "object") return;
+  dashboardViewState.stats = stats;
+
+  const totals = stats.totals && typeof stats.totals === "object" ? stats.totals : {};
+  renderDashboardKpis(totals);
+  renderDashboardTypes(stats.byType);
+  renderDashboardScores(stats.scores);
+  renderDashboardActivity(stats.recent);
+
+  const total = typeof totals.total === "number" ? totals.total : 0;
+  if (dashboardViewDom.empty) dashboardViewDom.empty.hidden = total !== 0;
+}
+
+/** Muestra u oculta el estado de carga del dashboard (spec 04). */
+function showDashboardViewLoading(visible) {
+  if (dashboardViewDom.loading) dashboardViewDom.loading.hidden = !visible;
+}
+
+/** Muestra un error del dashboard en español (REQ-E2). */
+function showDashboardViewError(message) {
+  const error = dashboardViewDom.error;
+  if (!error) return;
+  const text = typeof message === "string" ? message : "";
+  error.textContent = text;
+  error.hidden = text === "";
+}
+
+/** Oculta el error del dashboard. */
+function hideDashboardViewError() {
+  showDashboardViewError("");
+}
+
+/**
+ * Carga las estadísticas del usuario (API-20): 1 query de entries
+ * agregada en cliente + 1 lectura batch del catálogo por página.
+ */
+async function loadDashboardStats() {
+  const uid = currentTrackingUid;
+  if (typeof uid !== "string" || uid === "") return;
+
+  const requestId = ++dashboardViewState.requestId;
+  showDashboardViewLoading(true);
+  hideDashboardViewError();
+
+  const result = await dashboardService.getStats(uid);
+
+  // Respuesta obsoleta (cambio de vista o de sesión): se descarta.
+  if (requestId !== dashboardViewState.requestId) return;
+
+  showDashboardViewLoading(false);
+  if (!result || result.ok !== true) {
+    showDashboardViewError(
+      (result && result.message) || "No se han podido cargar las estadísticas.",
+    );
+    return;
+  }
+  hideDashboardViewError();
+  renderDashboardStats(result.value);
+}
+
+/**
+ * Suscripción reactiva al snapshot de entries (API-22, AC-137): cada
+ * evento se recalcula con `applySnapshot()` (cálculo PURO sobre el
+ * catálogo ya cacheado). NO se vuelve a ejecutar `getStats` ni se hacen
+ * lecturas: los KPIs y la distribución se actualizan al vuelo.
+ *
+ * El `import` del SDK es asíncrono: si mientras tanto cambia la vista
+ * o la sesión, la suscripción se descarta (token `subscriptionId` +
+ * uid) para no dejar un listener colgado ni pisar el handle de la
+ * suscripción vigente.
+ */
+async function subscribeToDashboardStats() {
+  const uid = currentTrackingUid;
+  if (typeof uid !== "string" || uid === "") return;
+  unsubscribeDashboardStats();
+
+  // Token PROPIO de la suscripción (no es el de la carga): invalidarlo
+  // no descarta la petición de `getStats` en vuelo.
+  const subscriptionId = ++dashboardViewState.subscriptionId;
+
+  try {
+    const sdk = await import("./firebase.js");
+
+    // La vista pudo cambiar (o la sesión) mientras se importaba el
+    // SDK: la suscripción tardía se abandona.
+    if (subscriptionId !== dashboardViewState.subscriptionId) return;
+    if (currentTrackingUid !== uid) return;
+
+    const entriesRef = sdk.collection(sdk.db, "users", uid, "entries");
+    const unsubscribe = sdk.onSnapshot(
+      entriesRef,
+      (snapshot) => {
+        // Evento de una suscripción ya cancelada: se ignora.
+        if (subscriptionId !== dashboardViewState.subscriptionId) return;
+        const docs = Array.isArray(snapshot?.docs) ? snapshot.docs : [];
+        const entries = docs.map((entryDoc) => ({
+          ...entryDoc.data(),
+          id: entryDoc.id,
+        }));
+        // AC-137: recálculo puro; sin `getStats` y sin lecturas.
+        const result = dashboardService.applySnapshot(uid, entries);
+        if (!result || result.ok !== true) return;
+        renderDashboardStats(result.value);
+      },
+      (error) => {
+        if (subscriptionId !== dashboardViewState.subscriptionId) return;
+        showDashboardViewError(
+          (error && error.message) ||
+            "No se han podido actualizar las estadísticas.",
+        );
+      },
+    );
+
+    // Segunda comprobación: la suscripción pudo quedar obsoleta
+    // mientras se registraba el listener; en ese caso se cancela aquí
+    // y NO se guarda el handle (evita pisar la suscripción vigente).
+    if (
+      subscriptionId !== dashboardViewState.subscriptionId ||
+      currentTrackingUid !== uid
+    ) {
+      if (typeof unsubscribe === "function") {
+        try {
+          unsubscribe();
+        } catch {
+          // Una baja fallida no puede tumbar la vista.
+        }
+      }
+      return;
+    }
+
+    dashboardViewState.unsubscribeSnapshot =
+      typeof unsubscribe === "function" ? unsubscribe : null;
+  } catch {
+    if (subscriptionId !== dashboardViewState.subscriptionId) return;
+    showDashboardViewError("No se han podido actualizar las estadísticas.");
+  }
+}
+
+/**
+ * Cancela la suscripción al snapshot de entries e invalida cualquier
+ * suscripción en curso (resolución tardía del import del SDK).
+ */
+function unsubscribeDashboardStats() {
+  dashboardViewState.subscriptionId += 1;
+  const unsubscribe = dashboardViewState.unsubscribeSnapshot;
+  dashboardViewState.unsubscribeSnapshot = null;
+  if (typeof unsubscribe === "function") {
+    try {
+      unsubscribe();
+    } catch {
+      // Una baja fallida no puede tumbar la vista.
+    }
+  }
+}
+
+/**
+ * Vacía el dashboard (logout / cambio de sesión): cancela la
+ * suscripción y limpia los componentes para no mostrar datos de otra
+ * sesión.
+ */
+function resetDashboardView() {
+  dashboardViewState.requestId += 1;
+  unsubscribeDashboardStats();
+  dashboardViewState.stats = null;
+  if (dashboardViewDom.kpis) dashboardViewDom.kpis.replaceChildren();
+  if (dashboardViewDom.types) dashboardViewDom.types.replaceChildren();
+  if (dashboardViewDom.scores) dashboardViewDom.scores.replaceChildren();
+  if (dashboardViewDom.scoresByType) dashboardViewDom.scoresByType.replaceChildren();
+  if (dashboardViewDom.activity) dashboardViewDom.activity.replaceChildren();
+  if (dashboardViewDom.empty) dashboardViewDom.empty.hidden = true;
+  hideDashboardViewError();
+  showDashboardViewLoading(false);
 }
 
 // --- Init del catálogo --------------------------------------

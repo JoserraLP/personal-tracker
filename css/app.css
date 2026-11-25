@@ -2668,3 +2668,232 @@ body {
   color: var(--text);
   padding: 0.25rem 0.5rem;
 }
+
+/* ============================================================
+   Dashboard del modelo 00-05 (T-119, spec 04 UI-20..UI-23,
+   REQ-301..REQ-306; AC-136, AC-137)
+   Reutiliza las tarjetas `.stat-card` de la spec 003 y añade el
+   reparto por tipo (estilo IMDb), el resumen de notas y la
+   actividad reciente.
+   ============================================================ */
+
+.dashboard-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dashboard-view__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Estado vacío (REQ-306, AC-136) */
+.dashboard-view__empty {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* UI-20 — KpiRow */
+.dashboard-view__kpi {
+  gap: 6px;
+}
+
+/* UI-21 — TypeDistribution */
+.dashboard-view__types {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-view__type {
+  display: grid;
+  grid-template-columns: minmax(6rem, 10rem) 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #2a2620;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.dashboard-view__type-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Badge generico de tipo de medio (UI-21, badge y % estilo IMDb).
+   El badge de la MediaCard (.media-card__type-badge) es un overlay
+   absoluto; este es el equivalente en linea para las listas. */
+.type-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text);
+  background: rgb(23 21 18 / 0.75);
+  border: 1px solid rgb(242 239 233 / 0.18);
+  border-radius: 999px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+
+.dashboard-view__type-bar {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: #1a1815;
+  overflow: hidden;
+}
+
+.dashboard-view__type-bar-fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.dashboard-view__type-count {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-view__type-pct {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5rem;
+  text-align: right;
+}
+
+/* UI-22 — ScoreSummary */
+.dashboard-view__score-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dashboard-view__score {
+  display: grid;
+  grid-template-columns: minmax(6rem, 10rem) auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: #2a2620;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.dashboard-view__score-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-view__score-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fdd663;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-view__score-count {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* UI-23 — RecentActivity */
+.dashboard-view__activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dashboard-view__activity-item {
+  padding: 8px 10px;
+  background: #2a2620;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.dashboard-view__activity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dashboard-view__activity-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-view__activity-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .dashboard-view__type {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "label pct"
+      "bar bar"
+      "count count";
+    row-gap: 6px;
+  }
+
+  .dashboard-view__type-label { grid-area: label; }
+  .dashboard-view__type-bar { grid-area: bar; }
+  .dashboard-view__type-pct { grid-area: pct; }
+  .dashboard-view__type-count { grid-area: count; text-align: left; }
+
+  .dashboard-view__score {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "label value"
+      "count count";
+    row-gap: 4px;
+  }
+
+  .dashboard-view__score-label { grid-area: label; }
+  .dashboard-view__score-value { grid-area: value; text-align: right; }
+  .dashboard-view__score-count { grid-area: count; text-align: left; }
+}
