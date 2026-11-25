@@ -36,14 +36,14 @@
       <!-- =============================================================
            Navegación principal (T-112 / 00 §2, REQ-C5).
            Las 6 vistas de la serie 00-05: Catálogo, Búsqueda, Perfil,
-           Colecciones, Dashboard y Recomendaciones. Las pestañas sin
-           vista propia implementada (Búsqueda → 02 UI-03 y
-           Recomendaciones → 05 UI-30) quedan `aria-disabled="true"`.
+           Colecciones, Dashboard y Recomendaciones. La pestaña sin
+           vista propia implementada (Recomendaciones → 05 UI-30) queda
+           `aria-disabled="true"`.
            ============================================================= -->
       <nav class="app-nav" aria-label="Navegación principal">
         <div class="catalog__tabs app-nav__tabs" id="app-nav-tabs" role="tablist" aria-label="Vistas principales">
           <button type="button" role="tab" id="nav-tab-catalog" class="catalog__tab app-nav__tab" data-view="catalog" aria-controls="view-catalog" aria-selected="false" tabindex="-1">Catálogo</button>
-          <button type="button" role="tab" id="nav-tab-search" class="catalog__tab app-nav__tab" data-view="search" aria-controls="view-search" aria-selected="false" tabindex="-1" aria-disabled="true">Búsqueda</button>
+          <button type="button" role="tab" id="nav-tab-search" class="catalog__tab app-nav__tab" data-view="search" aria-controls="view-search" aria-selected="false" tabindex="-1">Búsqueda</button>
           <button type="button" role="tab" id="nav-tab-profile" class="catalog__tab app-nav__tab" data-view="profile" aria-controls="view-profile" aria-selected="false" tabindex="-1">Perfil</button>
           <button type="button" role="tab" id="nav-tab-collections" class="catalog__tab app-nav__tab" data-view="collections" aria-controls="view-collections" aria-selected="false" tabindex="-1">Colecciones</button>
           <button type="button" role="tab" id="nav-tab-dashboard" class="catalog__tab app-nav__tab" data-view="dashboard" aria-controls="view-dashboard" aria-selected="false" tabindex="-1">Dashboard</button>
@@ -108,10 +108,48 @@
           </div>
         </section>
 
-        <!-- Búsqueda (spec 002, 02 UI-03) — pendiente de implementación -->
-        <section id="view-search" class="app-view" role="tabpanel" aria-labelledby="nav-tab-search" tabindex="0" hidden>
+        <!-- Búsqueda (spec 02, UI-03; T-115, REQ-102) -->
+        <section id="view-search" class="app-view search-view" role="tabpanel" aria-labelledby="nav-tab-search" tabindex="0" hidden>
           <h2 class="app-view__title">Búsqueda</h2>
-          <p class="muted">La búsqueda en el catálogo estará disponible pronto. Mientras tanto, usa el botón «Añadir» del catálogo para buscar por título.</p>
+
+          <form id="search-view-form" class="search-view__form" role="search" aria-label="Buscar en el catálogo" novalidate>
+            <label class="search-view__field" for="search-view-input">
+              <span class="search-view__label">Buscar por título</span>
+              <input id="search-view-input" class="form-field__input" name="q" type="search"
+                     placeholder="Escribe el inicio del título…" autocomplete="off"
+                     aria-describedby="search-view-status">
+            </label>
+
+            <label class="search-view__field" for="search-view-type">
+              <span class="search-view__label">Tipo</span>
+              <select id="search-view-type" class="catalog__select">
+                <option value="">Todos los tipos</option>
+              </select>
+            </label>
+
+            <button id="search-view-submit" class="btn btn--primary" type="submit">Buscar</button>
+          </form>
+
+          <p id="search-view-status" class="search-view__status muted" role="status" aria-live="polite">Escribe un título para buscar.</p>
+          <p id="search-view-error" class="error" role="alert" hidden></p>
+
+          <div id="search-view-loading" class="catalog__state" hidden>
+            <p class="muted">Buscando…</p>
+          </div>
+
+          <!-- Estado vacío (UI-03, AC-113): "Sin resultados" -->
+          <div id="search-view-empty" class="catalog__state" hidden>
+            <p id="search-view-empty-text" class="muted">Sin resultados</p>
+          </div>
+
+          <p id="search-view-count" class="search-view__count"></p>
+
+          <!-- Grid de `MediaCard` (mismo componente que el catálogo, AC-116) -->
+          <ul id="search-view-grid" class="media-grid" aria-live="polite"></ul>
+
+          <div id="search-view-load-more" class="catalog__load-more" hidden>
+            <button id="search-view-load-more-btn" class="btn btn--secondary" type="button">Cargar más</button>
+          </div>
         </section>
 
         <!-- Perfil: los títulos guardados por el usuario -->

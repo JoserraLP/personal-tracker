@@ -8,6 +8,9 @@
 // T-112: orquestación de las 6 vistas de la serie 00-05 desde el nav
 //        principal (00 §2, 02 UI-02/03, 04 UI-20, 05 UI-30).
 //        Todos los textos de UI están en español (REQ-C5).
+// T-115: vista de Búsqueda (02 UI-03, REQ-102): input con debounce
+//        de 300 ms, grid de `MediaCard` y estado vacío «Sin
+//        resultados» (AC-112, AC-113).
 // =============================================================
 
 import { login, logout, watchAuthState } from "./firebase.js";
@@ -36,6 +39,9 @@ import {
   // Traducción legacy (minúsculas) → `MediaType` del modelo 00-05
   // (REQ-C6). La usa `mediaTypeLabel()`.
   legacyMediaTypeToMediaItemType,
+  // Spec 02 — REQ-102: normalización del título para la búsqueda por
+  // prefijo (DB-121, AC-112).
+  normalizeTitle,
   // Spec 004 — Favoritos y colecciones
   setItemFavorite,
   toggleItemFavorite,
@@ -121,11 +127,11 @@ const APP_VIEW_KEYS = Object.freeze([
 ]);
 
 /**
- * Vistas sin contenido propio implementado todavía: Búsqueda
- * (02 UI-03, T-115) y Recomendaciones (05 UI-30, T-120).
- * Su pestaña permanece `aria-disabled="true"`.
+ * Vistas sin contenido propio implementado todavía: Recomendaciones
+ * (05 UI-30, T-120). Su pestaña permanece `aria-disabled="true"`.
+ * Búsqueda (02 UI-03) ya tiene vista propia desde T-115.
  */
-const APP_VIEW_PENDING = Object.freeze(["search", "recommendations"]);
+const APP_VIEW_PENDING = Object.freeze(["recommendations"]);
 
 /** Vista inicial del nav: Dashboard (spec 003, AC-001). */
 const DEFAULT_APP_VIEW = "dashboard";
@@ -187,6 +193,19 @@ function activateAppViewContent(key) {
       favoritesUnsubscribeAll();
       collectionsUnsubscribeAll();
       void loadCatalogPage({ append: false });
+      break;
+    case "search":
+      // T-115: búsqueda por prefijo del título normalizado (REQ-102).
+      // Debounce de 300 ms en el input y grid de `MediaCard`.
+      mountSearchView();
+      dashboardUnsubscribeAll();
+      favoritesUnsubscribeAll();
+      collectionsUnsubscribeAll();
+      if (searchView.term !== "") {
+        void runSearch({ append: false });
+      } else {
+        renderSearchState();
+      }
       break;
     case "profile":
       showPanel("favorites-panel");
@@ -944,18 +963,28 @@ async function loadCatalogPage(options = {}) {
 }
 
 /**
- * Opciones de la `MediaCard` en la vista de catálogo (AC-116: el
- * mismo componente de las 4 vistas).
+ * Opciones compartidas de la `MediaCard` (AC-116, REQ-106): la MISMA
+ * configuración en Catálogo, Búsqueda, Colecciones y Recomendaciones.
  * T-117 (AC-115/AC-117) inyectará la `entry` personal y el guardado
  * en `trackingRepository`; T-118 (UI-14) inyectará las colecciones.
+ * @returns {{entry: null, collections: object[], onAdd: Function, onStatusChange: Function}}
  */
-function catalogCardOptions() {
+function mediaCardOptions() {
   return {
     entry: null,
     collections: [],
     onAdd: handleCatalogCardUnavailable,
     onStatusChange: handleCatalogCardUnavailable,
   };
+}
+
+/**
+ * Opciones de la `MediaCard` en la vista de catálogo (AC-116: el
+ * mismo componente de las 4 vistas).
+ * @returns {{entry: null, collections: object[], onAdd: Function, onStatusChange: Function}}
+ */
+function catalogCardOptions() {
+  return mediaCardOptions();
 }
 
 /**
@@ -1107,12 +1136,393 @@ function resetCatalogView() {
 
 function catalogCleanup() {
   resetCatalogView();
+  // T-115: la búsqueda se invalida también (temporizador + resultados).
+  resetSearchView();
   dashboardUnsubscribeAll();
   favoritesUnsubscribeAll();
   collectionsUnsubscribeAll();
   catalogInitialized = false;
   // Tras volver a iniciar sesión se muestra la vista inicial (T-112).
   activeAppView = DEFAULT_APP_VIEW;
+}
+
+// =============================================================
+// T-115 — Vista de Búsqueda del modelo 00-05
+// (spec 02 UI-03, REQ-102; AC-112, AC-113)
+//
+//   - Input de búsqueda con DEBOUNCE de 300 ms (UI-03).
+//   - Consulta `CatalogRepository.searchByTitle()`: prefijo sobre el
+//     título NORMALIZADO (`normalizeTitle`, DB-121) ⇒ «el últ» y
+//     «EL ÚLT» encuentran «El Último Signo» (AC-112); «ultimo sig» NO
+//     es prefijo ⇒ sin resultados (AC-112).
+//   - Sin coincidencias (o término vacío) ⇒ `items: []` + estado vacío
+//     «Sin resultados», SIN error (AC-113, API-04).
+//   - Grid con el MISMO componente `MediaCard` del catálogo
+//     (AC-116, REQ-106).
+// =============================================================
+
+/** Retardo del debounce del input de búsqueda (UI-03: 300 ms). */
+const SEARCH_DEBOUNCE_MS = 300;
+
+/** Texto del estado vacío de la búsqueda (UI-03, AC-113). */
+const SEARCH_EMPTY_TEXT = "Sin resultados";
+
+/** Tamaño de página de la búsqueda (mismo criterio que el catálogo). */
+const SEARCH_PAGE_SIZE = CATALOG_PAGE_SIZE;
+
+/**
+ * Estado de la vista de búsqueda (T-115).
+ * @type {{
+ *   term: string,
+ *   items: object[],
+ *   cursor: string|null,
+ *   hasMore: boolean,
+ *   loading: boolean,
+ *   hasSearched: boolean,
+ *   requestId: number,
+ *   mounted: boolean,
+ *   debounceTimer: *
+ * }}
+ */
+const searchView = {
+  /** Último término escrito por la persona usuaria (sin normalizar). */
+  term: "",
+  /** Ítems de la página actual + los añadidos con «Cargar más». */
+  items: [],
+  /** Cursor opaco de la próxima página (`null` ⇒ fin del listado). */
+  cursor: null,
+  /** ¿Hay página siguiente? */
+  hasMore: false,
+  /** ¿Hay una consulta en vuelo? */
+  loading: false,
+  /** ¿Se ha ejecutado ya alguna búsqueda? (estado vacío) */
+  hasSearched: false,
+  /** Token de petición: descarta respuestas obsoletas. */
+  requestId: 0,
+  /** ¿La vista ya está montada en el DOM? */
+  mounted: false,
+  /** Temporizador del debounce (UI-03: 300 ms). */
+  debounceTimer: null,
+};
+
+/** Referencias DOM de la vista de búsqueda (se rellenan al montar). */
+const searchViewDom = {
+  view: null,
+  form: null,
+  input: null,
+  typeSelect: null,
+  status: null,
+  error: null,
+  loading: null,
+  empty: null,
+  emptyText: null,
+  count: null,
+  grid: null,
+  loadMoreWrap: null,
+  loadMoreBtn: null,
+};
+
+/**
+ * Monta la vista de búsqueda dentro de `#view-search` (T-115). El
+ * marcado vive en `index.html`; aquí solo se enlazan los eventos y se
+ * pinta el estado.
+ */
+function mountSearchView() {
+  if (searchView.mounted) return;
+  const view = document.getElementById("view-search");
+  if (!view) return;
+
+  const form = document.getElementById("search-view-form");
+  const input = document.getElementById("search-view-input");
+  const grid = document.getElementById("search-view-grid");
+  if (!form || !input || !grid) return;
+
+  searchViewDom.view = view;
+  searchViewDom.form = form;
+  searchViewDom.input = input;
+  searchViewDom.typeSelect = document.getElementById("search-view-type");
+  searchViewDom.status = document.getElementById("search-view-status");
+  searchViewDom.error = document.getElementById("search-view-error");
+  searchViewDom.loading = document.getElementById("search-view-loading");
+  searchViewDom.empty = document.getElementById("search-view-empty");
+  searchViewDom.emptyText = document.getElementById("search-view-empty-text");
+  searchViewDom.count = document.getElementById("search-view-count");
+  searchViewDom.grid = grid;
+  searchViewDom.loadMoreWrap = document.getElementById("search-view-load-more");
+  searchViewDom.loadMoreBtn = document.getElementById("search-view-load-more-btn");
+
+  // Tipos de medio (REQ-102: la búsqueda se puede acotar a un tipo).
+  if (searchViewDom.typeSelect) {
+    const options = [];
+    for (const mediaType of CATALOG_MEDIA_TYPES) {
+      const option = document.createElement("option");
+      option.value = mediaType;
+      option.textContent = CATALOG_MEDIA_TYPE_LABELS[mediaType] ?? mediaType;
+      options.push(option);
+    }
+    searchViewDom.typeSelect.replaceChildren(...options);
+    searchViewDom.typeSelect.addEventListener("change", handleSearchTypeChange);
+  }
+
+  // Texto del estado vacío: una única fuente (UI-03, AC-113).
+  if (searchViewDom.emptyText) searchViewDom.emptyText.textContent = SEARCH_EMPTY_TEXT;
+
+  // Debounce de 300 ms (UI-03).
+  input.addEventListener("input", handleSearchInput);
+  form.addEventListener("submit", handleSearchSubmit);
+  if (searchViewDom.loadMoreBtn) {
+    searchViewDom.loadMoreBtn.addEventListener("click", handleSearchLoadMore);
+  }
+
+  searchView.mounted = true;
+  updateSearchLoadMoreState();
+  renderSearchState();
+}
+
+/** Término escrito por la persona usuaria (sin normalizar). */
+function readSearchTerm() {
+  const input = searchViewDom.input;
+  if (!input || typeof input.value !== "string") return "";
+  return input.value.trim();
+}
+
+/** Tipo de medio seleccionado (`null` ⇒ todos los tipos, REQ-102). */
+function readSearchMediaType() {
+  const select = searchViewDom.typeSelect;
+  if (!select || typeof select.value !== "string" || select.value === "") return null;
+  return select.value;
+}
+
+/**
+ * Cada pulsación del input programa la búsqueda con un debounce de
+ * 300 ms (UI-03). La respuesta en vuelo se invalida de inmediato
+ * para que no se pinte un resultado obsoleto (AC-112).
+ */
+function handleSearchInput() {
+  searchView.term = readSearchTerm();
+  // Invalida la consulta en vuelo (si la hubiera).
+  searchView.requestId += 1;
+  clearTimeout(searchView.debounceTimer);
+  searchView.debounceTimer = setTimeout(() => {
+    searchView.debounceTimer = null;
+    void runSearch({ append: false });
+  }, SEARCH_DEBOUNCE_MS);
+}
+
+/** Envío explícito del formulario: busca sin esperar al debounce. */
+function handleSearchSubmit(event) {
+  event.preventDefault();
+  clearTimeout(searchView.debounceTimer);
+  searchView.debounceTimer = null;
+  searchView.term = readSearchTerm();
+  void runSearch({ append: false });
+}
+
+/** Cambio de tipo: relanza la búsqueda con el tipo elegido. */
+function handleSearchTypeChange() {
+  clearTimeout(searchView.debounceTimer);
+  searchView.debounceTimer = null;
+  searchView.term = readSearchTerm();
+  void runSearch({ append: false });
+}
+
+/** «Cargar más»: siguiente página por cursor opaco (API-02). */
+function handleSearchLoadMore() {
+  void runSearch({ append: true });
+}
+
+/**
+ * Ejecuta la búsqueda por prefijo del título normalizado (REQ-102).
+ * @param {{append?: boolean}} [options] `append:true` concatena la
+ *        página siguiente al listado ya pintado.
+ */
+async function runSearch(options = {}) {
+  const append = options.append === true;
+  if (append && searchView.loading) return;
+
+  const requestId = ++searchView.requestId;
+  const rawTerm = readSearchTerm();
+  // Prefijo sobre el título NORMALIZADO (DB-121): «el últ» y
+  // «EL ÚLT» ⇒ «el ult» (AC-112).
+  const term = normalizeTitle(rawTerm);
+
+  searchView.loading = true;
+  searchView.term = rawTerm;
+
+  if (!append) {
+    // El grid se vacía ANTES de leer: si la consulta falla, no
+    // quedan pintadas tarjetas de otra búsqueda (AC-113).
+    searchView.items = [];
+    searchView.cursor = null;
+    searchView.hasMore = false;
+    clearSearchGrid();
+    showSearchLoading(true);
+  }
+  hideSearchError();
+  updateSearchLoadMoreState();
+
+  const result = await catalogRepository.searchByTitle(term, {
+    mediaType: readSearchMediaType(),
+    pageSize: SEARCH_PAGE_SIZE,
+    cursor: append ? searchView.cursor : null,
+  });
+
+  // Respuesta obsoleta (la persona siguió escribiendo): se descarta.
+  if (requestId !== searchView.requestId) return;
+
+  searchView.loading = false;
+  showSearchLoading(false);
+
+  if (!result || result.ok !== true) {
+    // Solo un error real se muestra como error; el estado vacío es
+    // para «sin coincidencias» (AC-113).
+    showSearchError(
+      (result && result.message) || "No se ha podido completar la búsqueda.",
+    );
+    if (!append) {
+      searchView.items = [];
+      clearSearchGrid();
+    }
+    searchView.hasSearched = true;
+    updateSearchLoadMoreState();
+    renderSearchState();
+    return;
+  }
+
+  hideSearchError();
+  const page = result.value || {};
+  const items = Array.isArray(page.items) ? page.items : [];
+
+  if (append) {
+    appendSearchItems(items);
+  } else {
+    searchView.items = items;
+    renderSearchGrid();
+  }
+
+  const cursor = typeof page.cursor === "string" && page.cursor !== "" ? page.cursor : null;
+  searchView.cursor = cursor;
+  searchView.hasMore = cursor !== null;
+  searchView.hasSearched = true;
+  updateSearchLoadMoreState();
+  renderSearchState();
+}
+
+/** Pinta el grid de `MediaCard` con los resultados (AC-116). */
+function renderSearchGrid() {
+  const grid = searchViewDom.grid;
+  if (!grid) return;
+  // Mismo componente y mismos estilos que el catálogo (AC-116).
+  mountMediaCards(grid, searchView.items, mediaCardOptions());
+}
+
+/**
+ * Concatena la página siguiente al listado SIN recargar la vista.
+ * Los duplicados por id se descartan.
+ * @param {object[]} items
+ */
+function appendSearchItems(items) {
+  const grid = searchViewDom.grid;
+  if (!grid || items.length === 0) return;
+  const known = new Set(searchView.items.map((item) => item.id));
+  const fresh = items.filter((item) => item && !known.has(item.id));
+  if (fresh.length === 0) return;
+  const fragment = document.createDocumentFragment();
+  for (const item of fresh) {
+    fragment.appendChild(createMediaCard(item, mediaCardOptions()));
+  }
+  grid.appendChild(fragment);
+  searchView.items = searchView.items.concat(fresh);
+}
+
+/** Vacía el grid de resultados. */
+function clearSearchGrid() {
+  if (searchViewDom.grid) searchViewDom.grid.replaceChildren();
+}
+
+/**
+ * Pinta el estado de la vista: estado vacío «Sin resultados»
+ * (UI-03, AC-113), contador y mensaje de estado.
+ */
+function renderSearchState() {
+  const hasItems = searchView.items.length > 0;
+  if (searchViewDom.empty) {
+    // Estado vacío «Sin resultados»: visible solo tras una búsqueda
+    // sin coincidencias (AC-113).
+    searchViewDom.empty.hidden = hasItems || !searchView.hasSearched || searchView.loading;
+    if (searchViewDom.emptyText) searchViewDom.emptyText.textContent = SEARCH_EMPTY_TEXT;
+  }
+  if (searchViewDom.status) {
+    if (searchView.loading) {
+      searchViewDom.status.textContent = "Buscando…";
+    } else if (hasItems) {
+      searchViewDom.status.textContent = `${searchView.items.length} resultado${
+        searchView.items.length === 1 ? "" : "s"
+      }`;
+    } else if (searchView.hasSearched) {
+      searchViewDom.status.textContent = SEARCH_EMPTY_TEXT;
+    } else {
+      searchViewDom.status.textContent = "Escribe un título para buscar.";
+    }
+  }
+  if (searchViewDom.count) {
+    searchViewDom.count.textContent = hasItems
+      ? `${searchView.items.length} título${searchView.items.length === 1 ? "" : "s"}`
+      : "";
+  }
+}
+
+/** Muestra u oculta el botón «Cargar más» según el cursor (API-02). */
+function updateSearchLoadMoreState() {
+  if (searchViewDom.loadMoreWrap) {
+    searchViewDom.loadMoreWrap.hidden = !searchView.hasMore;
+  }
+  if (searchViewDom.loadMoreBtn) {
+    searchViewDom.loadMoreBtn.disabled = searchView.loading;
+    searchViewDom.loadMoreBtn.textContent = searchView.loading ? "Cargando…" : "Cargar más";
+  }
+}
+
+/** Muestra u oculta el estado de carga. */
+function showSearchLoading(visible) {
+  if (searchViewDom.loading) searchViewDom.loading.hidden = !visible;
+}
+
+/** Muestra un error de la vista de búsqueda (REQ-E2). */
+function showSearchError(message) {
+  const error = searchViewDom.error;
+  if (!error) return;
+  error.textContent = message;
+  error.hidden = false;
+}
+
+/** Oculta el error de la vista de búsqueda. */
+function hideSearchError() {
+  const error = searchViewDom.error;
+  if (!error) return;
+  error.hidden = true;
+  error.textContent = "";
+}
+
+/**
+ * Vacía la vista de búsqueda (logout / cambio de sesión): cancela el
+ * temporizador del debounce, invalida la consulta en vuelo y limpia
+ * el grid (AC-113: no se muestran resultados de otra sesión).
+ */
+function resetSearchView() {
+  searchView.requestId += 1;
+  searchView.loading = false;
+  searchView.hasSearched = false;
+  searchView.term = "";
+  searchView.items = [];
+  searchView.cursor = null;
+  searchView.hasMore = false;
+  clearTimeout(searchView.debounceTimer);
+  searchView.debounceTimer = null;
+  clearSearchGrid();
+  if (searchViewDom.input) searchViewDom.input.value = "";
+  updateSearchLoadMoreState();
+  renderSearchState();
 }
 
 // =============================================================
