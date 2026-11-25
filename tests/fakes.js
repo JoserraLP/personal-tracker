@@ -37,10 +37,14 @@
 //
 // Exportaciones ESM con nombre:
 //   FakeCatalogRepository, FakeTrackingRepository,
-//   FakeCollectionRepository, y las fixtures compartidas de AC-137
+//   FakeCollectionRepository, las fixtures compartidas de AC-137
 //   (AC137_TRACKING_FIXTURE, AC137_CATALOG_FIXTURE,
-//   AC137_TOTALS_BEFORE, AC137_TOTALS_AFTER).
+//   AC137_TOTALS_BEFORE, AC137_TOTALS_AFTER) y los helpers de
+//   aserción compartidos `expectValidScores` / `ids` (T-126, usados
+//   por tests/recommendations.test.js).
 // =============================================================
+
+import { expect } from "vitest";
 
 import {
   ENTRY_STATUSES,
@@ -1505,6 +1509,31 @@ export class FakeCollectionRepository {
 }
 
 // -------------------------------------------------------------
+// 8b. Helpers de aserción compartidos (T-126 — issue #72)
+// -------------------------------------------------------------
+
+/**
+ * Comprueba que cada `Recommendation.scoreMatch` es un entero dentro
+ * de 0..100 (REQ-407, ALG-04, AC-154). Acepta también los valores
+ * del fallback por `avgRating` (AC-148/AC-152).
+ * @param {ReadonlyArray<{scoreMatch: number}>} results
+ */
+export function expectValidScores(results) {
+  for (const result of results) {
+    expect(Number.isInteger(result.scoreMatch)).toBe(true);
+    expect(result.scoreMatch).toBeGreaterThanOrEqual(0);
+    expect(result.scoreMatch).toBeLessThanOrEqual(100);
+  }
+}
+
+/**
+ * `item.id` de cada recomendación, en orden (AC-144..AC-152).
+ * @param {ReadonlyArray<{item: {id: string}}>} results
+ * @returns {string[]}
+ */
+export const ids = (results) => results.map((result) => result.item.id);
+
+// -------------------------------------------------------------
 // 9. Fixtures compartidas de AC-137 (spec 04) — UN solo hogar
 // -------------------------------------------------------------
 
@@ -1573,6 +1602,8 @@ export default {
   FakeCatalogRepository,
   FakeTrackingRepository,
   FakeCollectionRepository,
+  expectValidScores,
+  ids,
   AC137_TRACKING_FIXTURE,
   AC137_CATALOG_FIXTURE,
   AC137_TOTALS_BEFORE,
