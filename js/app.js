@@ -108,6 +108,19 @@ import {
   DEFAULT_ENTRY_STATUS as DEFAULT_TRACKING_STATUS,
   progressTotalFromMetadata,
 } from "./repositories/tracking-repository.js";
+// T-118 — Repositorio de colecciones propias del modelo 00-05
+// (`users/{uid}/collections/{id}` con `itemIds`, DB-104/DB-117):
+// listado, alta/edición/borrado y añadir/quitar ítems.
+import {
+  collectionRepository,
+  MAX_COLLECTIONS_PER_USER as MAX_COLLECTIONS_PER_USER,
+} from "./repositories/collection-repository.js";
+// T-118 — Panel de colecciones propias (spec 03 UI-14): lista,
+// formulario crear/editar/borrar y detalle con `MediaCard` + «Quitar».
+import {
+  createCollectionsPanel,
+  MAX_COLLECTIONS_MESSAGE,
+} from "./ui/collections-panel.js";
 
 // =============================================================
 // Spec 001 — Puerta de login (INTACTA)
@@ -240,9 +253,16 @@ function activateAppViewContent(key) {
       subscribeToFavorites();
       break;
     case "collections":
-      showPanel("collections-panel");
+      // T-118 (spec 03 UI-14): panel de colecciones PROPIAS del modelo
+      // 00-05 (`users/{uid}/collections/{id}` con `itemIds`): listado,
+      // formulario crear/editar/borrar y detalle con `MediaCard`.
+      mountCollectionsPanel();
+      void refreshCollectionsPanel();
       dashboardUnsubscribeAll();
       favoritesUnsubscribeAll();
+      // La vista legacy de la spec 004 sigue cargándose en segundo
+      // plano: alimenta el picker «Colecciones» de Favoritos y de la
+      // ficha. Su contenido queda oculto (el panel nuevo la sustituye).
       subscribeToCollections();
       break;
     case "dashboard":
@@ -438,6 +458,13 @@ let currentCollectionDetailId = null;
 let collectionDetailUnsubscribes = [];
 let collectionDetailItemsByType = {};
 let collectionDetailChapters = [];
+
+// --- Colecciones propias (spec 03, T-118) -------------------
+// Colecciones del modelo 00-05 (`users/{uid}/collections/{id}` con
+// `itemIds`, DB-104/DB-117). Las usa el selector «Asignar a
+// colección» de la `MediaCard` (UI-14, AC-129) y el panel de la vista
+// de Colecciones.
+const collectionsPanelState = { collections: [], loaded: false };
 
 // --- Helpers de seguridad (MED #3) --------------------------
 
@@ -724,6 +751,9 @@ function mountCatalogView() {
   // catálogo (se monta aquí para no depender de `index.html`).
   mountManualAddPanel(panel);
   mountTrackingPanel();
+  // T-118 (AC-129): las colecciones propias alimentan el selector
+  // «Asignar a colección» de la `MediaCard`.
+  void loadUserCollections();
   root.append(tabs, panel);
   view.appendChild(root);
 
@@ -1008,7 +1038,9 @@ function mediaCardOptions() {
   // con rollback optimista; la ficha se monta al primer uso.
   return {
     entry: null,
-    collections: [],
+    // T-118 (UI-14, AC-129): el selector «Asignar a colección» de la
+    // `MediaCard` se alimenta de las colecciones propias del usuario.
+    collections: collectionsPanelState.collections,
     onAdd: (context) => {
       attachTrackingFicha(context && context.card, context && context.item);
       return createPlannedEntry(context && context.item);
@@ -1023,6 +1055,9 @@ function mediaCardOptions() {
       if (!status) return Promise.resolve({ ok: false });
       return persistEntryChange(item, previous, { status });
     },
+    // T-118 (AC-129): «Asignar a colección» escribe SOLO el `mediaId`
+    // en `itemIds` de la colección elegida (API-13).
+    onAssignCollection: (context) => assignMediaToCollection(context),
     onEntryChange: (context) => {
       const item = context && context.item;
       const card = context && context.card;
@@ -1198,6 +1233,9 @@ function catalogCleanup() {
   // externos) para no arrastrar datos entre sesiones.
   resetManualAddPanel();
   resetTrackingPanel();
+  // T-118: las colecciones propias se vacían también (no quedan
+  // tarjetas ni selectores con datos de otra sesión).
+  resetCollectionsPanel();
   dashboardUnsubscribeAll();
   favoritesUnsubscribeAll();
   collectionsUnsubscribeAll();
@@ -3130,7 +3168,11 @@ async function persistEntryChange(item, previousEntry, patch) {
   return res;
 }
 
-/** "Sin entry": borra la entry del seguimiento. */
+/**
+ * "Sin entry": borra la entry del seguimiento.
+ * NO toca `catalog` ni las colecciones que contengan el `mediaId`
+ * (REQ-208, AC-128).
+ */
 async function removeEntry(item) {
   if (!currentTrackingUid || !item) return { ok: false };
   const res = await trackingRepository.deleteEntry(currentTrackingUid, item.id);
@@ -3359,6 +3401,206 @@ function resetTrackingPanel() {
   trackingState.entries.clear();
   trackingState.loaded = false;
   applyEntriesToCards();
+}
+
+// =============================================================
+// T-118 — Colecciones propias (spec 03 UI-14, REQ-206/207/208;
+// AC-125..AC-129)
+//
+//   - `CollectionsPanel` (`js/ui/collections-panel.js`): listado con
+//     `name`, nº de ítems y `updatedAt`; formulario de crear/editar/
+//     borrar; detalle con la MISMA `MediaCard` del catálogo y un
+//     botón «Quitar» (AC-127).
+//   - El selector «Asignar a colección» de la `MediaCard` escribe el
+//     `mediaId` en `itemIds` con `collectionRepository.addItem`
+//     (AC-129; API-13: idempotente, nunca duplica).
+//   - «Quitar» llama a `collectionRepository.removeItem`, que escribe
+//     SOLO `itemIds` (+`updatedAt`): ni la entry de tracking ni el
+//     catálogo se tocan (AC-127, REQ-207).
+//   - Con 20 colecciones, la 21.ª se rechaza con «Máximo 20
+//     colecciones…» y SIN escritura (AC-126).
+//   - Borrar una entry de tracking NO toca las colecciones (AC-128,
+//     REQ-208): `removeEntry()` solo llama a `deleteEntry`.
+// =============================================================
+
+/** Controlador del panel de colecciones (T-118). */
+let collectionsPanelController = null;
+
+/**
+ * Aplica las colecciones actuales a todas las `MediaCard` montadas
+ * (selector «Asignar a colección», UI-14).
+ */
+function applyCollectionsToCards() {
+  if (typeof document === "undefined" || typeof document.querySelectorAll !== "function") return;
+  document.querySelectorAll("[data-media-id]").forEach((el) => {
+    if (typeof updateMediaCard === "function") {
+      updateMediaCard(el, { collections: collectionsPanelState.collections });
+    }
+  });
+}
+
+/**
+ * Sustituye (o añade) una colección en el estado local y repinta las
+ * tarjetas (el selector «Asignar a colección» refleja el cambio).
+ * @param {object} collection
+ */
+function mergeCollectionState(collection) {
+  if (!collection || typeof collection !== "object" || typeof collection.id !== "string") return;
+  const index = collectionsPanelState.collections.findIndex(
+    (entry) => entry.id === collection.id,
+  );
+  if (index === -1) collectionsPanelState.collections.push(collection);
+  else collectionsPanelState.collections[index] = collection;
+  applyCollectionsToCards();
+  updateCollectionsLimitHint();
+}
+
+/**
+ * Muestra el aviso «Máximo 20 colecciones…» cuando el usuario ya
+ * tiene el máximo permitido (AC-126).
+ */
+function updateCollectionsLimitHint() {
+  if (typeof document === "undefined") return;
+  const hint = document.getElementById("collections-limit-hint");
+  if (!hint) return;
+  const atLimit =
+    collectionsPanelState.collections.length >= MAX_COLLECTIONS_PER_USER;
+  hint.textContent = atLimit ? MAX_COLLECTIONS_MESSAGE : "";
+  hint.hidden = !atLimit;
+}
+
+/**
+ * Carga las colecciones propias del usuario (DB-117) y actualiza el
+ * selector «Asignar a colección» de las tarjetas (AC-129).
+ */
+async function loadUserCollections() {
+  const uid = currentTrackingUid;
+  if (typeof uid !== "string" || uid === "") {
+    collectionsPanelState.collections = [];
+    collectionsPanelState.loaded = false;
+    applyCollectionsToCards();
+    updateCollectionsLimitHint();
+    return;
+  }
+  const result = await collectionRepository.list(uid);
+  if (!result || result.ok !== true) {
+    console.warn("No se han podido cargar las colecciones.", result && result.message);
+    return;
+  }
+  collectionsPanelState.collections = Array.isArray(result.value) ? result.value : [];
+  collectionsPanelState.loaded = true;
+  applyCollectionsToCards();
+  updateCollectionsLimitHint();
+}
+
+/**
+ * «Asignar a colección» desde la `MediaCard` (UI-14, AC-129): añade
+ * el `mediaId` a `itemIds` de la colección elegida. La operación es
+ * idempotente (API-13) y NO toca la entry de tracking.
+ * @param {{item?: object, collectionId?: string|null}} context
+ * @returns {Promise<object>} `Result`
+ */
+async function assignMediaToCollection(context) {
+  const item = context ? context.item : null;
+  const collectionId = context ? context.collectionId : null;
+  if (!item || typeof item.id !== "string" || item.id === "") {
+    return {
+      ok: false,
+      code: "validation",
+      message: "No se ha podido identificar el título.",
+    };
+  }
+  if (typeof collectionId !== "string" || collectionId === "") {
+    return {
+      ok: false,
+      code: "validation",
+      message: "Selecciona una colección para asignarla.",
+    };
+  }
+  const uid = currentTrackingUid;
+  if (typeof uid !== "string" || uid === "") {
+    return {
+      ok: false,
+      code: "permission_denied",
+      message: "No hay una sesión iniciada.",
+    };
+  }
+  const result = await collectionRepository.addItem(uid, collectionId, item.id);
+  if (!result || result.ok !== true) {
+    return {
+      ok: false,
+      code: (result && result.code) || "unknown",
+      message:
+        (result && result.message) ||
+        "No se ha podido añadir el título a la colección.",
+    };
+  }
+  mergeCollectionState(result.value);
+  return { ok: true };
+}
+
+/**
+ * Monta el panel de colecciones (UI-14) en la vista «Colecciones».
+ * @returns {object|null} controlador del panel
+ */
+function mountCollectionsPanel() {
+  if (collectionsPanelController) return collectionsPanelController;
+  const view = document.getElementById("view-collections");
+  if (!view) return null;
+
+  const host = document.createElement("div");
+  host.id = "collections-panel-t118";
+  host.className = "catalog__panel collections";
+  host.setAttribute("aria-label", "Colecciones");
+
+  const hint = document.createElement("p");
+  hint.id = "collections-limit-hint";
+  hint.className = "muted collections-panel__limit";
+  hint.setAttribute("role", "status");
+  hint.hidden = true;
+
+  collectionsPanelController = createCollectionsPanel({
+    repository: collectionRepository,
+    catalogRepository: catalogRepository,
+    getUid: () => currentTrackingUid,
+    mediaCardOptions: () => mediaCardOptions(),
+    onChange: (collections) => {
+      collectionsPanelState.collections = Array.isArray(collections) ? collections : [];
+      applyCollectionsToCards();
+      updateCollectionsLimitHint();
+    },
+    onRender: () => {
+      applyEntriesToCards();
+      applyCollectionsToCards();
+    },
+  });
+
+  host.appendChild(collectionsPanelController.element);
+  host.appendChild(hint);
+  view.appendChild(host);
+  updateCollectionsLimitHint();
+  return collectionsPanelController;
+}
+
+/** Recarga el panel de colecciones (listado + estado local). */
+async function refreshCollectionsPanel() {
+  await loadUserCollections();
+  if (collectionsPanelController) {
+    collectionsPanelController.setCollections(collectionsPanelState.collections);
+    await collectionsPanelController.load();
+  }
+}
+
+/** Vacía las colecciones propias (logout / cambio de sesión). */
+function resetCollectionsPanel() {
+  collectionsPanelState.collections = [];
+  collectionsPanelState.loaded = false;
+  if (collectionsPanelController) {
+    collectionsPanelController.reset();
+    collectionsPanelController.setCollections([]);
+  }
+  applyCollectionsToCards();
+  updateCollectionsLimitHint();
 }
 
 // =============================================================
