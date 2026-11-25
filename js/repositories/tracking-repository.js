@@ -72,6 +72,21 @@ import {
   tsToDate,
   validateEntry,
 } from "../catalog.js";
+import {
+  CURSOR_VERSION,
+  RESULT_ERROR_CODES,
+  createResultErrorHelpers,
+  decodeCursorPayload,
+  encodeCursorPayload,
+  failResult,
+  inputError,
+  normalizeErrorCode,
+  okResult,
+} from "./shared-result.js";
+
+// Superficie pública histórica del módulo: los helpers viven en
+// `shared-result.js` y se reexportan para no romper a los consumidores.
+export { RESULT_ERROR_CODES, failResult, normalizeErrorCode, okResult };
 
 // -------------------------------------------------------------
 // 1. Constantes del contrato
@@ -112,18 +127,6 @@ export const DOCUMENT_ID_FIELD = "__name__";
  */
 export const SERVER_TIMESTAMP = Object.freeze({ __serverTimestamp: true });
 
-/** Códigos de error admitidos por `Result` (00 §4.1). */
-export const RESULT_ERROR_CODES = Object.freeze([
-  "not_found",
-  "permission_denied",
-  "validation",
-  "unavailable",
-  "unknown",
-]);
-
-/** Versión del formato de cursor opaco. */
-const ENTRY_CURSOR_VERSION = 1;
-
 /** Orden de `listEntries` (DB-114): updatedAt desc + id asc. */
 const ENTRY_ORDER_BY = Object.freeze([
   Object.freeze({ field: "updatedAt", direction: "desc" }),
@@ -141,20 +144,6 @@ const MIN_SCORE_ORDER_BY = Object.freeze([
 // 2. Result y errores (00 §4.1, REQ-E1/E2/E3, API-12)
 // -------------------------------------------------------------
 
-/** Resultado correcto. */
-export function okResult(value) {
-  return { ok: true, value };
-}
-
-/** Resultado con error normalizado. */
-export function failResult(code, message, extra = {}) {
-  const result = { ok: false, code, message };
-  if (Array.isArray(extra?.errors) && extra.errors.length > 0) {
-    result.errors = extra.errors.slice();
-  }
-  return result;
-}
-
 /** Mensajes en español por código (REQ-E2). */
 const ERROR_MESSAGES = Object.freeze({
   not_found: "No se ha encontrado la entry de seguimiento.",
@@ -166,62 +155,9 @@ const ERROR_MESSAGES = Object.freeze({
   unknown: "Ha ocurrido un error inesperado al consultar el seguimiento.",
 });
 
-/** Códigos de Firestore → códigos de `Result` (REQ-E2). */
-const FIREBASE_CODE_MAP = Object.freeze({
-  "not-found": "not_found",
-  "permission-denied": "permission_denied",
-  unauthenticated: "permission_denied",
-  "invalid-argument": "validation",
-  "failed-precondition": "unavailable",
-  unavailable: "unavailable",
-  "deadline-exceeded": "unavailable",
-  "resource-exhausted": "unavailable",
-  aborted: "unavailable",
-  cancelled: "unknown",
-  internal: "unknown",
-  unknown: "unknown",
-});
+const { notFoundError, toResultError } = createResultErrorHelpers(ERROR_MESSAGES);
 
-/** Error de entrada (validación) con el formato de REQ-E3. */
-function inputError(message, errors = [message]) {
-  const error = new Error(errors.join(" "));
-  error.code = "validation";
-  error.errors = errors.slice();
-  return error;
-}
-
-/** Error de recurso ausente (sin escritura). */
-function notFoundError(message = ERROR_MESSAGES.not_found) {
-  const error = new Error(message);
-  error.code = "not-found";
-  return error;
-}
-
-/** Normaliza cualquier `code` de Firestore/JS a los de `Result`. */
-export function normalizeErrorCode(code) {
-  if (typeof code !== "string" || code === "") return "unknown";
-  if (RESULT_ERROR_CODES.includes(code)) return code;
-  return FIREBASE_CODE_MAP[code.toLowerCase()] ?? "unknown";
-}
-
-/**
- * Convierte un error en `{ ok:false, code, message, errors? }` (REQ-E1,
- * REQ-E2, REQ-E3). Nunca lanza.
- * @param {*} error
- * @returns {{ ok: false, code: string, message: string, errors?: string[] }}
- */
-export function toResultError(error) {
-  const code = normalizeErrorCode(error?.code);
-  const rawErrors =
-    error && Array.isArray(error.errors)
-      ? error.errors.filter((message) => typeof message === "string" && message.trim() !== "")
-      : [];
-  const message =
-    code === "validation" && rawErrors.length > 0
-      ? rawErrors.join(" ")
-      : ERROR_MESSAGES[code] ?? ERROR_MESSAGES.unknown;
-  return failResult(code, message, { errors: rawErrors });
-}
+export { toResultError };
 
 // -------------------------------------------------------------
 // 3. Helpers puros
@@ -407,26 +343,6 @@ async function resolveMediaContext(store, mediaId, input) {
 // 4. Cursor opaco de `listEntries` (DB-114)
 // -------------------------------------------------------------
 
-function encodeBase64Url(text) {
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(text, "utf8").toString("base64url");
-  }
-  const bytes = new TextEncoder().encode(text);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function decodeBase64Url(token) {
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(token, "base64url").toString("utf8");
-  }
-  const padded = token.padEnd(token.length + ((4 - (token.length % 4)) % 4), "=");
-  const binary = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
-  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
-
 /**
  * Serializa la posición de una entry como cursor OPACO (updatedAt +
  * id). Devuelve `null` si el doc no tiene `updatedAt` utilizable, para
@@ -444,7 +360,7 @@ export function encodeEntriesCursor(doc) {
         : null;
   const id = rawId;
   if (ms === null || id === null) return null;
-  return encodeBase64Url(JSON.stringify({ v: ENTRY_CURSOR_VERSION, t: ms, i: id }));
+  return encodeCursorPayload({ v: CURSOR_VERSION, t: ms, i: id });
 }
 
 /**
@@ -455,20 +371,11 @@ export function encodeEntriesCursor(doc) {
  */
 export function decodeEntriesCursor(token) {
   const invalid = () => inputError("El cursor no es válido.", ["El cursor no es válido."]);
-  if (typeof token !== "string" || token.trim() === "") throw invalid();
-  const trimmed = token.trim();
-  if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) throw invalid();
-
-  let payload;
-  try {
-    payload = JSON.parse(decodeBase64Url(trimmed));
-  } catch {
-    throw invalid();
-  }
+  const payload = decodeCursorPayload(token);
 
   if (
     !isPlainObject(payload) ||
-    payload.v !== ENTRY_CURSOR_VERSION ||
+    payload.v !== CURSOR_VERSION ||
     typeof payload.t !== "number" ||
     !Number.isFinite(payload.t) ||
     typeof payload.i !== "string" ||

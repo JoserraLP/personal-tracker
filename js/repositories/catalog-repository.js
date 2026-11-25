@@ -49,6 +49,21 @@ import {
   tsToDate,
   validateMediaItem,
 } from "../catalog.js";
+import {
+  CURSOR_VERSION,
+  RESULT_ERROR_CODES,
+  createResultErrorHelpers,
+  decodeCursorPayload,
+  encodeCursorPayload,
+  failResult,
+  inputError,
+  normalizeErrorCode,
+  okResult,
+} from "./shared-result.js";
+
+// Superficie pública histórica del módulo: los helpers viven en
+// `shared-result.js` y se reexportan para no romper a los consumidores.
+export { RESULT_ERROR_CODES, failResult, normalizeErrorCode, okResult };
 
 // -------------------------------------------------------------
 // 1. Constantes del contrato
@@ -89,18 +104,6 @@ export const PREFIX_UPPER_BOUND = "\uf8ff";
  */
 export const DOCUMENT_ID_FIELD = "__name__";
 
-/** Códigos de error admitidos por `Result` (00 §4.1). */
-export const RESULT_ERROR_CODES = Object.freeze([
-  "not_found",
-  "permission_denied",
-  "validation",
-  "unavailable",
-  "unknown",
-]);
-
-/** Versión del formato de cursor opaco (API-02). */
-const CURSOR_VERSION = 1;
-
 // Especificación de orden por `sort` (DB-110..DB-112). El id de
 // documento rompe empates y hace el cursor determinista.
 const SORT_ORDER_BY = Object.freeze({
@@ -122,20 +125,6 @@ const SORT_ORDER_BY = Object.freeze({
 // 2. Result y errores (00 §4.1, REQ-E1, REQ-E2, API-05)
 // -------------------------------------------------------------
 
-/** Resultado correcto. */
-export function okResult(value) {
-  return { ok: true, value };
-}
-
-/** Resultado con error normalizado. */
-export function failResult(code, message, extra = {}) {
-  const result = { ok: false, code, message };
-  if (extra && Array.isArray(extra.errors) && extra.errors.length > 0) {
-    result.errors = extra.errors.slice();
-  }
-  return result;
-}
-
 /** Mensajes en español por código (REQ-E2; API-05 allowlist visible). */
 const ERROR_MESSAGES = Object.freeze({
   not_found: "No se ha encontrado el ítem del catálogo.",
@@ -147,79 +136,13 @@ const ERROR_MESSAGES = Object.freeze({
   unknown: "Ha ocurrido un error inesperado al consultar el catálogo.",
 });
 
-/** Códigos de Firestore → códigos de `Result` (REQ-E2). */
-const FIREBASE_CODE_MAP = Object.freeze({
-  "not-found": "not_found",
-  "permission-denied": "permission_denied",
-  unauthenticated: "permission_denied",
-  "invalid-argument": "validation",
-  "failed-precondition": "unavailable",
-  unavailable: "unavailable",
-  "deadline-exceeded": "unavailable",
-  "resource-exhausted": "unavailable",
-  aborted: "unavailable",
-  cancelled: "unknown",
-  internal: "unknown",
-  unknown: "unknown",
-});
+const { toResultError } = createResultErrorHelpers(ERROR_MESSAGES);
 
-/** Error de entrada (validación) con el formato de REQ-E3. */
-function inputError(message, errors = [message]) {
-  const error = new Error(errors.join(" "));
-  error.code = "validation";
-  error.errors = errors.slice();
-  return error;
-}
-
-/** Normaliza cualquier `code` de Firestore/JS a los de `Result`. */
-export function normalizeErrorCode(code) {
-  if (typeof code !== "string" || code === "") return "unknown";
-  if (RESULT_ERROR_CODES.includes(code)) return code;
-  return FIREBASE_CODE_MAP[code.toLowerCase()] ?? "unknown";
-}
-
-/**
- * Convierte un error en `{ ok:false, code, message, errors? }` (REQ-E1,
- * REQ-E2, REQ-E3). Nunca lanza.
- * @param {*} error
- * @returns {{ ok: false, code: string, message: string, errors?: string[] }}
- */
-export function toResultError(error) {
-  const code = normalizeErrorCode(error?.code);
-  const rawErrors =
-    error && Array.isArray(error.errors)
-      ? error.errors.filter((message) => typeof message === "string" && message.trim() !== "")
-      : [];
-  const message =
-    code === "validation" && rawErrors.length > 0
-      ? rawErrors.join(" ")
-      : ERROR_MESSAGES[code] ?? ERROR_MESSAGES.unknown;
-  return failResult(code, message, { errors: rawErrors });
-}
+export { toResultError };
 
 // -------------------------------------------------------------
 // 3. Cursor opaco (API-02)
 // -------------------------------------------------------------
-
-function encodeBase64Url(text) {
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(text, "utf8").toString("base64url");
-  }
-  const bytes = new TextEncoder().encode(text);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function decodeBase64Url(token) {
-  if (typeof Buffer !== "undefined") {
-    return Buffer.from(token, "base64url").toString("utf8");
-  }
-  const padded = token.padEnd(token.length + ((4 - (token.length % 4)) % 4), "=");
-  const binary = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
-  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
 
 /** Valor de orden de un doc para el cursor (nunca snapshots, API-02). */
 function cursorValueFor(order, doc) {
@@ -254,12 +177,10 @@ export function encodeCursor(orderBy, doc) {
 
   if (keys.some((key) => key === null)) {
     if (typeof docId !== "string" || docId === "") return null;
-    return encodeBase64Url(
-      JSON.stringify({ v: CURSOR_VERSION, f: fields, k: keys, d: docId }),
-    );
+    return encodeCursorPayload({ v: CURSOR_VERSION, f: fields, k: keys, d: docId });
   }
 
-  return encodeBase64Url(JSON.stringify({ v: CURSOR_VERSION, f: fields, k: keys }));
+  return encodeCursorPayload({ v: CURSOR_VERSION, f: fields, k: keys });
 }
 
 /**
@@ -272,20 +193,7 @@ export function encodeCursor(orderBy, doc) {
  * @returns {Array<string|number|null>}
  */
 export function decodeCursor(token, orderBy) {
-  if (typeof token !== "string" || token.trim() === "") {
-    throw inputError("El cursor no es válido.", ["El cursor no es válido."]);
-  }
-  const trimmed = token.trim();
-  if (!/^[A-Za-z0-9_-]+$/.test(trimmed)) {
-    throw inputError("El cursor no es válido.", ["El cursor no es válido."]);
-  }
-
-  let payload;
-  try {
-    payload = JSON.parse(decodeBase64Url(trimmed));
-  } catch {
-    throw inputError("El cursor no es válido.", ["El cursor no es válido."]);
-  }
+  const payload = decodeCursorPayload(token);
 
   const keys = payload?.k;
   if (
