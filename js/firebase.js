@@ -31,7 +31,9 @@ import {
   documentId,
   serverTimestamp,
   deleteField,
+  arrayUnion,
   arrayRemove,
+  runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 import { firebaseConfig } from "./config.js";
@@ -75,5 +77,7 @@ export {
   documentId,
   serverTimestamp,
   deleteField,
+  arrayUnion,
   arrayRemove,
+  runTransaction,
 };

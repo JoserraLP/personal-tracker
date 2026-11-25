@@ -46,7 +46,7 @@ service cloud.firestore {
     function isValidEntry() {
       let data = request.resource.data;
       return (!("status" in data)
-          || data.status in ["pending", "in_progress", "completed", "paused", "abandoned"])
+          || data.status in ["PLANNED", "IN_PROGRESS", "COMPLETED", "DROPPED"])
         && (!("score" in data) || data.score == null
           || (data.score is int && data.score >= 1 && data.score <= 10))
         && (!("review" in data) || data.review == null

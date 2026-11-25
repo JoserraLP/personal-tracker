@@ -1,54 +1,62 @@
 {
   "indexes": [
     {
-      "collectionId": "catalog",
+      "collectionGroup": "catalog",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "mediaType", "order": "ASC" },
         { "fieldPath": "titleNormalized", "order": "ASC" }
       ]
     },
     {
-      "collectionId": "catalog",
+      "collectionGroup": "catalog",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "mediaType", "order": "ASC" },
         { "fieldPath": "avgRating", "order": "DESC" }
       ]
     },
     {
-      "collectionId": "catalog",
+      "collectionGroup": "catalog",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "mediaType", "order": "ASC" },
         { "fieldPath": "releaseYear", "order": "DESC" }
       ]
     },
     {
-      "collectionId": "catalog",
+      "collectionGroup": "catalog",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "titleNormalized", "order": "ASC" }
       ]
     },
     {
-      "collectionId": "entries",
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "updatedAt", "order": "DESC" }
       ]
     },
     {
-      "collectionId": "entries",
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "status", "order": "ASC" },
         { "fieldPath": "updatedAt", "order": "DESC" }
       ]
     },
     {
-      "collectionId": "entries",
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "score", "order": "DESC" },
         { "fieldPath": "updatedAt", "order": "DESC" }
       ]
     },
     {
-      "collectionId": "collections",
+      "collectionGroup": "collections",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "updatedAt", "order": "DESC" }
       ]

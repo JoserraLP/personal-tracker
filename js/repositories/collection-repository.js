@@ -40,10 +40,11 @@
 //   - `addItem` es idempotente (API-13, AC-125): si el `mediaId` ya
 //     está, no hay escritura; si no, la escritura es una UNIÓN (nunca
 //     reemplaza la lista) y con 50 ítems se responde `validation` sin
-//     escribir. El store Firestore implementa la unión con
-//     lectura+fusión+`updateDoc`, porque `js/firebase.js` no
-//     reexporta `arrayUnion` y este módulo no puede modificarlo;
-//     `removeItem` sí usa `arrayRemove` atómico.
+//     escribir. El store Firestore aplica la unión y el tope de 50 en
+//     una `runTransaction` server-side: `transaction.get` +
+//     `arrayUnion` (reexportado por `js/firebase.js`), así dos
+//     escrituras concurrentes no duplican ni rebasan 50.
+//     `removeItem` usa `arrayRemove` atómico.
 //   - `removeItem` (AC-127) escribe SOLO `itemIds` (+`updatedAt`):
 //     `name`/`description`/`createdAt` no viajan en el patch.
 //   - `delete` borra SOLO la colección: no toca `entries` ni
@@ -611,37 +612,43 @@ export function createFirestoreCollectionStore() {
     /**
      * Unión idempotente de `mediaId` en `itemIds` (API-13, AC-125).
      *
-     * Se relee el documento justo antes de escribir para no duplicar
-     * ni rebasar 50 aunque el repositorio ya lo haya comprobado.
-     * `js/firebase.js` no reexporta `arrayUnion` (este módulo no puede
-     * modificarlo), así que la unión se materializa aquí; `removeItem`
-     * sí usa `arrayRemove` atómico.
+     * `runTransaction` hace atómicos el tope de 50 y la escritura:
+     * dentro de la transacción se lee el doc, se corta con
+     * `validation` si ya hay 50 y, si no, se escribe con `arrayUnion`
+     * (reexportado por `js/firebase.js`). Dos añadidos concurrentes,
+     * por tanto, ni duplican ni rebasan 50; `removeItem` usa
+     * `arrayRemove` atómico.
      */
     async addItem(uid, collectionId, mediaId) {
       const sdk = await loadFirestoreSdk();
       const ref = collectionRef(sdk, uid, collectionId);
-      const snapshot = await sdk.getDoc(ref);
-      if (!snapshot.exists()) throw notFoundError();
+      return sdk.runTransaction(sdk.db, async (transaction) => {
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists()) throw notFoundError();
 
-      const current = normalizeItemIds(snapshot.data()?.itemIds);
-      if (current.includes(mediaId)) {
-        return { id: collectionId, itemIds: current };
-      }
-      if (current.length >= MAX_COLLECTION_ITEMS) {
-        throw inputError(
-          `No se pueden guardar más de ${MAX_COLLECTION_ITEMS} ítems en una colección.`,
-          [
+        const current = normalizeItemIds(snapshot.data()?.itemIds);
+        if (current.includes(mediaId)) {
+          return { id: collectionId, itemIds: current };
+        }
+        if (current.length >= MAX_COLLECTION_ITEMS) {
+          throw inputError(
             `No se pueden guardar más de ${MAX_COLLECTION_ITEMS} ítems en una colección.`,
-          ],
-        );
-      }
+            [
+              `No se pueden guardar más de ${MAX_COLLECTION_ITEMS} ítems en una colección.`,
+            ],
+          );
+        }
 
-      const next = [...current, mediaId];
-      await sdk.updateDoc(ref, {
-        itemIds: next,
-        updatedAt: sdk.serverTimestamp(),
+        transaction.update(ref, {
+          itemIds: sdk.arrayUnion(mediaId),
+          updatedAt: sdk.serverTimestamp(),
+        });
+        return {
+          id: collectionId,
+          itemIds: [...current, mediaId],
+          updatedAt: new Date(),
+        };
       });
-      return { id: collectionId, itemIds: next, updatedAt: new Date() };
     },
 
     /**
@@ -930,6 +937,9 @@ export function createCollectionRepository(storeOrGetter, options = {}) {
    *  - ya presente ⇒ `ok` sin escritura (nunca duplica);
    *  - colección con 50 ítems ⇒ `validation` sin escritura;
    *  - si no, escritura de UNIÓN (solo `itemIds` + `updatedAt`).
+   * El store Firestore revalida el tope y aplica `arrayUnion` dentro
+   * de una transacción, así que las comprobaciones de esta capa son
+   * solo el corte rápido: el estado final nunca excede 50 ni duplica.
    */
   async function addItem(uid, collectionId, mediaId) {
     try {
