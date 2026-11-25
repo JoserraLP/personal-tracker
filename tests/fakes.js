@@ -37,7 +37,9 @@
 //
 // Exportaciones ESM con nombre:
 //   FakeCatalogRepository, FakeTrackingRepository,
-//   FakeCollectionRepository.
+//   FakeCollectionRepository, y las fixtures compartidas de AC-137
+//   (AC137_TRACKING_FIXTURE, AC137_CATALOG_FIXTURE,
+//   AC137_TOTALS_BEFORE, AC137_TOTALS_AFTER).
 // =============================================================
 
 import {
@@ -1502,8 +1504,77 @@ export class FakeCollectionRepository {
   }
 }
 
+// -------------------------------------------------------------
+// 9. Fixtures compartidas de AC-137 (spec 04) — UN solo hogar
+// -------------------------------------------------------------
+
+/**
+ * Fixtures del escenario de recálculo por snapshot (AC-137/API-22):
+ * las usan `tests/fakes.test.js` y `tests/dashboard-stats.test.js`
+ * para no duplicar datos entre archivos. Son de solo lectura: los
+ * fakes siempre materializan copias.
+ */
+
+/** Entries de partida: m-1 y m-4 en PLANNED. */
+export const AC137_TRACKING_FIXTURE = Object.freeze([
+  Object.freeze({
+    mediaId: "m-1",
+    title: "Alpha",
+    status: "PLANNED",
+    updatedAt: "2026-04-01T10:00:00.000Z",
+  }),
+  Object.freeze({
+    mediaId: "m-2",
+    title: "Beta",
+    status: "IN_PROGRESS",
+    updatedAt: "2026-04-02T10:00:00.000Z",
+  }),
+  Object.freeze({
+    mediaId: "m-3",
+    title: "Gamma",
+    status: "COMPLETED",
+    updatedAt: "2026-04-03T10:00:00.000Z",
+  }),
+  Object.freeze({
+    mediaId: "m-4",
+    title: "Delta",
+    status: "PLANNED",
+    updatedAt: "2026-04-04T10:00:00.000Z",
+  }),
+]);
+
+/** Catálogo correspondiente (SERIES, GAME, MOVIE, BOOK). */
+export const AC137_CATALOG_FIXTURE = Object.freeze([
+  Object.freeze({ id: "m-1", title: "Alpha", mediaType: "SERIES" }),
+  Object.freeze({ id: "m-2", title: "Beta", mediaType: "GAME" }),
+  Object.freeze({ id: "m-3", title: "Gamma", mediaType: "MOVIE" }),
+  Object.freeze({ id: "m-4", title: "Delta", mediaType: "BOOK" }),
+]);
+
+/** Totales antes del cambio de estado. */
+export const AC137_TOTALS_BEFORE = Object.freeze({
+  total: 4,
+  planned: 2,
+  inProgress: 1,
+  completed: 1,
+  dropped: 0,
+});
+
+/** Totales tras pasar m-1 de PLANNED a COMPLETED (AC-137). */
+export const AC137_TOTALS_AFTER = Object.freeze({
+  total: 4,
+  planned: 1,
+  inProgress: 1,
+  completed: 2,
+  dropped: 0,
+});
+
 export default {
   FakeCatalogRepository,
   FakeTrackingRepository,
   FakeCollectionRepository,
+  AC137_TRACKING_FIXTURE,
+  AC137_CATALOG_FIXTURE,
+  AC137_TOTALS_BEFORE,
+  AC137_TOTALS_AFTER,
 };

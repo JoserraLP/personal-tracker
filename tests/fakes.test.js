@@ -10,6 +10,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
+  AC137_CATALOG_FIXTURE,
+  AC137_TOTALS_AFTER,
+  AC137_TOTALS_BEFORE,
+  AC137_TRACKING_FIXTURE,
   FakeCatalogRepository,
   FakeCollectionRepository,
   FakeTrackingRepository,
@@ -239,60 +243,12 @@ describe("AC-153: getRecommendations con fakes instrumentados", () => {
 // -------------------------------------------------------------
 
 describe("AC-137: FakeTrackingRepository simula snapshots sin emulador Firestore", () => {
-  const TRACKING_FIXTURE = [
-    {
-      mediaId: "m-1",
-      title: "Alpha",
-      status: "PLANNED",
-      updatedAt: "2026-04-01T10:00:00.000Z",
-    },
-    {
-      mediaId: "m-2",
-      title: "Beta",
-      status: "IN_PROGRESS",
-      updatedAt: "2026-04-02T10:00:00.000Z",
-    },
-    {
-      mediaId: "m-3",
-      title: "Gamma",
-      status: "COMPLETED",
-      updatedAt: "2026-04-03T10:00:00.000Z",
-    },
-    {
-      mediaId: "m-4",
-      title: "Delta",
-      status: "PLANNED",
-      updatedAt: "2026-04-04T10:00:00.000Z",
-    },
-  ];
-
-  const CATALOG_FIXTURE = [
-    { id: "m-1", title: "Alpha", mediaType: "SERIES" },
-    { id: "m-2", title: "Beta", mediaType: "GAME" },
-    { id: "m-3", title: "Gamma", mediaType: "MOVIE" },
-    { id: "m-4", title: "Delta", mediaType: "BOOK" },
-  ];
-
-  const TOTALS_BEFORE = {
-    total: 4,
-    planned: 2,
-    inProgress: 1,
-    completed: 1,
-    dropped: 0,
-  };
-
-  /** m-1 cambia de PLANNED a COMPLETED (AC-137). */
-  const TOTALS_AFTER = {
-    total: 4,
-    planned: 1,
-    inProgress: 1,
-    completed: 2,
-    dropped: 0,
-  };
+  // Fixtures compartidas: un solo hogar en `tests/fakes.js` (AC137_*),
+  // también usadas por `tests/dashboard-stats.test.js`.
 
   it("AC-137: el evento del FakeTrackingRepository actualiza KPIs y distribución sin getStats ni lecturas", async () => {
-    const tracking = new FakeTrackingRepository(TRACKING_FIXTURE);
-    const catalogRepository = new FakeCatalogRepository(CATALOG_FIXTURE);
+    const tracking = new FakeTrackingRepository(AC137_TRACKING_FIXTURE);
+    const catalogRepository = new FakeCatalogRepository(AC137_CATALOG_FIXTURE);
     const service = createDashboardService({
       trackingRepository: tracking,
       catalogRepository,
@@ -300,7 +256,7 @@ describe("AC-137: FakeTrackingRepository simula snapshots sin emulador Firestore
 
     const first = await service.getStats("user-1");
     expect(first.ok).toBe(true);
-    expect(first.value.totals).toEqual(TOTALS_BEFORE);
+    expect(first.value.totals).toEqual(AC137_TOTALS_BEFORE);
     expect(first.value.byType.SERIES).toEqual({ count: 1, pct: 25 });
     expect(tracking.readLog).toEqual(["listEntries"]);
     expect(catalogRepository.readLog).toEqual(["getAll"]);
@@ -320,7 +276,7 @@ describe("AC-137: FakeTrackingRepository simula snapshots sin emulador Firestore
     tracking.emitSnapshot();
 
     expect(received).toHaveLength(1);
-    expect(received[0].totals).toEqual(TOTALS_AFTER);
+    expect(received[0].totals).toEqual(AC137_TOTALS_AFTER);
     expect(received[0].byType.SERIES).toEqual({ count: 1, pct: 25 });
     expect(received[0].byType.BOOK).toEqual({ count: 1, pct: 25 });
 
@@ -332,8 +288,8 @@ describe("AC-137: FakeTrackingRepository simula snapshots sin emulador Firestore
   });
 
   it("AC-137: applySnapshot y recalculate actualizan KPIs sin re-ejecutar getStats", async () => {
-    const tracking = new FakeTrackingRepository(TRACKING_FIXTURE);
-    const catalogRepository = new FakeCatalogRepository(CATALOG_FIXTURE);
+    const tracking = new FakeTrackingRepository(AC137_TRACKING_FIXTURE);
+    const catalogRepository = new FakeCatalogRepository(AC137_CATALOG_FIXTURE);
     const service = createDashboardService({
       trackingRepository: tracking,
       catalogRepository,
@@ -341,7 +297,7 @@ describe("AC-137: FakeTrackingRepository simula snapshots sin emulador Firestore
 
     const first = await service.getStats("user-1");
     expect(first.ok).toBe(true);
-    expect(first.value.totals).toEqual(TOTALS_BEFORE);
+    expect(first.value.totals).toEqual(AC137_TOTALS_BEFORE);
 
     const readsAfterGetStats = {
       tracking: tracking.reads,
@@ -355,12 +311,12 @@ describe("AC-137: FakeTrackingRepository simula snapshots sin emulador Firestore
     );
     const applied = service.applySnapshot("user-1", snapshot);
     expect(applied.ok).toBe(true);
-    expect(applied.value.totals).toEqual(TOTALS_AFTER);
+    expect(applied.value.totals).toEqual(AC137_TOTALS_AFTER);
 
     // Recálculo con el estado cacheado (mismo snapshot, sin I/O).
     const recalculated = service.recalculate("user-1");
     expect(recalculated.ok).toBe(true);
-    expect(recalculated.value.totals).toEqual(TOTALS_AFTER);
+    expect(recalculated.value.totals).toEqual(AC137_TOTALS_AFTER);
 
     expect(getStatsSpy).not.toHaveBeenCalled();
     expect(tracking.reads).toBe(readsAfterGetStats.tracking);
