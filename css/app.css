@@ -5,6 +5,7 @@
   --muted: #a8a29a;
   --accent: #8ab4f8;
   --error: #ff8a80;
+  --border: #3a352e;
   --radius: 14px;
   --status-pending: #a8a29a;
   --status-in-progress: #8ab4f8;
@@ -141,7 +142,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  border-bottom: 1px solid #3a352e;
+  border-bottom: 1px solid var(--border);
   margin-bottom: 16px;
 }
 
@@ -241,7 +242,7 @@ body {
   display: flex;
   flex-direction: column;
   background: #2a2620;
-  border: 1px solid #3a352e;
+  border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
   transition: border-color 0.15s, transform 0.15s;
@@ -413,7 +414,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid #3a352e;
+  border-bottom: 1px solid var(--border);
 }
 
 .modal__title {
@@ -458,7 +459,7 @@ body {
   gap: 10px;
   justify-content: flex-end;
   padding: 16px 24px;
-  border-top: 1px solid #3a352e;
+  border-top: 1px solid var(--border);
 }
 
 .modal__footer .btn {
@@ -1058,7 +1059,7 @@ body {
 
 .stat-card {
   background: #2a2620;
-  border: 1px solid #3a352e;
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px 12px;
   display: flex;
@@ -1133,7 +1134,7 @@ body {
   gap: 10px;
   padding: 8px 10px;
   background: #2a2620;
-  border: 1px solid #3a352e;
+  border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
@@ -1372,7 +1373,7 @@ body {
   gap: 12px;
   padding: 12px;
   background: #2a2620;
-  border: 1px solid #3a352e;
+  border: 1px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
@@ -1495,7 +1496,7 @@ body {
   display: flex;
   flex-direction: column;
   background: #2a2620;
-  border: 1px solid #3a352e;
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
   cursor: pointer;
@@ -1561,7 +1562,7 @@ body {
   gap: 12px;
   padding: 16px;
   background: #2a2620;
-  border: 1px solid #3a352e;
+  border: 1px solid var(--border);
   border-radius: 10px;
   margin-bottom: 16px;
 }
@@ -1952,7 +1953,7 @@ body {
   display: flex;
   flex-direction: column;
   background: #2a2620;
-  border: 1px solid #3a352e;
+  border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
   transition: border-color 0.15s, transform 0.15s;
@@ -2116,7 +2117,7 @@ body {
   font-size: 0.72rem;
   color: var(--muted);
   background: #211e1a;
-  border: 1px solid #3a352e;
+  border: 1px solid var(--border);
   border-radius: 999px;
   white-space: nowrap;
 }
@@ -2336,6 +2337,247 @@ body {
   }
 
   .catalog-view__actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ============================================================
+   Alta manual de catálogo — modelo 00-05
+   (spec 02 UI-04, REQ-105/REQ-108; AC-118; 00 REQ-E4)
+   ============================================================ */
+
+.catalog-view__manual {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
+
+.catalog-view__manual-summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.catalog-view__manual-summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.catalog-view__manual-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 12px;
+}
+
+.catalog-view__manual-hint {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.catalog-view__manual-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.catalog-view__manual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.catalog-view__manual-field {
+  min-width: 0;
+}
+
+.catalog-view__field-error {
+  color: var(--error);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.form-field__input[aria-invalid="true"],
+.form-field__textarea[aria-invalid="true"],
+.form-field__select[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+.catalog-view__manual-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #2e2a24;
+  font-size: 0.9rem;
+}
+
+.catalog-view__manual-status-text {
+  margin: 0;
+  flex: 1 1 240px;
+}
+
+.catalog-view__manual-status--success {
+  border-color: rgb(129 201 149 / 0.4);
+  color: var(--status-completed);
+}
+
+.catalog-view__manual-status--error {
+  border-color: rgb(255 138 128 / 0.4);
+  color: var(--error);
+}
+
+.catalog-view__manual-status .btn {
+  width: auto;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+
+.catalog-view__manual-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.catalog-view__manual-actions .btn {
+  width: auto;
+  padding: 10px 18px;
+}
+
+/* Importación desde APIs externas (REQ-108) ------------------- */
+.catalog-view__manual-api {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.catalog-view__manual-subtitle {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.catalog-view__manual-api-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.catalog-view__manual-api-form .catalog-view__field {
+  flex: 1 1 200px;
+}
+
+.catalog-view__manual-api-form .btn {
+  width: auto;
+  padding: 8px 16px;
+}
+
+.catalog-view__manual-api-status {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.catalog-view__manual-api-warning {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgb(253 214 99 / 0.3);
+  border-radius: 8px;
+  background: rgb(253 214 99 / 0.08);
+  color: var(--status-paused);
+  font-size: 0.88rem;
+}
+
+.catalog-view__manual-api-results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.catalog-view__manual-api-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #2e2a24;
+}
+
+.catalog-view__manual-api-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.catalog-view__manual-api-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.catalog-view__manual-api-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.catalog-view__manual-api-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.catalog-view__manual-api-actions .btn {
+  width: auto;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+
+/* Importación en curso o ya importada: el botón no se repite. */
+.catalog-view__manual-api-actions .btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.catalog-view__manual-api-actions .btn[data-state="importing"] {
+  opacity: 0.75;
+}
+
+.catalog-view__manual-api-actions .btn[data-state="imported"] {
+  opacity: 1;
+  border-color: rgb(129 201 149 / 0.4);
+  background: transparent;
+  color: var(--status-completed);
+  cursor: default;
+}
+
+.catalog-view__manual-api-empty {
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+/* Responsive ------------------------------------------------ */
+@media (max-width: 640px) {
+  .catalog-view__manual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .catalog-view__manual-actions .btn,
+  .catalog-view__manual-api-actions .btn {
     flex: 1 1 auto;
   }
 }

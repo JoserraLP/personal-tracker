@@ -42,6 +42,8 @@ import {
   // Spec 02 — REQ-102: normalización del título para la búsqueda por
   // prefijo (DB-121, AC-112).
   normalizeTitle,
+  // Spec 02 — DB-120: validador del alta manual (UI-04, AC-118).
+  validateMediaItem,
   // Spec 004 — Favoritos y colecciones
   setItemFavorite,
   toggleItemFavorite,
@@ -69,6 +71,17 @@ import {
 import { searchTmdbMovies, searchTmdbTv, searchTmdbAnime, fetchTmdbMovieMetadata, fetchTmdbTvMetadata, fetchTmdbMetadata } from "./api-tmdb.js";
 import { searchIgdbGames, fetchIgdbGameMetadata } from "./api-games.js";
 import { searchGoogleBooks, fetchGoogleBookMetadata } from "./api-books.js";
+// T-116 — Puente PURO de normalización (REQ-108, REQ-E4): reutiliza
+// los normalizadores de `js/api-normalize.js` (importable sin red) en
+// lugar de duplicarlos aquí.
+import {
+  normalizeManualMediaItem,
+  normalizeApiItems,
+  normalizeApiFailure,
+  buildMediaMetadata,
+} from "./api-normalize.js";
+// T-116 — Biblioteca de Steam (REQ-108: IGDB/Steam).
+import { fetchOwnedSteamGames } from "./api-steam.js";
 // T-114 — Vista de catálogo del modelo 00-05: `MediaCard` (componente
 // único, AC-116) y `CatalogRepository` (paginación por cursor, REQ-101).
 import {
@@ -692,6 +705,9 @@ function mountCatalogView() {
   loadMoreWrap.appendChild(loadMoreBtn);
 
   panel.append(form, error, loading, empty, count, grid, loadMoreWrap);
+  // T-116 (UI-04): panel de alta manual dentro de la vista de
+  // catálogo (se monta aquí para no depender de `index.html`).
+  mountManualAddPanel(panel);
   root.append(tabs, panel);
   view.appendChild(root);
 
@@ -780,6 +796,8 @@ function handleCatalogTabsKeydown(event) {
 function selectCatalogType(mediaType) {
   if (!CATALOG_MEDIA_TYPES.includes(mediaType)) return;
   catalogView.mediaType = mediaType;
+  // T-116: el alta manual sigue el tipo activo (DB-101).
+  syncManualMediaType(mediaType);
   // El grid se vacía antes de leer la página 1 del nuevo tipo: si la
   // consulta falla, no quedan pintadas tarjetas del tipo anterior
   // (AC-111).
@@ -1138,6 +1156,9 @@ function catalogCleanup() {
   resetCatalogView();
   // T-115: la búsqueda se invalida también (temporizador + resultados).
   resetSearchView();
+  // T-116: el alta manual se vacía (formulario, estado y resultados
+  // externos) para no arrastrar datos entre sesiones.
+  resetManualAddPanel();
   dashboardUnsubscribeAll();
   favoritesUnsubscribeAll();
   collectionsUnsubscribeAll();
@@ -1523,6 +1544,1435 @@ function resetSearchView() {
   if (searchViewDom.input) searchViewDom.input.value = "";
   updateSearchLoadMoreState();
   renderSearchState();
+}
+
+// =============================================================
+// T-116 — Alta manual de catálogo (spec 02 UI-04, REQ-105/REQ-108;
+// AC-118; 00 §4.1 REQ-E1/REQ-E2/REQ-E3/REQ-E4)
+//
+//   - Formulario de ALTA MANUAL (UI-04) montado en JS dentro de la
+//     vista de catálogo (`#view-catalog`), con un `<details>`
+//     accesible (resumen + contenido) para no roba espacio al listado.
+//   - Validación ANTES de escribir con `validateMediaItem` (DB-120,
+//     UI-04) y mensajes INLINE en español por campo
+//     (`aria-invalid` + `aria-describedby`) más un resumen
+//     `role="alert"`; el foco va al primer campo con error (REQ-E3).
+//   - El guardado usa `CatalogRepository.createMediaItem`
+//     (spec 02 §2): el repositorio valida (DB-120) y fuerza
+//     `seed: false` (AC-118). Tras guardar se refresca el listado del
+//     tipo del ítem, de modo que el título aparece en el catálogo.
+//   - IMPORTACIÓN desde APIs externas (REQ-108) con los
+//     normalizadores PUROS de `js/api-normalize.js`
+//     (`normalizeApiItems` / `normalizeManualMediaItem`): no se
+//     duplica ningún normalizador.
+//   - REQ-E4: un fallo de API externa NUNCA bloquea el alta manual;
+//     solo se muestra un aviso en español y el formulario manual
+//     sigue operativo.
+// =============================================================
+
+// --- Fuentes externas de importación (REQ-108) ---------------
+
+/**
+ * Fuentes externas disponibles para importar títulos al catálogo
+ * (REQ-108: TMDB, Google Books, IGDB/Steam). `provider` es la clave
+ * que usa `js/api-normalize.js` para elegir el normalizador.
+ * @type {ReadonlyArray<{
+ *   id: string, label: string, provider: string, mediaType: string,
+ *   kind: "search"|"library", search: Function|null, queryLabel: string
+ * }>}
+ */
+const MANUAL_API_SOURCES = Object.freeze([
+  {
+    id: "tmdb-movie",
+    label: "TMDB · Películas",
+    provider: "tmdb",
+    mediaType: "MOVIE",
+    kind: "search",
+    search: searchTmdbMovies,
+    queryLabel: "Título de la película",
+  },
+  {
+    id: "tmdb-series",
+    label: "TMDB · Series",
+    provider: "tmdb",
+    mediaType: "SERIES",
+    kind: "search",
+    search: searchTmdbTv,
+    queryLabel: "Título de la serie",
+  },
+  {
+    id: "tmdb-anime",
+    label: "TMDB · Anime",
+    provider: "tmdb",
+    mediaType: "ANIME",
+    kind: "search",
+    search: searchTmdbAnime,
+    queryLabel: "Título del anime",
+  },
+  {
+    id: "googlebooks",
+    label: "Google Books · Libros",
+    provider: "googlebooks",
+    mediaType: "BOOK",
+    kind: "search",
+    search: searchGoogleBooks,
+    queryLabel: "Título o autor del libro",
+  },
+  {
+    id: "igdb",
+    label: "IGDB · Videojuegos",
+    provider: "igdb",
+    mediaType: "GAME",
+    kind: "search",
+    search: searchIgdbGames,
+    queryLabel: "Nombre del videojuego",
+  },
+  {
+    id: "steam",
+    label: "Steam · Biblioteca",
+    provider: "steam",
+    mediaType: "GAME",
+    kind: "library",
+    search: null,
+    queryLabel: "SteamID64 (17 dígitos)",
+  },
+]);
+
+/**
+ * Campos del formulario de alta manual por tipo de medio (DB-102):
+ * cada `metadata.kind` tiene sus campos (duración, episodios,
+ * páginas o plataformas).
+ * @type {Readonly<Record<string, string[]>>}
+ */
+const MANUAL_ADD_TYPE_FIELDS = Object.freeze({
+  durationMinutes: ["MOVIE", "AUDIOBOOK"],
+  totalEpisodes: ["SERIES", "ANIME"],
+  currentAvailable: ["SERIES", "ANIME"],
+  totalPages: ["BOOK", "MANGA"],
+  totalChapters: ["BOOK", "MANGA"],
+  platforms: ["GAME"],
+  totalHours: ["GAME"],
+});
+
+/**
+ * Clave de `metadata` (DB-102) que rellena cada campo del formulario
+ * de alta manual. Se listan los alias admitidos para que el prefi-
+ * llenado desde una API externa (`prefillManualForm`) use la misma
+ * clave que lee el formulario (`readManualInput`): `pagesTotal` y
+ * `playtimeHours` son los nombres del `MediaItemInput` en bruto.
+ * @type {Readonly<Record<string, string[]>>}
+ */
+const MANUAL_ADD_METADATA_KEYS = Object.freeze({
+  durationMinutes: ["durationMinutes"],
+  totalEpisodes: ["totalEpisodes"],
+  currentAvailable: ["currentAvailable"],
+  totalPages: ["totalPages", "pagesTotal"],
+  totalChapters: ["totalChapters"],
+  platforms: ["platforms"],
+  totalHours: ["totalHours", "playtimeHours"],
+});
+
+/**
+ * Reglas de asignación de los errores de `validateMediaItem`
+ * (DB-120) a los campos del formulario. El texto de los mensajes es
+ * el que produce el validador (español, REQ-C5). Cada patrón acepta
+ * el nombre técnico del campo y su forma en español (`plataformas?`
+ * cubre «Cada plataforma debe ser texto.»).
+ * @type {ReadonlyArray<{field: string, pattern: RegExp}>}
+ */
+const MANUAL_ADD_ERROR_RULES = Object.freeze([
+  { field: "mediaType", pattern: /mediaType|tipo de medio/i },
+  { field: "title", pattern: /t[ií]tulo/i },
+  { field: "coverUrl", pattern: /portada|coverUrl/i },
+  { field: "releaseYear", pattern: /a[ñn]o de estreno|releaseYear/i },
+  { field: "genres", pattern: /g[ée]nero/i },
+  { field: "avgRating", pattern: /valoraci[óo]n media|avgRating/i },
+  { field: "creator", pattern: /creador|creator/i },
+  { field: "synopsis", pattern: /sinopsis/i },
+  { field: "durationMinutes", pattern: /durationMinutes|duraci[óo]n/i },
+  // «Episodios disponibles» es más específico: se comprueba antes que
+  // el total de episodios para que el mensaje caiga en su campo.
+  { field: "currentAvailable", pattern: /currentAvailable|episodios disponibles/i },
+  { field: "totalEpisodes", pattern: /totalEpisodes|episodios/i },
+  { field: "totalPages", pattern: /totalPages|p[áa]ginas/i },
+  { field: "totalChapters", pattern: /totalChapters|cap[íi]tulos/i },
+  { field: "platforms", pattern: /platforms|plataformas?/i },
+  { field: "totalHours", pattern: /totalHours|horas/i },
+]);
+
+/**
+ * Estado del formulario de alta manual (T-116).
+ * @type {{
+ *   mounted: boolean,
+ *   submitting: boolean,
+ *   searching: boolean,
+ *   requestId: number,
+ *   apiItems: object[],
+ *   apiSource: object,
+ *   apiImportButtons: Map<number, HTMLElement>,
+ *   apiImporting: Set<number>,
+ *   apiImported: Set<number>,
+ *   apiImportedKeys: Set<string>,
+ *   lastItem: object|null
+ * }}
+ */
+const manualAddState = {
+  /** ¿El panel ya está montado en el DOM? */
+  mounted: false,
+  /** ¿Hay un alta manual en curso? */
+  submitting: false,
+  /** ¿Hay una consulta a una API externa en curso? */
+  searching: false,
+  /** Token de petición: descarta respuestas obsoletas. */
+  requestId: 0,
+  /** `MediaItemInput[]` normalizados de la última búsqueda. */
+  apiItems: [],
+  /** Fuente externa seleccionada. */
+  apiSource: MANUAL_API_SOURCES[0],
+  /** Botón «Añadir al catálogo» de cada resultado, por índice. */
+  apiImportButtons: new Map(),
+  /** Índices con una importación en curso (botón deshabilitado). */
+  apiImporting: new Set(),
+  /** Índices ya importados (botón deshabilitado y marcado). */
+  apiImported: new Set(),
+  /**
+   * Claves de los ítems ya importados (T-116). Es PERSISTENTE: no se
+   * vacía al cambiar de búsqueda, de modo que un mismo título no se
+   * vuelve a ofrecer ni a escribir. Clave: `id:<id>` si hay id y, si
+   * no, `title:<mediaType>:<normalizeTitle(title)>`.
+   */
+  apiImportedKeys: new Set(),
+  /** Último ítem guardado (acción «Ver en el listado»). */
+  lastItem: null,
+};
+
+/** Referencias DOM del formulario de alta manual (se rellenan al montar). */
+const manualAddDom = {
+  details: null,
+  form: null,
+  errors: null,
+  status: null,
+  statusText: null,
+  statusAction: null,
+  submit: null,
+  reset: null,
+  /** Campos con su mensaje de error inline: { campo: {input, error} }. */
+  fields: {},
+  /** Contenedor de los campos según el tipo de medio. */
+  typeFields: null,
+  apiForm: null,
+  apiProvider: null,
+  apiQuery: null,
+  apiQueryLabel: null,
+  apiSubmit: null,
+  apiStatus: null,
+  apiWarning: null,
+  apiResults: null,
+};
+
+/**
+ * Crea un campo del formulario (label + control + error inline).
+ * @param {{id: string, label: string, type?: string, placeholder?: string, required?: boolean, hint?: string}} options
+ * @returns {{field: HTMLElement, input: HTMLElement, error: HTMLElement}}
+ */
+function createManualField(options) {
+  const { id, label, type = "text", placeholder = "", required = false } = options;
+  const field = createCatalogElement("label", "catalog-view__field catalog-view__manual-field");
+  field.setAttribute("for", id);
+  field.appendChild(createCatalogElement("span", "catalog-view__label", label));
+
+  const input = document.createElement("input");
+  input.type = type;
+  input.id = id;
+  input.className = "form-field__input catalog-view__input";
+  if (placeholder !== "") input.placeholder = placeholder;
+  if (required) input.required = true;
+
+  const errorId = `${id}-error`;
+  const error = createCatalogElement("span", "catalog-view__field-error");
+  error.id = errorId;
+  error.hidden = true;
+  input.setAttribute("aria-describedby", errorId);
+
+  field.append(input, error);
+  return { field, input, error };
+}
+
+/**
+ * Monta el panel de alta manual dentro del panel del catálogo (UI-04).
+ * El marcado vive en JS (sin `index.html`) para no tocar el shell.
+ * @param {HTMLElement} parent Contenedor del panel de catálogo.
+ */
+function mountManualAddPanel(parent) {
+  if (manualAddState.mounted || !parent) return;
+
+  // --- Disclosure accesible -----------------------------------
+  const details = createCatalogElement("details", "catalog-view__manual");
+  details.id = "catalog-manual-add";
+  const summary = createCatalogElement(
+    "summary",
+    "catalog-view__manual-summary",
+    "Alta manual de un título",
+  );
+  summary.id = "catalog-manual-summary";
+  details.appendChild(summary);
+
+  const body = createCatalogElement("div", "catalog-view__manual-body");
+  details.appendChild(body);
+
+  body.appendChild(
+    createCatalogElement(
+      "p",
+      "muted catalog-view__manual-hint",
+      "Da de alta un título que no exista en el catálogo ni en las APIs externas.",
+    ),
+  );
+
+  // --- Formulario de alta manual (UI-04) ---------------------
+  const form = document.createElement("form");
+  form.id = "catalog-manual-form";
+  form.className = "catalog-view__manual-form";
+  form.noValidate = true;
+
+  const errors = createCatalogElement("div", "form-errors");
+  errors.id = "catalog-manual-errors";
+  errors.setAttribute("role", "alert");
+  errors.hidden = true;
+  form.appendChild(errors);
+
+  const grid = createCatalogElement("div", "catalog-view__manual-grid");
+
+  // Tipo de medio (7 tipos, DB-101).
+  const typeField = createCatalogElement(
+    "label",
+    "catalog-view__field catalog-view__manual-field",
+  );
+  typeField.setAttribute("for", "catalog-manual-media-type");
+  typeField.appendChild(
+    createCatalogElement("span", "catalog-view__label", "Tipo de medio *"),
+  );
+  const mediaTypeSelect = document.createElement("select");
+  mediaTypeSelect.id = "catalog-manual-media-type";
+  mediaTypeSelect.className = "form-field__select catalog-view__input";
+  for (const mediaType of CATALOG_MEDIA_TYPES) {
+    const option = document.createElement("option");
+    option.value = mediaType;
+    option.textContent = CATALOG_MEDIA_TYPE_LABELS[mediaType] ?? mediaType;
+    mediaTypeSelect.appendChild(option);
+  }
+  const typeError = createCatalogElement("span", "catalog-view__field-error");
+  typeError.id = "catalog-manual-media-type-error";
+  typeError.hidden = true;
+  mediaTypeSelect.setAttribute("aria-describedby", typeError.id);
+  typeField.append(mediaTypeSelect, typeError);
+  grid.appendChild(typeField);
+
+  // Título (obligatorio, DB-101).
+  const titleField = createManualField({
+    id: "catalog-manual-title",
+    label: "Título *",
+    type: "text",
+    placeholder: "El Último Signo",
+    required: true,
+  });
+  grid.appendChild(titleField.field);
+
+  const yearField = createManualField({
+    id: "catalog-manual-release-year",
+    label: "Año de estreno",
+    type: "number",
+    placeholder: "2020",
+  });
+  grid.appendChild(yearField.field);
+
+  const ratingField = createManualField({
+    id: "catalog-manual-avg-rating",
+    label: "Valoración media (0-10)",
+    type: "number",
+    placeholder: "8.5",
+  });
+  grid.appendChild(ratingField.field);
+
+  const genresField = createManualField({
+    id: "catalog-manual-genres",
+    label: "Géneros (separados por comas)",
+    type: "text",
+    placeholder: "Ciencia ficción, Drama",
+  });
+  grid.appendChild(genresField.field);
+
+  const creatorField = createManualField({
+    id: "catalog-manual-creator",
+    label: "Creador",
+    type: "text",
+    placeholder: "Nombre del autor o director",
+  });
+  grid.appendChild(creatorField.field);
+
+  const coverField = createManualField({
+    id: "catalog-manual-cover-url",
+    label: "Portada (URL)",
+    type: "url",
+    placeholder: "https://…",
+  });
+  grid.appendChild(coverField.field);
+
+  // Campos según el tipo de medio (DB-102).
+  const typeFields = createCatalogElement("div", "catalog-view__manual-grid");
+  const durationField = createManualField({
+    id: "catalog-manual-duration",
+    label: "Duración (minutos)",
+    type: "number",
+    placeholder: "120",
+  });
+  const episodesField = createManualField({
+    id: "catalog-manual-total-episodes",
+    label: "Episodios totales",
+    type: "number",
+    placeholder: "12",
+  });
+  const availableField = createManualField({
+    id: "catalog-manual-current-episodes",
+    label: "Episodios disponibles",
+    type: "number",
+    placeholder: "12",
+  });
+  const pagesField = createManualField({
+    id: "catalog-manual-total-pages",
+    label: "Páginas totales",
+    type: "number",
+    placeholder: "320",
+  });
+  const chaptersField = createManualField({
+    id: "catalog-manual-total-chapters",
+    label: "Capítulos totales",
+    type: "number",
+    placeholder: "24",
+  });
+  const platformsField = createManualField({
+    id: "catalog-manual-platforms",
+    label: "Plataformas (separadas por comas)",
+    type: "text",
+    placeholder: "PC, Switch",
+  });
+  const hoursField = createManualField({
+    id: "catalog-manual-total-hours",
+    label: "Horas jugadas",
+    type: "number",
+    placeholder: "40",
+  });
+  typeFields.append(
+    durationField.field,
+    episodesField.field,
+    availableField.field,
+    pagesField.field,
+    chaptersField.field,
+    platformsField.field,
+    hoursField.field,
+  );
+
+  const synopsisField = createCatalogElement(
+    "label",
+    "catalog-view__field catalog-view__manual-field",
+  );
+  synopsisField.setAttribute("for", "catalog-manual-synopsis");
+  synopsisField.appendChild(
+    createCatalogElement("span", "catalog-view__label", "Sinopsis"),
+  );
+  const synopsisInput = document.createElement("textarea");
+  synopsisInput.id = "catalog-manual-synopsis";
+  synopsisInput.className = "form-field__textarea catalog-view__input";
+  synopsisInput.rows = 3;
+  synopsisInput.placeholder = "Resumen del título";
+  const synopsisError = createCatalogElement("span", "catalog-view__field-error");
+  synopsisError.id = "catalog-manual-synopsis-error";
+  synopsisError.hidden = true;
+  synopsisInput.setAttribute("aria-describedby", synopsisError.id);
+  synopsisField.append(synopsisInput, synopsisError);
+  grid.appendChild(synopsisField);
+
+  form.append(grid, typeFields);
+
+  // Estado (éxito) + acción «Ver en el listado».
+  const status = createCatalogElement("div", "catalog-view__manual-status");
+  status.id = "catalog-manual-status";
+  // `role="status"` ya anuncia los cambios: no hace falta `aria-live`.
+  status.setAttribute("role", "status");
+  status.hidden = true;
+  const statusText = createCatalogElement("p", "catalog-view__manual-status-text");
+  statusText.id = "catalog-manual-status-text";
+  const statusAction = createCatalogElement(
+    "button",
+    "btn btn--secondary",
+    "Ver en el listado",
+  );
+  statusAction.type = "button";
+  statusAction.id = "catalog-manual-status-action";
+  statusAction.hidden = true;
+  status.append(statusText, statusAction);
+  form.appendChild(status);
+
+  const actions = createCatalogElement("div", "catalog-view__manual-actions");
+  const submitButton = createCatalogElement(
+    "button",
+    "btn btn--primary",
+    "Guardar en el catálogo",
+  );
+  submitButton.type = "submit";
+  submitButton.id = "catalog-manual-submit";
+  const resetButton = createCatalogElement("button", "btn", "Limpiar formulario");
+  resetButton.type = "button";
+  resetButton.id = "catalog-manual-reset";
+  actions.append(submitButton, resetButton);
+  form.appendChild(actions);
+
+  body.appendChild(form);
+
+  // --- Importación desde APIs externas (REQ-108) --------------
+  const apiSection = createCatalogElement(
+    "section",
+    "catalog-view__manual-api",
+  );
+  apiSection.setAttribute("aria-labelledby", "catalog-manual-api-title");
+  apiSection.appendChild(
+    createCatalogElement(
+      "h4",
+      "catalog-view__manual-subtitle",
+      "Importar desde una API externa",
+    ),
+  );
+  apiSection.querySelector("h4").id = "catalog-manual-api-title";
+
+  const apiForm = document.createElement("form");
+  apiForm.id = "catalog-manual-api-form";
+  apiForm.className = "catalog-view__manual-api-form";
+  apiForm.noValidate = true;
+
+  const providerField = createCatalogElement(
+    "label",
+    "catalog-view__field catalog-view__manual-field",
+  );
+  providerField.setAttribute("for", "catalog-manual-api-provider");
+  providerField.appendChild(
+    createCatalogElement("span", "catalog-view__label", "Origen"),
+  );
+  const providerSelect = document.createElement("select");
+  providerSelect.id = "catalog-manual-api-provider";
+  providerSelect.className = "form-field__select catalog-view__input";
+  for (const source of MANUAL_API_SOURCES) {
+    const option = document.createElement("option");
+    option.value = source.id;
+    option.textContent = source.label;
+    providerSelect.appendChild(option);
+  }
+  providerField.appendChild(providerSelect);
+
+  const queryField = createCatalogElement(
+    "label",
+    "catalog-view__field catalog-view__manual-field",
+  );
+  queryField.setAttribute("for", "catalog-manual-api-query");
+  const queryLabel = createCatalogElement(
+    "span",
+    "catalog-view__label",
+    MANUAL_API_SOURCES[0].queryLabel,
+  );
+  queryField.appendChild(queryLabel);
+  const queryInput = document.createElement("input");
+  queryInput.type = "search";
+  queryInput.id = "catalog-manual-api-query";
+  queryInput.className = "form-field__input catalog-view__input";
+  queryInput.autocomplete = "off";
+  queryField.appendChild(queryInput);
+
+  const apiSubmit = createCatalogElement("button", "btn btn--secondary", "Buscar");
+  apiSubmit.type = "submit";
+  apiSubmit.id = "catalog-manual-api-submit";
+
+  apiForm.append(providerField, queryField, apiSubmit);
+
+  const apiStatus = createCatalogElement("p", "catalog-view__manual-api-status");
+  apiStatus.id = "catalog-manual-api-status";
+  // `role="status"` ya anuncia los cambios: no hace falta `aria-live`.
+  apiStatus.setAttribute("role", "status");
+
+  const apiWarning = createCatalogElement(
+    "p",
+    "catalog-view__manual-api-warning",
+  );
+  apiWarning.id = "catalog-manual-api-warning";
+  apiWarning.setAttribute("role", "alert");
+  apiWarning.hidden = true;
+
+  const apiResults = document.createElement("ul");
+  apiResults.id = "catalog-manual-api-results";
+  apiResults.className = "catalog-view__manual-api-results";
+
+  apiSection.append(apiForm, apiStatus, apiWarning, apiResults);
+  body.appendChild(apiSection);
+
+  parent.appendChild(details);
+
+  // --- Referencias y eventos ----------------------------------
+  manualAddDom.details = details;
+  manualAddDom.form = form;
+  manualAddDom.errors = errors;
+  manualAddDom.status = status;
+  manualAddDom.statusText = statusText;
+  manualAddDom.statusAction = statusAction;
+  manualAddDom.submit = submitButton;
+  manualAddDom.reset = resetButton;
+  manualAddDom.typeFields = typeFields;
+  manualAddDom.apiForm = apiForm;
+  manualAddDom.apiProvider = providerSelect;
+  manualAddDom.apiQuery = queryInput;
+  manualAddDom.apiQueryLabel = queryLabel;
+  manualAddDom.apiSubmit = apiSubmit;
+  manualAddDom.apiStatus = apiStatus;
+  manualAddDom.apiWarning = apiWarning;
+  manualAddDom.apiResults = apiResults;
+
+  manualAddDom.fields = {
+    mediaType: { input: mediaTypeSelect, error: typeError },
+    title: { input: titleField.input, error: titleField.error },
+    releaseYear: { input: yearField.input, error: yearField.error },
+    avgRating: { input: ratingField.input, error: ratingField.error },
+    genres: { input: genresField.input, error: genresField.error },
+    creator: { input: creatorField.input, error: creatorField.error },
+    coverUrl: { input: coverField.input, error: coverField.error },
+    synopsis: { input: synopsisInput, error: synopsisError },
+    durationMinutes: { input: durationField.input, error: durationField.error },
+    totalEpisodes: { input: episodesField.input, error: episodesField.error },
+    currentAvailable: { input: availableField.input, error: availableField.error },
+    totalPages: { input: pagesField.input, error: pagesField.error },
+    totalChapters: { input: chaptersField.input, error: chaptersField.error },
+    platforms: { input: platformsField.input, error: platformsField.error },
+    totalHours: { input: hoursField.input, error: hoursField.error },
+  };
+
+  form.addEventListener("submit", handleManualSubmit);
+  resetButton.addEventListener("click", handleManualReset);
+  statusAction.addEventListener("click", handleManualStatusAction);
+  mediaTypeSelect.addEventListener("change", handleManualTypeChange);
+  providerSelect.addEventListener("change", handleManualApiSourceChange);
+  apiForm.addEventListener("submit", handleManualApiSubmit);
+
+  manualAddState.mounted = true;
+  manualAddState.apiSource = MANUAL_API_SOURCES[0];
+  providerSelect.value = manualAddState.apiSource.id;
+  // El tipo por defecto es el de la pestaña activa del catálogo.
+  syncManualMediaType(catalogView.mediaType);
+}
+
+/**
+ * Mantiene el selector de tipo del formulario alineado con la
+ * pestaña activa del catálogo (DB-101) y refresca los campos por
+ * tipo (DB-102).
+ * @param {string} mediaType
+ */
+function syncManualMediaType(mediaType) {
+  const select = manualAddDom.fields.mediaType?.input;
+  if (!select) return;
+  if (typeof mediaType === "string" && CATALOG_MEDIA_TYPES.includes(mediaType)) {
+    select.value = mediaType;
+  }
+  renderManualTypeFields(select.value);
+}
+
+/**
+ * Muestra u oculta los campos del tipo de medio (DB-102).
+ * @param {string} mediaType
+ */
+function renderManualTypeFields(mediaType) {
+  for (const [field, types] of Object.entries(MANUAL_ADD_TYPE_FIELDS)) {
+    const target = manualAddDom.fields[field];
+    if (!target || !target.input) continue;
+    const visible = types.includes(mediaType);
+    target.input.hidden = !visible;
+    const wrapper = target.input.closest(".catalog-view__field");
+    if (wrapper) wrapper.hidden = !visible;
+  }
+}
+
+/** Cambio de tipo de medio: refresca los campos específicos (DB-102). */
+function handleManualTypeChange() {
+  const select = manualAddDom.fields.mediaType?.input;
+  if (!select) return;
+  renderManualTypeFields(select.value);
+}
+
+/** Número del formulario: vacío ⇒ `null` (sin valor). */
+function readManualNumber(input) {
+  if (!input) return null;
+  const raw = typeof input.value === "string" ? input.value.trim() : "";
+  if (raw === "") return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+/** Lista del formulario: texto separado por comas. */
+function readManualList(input) {
+  if (!input) return [];
+  const raw = typeof input.value === "string" ? input.value : "";
+  return raw
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+}
+
+/**
+ * Lee el formulario de alta manual y devuelve el `MediaItemInput` en
+ * bruto (sin normalizar). La normalización y la validación final son
+ * de `js/api-normalize.js` y `validateMediaItem` (DB-120).
+ * @returns {object}
+ */
+function readManualInput() {
+  const fields = manualAddDom.fields;
+  const mediaType = fields.mediaType?.input?.value ?? "MOVIE";
+  const currentAvailable = readManualNumber(fields.currentAvailable?.input);
+  const input = {
+    mediaType,
+    title: fields.title?.input?.value?.trim() ?? "",
+    coverUrl: fields.coverUrl?.input?.value?.trim() || null,
+    releaseYear: readManualNumber(fields.releaseYear?.input),
+    genres: readManualList(fields.genres?.input),
+    avgRating: readManualNumber(fields.avgRating?.input),
+    creator: fields.creator?.input?.value?.trim() || null,
+    synopsis: fields.synopsis?.input?.value?.trim() || null,
+    durationMinutes: readManualNumber(fields.durationMinutes?.input),
+    totalEpisodes: readManualNumber(fields.totalEpisodes?.input),
+    pagesTotal: readManualNumber(fields.totalPages?.input),
+    totalChapters: readManualNumber(fields.totalChapters?.input),
+    platforms: readManualList(fields.platforms?.input),
+    playtimeHours: readManualNumber(fields.totalHours?.input),
+  };
+  // `currentAvailable` solo existe en el `metadata.kind` "episodes"
+  // (DB-102); se pasa explícito para que sobreviva a la normalización.
+  if (currentAvailable !== null && MANUAL_ADD_TYPE_FIELDS.currentAvailable.includes(mediaType)) {
+    input.currentAvailable = currentAvailable;
+    input.metadata = { currentAvailable };
+  }
+  return input;
+}
+
+/** Limpia los errores inline de todos los campos. */
+function clearManualFieldErrors() {
+  for (const target of Object.values(manualAddDom.fields)) {
+    if (!target) continue;
+    target.error.textContent = "";
+    target.error.hidden = true;
+    target.input.removeAttribute("aria-invalid");
+  }
+}
+
+/** Oculta el resumen de errores y los errores inline. */
+function clearManualErrors() {
+  if (manualAddDom.errors) {
+    manualAddDom.errors.hidden = true;
+    manualAddDom.errors.replaceChildren();
+  }
+  clearManualFieldErrors();
+}
+
+/**
+ * Muestra los errores de validación EN LÍNEA y en español (REQ-E3):
+ * un mensaje por campo (`aria-invalid` + `aria-describedby`), un
+ * resumen con `role="alert"` y el foco en el primer campo con error.
+ * @param {string[]} errors
+ */
+function showManualErrors(errors) {
+  const messages = (Array.isArray(errors) ? errors : []).filter(
+    (message) => typeof message === "string" && message.trim() !== "",
+  );
+  clearManualErrors();
+
+  const byField = new Map();
+  for (const message of messages) {
+    const rule = MANUAL_ADD_ERROR_RULES.find((candidate) =>
+      candidate.pattern.test(message),
+    );
+    if (!rule) continue;
+    const bucket = byField.get(rule.field) ?? [];
+    bucket.push(message);
+    byField.set(rule.field, bucket);
+  }
+
+  for (const [field, bucket] of byField) {
+    const target = manualAddDom.fields[field];
+    if (!target) continue;
+    target.error.textContent = bucket.join(" ");
+    target.error.hidden = false;
+    target.input.setAttribute("aria-invalid", "true");
+  }
+
+  if (manualAddDom.errors) {
+    const list = document.createElement("ul");
+    for (const message of messages) {
+      const item = document.createElement("li");
+      item.textContent = message;
+      list.appendChild(item);
+    }
+    manualAddDom.errors.replaceChildren(list);
+    manualAddDom.errors.hidden = messages.length === 0;
+  }
+
+  const firstField = byField.keys().next();
+  const firstTarget =
+    firstField.done === false ? manualAddDom.fields[firstField.value] : null;
+  if (firstTarget && typeof firstTarget.input.focus === "function") {
+    firstTarget.input.focus();
+  }
+}
+
+/**
+ * Muestra un mensaje de estado del formulario (éxito o aviso).
+ * @param {string} message
+ * @param {"success"|"info"|"error"} [kind]
+ * @param {object|null} [item] Ítem guardado (acción «Ver en el listado»).
+ */
+function showManualStatus(message, kind = "info", item = null) {
+  if (!manualAddDom.status || !manualAddDom.statusText) return;
+  manualAddDom.statusText.textContent = message;
+  manualAddDom.status.classList.remove(
+    "catalog-view__manual-status--success",
+    "catalog-view__manual-status--error",
+  );
+  if (kind === "success") {
+    manualAddDom.status.classList.add("catalog-view__manual-status--success");
+  } else if (kind === "error") {
+    manualAddDom.status.classList.add("catalog-view__manual-status--error");
+  }
+  manualAddDom.status.hidden = false;
+
+  manualAddState.lastItem = item && typeof item === "object" ? item : null;
+  if (manualAddDom.statusAction) {
+    manualAddDom.statusAction.hidden = manualAddState.lastItem === null;
+  }
+}
+
+/** Oculta el mensaje de estado. */
+function hideManualStatus() {
+  if (manualAddDom.status) {
+    manualAddDom.status.hidden = true;
+    manualAddDom.status.classList.remove(
+      "catalog-view__manual-status--success",
+      "catalog-view__manual-status--error",
+    );
+  }
+  if (manualAddDom.statusText) manualAddDom.statusText.textContent = "";
+  if (manualAddDom.statusAction) {
+    manualAddDom.statusAction.hidden = true;
+  }
+  manualAddState.lastItem = null;
+}
+
+/**
+ * Envío del alta manual (UI-04, REQ-105, AC-118):
+ * valida con `validateMediaItem` (DB-120), normaliza con
+ * `normalizeManualMediaItem` (REQ-108) y guarda con
+ * `CatalogRepository.createMediaItem` (spec 02 §2), que fuerza
+ * `seed: false` (AC-118).
+ * @param {Event} event
+ */
+async function handleManualSubmit(event) {
+  event.preventDefault();
+  if (manualAddState.submitting) return;
+
+  clearManualErrors();
+  hideManualStatus();
+
+  const input = readManualInput();
+
+  // UI-04 / DB-120: validación ANTES de escribir (REQ-E3).
+  // La pre-comprobación usa el valor EN BRUTO a propósito: el
+  // normalizador trunca géneros/sinopsis antes de volver a validar.
+  const metadata = buildMediaMetadata(input.mediaType, input);
+  const report = validateMediaItem({ ...input, metadata });
+  if (!report.valid) {
+    showManualErrors(report.errors);
+    return;
+  }
+
+  // Normalizador PURO de `js/api-normalize.js` (sin duplicar lógica).
+  const normalized = normalizeManualMediaItem(input);
+  if (!normalized || normalized.ok !== true) {
+    showManualErrors(
+      normalized && Array.isArray(normalized.errors) && normalized.errors.length > 0
+        ? normalized.errors
+        : [(normalized && normalized.message) || "No se ha podido validar el título."],
+    );
+    return;
+  }
+
+  manualAddState.submitting = true;
+  setManualSubmitting(true);
+  try {
+    const result = await catalogRepository.createMediaItem(normalized.value);
+    if (!result || result.ok !== true) {
+      showManualErrors(
+        result && Array.isArray(result.errors) && result.errors.length > 0
+          ? result.errors
+          : [(result && result.message) || "No se ha podido guardar el título."],
+      );
+      return;
+    }
+    const saved = result.value;
+    showManualStatus(
+      `«${saved.title}» se ha guardado en el catálogo (${mediaTypeLabel(saved.mediaType)}).`,
+      "success",
+      saved,
+    );
+    resetManualForm();
+    refreshCatalogAfterCreate(saved);
+  } finally {
+    manualAddState.submitting = false;
+    setManualSubmitting(false);
+  }
+}
+
+/** Estado visual del botón de guardado durante el alta. */
+function setManualSubmitting(submitting) {
+  if (!manualAddDom.submit) return;
+  manualAddDom.submit.disabled = submitting;
+  manualAddDom.submit.textContent = submitting ? "Guardando…" : "Guardar en el catálogo";
+}
+
+/** Vacía los campos del formulario (sin tocar el tipo elegido). */
+function resetManualForm() {
+  const fields = manualAddDom.fields;
+  for (const [name, target] of Object.entries(fields)) {
+    if (name === "mediaType" || !target || !target.input) continue;
+    target.input.value = "";
+  }
+  clearManualErrors();
+}
+
+/** Botón «Limpiar formulario». */
+function handleManualReset() {
+  resetManualForm();
+  hideManualStatus();
+  const title = manualAddDom.fields.title?.input;
+  if (title && typeof title.focus === "function") title.focus();
+}
+
+/**
+ * Refresca el listado tras un alta (AC-118): el título guardado
+ * aparece en el listado del catálogo (tipo activo o el tipo del
+ * ítem recién creado).
+ * @param {object} item
+ */
+function refreshCatalogAfterCreate(item) {
+  const mediaType = item && typeof item.mediaType === "string" ? item.mediaType : null;
+  if (
+    mediaType &&
+    CATALOG_MEDIA_TYPES.includes(mediaType) &&
+    mediaType !== catalogView.mediaType
+  ) {
+    // Cambia de tipo y vuelve a leer la primera página (REQ-101).
+    selectCatalogType(mediaType);
+    return;
+  }
+  resetCatalogPaging();
+  void loadCatalogPage({ append: false });
+}
+
+/** «Ver en el listado»: abre la búsqueda con el título guardado. */
+function handleManualStatusAction() {
+  const item = manualAddState.lastItem;
+  if (!item || typeof item.title !== "string") return;
+  const title = item.title.trim();
+  if (title === "") return;
+  searchView.term = title;
+  if (searchViewDom.input) searchViewDom.input.value = title;
+  showAppView("search");
+}
+
+// --- Importación desde APIs externas (REQ-108) ----------------
+
+/** Cambia la fuente externa y actualiza la etiqueta del campo. */
+function handleManualApiSourceChange() {
+  const select = manualAddDom.apiProvider;
+  if (!select) return;
+  const source = MANUAL_API_SOURCES.find((candidate) => candidate.id === select.value);
+  if (!source) return;
+  manualAddState.apiSource = source;
+  if (manualAddDom.apiQueryLabel) {
+    manualAddDom.apiQueryLabel.textContent = source.queryLabel;
+  }
+  if (manualAddDom.apiQuery) {
+    manualAddDom.apiQuery.type = source.kind === "library" ? "text" : "search";
+    manualAddDom.apiQuery.placeholder =
+      source.kind === "library" ? "76561198000000000" : "Escribe el título…";
+  }
+  if (manualAddDom.apiSubmit) {
+    manualAddDom.apiSubmit.textContent = source.kind === "library" ? "Importar" : "Buscar";
+  }
+  clearManualApiResults();
+}
+
+/** Vacía los resultados de la importación anterior. */
+function clearManualApiResults() {
+  manualAddState.apiItems = [];
+  manualAddState.apiImportButtons.clear();
+  manualAddState.apiImporting.clear();
+  manualAddState.apiImported.clear();
+  // `apiImportedKeys` NO se vacía aquí: la guarda de duplicados es
+  // persistente entre búsquedas (T-116).
+  if (manualAddDom.apiResults) manualAddDom.apiResults.replaceChildren();
+  if (manualAddDom.apiStatus) manualAddDom.apiStatus.textContent = "";
+  if (manualAddDom.apiWarning) {
+    manualAddDom.apiWarning.hidden = true;
+    manualAddDom.apiWarning.textContent = "";
+  }
+}
+
+/**
+ * Clave estable de un resultado de API externa para detectar
+ * duplicados entre búsquedas (T-116): `id:<id>` cuando el ítem trae
+ * id y, si no, `title:<mediaType>:<normalizeTitle(title)>` (DB-121).
+ * @param {object} input `MediaItemInput` normalizado.
+ * @returns {string} clave; `""` si no hay datos suficientes.
+ */
+function manualApiImportKey(input) {
+  if (!input || typeof input !== "object") return "";
+  const rawId = input.id;
+  const id =
+    typeof rawId === "string"
+      ? rawId.trim()
+      : typeof rawId === "number" && Number.isFinite(rawId)
+        ? String(rawId)
+        : "";
+  if (id !== "") return `id:${id}`;
+  const mediaType =
+    typeof input.mediaType === "string" ? input.mediaType.trim() : "";
+  const title =
+    typeof input.title === "string" ? normalizeTitle(input.title) : "";
+  if (mediaType === "" && title === "") return "";
+  return `title:${mediaType}:${title}`;
+}
+
+/**
+ * Avisa de un fallo de la API externa (REQ-E4): el aviso NUNCA
+ * bloquea el alta manual, que sigue disponible.
+ * @param {string} message
+ */
+function showManualApiWarning(message) {
+  if (!manualAddDom.apiWarning) return;
+  manualAddDom.apiWarning.textContent = `${message} Puedes dar de alta el título manualmente.`;
+  manualAddDom.apiWarning.hidden = false;
+}
+
+/**
+ * Busca en la API externa elegida y normaliza los resultados con
+ * `normalizeApiItems` (REQ-108). Un fallo devuelve un aviso en
+ * español y NO bloquea el alta manual (REQ-E4).
+ * @param {Event} event
+ */
+async function handleManualApiSubmit(event) {
+  event.preventDefault();
+  if (manualAddState.searching) return;
+
+  const source = manualAddState.apiSource;
+  const query =
+    manualAddDom.apiQuery && typeof manualAddDom.apiQuery.value === "string"
+      ? manualAddDom.apiQuery.value.trim()
+      : "";
+
+  clearManualApiResults();
+
+  if (query === "") {
+    showManualApiWarning(
+      source.kind === "library"
+        ? "Escribe tu SteamID64 para importar la biblioteca."
+        : `Escribe un título para buscar en ${source.label}.`,
+    );
+    return;
+  }
+  if (source.kind === "library" && !/^\d{17}$/.test(query)) {
+    showManualApiWarning("El SteamID64 debe tener 17 dígitos.");
+    return;
+  }
+  if (source.kind === "search" && typeof source.search !== "function") {
+    showManualApiWarning("Esa fuente no está disponible.");
+    return;
+  }
+
+  const requestId = ++manualAddState.requestId;
+  manualAddState.searching = true;
+  setManualApiBusy(true);
+
+  let response = null;
+  try {
+    if (source.kind === "library") {
+      const library = await fetchOwnedSteamGames(query);
+      response = { games: Array.isArray(library?.games) ? library.games : [] };
+    } else {
+      response = await source.search(query, { limit: 10 });
+    }
+  } catch (error) {
+    const failure = normalizeApiFailure(error, source.provider);
+    // Respuesta obsoleta: se descarta sin tocar el estado visible.
+    if (requestId !== manualAddState.requestId) return;
+    showManualApiWarning(failure.message);
+    manualAddState.searching = false;
+    setManualApiBusy(false);
+    return;
+  }
+
+  // Respuesta obsoleta: se descarta.
+  if (requestId !== manualAddState.requestId) return;
+  manualAddState.searching = false;
+  setManualApiBusy(false);
+
+  // Normalización PURA a `MediaItemInput` (REQ-108): los normalizadores
+  // viven en `js/api-normalize.js`, no se duplican aquí.
+  const normalized = normalizeApiItems(response, {
+    provider: source.provider,
+    mediaType: source.mediaType,
+  });
+  if (!normalized || normalized.ok !== true) {
+    showManualApiWarning(
+      (normalized && normalized.message) || "No se ha podido consultar la API externa.",
+    );
+    return;
+  }
+
+  renderManualApiResults(normalized.value, normalized.skipped);
+}
+
+/** Estado visual del botón de consulta externa. */
+function setManualApiBusy(busy) {
+  if (manualAddDom.apiSubmit) {
+    manualAddDom.apiSubmit.disabled = busy;
+    const source = manualAddState.apiSource;
+    const label = source.kind === "library" ? "Importar" : "Buscar";
+    manualAddDom.apiSubmit.textContent = busy ? "Consultando…" : label;
+  }
+}
+
+/**
+ * Pinta los resultados normalizados de la API externa con dos
+ * acciones: «Añadir al catálogo» (REQ-108) y «Usar estos datos»
+ * (rellena el formulario de alta manual).
+ * @param {object[]} items `MediaItemInput[]` ya validados.
+ * @param {object[]} [skipped]
+ */
+function renderManualApiResults(items, skipped = []) {
+  const list = manualAddDom.apiResults;
+  if (!list) return;
+
+  manualAddState.apiItems = Array.isArray(items) ? items.slice() : [];
+  list.replaceChildren();
+
+  if (manualAddState.apiItems.length === 0) {
+    const empty = createCatalogElement(
+      "li",
+      "catalog-view__manual-api-empty",
+      "Sin resultados. Puedes dar de alta el título manualmente.",
+    );
+    list.appendChild(empty);
+    if (manualAddDom.apiStatus) {
+      manualAddDom.apiStatus.textContent = "Sin resultados.";
+    }
+    return;
+  }
+
+  manualAddState.apiItems.forEach((input, index) => {
+    const item = createCatalogElement("li", "catalog-view__manual-api-result");
+
+    const info = createCatalogElement("div", "catalog-view__manual-api-info");
+    info.appendChild(
+      createCatalogElement(
+        "span",
+        "catalog-view__manual-api-title",
+        input.title || "Sin título",
+      ),
+    );
+    const metaParts = [];
+    if (typeof input.releaseYear === "number") metaParts.push(String(input.releaseYear));
+    if (Array.isArray(input.genres) && input.genres.length > 0) {
+      metaParts.push(input.genres.slice(0, 2).join(", "));
+    }
+    metaParts.push(mediaTypeLabel(input.mediaType));
+    info.appendChild(
+      createCatalogElement(
+        "span",
+        "catalog-view__manual-api-meta",
+        metaParts.join(" · "),
+      ),
+    );
+
+    const actions = createCatalogElement("div", "catalog-view__manual-api-actions");
+    const importButton = createCatalogElement(
+      "button",
+      "btn btn--primary",
+      "Añadir al catálogo",
+    );
+    importButton.type = "button";
+    importButton.addEventListener("click", () => {
+      void importManualApiItem(index);
+    });
+    // Se guarda el botón por índice para poder deshabilitarlo y
+    // marcarlo al importar (evita dobles imports).
+    manualAddState.apiImportButtons.set(index, importButton);
+    // T-116: si el título ya se importó en otra búsqueda, el botón
+    // aparece ya marcado y no se vuelve a escribir.
+    if (manualAddState.apiImportedKeys.has(manualApiImportKey(input))) {
+      setManualApiImportState(index, "imported");
+    }
+    const prefillButton = createCatalogElement(
+      "button",
+      "btn btn--secondary",
+      "Usar estos datos",
+    );
+    prefillButton.type = "button";
+    prefillButton.addEventListener("click", () => {
+      prefillManualForm(manualAddState.apiItems[index]);
+    });
+    actions.append(importButton, prefillButton);
+
+    item.append(info, actions);
+    list.appendChild(item);
+  });
+
+  if (manualAddDom.apiStatus) {
+    const count = manualAddState.apiItems.length;
+    const skippedCount = Array.isArray(skipped) ? skipped.length : 0;
+    manualAddDom.apiStatus.textContent =
+      `${count} resultado${count === 1 ? "" : "s"} para importar` +
+      (skippedCount > 0 ? ` · ${skippedCount} descartado${skippedCount === 1 ? "" : "s"}` : "") +
+      ".";
+  }
+}
+
+/**
+ * Estado del botón «Añadir al catálogo» de un resultado (T-116):
+ * deshabilitado mientras importa y una vez importado.
+ * @param {number} index Índice del resultado en `apiItems`.
+ * @param {"idle"|"importing"|"imported"} state
+ */
+function setManualApiImportState(index, state) {
+  const button = manualAddState.apiImportButtons.get(index);
+  if (!button) return;
+
+  if (state === "importing") {
+    manualAddState.apiImporting.add(index);
+    manualAddState.apiImported.delete(index);
+    button.disabled = true;
+    button.dataset.state = "importing";
+    button.textContent = "Añadiendo…";
+    return;
+  }
+  if (state === "imported") {
+    manualAddState.apiImporting.delete(index);
+    manualAddState.apiImported.add(index);
+    button.disabled = true;
+    button.dataset.state = "imported";
+    button.textContent = "Añadido al catálogo";
+    return;
+  }
+
+  manualAddState.apiImporting.delete(index);
+  manualAddState.apiImported.delete(index);
+  button.disabled = false;
+  button.dataset.state = "idle";
+  button.textContent = "Añadir al catálogo";
+}
+
+/**
+ * Importa un resultado de API externa al catálogo (REQ-108): el
+ * `MediaItemInput` viene normalizado, pero se valida ANTES de
+ * escribir (DB-120, REQ-E3) y se descartan los duplicados (T-116).
+ * @param {number} index
+ */
+async function importManualApiItem(index) {
+  const input = manualAddState.apiItems[index];
+  if (!input) return;
+  // Guarda de duplicados: un mismo resultado no se importa dos veces.
+  if (manualAddState.apiImporting.has(index) || manualAddState.apiImported.has(index)) {
+    return;
+  }
+
+  // T-116: clave estable del título (`id:<id>` o
+  // `title:<mediaType>:<normalizeTitle(title)>`). Si ya se importó en
+  // otra búsqueda, NO se vuelve a escribir: se marca y se sale.
+  const key = manualApiImportKey(input);
+  if (key && manualAddState.apiImportedKeys.has(key)) {
+    setManualApiImportState(index, "imported");
+    return;
+  }
+
+  // Validación ANTES de escribir (DB-120, REQ-E3): un resultado que
+  // no pasa el validador NO llega al repositorio. El mensaje es en
+  // español y se muestra en línea junto a los resultados.
+  const report = validateMediaItem(input);
+  if (!report || report.valid !== true) {
+    setManualApiImportState(index, "idle");
+    const errors = report && Array.isArray(report.errors) ? report.errors : [];
+    showManualApiWarning(
+      errors.length > 0
+        ? `«${input.title || "Sin título"}» no es válido: ${errors.join(" ")}`
+        : "El título no es válido y no se ha podido añadir al catálogo.",
+    );
+    return;
+  }
+
+  setManualApiImportState(index, "importing");
+
+  let result = null;
+  try {
+    result = await catalogRepository.createMediaItem(input);
+  } catch (error) {
+    setManualApiImportState(index, "idle");
+    showManualApiWarning(
+      normalizeApiFailure(error, manualAddState.apiSource?.provider).message,
+    );
+    return;
+  }
+  if (!result || result.ok !== true) {
+    setManualApiImportState(index, "idle");
+    showManualApiWarning(
+      (result && result.message) || "No se ha podido guardar el título.",
+    );
+    return;
+  }
+  const saved = result.value;
+  // El título queda registrado para no volver a ofrecerlo ni
+  // escribirlo en otra búsqueda (T-116).
+  if (key) manualAddState.apiImportedKeys.add(key);
+  // El botón queda deshabilitado y marcado: no se puede repetir.
+  setManualApiImportState(index, "imported");
+  if (manualAddDom.apiStatus) {
+    manualAddDom.apiStatus.textContent =
+      `«${saved.title}» se ha añadido al catálogo.`;
+  }
+  showManualStatus(
+    `«${saved.title}» se ha guardado en el catálogo (${mediaTypeLabel(saved.mediaType)}).`,
+    "success",
+    saved,
+  );
+  refreshCatalogAfterCreate(saved);
+}
+
+/**
+ * Valor de un campo por tipo de medio: primero `input.metadata`
+ * (clave canónica de `MANUAL_ADD_METADATA_KEYS`) y, como respaldo,
+ * el nombre en bruto del `MediaItemInput` en el nivel superior
+ * (`pagesTotal`, `playtimeHours`).
+ * @param {object} input `MediaItemInput` normalizado.
+ * @param {object} metadata `metadata` del ítem (o `{}`).
+ * @param {string} field Campo del formulario.
+ * @returns {unknown}
+ */
+function readManualMetadataValue(input, metadata, field) {
+  const keys = MANUAL_ADD_METADATA_KEYS[field] ?? [field];
+  for (const key of keys) {
+    if (metadata[key] !== undefined && metadata[key] !== null) return metadata[key];
+  }
+  for (const key of keys) {
+    if (input[key] !== undefined && input[key] !== null) return input[key];
+  }
+  return null;
+}
+
+/**
+ * Convierte un valor de `metadata` en el texto del control del
+ * formulario: números como texto y listas separadas por comas.
+ * @param {unknown} value
+ * @returns {string}
+ */
+function formatManualMetadataValue(value) {
+  if (Array.isArray(value)) {
+    return value
+      .filter((part) => typeof part === "string")
+      .map((part) => part.trim())
+      .filter((part) => part !== "")
+      .join(", ");
+  }
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
+  if (typeof value === "string") return value.trim();
+  return "";
+}
+
+/**
+ * Rellena los campos específicos del tipo de medio (duración,
+ * episodios, páginas, plataformas…) con los datos de la API externa
+ * (REQ-108). Los campos a rellenar los marca `MANUAL_ADD_TYPE_FIELDS`
+ * y sus claves son las de `MANUAL_ADD_METADATA_KEYS`.
+ * @param {object} input `MediaItemInput` normalizado.
+ * @param {string} mediaType Tipo de medio activo en el formulario.
+ */
+function prefillManualMetadataFields(input, mediaType) {
+  if (!input || typeof input !== "object" || typeof mediaType !== "string") return;
+  const metadata =
+    input.metadata && typeof input.metadata === "object" && !Array.isArray(input.metadata)
+      ? input.metadata
+      : {};
+
+  for (const [field, types] of Object.entries(MANUAL_ADD_TYPE_FIELDS)) {
+    if (!types.includes(mediaType)) continue;
+    const target = manualAddDom.fields[field];
+    if (!target || !target.input) continue;
+    const value = readManualMetadataValue(input, metadata, field);
+    target.input.value = value === null ? "" : formatManualMetadataValue(value);
+  }
+}
+
+/**
+ * Rellena el formulario de alta manual con los datos de la API
+ * (el guardado sigue siendo manual y validado).
+ * @param {object} input `MediaItemInput` normalizado.
+ */
+function prefillManualForm(input) {
+  if (!input || typeof input !== "object") return;
+  const fields = manualAddDom.fields;
+
+  if (fields.mediaType?.input && typeof input.mediaType === "string") {
+    fields.mediaType.input.value = input.mediaType;
+    renderManualTypeFields(input.mediaType);
+  }
+  if (fields.title?.input) fields.title.input.value = input.title ?? "";
+  if (fields.releaseYear?.input) {
+    fields.releaseYear.input.value =
+      typeof input.releaseYear === "number" ? String(input.releaseYear) : "";
+  }
+  if (fields.avgRating?.input) {
+    fields.avgRating.input.value =
+      typeof input.avgRating === "number" ? String(input.avgRating) : "";
+  }
+  if (fields.genres?.input) {
+    fields.genres.input.value = Array.isArray(input.genres) ? input.genres.join(", ") : "";
+  }
+  if (fields.creator?.input) fields.creator.input.value = input.creator ?? "";
+  if (fields.coverUrl?.input) fields.coverUrl.input.value = input.coverUrl ?? "";
+  if (fields.synopsis?.input) fields.synopsis.input.value = input.synopsis ?? "";
+
+  // Campos del tipo de medio (duración, episodios, páginas…).
+  prefillManualMetadataFields(
+    input,
+    fields.mediaType?.input?.value ?? input.mediaType ?? "",
+  );
+
+  clearManualErrors();
+  if (manualAddDom.details) manualAddDom.details.open = true;
+  showManualStatus("Formulario relleno con los datos de la API: revísalo y guárdalo.");
+  if (fields.title?.input && typeof fields.title.input.focus === "function") {
+    fields.title.input.focus();
+  }
+}
+
+/**
+ * Vacía el panel de alta manual (logout / cambio de sesión): no
+ * quedan datos escritos ni resultados externos (REQ-E2).
+ */
+function resetManualAddPanel() {
+  manualAddState.requestId += 1;
+  manualAddState.submitting = false;
+  manualAddState.searching = false;
+  resetManualForm();
+  hideManualStatus();
+  clearManualApiResults();
+  if (manualAddDom.details) manualAddDom.details.open = false;
 }
 
 // =============================================================
