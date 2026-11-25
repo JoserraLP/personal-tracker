@@ -4,61 +4,66 @@
       "collectionGroup": "catalog",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "mediaType", "order": "ASC" },
-        { "fieldPath": "titleNormalized", "order": "ASC" }
+        { "fieldPath": "mediaType", "order": "ASCENDING" },
+        { "fieldPath": "titleNormalized", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "catalog",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "mediaType", "order": "ASC" },
-        { "fieldPath": "avgRating", "order": "DESC" }
+        { "fieldPath": "mediaType", "order": "ASCENDING" },
+        { "fieldPath": "avgRating", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "catalog",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "mediaType", "order": "ASC" },
-        { "fieldPath": "releaseYear", "order": "DESC" }
+        { "fieldPath": "mediaType", "order": "ASCENDING" },
+        { "fieldPath": "releaseYear", "order": "DESCENDING" }
       ]
     },
+    {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "score", "order": "DESCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
     {
       "collectionGroup": "catalog",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "titleNormalized", "order": "ASC" }
-      ]
-    },
-    {
-      "collectionGroup": "entries",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "updatedAt", "order": "DESC" }
-      ]
-    },
-    {
-      "collectionGroup": "entries",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASC" },
-        { "fieldPath": "updatedAt", "order": "DESC" }
-      ]
-    },
-    {
-      "collectionGroup": "entries",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "score", "order": "DESC" },
-        { "fieldPath": "updatedAt", "order": "DESC" }
+      "fieldPath": "titleNormalized",
+      "ttl": false,
+      "indexes": [
+        { "queryScope": "COLLECTION", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "collections",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "updatedAt", "order": "DESC" }
+      "fieldPath": "updatedAt",
+      "ttl": false,
+      "indexes": [
+        { "queryScope": "COLLECTION", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "entries",
+      "fieldPath": "updatedAt",
+      "ttl": false,
+      "indexes": [
+        { "queryScope": "COLLECTION", "order": "DESCENDING" }
       ]
     }
   ],
