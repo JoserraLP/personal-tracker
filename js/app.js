@@ -15,6 +15,10 @@
 //        REQ-301..306): KPIs, distribución por tipo, resumen de notas
 //        y actividad reciente; reactiva por snapshot (AC-137) y con
 //        estado vacío «Añade tu primer título» (AC-136).
+// T-120: vista de Recomendaciones del modelo 00-05 (05 UI-30..UI-32,
+//        REQ-407/408): grid de `MediaCard` con el `reason` bajo la
+//        tarjeta y badge `scoreMatch`, estado vacío «Sigue valorando
+//        títulos con 8+…» (AC-149) y recálculo al añadir (UI-32).
 // =============================================================
 
 import { login, logout, watchAuthState } from "./firebase.js";
@@ -136,6 +140,14 @@ import {
   RECENT_LIMIT as DASHBOARD_RECENT_LIMIT,
   timestampToMs as dashboardTimestampToMs,
 } from "./services/dashboard-service.js";
+// T-120 — Servicio de recomendaciones (spec 05 REQ-407/408,
+// UI-30..UI-32; AC-149, AC-150): motor puro y determinista (T-111)
+// que devuelve `Recommendation[]` con `scoreMatch` y `reason`.
+import {
+  recommendationService,
+  RECOMMENDATION_LIMIT,
+  FALLBACK_REASON,
+} from "./services/recommendation-service.js";
 
 // =============================================================
 // Spec 001 — Puerta de login (INTACTA)
@@ -181,11 +193,12 @@ const APP_VIEW_KEYS = Object.freeze([
 ]);
 
 /**
- * Vistas sin contenido propio implementado todavía: Recomendaciones
- * (05 UI-30, T-120). Su pestaña permanece `aria-disabled="true"`.
- * Búsqueda (02 UI-03) ya tiene vista propia desde T-115.
+ * Vistas sin contenido propio implementado todavía. Desde T-120 todas
+ * las vistas del nav tienen contenido propio (Recomendaciones llega
+ * con 05 UI-30..UI-32), así que la lista queda vacía y ninguna
+ * pestaña queda `aria-disabled="true"`.
  */
-const APP_VIEW_PENDING = Object.freeze(["recommendations"]);
+const APP_VIEW_PENDING = Object.freeze([]);
 
 /** Vista inicial del nav: Dashboard (spec 003, AC-001). */
 const DEFAULT_APP_VIEW = "dashboard";
@@ -296,8 +309,20 @@ function activateAppViewContent(key) {
       void loadDashboardStats();
       void subscribeToDashboardStats();
       break;
+    case "recommendations":
+      // T-120 (spec 05 UI-30..UI-32): grid de `MediaCard` con el
+      // `reason` bajo la tarjeta y el badge `scoreMatch` (REQ-407),
+      // estado vacío «Sigue valorando títulos con 8+…» (UI-31) y las
+      // acciones de REQ-107 activas en cada tarjeta (UI-32).
+      mountRecommendationsView();
+      dashboardUnsubscribeAll();
+      unsubscribeDashboardStats();
+      favoritesUnsubscribeAll();
+      collectionsUnsubscribeAll();
+      void loadRecommendations();
+      break;
     default:
-      // Búsqueda y Recomendaciones: contenido pendiente (T-115/T-120).
+      // Ninguna vista queda sin contenido propio (T-115/T-120).
       break;
   }
 }
@@ -1265,6 +1290,9 @@ function catalogCleanup() {
   // T-119: el dashboard (spec 04) se vacía también para no dejar
   // estadísticas ni suscripciones de otra sesión.
   resetDashboardView();
+  // T-120: las recomendaciones (spec 05) se vacían también (no quedan
+  // tarjetas ni razones de otra sesión).
+  resetRecommendationsView();
   favoritesUnsubscribeAll();
   collectionsUnsubscribeAll();
   catalogInitialized = false;
@@ -5532,6 +5560,416 @@ function resetDashboardView() {
   if (dashboardViewDom.empty) dashboardViewDom.empty.hidden = true;
   hideDashboardViewError();
   showDashboardViewLoading(false);
+}
+
+// =============================================================
+// T-120 — Vista de Recomendaciones del modelo 00-05
+// (spec 05 UI-30..UI-32, REQ-407/408; AC-149, AC-150)
+//
+//   - UI-30: grid de `MediaCard` —el MISMO componente de las demás
+//     vistas (AC-116)— con el `reason` DEBAJO de la tarjeta y un badge
+//     opcional con el `scoreMatch` (0–100, REQ-407).
+//   - UI-31: estado vacío «Sigue valorando títulos con 8+ para recibir
+//     recomendaciones» cuando no hay nada que recomendar. Con lista
+//     vacía NUNCA hay error (AC-149: `{ok:true, value:[]}`).
+//   - UI-32: cada tarjeta conserva las acciones de REQ-107 (`Añadir`,
+//     `Cambiar estado`, `Asignar a colección`) y, al añadir un título,
+//     el recálculo siguiente lo excluye de la lista (REQ-404: nunca se
+//     recomienda un `mediaId` con entry propia).
+//
+// El cálculo lo hace `recommendationService` (T-111): 2 lecturas
+// (entries + candidatos) y motor puro y determinista (REQ-401/405).
+// El límite es `RECOMMENDATION_LIMIT` (20, REQ-407/AC-150).
+// =============================================================
+
+/**
+ * Texto del estado vacío de la vista de recomendaciones
+ * (05 UI-31, AC-149). Fuente única del literal.
+ * @type {string}
+ */
+const RECOMMENDATIONS_EMPTY_TEXT =
+  "Sigue valorando títulos con 8+ para recibir recomendaciones";
+
+/**
+ * Aviso de afinidad insuficiente (05 UI-31): las recomendaciones son
+ * los «destacados del catálogo» (REQ-408) porque todavía no hay
+ * títulos valorados con 8 o más.
+ * @type {string}
+ */
+const RECOMMENDATIONS_NO_AFFINITY_TEXT =
+  "Todavía no hay suficiente afinidad: estos son los destacados del catálogo. Sigue valorando títulos con 8+ para recibir recomendaciones.";
+
+/**
+ * Retardo del recálculo automático tras una acción de tarjeta
+ * (UI-32: «al añadir, el ítem sale de la lista en el siguiente
+ * recálculo»).
+ * @type {number}
+ */
+const RECOMMENDATION_REFRESH_DELAY_MS = 400;
+
+/**
+ * Estado de la vista de recomendaciones (spec 05).
+ * @type {{
+ *   mounted: boolean,
+ *   items: object[],
+ *   loading: boolean,
+ *   requestId: number
+ * }}
+ */
+const recommendationsViewState = {
+  /** ¿La vista ya está montada en el DOM? */
+  mounted: false,
+  /** Recomendaciones de la última lectura (`Recommendation[]`). */
+  items: [],
+  /** ¿Hay una lectura en vuelo? */
+  loading: false,
+  /** Token de petición: descarta respuestas obsoletas. */
+  requestId: 0,
+  /**
+   * ¿La última lectura falló? (REQ-E2/AC-149: con error, el estado
+   * vacío y el aviso de afinidad se ocultan.)
+   */
+  error: false,
+};
+
+/** Referencias DOM de la vista de recomendaciones (se rellenan al montar). */
+const recommendationsViewDom = {
+  root: null,
+  error: null,
+  loading: null,
+  empty: null,
+  hint: null,
+  count: null,
+  grid: null,
+  refresh: null,
+};
+
+/** Temporizador del recálculo automático (UI-32). */
+let recommendationRefreshTimer = null;
+
+/**
+ * Monta la vista de recomendaciones dentro de `#view-recommendations`
+ * (T-120). El texto provisional de `index.html` («Las recomendaciones
+ * aparecerán…») se sustituye por la vista real (UI-30/UI-31).
+ */
+function mountRecommendationsView() {
+  if (recommendationsViewState.mounted) return;
+  const view = document.getElementById("view-recommendations");
+  if (!view) return;
+
+  // Texto provisional de `index.html`: lo reemplaza el estado vacío
+  // propio de la vista (UI-31).
+  const placeholder = view.querySelector("p.muted");
+  if (placeholder) placeholder.remove();
+
+  const root = createCatalogElement("div", "recommendations-view");
+  root.id = "recommendations-view";
+
+  // --- Recálculo manual (UI-32) ------------------------------
+  const toolbar = createCatalogElement("div", "recommendations-view__toolbar");
+  const refreshButton = createCatalogElement(
+    "button",
+    "btn btn--secondary",
+    "Recalcular recomendaciones",
+  );
+  refreshButton.type = "button";
+  refreshButton.id = "recommendations-view-refresh";
+  refreshButton.setAttribute("aria-label", "Recalcular las recomendaciones");
+  refreshButton.addEventListener("click", () => {
+    void loadRecommendations();
+  });
+  toolbar.appendChild(refreshButton);
+
+  // --- Error (REQ-E2) ----------------------------------------
+  const error = createCatalogElement("p", "error");
+  error.id = "recommendations-view-error";
+  error.setAttribute("role", "alert");
+  error.hidden = true;
+
+  // --- Cargando ----------------------------------------------
+  const loading = createCatalogElement("div", "catalog__state");
+  loading.id = "recommendations-view-loading";
+  loading.hidden = true;
+  loading.appendChild(createCatalogElement("p", "muted", "Calculando recomendaciones…"));
+
+  // --- Estado vacío (UI-31, AC-149) --------------------------
+  const empty = createCatalogElement("p", "recommendations-view__empty");
+  empty.id = "recommendations-view-empty";
+  empty.textContent = RECOMMENDATIONS_EMPTY_TEXT;
+  empty.hidden = true;
+
+  // --- Aviso de afinidad insuficiente (UI-31, REQ-408) -------
+  const hint = createCatalogElement("p", "recommendations-view__hint");
+  hint.id = "recommendations-view-hint";
+  hint.textContent = RECOMMENDATIONS_NO_AFFINITY_TEXT;
+  hint.hidden = true;
+
+  // --- Contador ----------------------------------------------
+  const count = createCatalogElement("p", "recommendations-view__count");
+  count.id = "recommendations-view-count";
+
+  // --- Grid de `MediaCard` (AC-116: misma rejilla) -----------
+  const grid = document.createElement("ul");
+  grid.id = "recommendations-view-grid";
+  grid.className = "media-grid";
+  grid.setAttribute("aria-live", "polite");
+
+  root.append(toolbar, error, loading, empty, hint, count, grid);
+  view.appendChild(root);
+
+  recommendationsViewDom.root = root;
+  recommendationsViewDom.error = error;
+  recommendationsViewDom.loading = loading;
+  recommendationsViewDom.empty = empty;
+  recommendationsViewDom.hint = hint;
+  recommendationsViewDom.count = count;
+  recommendationsViewDom.grid = grid;
+  recommendationsViewDom.refresh = refreshButton;
+
+  recommendationsViewState.mounted = true;
+
+  // Las colecciones propias alimentan «Asignar a colección»
+  // (UI-14/REQ-107): sin esto la acción quedaría inactiva.
+  void loadUserCollections();
+}
+
+/**
+ * Normaliza el `scoreMatch` del contrato (REQ-407): entero 0–100 o
+ * `null` si no hay dato válido.
+ * @param {*} value
+ * @returns {number|null}
+ */
+function normalizeScoreMatch(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+/**
+ * Opciones de la `MediaCard` en la vista de recomendaciones (UI-32):
+ * las MISMAS acciones de REQ-107 que el resto de vistas (AC-116) y la
+ * entry actual del usuario (si la hubiera).
+ * @param {object} item Ítem del catálogo (DB-101).
+ * @returns {object}
+ */
+function recommendationCardOptions(item) {
+  const base = mediaCardOptions();
+  return {
+    ...base,
+    entry: getEntryFor(item),
+    onEntryChange: (context) => {
+      if (typeof base.onEntryChange === "function") base.onEntryChange(context);
+      // UI-32: al añadir (o cambiar el estado) un título, este sale de
+      // la lista en el siguiente recálculo (REQ-404).
+      scheduleRecommendationRefresh();
+    },
+  };
+}
+
+/**
+ * Crea un ítem del grid: la `MediaCard` compartida (AC-116) y, DEBAJO
+ * de la tarjeta, el `reason` y el badge con el `scoreMatch`
+ * (UI-30, REQ-406/REQ-407).
+ * @param {object} recommendation `Recommendation` del contrato.
+ * @returns {HTMLElement} `<li>` del grid.
+ */
+function createRecommendationItem(recommendation) {
+  const li = createCatalogElement("li", "recommendations-view__item");
+  const source = recommendation && typeof recommendation === "object" ? recommendation : {};
+  const item = source.item && typeof source.item === "object" ? source.item : null;
+  if (!item) return li;
+
+  const scoreMatch = normalizeScoreMatch(source.scoreMatch);
+  const reason =
+    typeof source.reason === "string" && source.reason.trim() !== ""
+      ? source.reason.trim()
+      : null;
+
+  li.appendChild(createMediaCard(item, recommendationCardOptions(item)));
+
+  const caption = createCatalogElement("p", "recommendations-view__caption");
+  if (scoreMatch !== null) {
+    const badge = createCatalogElement(
+      "span",
+      "recommendations-view__score",
+      `${scoreMatch} %`,
+    );
+    badge.setAttribute("aria-label", `Coincidencia ${scoreMatch} de 100`);
+    caption.appendChild(badge);
+  }
+  if (reason !== null) {
+    caption.appendChild(
+      createCatalogElement("span", "recommendations-view__reason", reason),
+    );
+  }
+  li.appendChild(caption);
+  return li;
+}
+
+/**
+ * Pinta el grid de recomendaciones (UI-30): una `MediaCard` por
+ * recomendación con su `reason` y su badge `scoreMatch`.
+ */
+function renderRecommendations() {
+  const grid = recommendationsViewDom.grid;
+  if (!grid) return;
+  const items = Array.isArray(recommendationsViewState.items)
+    ? recommendationsViewState.items
+    : [];
+  const fragment = document.createDocumentFragment();
+  for (const recommendation of items) {
+    fragment.appendChild(createRecommendationItem(recommendation));
+  }
+  grid.replaceChildren(fragment);
+  renderRecommendationsState();
+}
+
+/**
+ * Pinta el estado de la vista: estado vacío «Sigue valorando títulos
+ * con 8+…» (UI-31, AC-149) y contador de recomendaciones.
+ *
+ * Con `recommendationsViewState.error` activo (REQ-E2) el estado vacío
+ * y el aviso de afinidad se ocultan: el error y el estado vacío NUNCA
+ * se muestran a la vez (AC-149).
+ */
+function renderRecommendationsState() {
+  const hasError = recommendationsViewState.error === true;
+  const items = Array.isArray(recommendationsViewState.items)
+    ? recommendationsViewState.items
+    : [];
+  const total = items.length;
+  if (recommendationsViewDom.empty) {
+    recommendationsViewDom.empty.textContent = RECOMMENDATIONS_EMPTY_TEXT;
+    // AC-149: lista vacía ⇒ estado vacío, NUNCA un error.
+    recommendationsViewDom.empty.hidden = total !== 0;
+  }
+  if (recommendationsViewDom.hint) {
+    // UI-31 / REQ-408: sin afinidad suficiente las recomendaciones son
+    // los «destacados del catálogo» (todas con `FALLBACK_REASON`). El
+    // aviso NO sustituye al estado vacío de AC-149 (son casos
+    // distintos: lista vacía ⇒ estado vacío; lista con fallback ⇒
+    // aviso).
+    const isFallback =
+      total > 0 &&
+      items.every(
+        (item) =>
+          item &&
+          typeof item.reason === "string" &&
+          item.reason.trim() === FALLBACK_REASON,
+      );
+    recommendationsViewDom.hint.textContent = RECOMMENDATIONS_NO_AFFINITY_TEXT;
+    recommendationsViewDom.hint.hidden = !isFallback;
+  }
+  // REQ-E2/AC-149: con error, el estado vacío y el aviso se ocultan:
+  // nunca coexisten con el mensaje de error.
+  if (hasError) {
+    if (recommendationsViewDom.empty) recommendationsViewDom.empty.hidden = true;
+    if (recommendationsViewDom.hint) recommendationsViewDom.hint.hidden = true;
+  }
+  if (recommendationsViewDom.count) {
+    recommendationsViewDom.count.textContent =
+      total > 0 && !hasError
+        ? `${total} recomendación${total === 1 ? "" : "es"}`
+        : "";
+  }
+}
+
+/** Vacía el grid de recomendaciones. */
+function clearRecommendationsGrid() {
+  if (recommendationsViewDom.grid) recommendationsViewDom.grid.replaceChildren();
+}
+
+/** Muestra u oculta el estado de carga. */
+function showRecommendationsLoading(visible) {
+  if (recommendationsViewDom.loading) recommendationsViewDom.loading.hidden = !visible;
+}
+
+/** Muestra un error de la vista en español (REQ-E2). */
+function showRecommendationsError(message) {
+  const error = recommendationsViewDom.error;
+  if (!error) return;
+  const text = typeof message === "string" ? message : "";
+  error.textContent = text;
+  error.hidden = text === "";
+}
+
+/** Oculta el error de la vista. */
+function hideRecommendationsError() {
+  showRecommendationsError("");
+}
+
+/**
+ * Lee las recomendaciones del usuario y las pinta (spec 05 §2):
+ * `getRecommendations(uid, { limit })` hace 2 lecturas (entries +
+ * candidatos) y devuelve `Result<Recommendation[]>` (REQ-401/407).
+ * Un fallo NUNCA se muestra como estado vacío: es un error (REQ-E2).
+ */
+async function loadRecommendations() {
+  const uid = currentTrackingUid;
+  if (typeof uid !== "string" || uid === "") return;
+
+  const requestId = ++recommendationsViewState.requestId;
+  recommendationsViewState.loading = true;
+  showRecommendationsLoading(true);
+  hideRecommendationsError();
+
+  const result = await recommendationService.getRecommendations(uid, {
+    limit: RECOMMENDATION_LIMIT,
+  });
+
+  // Respuesta obsoleta (cambio de vista o de sesión): se descarta.
+  if (requestId !== recommendationsViewState.requestId) return;
+
+  recommendationsViewState.loading = false;
+  showRecommendationsLoading(false);
+
+  if (!result || result.ok !== true) {
+    recommendationsViewState.items = [];
+    recommendationsViewState.error = true;
+    clearRecommendationsGrid();
+    showRecommendationsError(
+      (result && result.message) || "No se han podido cargar las recomendaciones.",
+    );
+    // REQ-E2/AC-149: el error y el estado vacío NUNCA coexisten: con
+    // error se ocultan el estado vacío y el aviso de afinidad.
+    renderRecommendationsState();
+    return;
+  }
+
+  hideRecommendationsError();
+  recommendationsViewState.error = false;
+  recommendationsViewState.items = Array.isArray(result.value) ? result.value : [];
+  renderRecommendations();
+}
+
+/**
+ * Programa el recálculo de las recomendaciones tras una acción de
+ * tarjeta (UI-32). Se agrupan las ráfagas de acciones en una sola
+ * lectura.
+ */
+function scheduleRecommendationRefresh() {
+  clearTimeout(recommendationRefreshTimer);
+  recommendationRefreshTimer = setTimeout(() => {
+    recommendationRefreshTimer = null;
+    void loadRecommendations();
+  }, RECOMMENDATION_REFRESH_DELAY_MS);
+}
+
+/**
+ * Vacía la vista de recomendaciones (logout / cambio de sesión):
+ * invalida la lectura en vuelo y limpia el grid para no mostrar datos
+ * de otra sesión.
+ */
+function resetRecommendationsView() {
+  recommendationsViewState.requestId += 1;
+  recommendationsViewState.loading = false;
+  recommendationsViewState.items = [];
+  recommendationsViewState.error = false;
+  clearTimeout(recommendationRefreshTimer);
+  recommendationRefreshTimer = null;
+  clearRecommendationsGrid();
+  renderRecommendationsState();
+  hideRecommendationsError();
+  showRecommendationsLoading(false);
 }
 
 // --- Init del catálogo --------------------------------------

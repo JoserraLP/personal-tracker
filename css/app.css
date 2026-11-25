@@ -2897,3 +2897,106 @@ body {
   .dashboard-view__score-value { grid-area: value; text-align: right; }
   .dashboard-view__score-count { grid-area: count; text-align: left; }
 }
+
+/* ============================================================
+   Vista de Recomendaciones — modelo 00-05
+   (spec 05 UI-30..UI-32, REQ-406/407/408; AC-149, AC-150)
+   ============================================================ */
+
+.recommendations-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 28px;
+  width: 100%;
+}
+
+/* Recálculo manual (UI-32) ---------------------------------- */
+.recommendations-view__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Estado vacío «Sigue valorando títulos con 8+…» (UI-31) --- */
+.recommendations-view__empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.recommendations-view__count {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Ítem del grid: `MediaCard` + pie con `reason` y `scoreMatch` */
+.recommendations-view__item {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.recommendations-view__item .media-card {
+  border: 0;
+  border-radius: 0;
+  background: #2a2620;
+}
+
+/* Pie bajo la tarjeta (UI-30) ------------------------------- */
+.recommendations-view__caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+
+/* Badge `scoreMatch` (REQ-407) ----------------------------- */
+.recommendations-view__score {
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  background: rgb(138 180 248 / 0.16);
+  border: 1px solid rgb(138 180 248 / 0.35);
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* `reason` de la recomendación (REQ-406, UI-30) ------------- */
+.recommendations-view__reason {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--accent);
+}
+
+/* Responsive ------------------------------------------------ */
+@media (max-width: 640px) {
+  .recommendations-view__toolbar { justify-content: stretch; }
+
+  .recommendations-view__toolbar .btn { width: 100%; }
+}
+
+/* Aviso de afinidad insuficiente (UI-31, REQ-408) ----------- */
+.recommendations-view__hint {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
