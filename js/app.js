@@ -67,6 +67,11 @@ import {
   computeFavoritesStats,
   MAX_COLLECTIONS_PER_TARGET,
   RECENT_FAVORITES_LIMIT,
+  // T-117 — Validación y metadatos de progreso (spec 03 DB-122, UI-13).
+  validateEntry,
+  progressUnitFor,
+  metadataKindFor,
+  ENTRY_STATUSES as CATALOG_ENTRY_STATUSES,
 } from "./catalog.js";
 import { searchTmdbMovies, searchTmdbTv, searchTmdbAnime, fetchTmdbMovieMetadata, fetchTmdbTvMetadata, fetchTmdbMetadata } from "./api-tmdb.js";
 import { searchIgdbGames, fetchIgdbGameMetadata } from "./api-games.js";
@@ -89,12 +94,20 @@ import {
   MEDIA_TYPE_LABELS as CATALOG_MEDIA_TYPE_LABELS,
   createMediaCard,
   mountMediaCards,
+  updateMediaCard,
 } from "./ui/media-card.js";
 import {
   catalogRepository,
   DEFAULT_PAGE_SIZE as CATALOG_PAGE_SIZE,
   DEFAULT_CATALOG_SORT,
 } from "./repositories/catalog-repository.js";
+// T-117 — Repositorio de seguimiento (spec 03 REQ-201..204): escrituras
+// parciales con `updatedAt` nuevo; borrar entry = "Sin entry".
+import {
+  trackingRepository,
+  DEFAULT_ENTRY_STATUS as DEFAULT_TRACKING_STATUS,
+  progressTotalFromMetadata,
+} from "./repositories/tracking-repository.js";
 
 // =============================================================
 // Spec 001 — Puerta de login (INTACTA)
@@ -377,6 +390,7 @@ btnBack.addEventListener("click", () => {
 
 watchAuthState(async (user) => {
   if (!user) {
+    currentTrackingUid = null;
     show(deniedAccess ? "denied" : "login");
     return;
   }
@@ -391,6 +405,7 @@ watchAuthState(async (user) => {
     return;
   }
   deniedAccess = false;
+  currentTrackingUid = user.uid;
   renderAllowed(user);
   show("allowed");
   catalogInit();
@@ -708,6 +723,7 @@ function mountCatalogView() {
   // T-116 (UI-04): panel de alta manual dentro de la vista de
   // catálogo (se monta aquí para no depender de `index.html`).
   mountManualAddPanel(panel);
+  mountTrackingPanel();
   root.append(tabs, panel);
   view.appendChild(root);
 
@@ -988,11 +1004,33 @@ async function loadCatalogPage(options = {}) {
  * @returns {{entry: null, collections: object[], onAdd: Function, onStatusChange: Function}}
  */
 function mediaCardOptions() {
+  // T-117: los callbacks crean PLANNED en 1 clic y persisten los cambios
+  // con rollback optimista; la ficha se monta al primer uso.
   return {
     entry: null,
     collections: [],
-    onAdd: handleCatalogCardUnavailable,
-    onStatusChange: handleCatalogCardUnavailable,
+    onAdd: (context) => {
+      attachTrackingFicha(context && context.card, context && context.item);
+      return createPlannedEntry(context && context.item);
+    },
+    onStatusChange: (context) => {
+      attachTrackingFicha(context && context.card, context && context.item);
+      const item = context && context.item;
+      const previous = context ? (context.previousEntry ?? null) : null;
+      const status = context ? context.status : undefined;
+      if (!item) return Promise.resolve({ ok: false });
+      if (status === null || status === "") return removeEntry(item);
+      if (!status) return Promise.resolve({ ok: false });
+      return persistEntryChange(item, previous, { status });
+    },
+    onEntryChange: (context) => {
+      const item = context && context.item;
+      const card = context && context.card;
+      if (card && item && !card.querySelector(":scope > .catalog-view__tracking")) {
+        attachTrackingFicha(card, item);
+      }
+      applyEntriesToCards();
+    },
   };
 }
 
@@ -1159,6 +1197,7 @@ function catalogCleanup() {
   // T-116: el alta manual se vacía (formulario, estado y resultados
   // externos) para no arrastrar datos entre sesiones.
   resetManualAddPanel();
+  resetTrackingPanel();
   dashboardUnsubscribeAll();
   favoritesUnsubscribeAll();
   collectionsUnsubscribeAll();
@@ -2973,6 +3012,353 @@ function resetManualAddPanel() {
   hideManualStatus();
   clearManualApiResults();
   if (manualAddDom.details) manualAddDom.details.open = false;
+}
+
+// =============================================================
+// T-117 — Seguimiento: estado, score y progreso
+// (spec 03 UI-10..13, REQ-201..204; AC-115, AC-117, AC-120..124)
+// =============================================================
+
+let currentTrackingUid = null;
+let trackingPanelMounted = false;
+const trackingState = { entries: new Map(), loaded: false };
+
+const TRACKING_STATUS_LABELS = {
+  PLANNED: "Pendiente",
+  IN_PROGRESS: "En curso",
+  COMPLETED: "Completado",
+  DROPPED: "Abandonado",
+};
+
+/** Refresca el mapa local de entries desde el repositorio (spec 03). */
+async function loadTrackingEntries() {
+  if (!currentTrackingUid) {
+    trackingState.entries.clear();
+    trackingState.loaded = false;
+    return;
+  }
+  trackingState.entries.clear();
+  let cursor = null;
+  let ok = true;
+  try {
+    for (let page = 0; page < 10; page += 1) {
+      const res = await trackingRepository.listEntries(currentTrackingUid, {
+        pageSize: 48,
+        cursor,
+      });
+      if (!res || !res.ok) {
+        ok = false;
+        console.warn("No se pudo cargar el seguimiento.", res && res.message);
+        break;
+      }
+      const value = res.value || {};
+      for (const entry of value.items || []) {
+        if (entry && entry.mediaId) trackingState.entries.set(entry.mediaId, entry);
+      }
+      cursor = value.cursor || null;
+      if (!cursor) break;
+    }
+  } catch (error) {
+    ok = false;
+    console.warn("No se pudo cargar el seguimiento.", error);
+  }
+  if (ok) {
+    trackingState.loaded = true;
+    applyEntriesToCards();
+  }
+}
+
+/** AC-115: "Añadir" crea la entry PLANNED en 1 clic. */
+async function createPlannedEntry(item) {
+  if (!currentTrackingUid || !item) return { ok: false };
+  const res = await trackingRepository.upsertEntry(currentTrackingUid, item.id, {
+    status: DEFAULT_TRACKING_STATUS,
+    media: item,
+  });
+  if (res && res.ok) {
+    const entry = (res && res.value) || {
+      mediaId: item.id,
+      status: DEFAULT_TRACKING_STATUS,
+      updatedAt: new Date().toISOString(),
+    };
+    trackingState.entries.set(item.id, entry);
+    applyEntriesToCards();
+  }
+  return res;
+}
+
+/**
+ * Escritura optimista de entry: aplica el parche al vuelo, persiste la
+ * parte cambiada y hace rollback si el Result falla (AC-117).
+ */
+async function persistEntryChange(item, previousEntry, patch) {
+  if (!currentTrackingUid || !item) return { ok: false };
+  const optimistic = {
+    ...(previousEntry || { mediaId: item.id, status: DEFAULT_TRACKING_STATUS }),
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+  trackingState.entries.set(item.id, optimistic);
+  applyEntriesToCards();
+  let res;
+  const patchKeys = Object.keys(patch || {});
+  if (!previousEntry || patchKeys.length > 1) {
+    // Sin entry previa los writes parciales fallan (no hay doc): crear
+    // vía upsertEntry con el parche completo (REQ-201).
+    res = await trackingRepository.upsertEntry(currentTrackingUid, item.id, {
+      ...patch,
+      media: item,
+    });
+  } else if (patch.status !== undefined) {
+    res = await trackingRepository.setStatus(currentTrackingUid, item.id, patch.status);
+  } else if (patch.score !== undefined) {
+    res = await trackingRepository.setScore(currentTrackingUid, item.id, patch.score);
+  } else if (patch.review !== undefined) {
+    res = await trackingRepository.setReview(currentTrackingUid, item.id, patch.review);
+  } else if (patch.progress !== undefined) {
+    res = await trackingRepository.setProgress(currentTrackingUid, item.id, patch.progress);
+  } else {
+    res = { ok: true };
+  }
+  if (res && res.ok) return { ok: true, entry: optimistic, value: optimistic };
+  if (previousEntry) {
+    trackingState.entries.set(item.id, previousEntry);
+  } else {
+    trackingState.entries.delete(item.id);
+  }
+  applyEntriesToCards();
+  return res;
+}
+
+/** "Sin entry": borra la entry del seguimiento. */
+async function removeEntry(item) {
+  if (!currentTrackingUid || !item) return { ok: false };
+  const res = await trackingRepository.deleteEntry(currentTrackingUid, item.id);
+  if (res && res.ok) {
+    trackingState.entries.delete(item.id);
+    applyEntriesToCards();
+  }
+  return res;
+}
+
+/** Entry actual del item (o null = "Sin entry"). */
+function getEntryFor(item) {
+  return item && item.id ? trackingState.entries.get(item.id) || null : null;
+}
+
+/** Aplica el estado actual a todas las tarjetas montadas. */
+function applyEntriesToCards() {
+  if (typeof document === "undefined" || typeof document.querySelectorAll !== "function") return;
+  document.querySelectorAll("[data-media-id]").forEach((el) => {
+    if (typeof updateMediaCard === "function" && el.dataset.mediaId) {
+      updateMediaCard(el, { entry: trackingState.entries.get(el.dataset.mediaId) || null });
+    }
+  });
+}
+
+/** Ficha de seguimiento: menú de estado, score, reseña y progreso. */
+function renderTrackingFicha(item, entry) {
+  const ficha = document.createElement("div");
+  ficha.className = "catalog-view__tracking";
+
+  const statusLabel = document.createElement("label");
+  statusLabel.className = "catalog-view__tracking-label";
+  statusLabel.textContent = "Estado";
+  const statusSelect = document.createElement("select");
+  statusSelect.className = "catalog-view__tracking-status";
+  const noneOption = document.createElement("option");
+  noneOption.value = "";
+  noneOption.textContent = "Sin entry";
+  statusSelect.appendChild(noneOption);
+  (CATALOG_ENTRY_STATUSES || []).forEach((s) => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = TRACKING_STATUS_LABELS[s] || s;
+    statusSelect.appendChild(opt);
+  });
+  statusSelect.value = entry ? entry.status || "" : "";
+  statusSelect.addEventListener("change", async () => {
+    const current = getEntryFor(item);
+    if (statusSelect.value === "") {
+      await removeEntry(item);
+    } else {
+      await persistEntryChange(item, current, { status: statusSelect.value });
+    }
+    rerenderTrackingFicha(ficha, item);
+  });
+  statusLabel.appendChild(statusSelect);
+  ficha.appendChild(statusLabel);
+
+  const scoreLabel = document.createElement("label");
+  scoreLabel.className = "catalog-view__tracking-label";
+  scoreLabel.textContent = "Tu valoración";
+  const scoreSelect = document.createElement("select");
+  scoreSelect.className = "catalog-view__tracking-score";
+  const emptyScore = document.createElement("option");
+  emptyScore.value = "";
+  emptyScore.textContent = "—";
+  scoreSelect.appendChild(emptyScore);
+  for (let n = 1; n <= 10; n += 1) {
+    const opt = document.createElement("option");
+    opt.value = String(n);
+    opt.textContent = String(n);
+    scoreSelect.appendChild(opt);
+  }
+  scoreSelect.value = entry && entry.score ? String(entry.score) : "";
+  scoreSelect.addEventListener("change", async () => {
+    const current = getEntryFor(item);
+    const score = scoreSelect.value === "" ? null : Number(scoreSelect.value);
+    await persistEntryChange(item, current, { score });
+    rerenderTrackingFicha(ficha, item);
+  });
+  scoreLabel.appendChild(scoreSelect);
+  ficha.appendChild(scoreLabel);
+
+  const reviewLabel = document.createElement("label");
+  reviewLabel.className = "catalog-view__tracking-label";
+  reviewLabel.textContent = "Reseña";
+  const reviewArea = document.createElement("textarea");
+  reviewArea.className = "catalog-view__tracking-review";
+  reviewArea.maxLength = 500;
+  reviewArea.value = (entry && entry.review) || "";
+  const reviewCount = document.createElement("span");
+  reviewCount.className = "catalog-view__tracking-review-count";
+  reviewCount.textContent = `${reviewArea.value.length}/500`;
+  reviewArea.addEventListener("input", () => {
+    reviewCount.textContent = `${reviewArea.value.length}/500`;
+  });
+  const reviewError = document.createElement("p");
+  reviewError.className = "catalog-view__tracking-error";
+  reviewError.setAttribute("role", "alert");
+  const reviewActions = document.createElement("div");
+  reviewActions.className = "catalog-view__tracking-actions";
+  const saveReview = document.createElement("button");
+  saveReview.type = "button";
+  saveReview.className = "btn btn--secondary";
+  saveReview.textContent = "Guardar reseña";
+  saveReview.addEventListener("click", async () => {
+    const current = getEntryFor(item);
+    const candidate = { ...(current || { mediaId: item.id, status: DEFAULT_TRACKING_STATUS }), review: reviewArea.value };
+    const report = validateEntry(candidate, { mediaType: item.mediaType });
+    if (!report.valid) {
+      reviewError.textContent = report.errors.join(" ");
+      return;
+    }
+    reviewError.textContent = "";
+    await persistEntryChange(item, current, { review: reviewArea.value });
+    rerenderTrackingFicha(ficha, item);
+  });
+  const clearReview = document.createElement("button");
+  clearReview.type = "button";
+  clearReview.className = "btn btn--secondary";
+  clearReview.textContent = "Borrar reseña";
+  clearReview.addEventListener("click", async () => {
+    const current = getEntryFor(item);
+    reviewError.textContent = "";
+    await persistEntryChange(item, current, { review: null });
+    rerenderTrackingFicha(ficha, item);
+  });
+  reviewActions.appendChild(saveReview);
+  reviewActions.appendChild(clearReview);
+  reviewLabel.appendChild(reviewArea);
+  reviewLabel.appendChild(reviewCount);
+  reviewLabel.appendChild(reviewError);
+  reviewLabel.appendChild(reviewActions);
+  ficha.appendChild(reviewLabel);
+
+  const total = progressTotalFromMetadata(item.metadata);
+  const currentProgress = entry && entry.progress ? entry.progress.current || 0 : 0;
+  const kindForProgress = (item.metadata && item.metadata.kind) || metadataKindFor(item.mediaType);
+  if (entry || total || currentProgress || kindForProgress) {
+    const kind = kindForProgress;
+    const unit = progressUnitFor(kind);
+    const progressWrap = document.createElement("div");
+    progressWrap.className = "catalog-view__tracking-progress-wrap";
+    const progressError = document.createElement("p");
+    progressError.className = "catalog-view__tracking-error";
+    progressError.setAttribute("role", "alert");
+    const progressLabel = document.createElement("label");
+    progressLabel.className = "catalog-view__tracking-label";
+    progressLabel.textContent = `Progreso (${unit})`;
+    const progressBar = document.createElement("progress");
+    progressBar.className = "catalog-view__tracking-progress";
+    progressBar.max = total || 100;
+    progressBar.value = currentProgress;
+    const progressText = document.createElement("span");
+    progressText.className = "catalog-view__tracking-progress-text";
+    progressText.textContent = total ? `${currentProgress}/${total} ${unit}` : `${currentProgress} ${unit}`;
+    const progressInput = document.createElement("input");
+    progressInput.type = "number";
+    progressInput.min = "0";
+    if (total) progressInput.max = String(total);
+    progressInput.value = String(currentProgress);
+    const progressBtn = document.createElement("button");
+    progressBtn.type = "button";
+    progressBtn.className = "btn btn--secondary";
+    progressBtn.textContent = "Actualizar";
+    progressBtn.addEventListener("click", async () => {
+      const next = Number(progressInput.value);
+      if (Number.isNaN(next) || next < 0 || (total && next > total)) {
+        progressError.textContent = "El progreso debe estar entre 0 y el total.";
+        return;
+      }
+      if (!total && next > 0) {
+        progressError.textContent = "No se puede fijar progreso sin total conocido.";
+        return;
+      }
+      progressError.textContent = "";
+      const current = getEntryFor(item);
+      await persistEntryChange(item, current, {
+        progress: { current: next, total: total || (current && current.progress ? current.progress.total : 0) },
+      });
+      rerenderTrackingFicha(ficha, item);
+    });
+    progressWrap.appendChild(progressError);
+    progressWrap.appendChild(progressBar);
+    progressWrap.appendChild(progressText);
+    progressWrap.appendChild(progressInput);
+    progressWrap.appendChild(progressBtn);
+    progressLabel.appendChild(progressWrap);
+    ficha.appendChild(progressLabel);
+  }
+
+  return ficha;
+}
+
+/** Vuelve a pintar la ficha ya montada con la entry actual. */
+function rerenderTrackingFicha(ficha, item) {
+  if (!ficha || !ficha.parentNode) return;
+  const next = renderTrackingFicha(item, getEntryFor(item));
+  ficha.parentNode.replaceChild(next, ficha);
+}
+
+/** Monta la ficha en la tarjeta la primera vez que se interactúa. */
+function attachTrackingFicha(card, item) {
+  if (!card || !item) return;
+  let ficha = card.querySelector(":scope > .catalog-view__tracking");
+  if (!ficha) {
+    ficha = renderTrackingFicha(item, getEntryFor(item));
+    card.appendChild(ficha);
+  }
+  return ficha;
+}
+
+/** Carga inicial del seguimiento al iniciar la vista de catálogo. */
+function mountTrackingPanel() {
+  if (trackingPanelMounted) return;
+  trackingPanelMounted = true;
+  loadTrackingEntries().catch((error) => {
+    console.warn("No se pudo cargar el seguimiento.", error);
+  });
+}
+
+/** Vacía el seguimiento (logout / cambio de sesión). */
+function resetTrackingPanel() {
+  currentTrackingUid = null;
+  trackingPanelMounted = false;
+  trackingState.entries.clear();
+  trackingState.loaded = false;
+  applyEntriesToCards();
 }
 
 // =============================================================

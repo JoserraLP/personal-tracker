@@ -2581,3 +2581,90 @@ body {
     flex: 1 1 auto;
   }
 }
+
+/* =============================================================
+   T-117 — Seguimiento: estado, score y progreso
+   (spec 03 UI-12/13; ScorePicker, ReviewField, ProgressBar)
+   ============================================================= */
+
+.catalog-view__tracking {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.catalog-view__tracking-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.catalog-view__tracking-status,
+.catalog-view__tracking-score {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0.25rem 0.5rem;
+}
+
+.catalog-view__tracking-review {
+  resize: vertical;
+  min-height: 4.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0.5rem;
+  font: inherit;
+}
+
+.catalog-view__tracking-review-count {
+  align-self: flex-end;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.catalog-view__tracking-error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--error);
+}
+
+.catalog-view__tracking-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.catalog-view__tracking-progress-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.catalog-view__tracking-progress {
+  flex: 1 1 8rem;
+  height: 0.75rem;
+}
+
+.catalog-view__tracking-progress-text {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.catalog-view__tracking-progress-wrap input[type="number"] {
+  width: 5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0.25rem 0.5rem;
+}
