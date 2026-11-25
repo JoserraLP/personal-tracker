@@ -14,17 +14,9 @@ import { login, logout, watchAuthState } from "./firebase.js";
 import { isEmailAllowed } from "./allowed-emails.js";
 import {
   MEDIA_TYPES,
-  MEDIA_TYPE_LABELS,
   ITEM_STATUSES,
   STATUS_LABELS,
-  SORT_OPTIONS,
-  DEFAULT_SORT,
   subscribeItems,
-  listItems,
-  setItemStatus,
-  deleteItem,
-  filterItems,
-  sortItems,
   createItem,
   updateItem,
   getItem,
@@ -41,6 +33,9 @@ import {
   isMetadataFresh,
   updateItemMetadata,
   METADATA_SOURCES,
+  // Traducción legacy (minúsculas) → `MediaType` del modelo 00-05
+  // (REQ-C6). La usa `mediaTypeLabel()`.
+  legacyMediaTypeToMediaItemType,
   // Spec 004 — Favoritos y colecciones
   setItemFavorite,
   toggleItemFavorite,
@@ -68,6 +63,19 @@ import {
 import { searchTmdbMovies, searchTmdbTv, searchTmdbAnime, fetchTmdbMovieMetadata, fetchTmdbTvMetadata, fetchTmdbMetadata } from "./api-tmdb.js";
 import { searchIgdbGames, fetchIgdbGameMetadata } from "./api-games.js";
 import { searchGoogleBooks, fetchGoogleBookMetadata } from "./api-books.js";
+// T-114 — Vista de catálogo del modelo 00-05: `MediaCard` (componente
+// único, AC-116) y `CatalogRepository` (paginación por cursor, REQ-101).
+import {
+  MEDIA_TYPES as CATALOG_MEDIA_TYPES,
+  MEDIA_TYPE_LABELS as CATALOG_MEDIA_TYPE_LABELS,
+  createMediaCard,
+  mountMediaCards,
+} from "./ui/media-card.js";
+import {
+  catalogRepository,
+  DEFAULT_PAGE_SIZE as CATALOG_PAGE_SIZE,
+  DEFAULT_CATALOG_SORT,
+} from "./repositories/catalog-repository.js";
 
 // =============================================================
 // Spec 001 — Puerta de login (INTACTA)
@@ -138,9 +146,6 @@ const navTabsContainer = document.getElementById("app-nav-tabs");
 /** Vista del nav activa. */
 let activeAppView = DEFAULT_APP_VIEW;
 
-/** Tipo de media suscrito actualmente en el catálogo. */
-let subscribedMediaType = null;
-
 /** ¿La vista tiene contenedor y contenido propio disponible? */
 function isAppViewAvailable(key) {
   return Boolean(appViews[key]) && !APP_VIEW_PENDING.includes(key);
@@ -175,31 +180,28 @@ function activateAppViewContent(key) {
 
   switch (key) {
     case "catalog":
-      showPanel("catalog-panel");
+      // T-114: la vista de catálogo lee la colección `catalog` con
+      // cursor (UNA lectura por página, AC-111) y pinta `MediaCard`.
+      mountCatalogView();
       dashboardUnsubscribeAll();
       favoritesUnsubscribeAll();
       collectionsUnsubscribeAll();
-      if (subscribedMediaType !== activeMediaType) {
-        subscribeToCurrentTab();
-      }
+      void loadCatalogPage({ append: false });
       break;
     case "profile":
       showPanel("favorites-panel");
-      catalogUnsubscribe();
       dashboardUnsubscribeAll();
       collectionsUnsubscribeAll();
       subscribeToFavorites();
       break;
     case "collections":
       showPanel("collections-panel");
-      catalogUnsubscribe();
       dashboardUnsubscribeAll();
       favoritesUnsubscribeAll();
       subscribeToCollections();
       break;
     case "dashboard":
       showPanel("dashboard-panel");
-      catalogUnsubscribe();
       favoritesUnsubscribeAll();
       collectionsUnsubscribeAll();
       subscribeToDashboard();
@@ -363,30 +365,14 @@ watchAuthState(async (user) => {
 });
 
 // =============================================================
-// Spec 002 — Catálogo
+// Spec 002 — Catálogo (modelo 00-05, T-114)
 // =============================================================
 
-// --- Estado del catálogo ------------------------------------
-const DASHBOARD_KEY = "dashboard";
-const FAVORITES_KEY = "favorites";
-const COLLECTIONS_KEY = "collections";
-// La pestaña interna inicial es el primer tipo de catálogo; la vista
-// inicial del nav principal es el Dashboard (spec 003, AC-001).
+// Tipo de media **legacy** (minúsculas) que usan las vistas heredadas
+// (ficha, alta manual y búsqueda por API). La vista de catálogo del
+// modelo 00-05 tiene su propio estado (`catalogView`, 7 tipos).
 let activeMediaType = MEDIA_TYPES[0];
-let currentItems = [];
-let unsubscribeFn = null;
 let catalogInitialized = false;
-
-// Paginación por cursor (Q-003 / MED #2)
-let paginationHasMore = false;
-let paginationLastDoc = null;
-let isLoadingMore = false;
-
-// Filtros en memoria
-let filterStatus = "";
-let filterMinRating = "";
-let filterYear = "";
-let sortOption = DEFAULT_SORT;
 
 // --- Dashboard (spec 003) -----------------------------------
 let dashboardUnsubscribes = [];
@@ -423,18 +409,10 @@ function escapeHtml(value) {
 }
 
 // --- Referencias DOM ----------------------------------------
-const tabsContainer = document.getElementById("catalog-tabs");
-const filterStatusEl = document.getElementById("catalog-filter-status");
-const filterRatingEl = document.getElementById("catalog-filter-rating");
-const filterYearEl = document.getElementById("catalog-filter-year");
-const sortEl = document.getElementById("catalog-sort");
-const listEl = document.getElementById("catalog-list");
-const loadingEl = document.getElementById("catalog-loading");
-const emptyEl = document.getElementById("catalog-empty");
-const errorEl = document.getElementById("catalog-error");
+// Botón «Añadir» del catálogo heredado (spec 002). Puede no existir:
+// la vista de catálogo del modelo 00-05 se construye en JS (T-114) y
+// el alta manual/búsqueda pertenecen a T-115/T-116.
 const btnAddItem = document.getElementById("btn-add-item");
-const loadMoreWrapEl = document.getElementById("catalog-load-more-wrap");
-const btnLoadMore = document.getElementById("btn-load-more");
 
 // Dashboard DOM (spec 003)
 const dashboardStatsEl = document.getElementById("dashboard-stats");
@@ -443,162 +421,657 @@ const dashboardRecentCompletedEl = document.getElementById("dashboard-recent-com
 const dashboardErrorEl = document.getElementById("dashboard-error");
 const dashboardLoadingEl = document.getElementById("dashboard-loading");
 
-// --- Inicialización de controles estáticos ------------------
+// =============================================================
+// T-114 — Vista de Catálogo del modelo 00-05
+// (spec 02 UI-02, REQ-101/REQ-103; AC-110, AC-111, AC-116)
+//
+//   - `CatalogTabs`: 7 tipos de medio (DB-101) con patrón ARIA
+//     `tablist` y navegación por teclado.
+//   - `FilterBar`: filtros secundarios de REQ-103 (género, rango de
+//     años y `avgRating` mínimo) que se envían al repositorio.
+//   - Grid de `MediaCard`: el MISMO componente de las 4 vistas
+//     (AC-116).
+//   - `LoadMore`: paginación por cursor opaco (API-02). Cada página
+//     es UNA lectura del tipo activo (AC-111) y se CONCATENA al
+//     listado sin recargar (AC-110).
+//
+// La vista NO se suscribe: lee páginas sueltas con `listByType` y
+// mantiene el cursor para continuar.
+// =============================================================
 
-function buildTabs() {
-  tabsContainer.innerHTML = "";
+/**
+ * Etiqueta en español del tipo de medio. ÚNICA fuente de etiquetas:
+ * el mapa de `MediaCard` (7 tipos, DB-101). Los tipos legacy
+ * (minúsculas, spec 002) se traducen con
+ * `legacyMediaTypeToMediaItemType()` (REQ-C6).
+ * @param {string} mediaType
+ * @returns {string}
+ */
+function mediaTypeLabel(mediaType) {
+  if (typeof mediaType !== "string" || mediaType === "") return "medio";
+  const itemType = legacyMediaTypeToMediaItemType(mediaType.toLowerCase()) ?? mediaType;
+  return CATALOG_MEDIA_TYPE_LABELS[itemType] ?? mediaType;
+}
 
-  // Spec 002 (UI-02): las pestañas internas son los tipos de catálogo.
-  // Dashboard, Favoritos y Colecciones pasan a ser vistas del nav
-  // principal (T-112), de modo que aquí sólo quedan los tipos.
-  MEDIA_TYPES.forEach((type) => {
-    const tab = document.createElement("button");
+/**
+ * Estado de la vista de catálogo (T-114).
+ * @type {{
+ *   mediaType: string,
+ *   items: object[],
+ *   cursor: string|null,
+ *   hasMore: boolean,
+ *   loading: boolean,
+ *   requestId: number,
+ *   filters: {genre: string, yearFrom: number|null, yearTo: number|null, minAvgRating: number|null},
+ *   mounted: boolean
+ * }}
+ */
+const catalogView = {
+  /** Tipo de medio activo (7 tipos, DB-101). */
+  mediaType: "MOVIE",
+  /** Ítems de la página actual + los añadidos con «Cargar más». */
+  items: [],
+  /** Cursor opaco de la próxima página (`null` ⇒ fin del listado). */
+  cursor: null,
+  /** ¿Hay página siguiente? */
+  hasMore: false,
+  /** ¿Hay una consulta en vuelo? */
+  loading: false,
+  /** Token de petición: descarta respuestas obsoletas. */
+  requestId: 0,
+  /** Filtros secundarios de REQ-103. */
+  filters: { genre: "", yearFrom: null, yearTo: null, minAvgRating: null },
+  /** ¿La vista ya está montada en el DOM? */
+  mounted: false,
+};
+
+/** Referencias DOM de la vista de catálogo (se rellenan al montar). */
+const catalogViewDom = {
+  root: null,
+  tabs: null,
+  panel: null,
+  form: null,
+  genreInput: null,
+  genreList: null,
+  yearFromInput: null,
+  yearToInput: null,
+  minRatingInput: null,
+  grid: null,
+  empty: null,
+  emptyText: null,
+  loading: null,
+  error: null,
+  count: null,
+  loadMoreWrap: null,
+  loadMoreBtn: null,
+};
+
+/**
+ * Crea un elemento del DOM con clase y texto (sin `innerHTML`).
+ * @param {string} tag
+ * @param {string} className
+ * @param {string} [text]
+ * @returns {HTMLElement}
+ */
+function createCatalogElement(tag, className, text) {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  if (text !== undefined && text !== null) element.textContent = text;
+  return element;
+}
+
+/**
+ * Monta la vista de catálogo dentro de `#view-catalog` (T-114).
+ * Sustituye al catálogo heredado de la spec 002 (5 tipos y store
+ * `users/{uid}/…`): la vista nueva lee la colección `catalog` con
+ * `CatalogRepository` (REQ-101).
+ */
+function mountCatalogView() {
+  if (catalogView.mounted) return;
+  const view = document.getElementById("view-catalog");
+  if (!view) return;
+
+  // El catálogo heredado (`#catalog-root`) queda obsoleto: el modelo
+  // 00-05 usa la colección `catalog` (notas de integración de tasks).
+  const legacyRoot = document.getElementById("catalog-root");
+  if (legacyRoot) legacyRoot.remove();
+
+  const root = createCatalogElement("div", "catalog-view");
+  root.id = "catalog-view";
+
+  // --- CatalogTabs (7 tipos) ---------------------------------
+  const tabs = createCatalogElement("div", "catalog__tabs catalog-view__tabs");
+  tabs.setAttribute("role", "tablist");
+  tabs.setAttribute("aria-label", "Tipos de catálogo");
+  for (const mediaType of CATALOG_MEDIA_TYPES) {
+    const tab = createCatalogElement(
+      "button",
+      "catalog__tab",
+      CATALOG_MEDIA_TYPE_LABELS[mediaType] ?? mediaType,
+    );
     tab.type = "button";
-    tab.className = "catalog__tab";
+    tab.id = `catalog-view-tab-${mediaType.toLowerCase()}`;
     tab.setAttribute("role", "tab");
-    tab.setAttribute("aria-selected", type === activeMediaType ? "true" : "false");
-    tab.setAttribute("tabindex", type === activeMediaType ? "0" : "-1");
-    tab.id = type === activeMediaType ? "tab-active" : `tab-${type}`;
-    tab.setAttribute("aria-controls", getPanelIdForTab(type));
-    tab.textContent = MEDIA_TYPE_LABELS[type];
-    tab.dataset.mediaType = type;
-    tab.addEventListener("click", () => switchTab(type));
-    tabsContainer.appendChild(tab);
-  });
+    tab.setAttribute("aria-controls", "catalog-view-panel");
+    tab.dataset.mediaType = mediaType;
+    tab.addEventListener("click", () => selectCatalogType(mediaType));
+    tabs.appendChild(tab);
+  }
+  tabs.addEventListener("keydown", handleCatalogTabsKeydown);
 
-  // Navegación por teclado (ARIA tablist, §6)
-  tabsContainer.addEventListener("keydown", handleTabsKeydown);
+  // --- Panel -------------------------------------------------
+  const panel = createCatalogElement("section", "catalog-view__panel");
+  panel.id = "catalog-view-panel";
+  panel.setAttribute("role", "tabpanel");
+
+  // --- FilterBar (REQ-103) -----------------------------------
+  const form = createCatalogElement("form", "catalog__toolbar catalog-view__filters");
+  form.setAttribute("role", "search");
+  form.setAttribute("aria-label", "Filtros del catálogo");
+  form.noValidate = true;
+
+  const genreField = createCatalogElement("label", "catalog-view__field");
+  genreField.appendChild(createCatalogElement("span", "catalog-view__label", "Género"));
+  const genreInput = document.createElement("input");
+  genreInput.type = "search";
+  genreInput.id = "catalog-view-filter-genre";
+  genreInput.className = "catalog__select catalog-view__input";
+  genreInput.placeholder = "Todos los géneros";
+  genreInput.autocomplete = "off";
+  genreInput.setAttribute("aria-label", "Filtrar por género");
+  const genreList = document.createElement("datalist");
+  genreList.id = "catalog-view-genres";
+  genreField.append(genreInput, genreList);
+
+  const yearFromField = createCatalogElement("label", "catalog-view__field");
+  yearFromField.appendChild(createCatalogElement("span", "catalog-view__label", "Año desde"));
+  const yearFromInput = document.createElement("input");
+  yearFromInput.type = "number";
+  yearFromInput.id = "catalog-view-filter-year-from";
+  yearFromInput.className = "catalog__select catalog-view__input";
+  yearFromInput.min = "1888";
+  yearFromInput.max = "2100";
+  yearFromInput.placeholder = "1888";
+  yearFromInput.setAttribute("aria-label", "Año inicial del rango");
+  yearFromField.appendChild(yearFromInput);
+
+  const yearToField = createCatalogElement("label", "catalog-view__field");
+  yearToField.appendChild(createCatalogElement("span", "catalog-view__label", "Año hasta"));
+  const yearToInput = document.createElement("input");
+  yearToInput.type = "number";
+  yearToInput.id = "catalog-view-filter-year-to";
+  yearToInput.className = "catalog__select catalog-view__input";
+  yearToInput.min = "1888";
+  yearToInput.max = "2100";
+  yearToInput.placeholder = "2100";
+  yearToInput.setAttribute("aria-label", "Año final del rango");
+  yearToField.appendChild(yearToInput);
+
+  const ratingField = createCatalogElement("label", "catalog-view__field");
+  ratingField.appendChild(
+    createCatalogElement("span", "catalog-view__label", "Valoración mínima"),
+  );
+  const minRatingInput = document.createElement("input");
+  minRatingInput.type = "number";
+  minRatingInput.id = "catalog-view-filter-min-rating";
+  minRatingInput.className = "catalog__select catalog-view__input";
+  minRatingInput.min = "0";
+  minRatingInput.max = "10";
+  minRatingInput.step = "0.1";
+  minRatingInput.placeholder = "0";
+  minRatingInput.setAttribute("aria-label", "Valoración media mínima");
+  ratingField.appendChild(minRatingInput);
+
+  const actions = createCatalogElement("div", "catalog-view__actions");
+  const applyButton = createCatalogElement("button", "btn btn--secondary", "Aplicar filtros");
+  applyButton.type = "submit";
+  const resetButton = createCatalogElement("button", "btn", "Limpiar");
+  resetButton.type = "button";
+  resetButton.addEventListener("click", handleCatalogFiltersReset);
+  actions.append(applyButton, resetButton);
+
+  form.append(genreField, yearFromField, yearToField, ratingField, actions);
+  form.addEventListener("submit", handleCatalogFiltersSubmit);
+
+  // --- Estados (cargando / vacío / error) --------------------
+  const error = createCatalogElement("p", "error");
+  error.id = "catalog-view-error";
+  error.setAttribute("role", "alert");
+  error.hidden = true;
+
+  const loading = createCatalogElement("div", "catalog__state");
+  loading.id = "catalog-view-loading";
+  loading.hidden = true;
+  loading.appendChild(createCatalogElement("p", "muted", "Cargando catálogo…"));
+
+  const empty = createCatalogElement("div", "catalog__state");
+  empty.id = "catalog-view-empty";
+  empty.hidden = true;
+  const emptyText = createCatalogElement("p", "muted");
+  empty.appendChild(emptyText);
+
+  const count = createCatalogElement("p", "catalog-view__count");
+  count.id = "catalog-view-count";
+
+  // --- Grid de `MediaCard` (AC-116) --------------------------
+  const grid = document.createElement("ul");
+  grid.id = "catalog-view-grid";
+  grid.className = "media-grid";
+  grid.setAttribute("aria-live", "polite");
+
+  // --- LoadMore (cursor, AC-110) -----------------------------
+  const loadMoreWrap = createCatalogElement("div", "catalog__load-more");
+  loadMoreWrap.id = "catalog-view-load-more";
+  loadMoreWrap.hidden = true;
+  const loadMoreBtn = createCatalogElement("button", "btn btn--secondary", "Cargar más");
+  loadMoreBtn.type = "button";
+  loadMoreBtn.id = "catalog-view-load-more-btn";
+  loadMoreBtn.setAttribute("aria-label", "Cargar más títulos del catálogo");
+  loadMoreBtn.addEventListener("click", () => {
+    void loadCatalogPage({ append: true });
+  });
+  loadMoreWrap.appendChild(loadMoreBtn);
+
+  panel.append(form, error, loading, empty, count, grid, loadMoreWrap);
+  root.append(tabs, panel);
+  view.appendChild(root);
+
+  catalogViewDom.root = root;
+  catalogViewDom.tabs = tabs;
+  catalogViewDom.panel = panel;
+  catalogViewDom.form = form;
+  catalogViewDom.genreInput = genreInput;
+  catalogViewDom.genreList = genreList;
+  catalogViewDom.yearFromInput = yearFromInput;
+  catalogViewDom.yearToInput = yearToInput;
+  catalogViewDom.minRatingInput = minRatingInput;
+  catalogViewDom.grid = grid;
+  catalogViewDom.empty = empty;
+  catalogViewDom.emptyText = emptyText;
+  catalogViewDom.loading = loading;
+  catalogViewDom.error = error;
+  catalogViewDom.count = count;
+  catalogViewDom.loadMoreWrap = loadMoreWrap;
+  catalogViewDom.loadMoreBtn = loadMoreBtn;
+
+  catalogView.mounted = true;
+  syncCatalogTabs();
+  updateCatalogLoadMoreState();
+  renderCatalogState();
 }
 
-function getPanelIdForTab(type) {
-  switch (type) {
-    case DASHBOARD_KEY: return "dashboard-panel";
-    case FAVORITES_KEY: return "favorites-panel";
-    case COLLECTIONS_KEY: return "collections-panel";
-    default: return "catalog-panel";
+/**
+ * Sincroniza `aria-selected`, `tabindex` y `aria-labelledby` de las
+ * pestañas de tipo y del panel (UI-02).
+ */
+function syncCatalogTabs() {
+  const tabs = catalogViewDom.tabs;
+  if (!tabs) return;
+  const activeId = `catalog-view-tab-${String(catalogView.mediaType).toLowerCase()}`;
+  tabs.querySelectorAll('[role="tab"]').forEach((tab) => {
+    const isActive = tab.dataset.mediaType === catalogView.mediaType;
+    tab.setAttribute("aria-selected", isActive ? "true" : "false");
+    tab.setAttribute("tabindex", isActive ? "0" : "-1");
+  });
+  if (catalogViewDom.panel) {
+    catalogViewDom.panel.setAttribute("aria-labelledby", activeId);
   }
 }
 
-function buildStatusFilter() {
-  // Mantener la opción "Todos" y añadir los 5 estados
-  filterStatusEl.innerHTML = '<option value="">Todos los estados</option>';
-  ITEM_STATUSES.forEach((status) => {
-    const option = document.createElement("option");
-    option.value = status;
-    option.textContent = STATUS_LABELS[status];
-    filterStatusEl.appendChild(option);
-  });
-}
-
-function buildRatingFilter() {
-  // LOW #5: filtro de valoración mínima (REQ-012).
-  filterRatingEl.innerHTML = '<option value="">Cualquier valoración</option>';
-  for (let n = 1; n <= 10; n++) {
-    const option = document.createElement("option");
-    option.value = String(n);
-    option.textContent = `≥ ${n}`;
-    filterRatingEl.appendChild(option);
-  }
-}
-
-function buildYearFilter() {
-  // LOW #5: filtro de año (REQ-012). Input libre (number) en el HTML.
-  filterYearEl.value = "";
-}
-
-function buildSortSelect() {
-  sortEl.innerHTML = "";
-  SORT_OPTIONS.forEach((opt) => {
-    const option = document.createElement("option");
-    option.value = opt.id;
-    option.textContent = opt.label;
-    sortEl.appendChild(option);
-  });
-  sortEl.value = DEFAULT_SORT;
-}
-
-// --- Navegación por teclado de pestañas (§6) ----------------
-
-function handleTabsKeydown(event) {
-  const tabs = Array.from(tabsContainer.querySelectorAll('[role="tab"]'));
+/** Navegación por teclado del `tablist` de tipos (patrón ARIA). */
+function handleCatalogTabsKeydown(event) {
+  const tabs = Array.from(
+    catalogViewDom.tabs ? catalogViewDom.tabs.querySelectorAll('[role="tab"]') : [],
+  );
+  if (tabs.length === 0) return;
   const currentIndex = tabs.indexOf(document.activeElement);
   if (currentIndex === -1) return;
 
-  let newIndex = currentIndex;
+  let nextIndex = currentIndex;
   switch (event.key) {
     case "ArrowRight":
     case "ArrowDown":
-      newIndex = (currentIndex + 1) % tabs.length;
+      nextIndex = (currentIndex + 1) % tabs.length;
       break;
     case "ArrowLeft":
     case "ArrowUp":
-      newIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
       break;
     case "Home":
-      newIndex = 0;
+      nextIndex = 0;
       break;
     case "End":
-      newIndex = tabs.length - 1;
+      nextIndex = tabs.length - 1;
       break;
     default:
       return;
   }
 
   event.preventDefault();
-  tabs[newIndex].focus();
-  switchTab(tabs[newIndex].dataset.mediaType);
+  const nextTab = tabs[nextIndex];
+  nextTab.focus();
+  selectCatalogType(nextTab.dataset.mediaType);
 }
 
-// --- Cambio de pestaña --------------------------------------
-
-function switchTab(mediaType) {
-  // Las claves heredadas (Dashboard/Favoritos/Colecciones) son ahora
-  // vistas del nav principal (T-112).
-  if (mediaType === DASHBOARD_KEY) {
-    showAppView("dashboard");
-    return;
-  }
-  if (mediaType === FAVORITES_KEY) {
-    showAppView("profile");
-    return;
-  }
-  if (mediaType === COLLECTIONS_KEY) {
-    showAppView("collections");
-    return;
-  }
-  if (!MEDIA_TYPES.includes(mediaType)) return;
-  if (mediaType === activeMediaType && activeAppView === "catalog") return;
-  activeMediaType = mediaType;
-
-  // Actualizar ARIA en pestañas (LOW #4: mantener id="tab-active" en la activa)
-  const tabs = tabsContainer.querySelectorAll('[role="tab"]');
-  tabs.forEach((tab) => {
-    const isActive = tab.dataset.mediaType === mediaType;
-    tab.setAttribute("aria-selected", isActive ? "true" : "false");
-    tab.setAttribute("tabindex", isActive ? "0" : "-1");
-    if (isActive) tab.id = "tab-active";
-    else if (tab.id === "tab-active") tab.id = `tab-${tab.dataset.mediaType}`;
-  });
-
-  // Resetear filtros al cambiar de pestaña
-  filterStatus = "";
-  filterStatusEl.value = "";
-  filterMinRating = "";
-  filterRatingEl.value = "";
-  filterYear = "";
-  filterYearEl.value = "";
-  sortOption = DEFAULT_SORT;
-  sortEl.value = DEFAULT_SORT;
-
-  // Resetear paginación
-  paginationHasMore = false;
-  paginationLastDoc = null;
-  updateLoadMoreVisibility();
-
-  // La vista Catálogo queda visible en el nav principal; showAppView()
-  // muestra el panel y re-suscribe al tipo activo (T-112).
-  showAppView("catalog");
+/**
+ * Cambia el tipo de medio activo: reinicia filtros y paginación y
+ * vuelve a leer la primera página (REQ-101).
+ * @param {string} mediaType
+ */
+function selectCatalogType(mediaType) {
+  if (!CATALOG_MEDIA_TYPES.includes(mediaType)) return;
+  catalogView.mediaType = mediaType;
+  // El grid se vacía antes de leer la página 1 del nuevo tipo: si la
+  // consulta falla, no quedan pintadas tarjetas del tipo anterior
+  // (AC-111).
+  resetCatalogPaging();
+  resetCatalogFilters();
+  syncCatalogTabs();
+  void loadCatalogPage({ append: false });
 }
+
+/** Vacía los filtros de REQ-103 (estado y controles). */
+function resetCatalogFilters() {
+  catalogView.filters = { genre: "", yearFrom: null, yearTo: null, minAvgRating: null };
+  if (catalogViewDom.genreInput) catalogViewDom.genreInput.value = "";
+  if (catalogViewDom.yearFromInput) catalogViewDom.yearFromInput.value = "";
+  if (catalogViewDom.yearToInput) catalogViewDom.yearToInput.value = "";
+  if (catalogViewDom.minRatingInput) catalogViewDom.minRatingInput.value = "";
+}
+
+/** ¿Hay algún filtro secundario activo (REQ-103)? */
+function hasCatalogFilters() {
+  const filters = catalogView.filters;
+  return Boolean(
+    filters.genre ||
+      filters.yearFrom !== null ||
+      filters.yearTo !== null ||
+      filters.minAvgRating !== null,
+  );
+}
+
+/**
+ * Lee y valida los filtros del `FilterBar` (REQ-103).
+ * @returns {{ok: true, filters: object}|{ok: false, message: string}}
+ */
+function readCatalogFilters() {
+  const genre = (catalogViewDom.genreInput ? catalogViewDom.genreInput.value : "").trim();
+  const yearFromRaw = (
+    catalogViewDom.yearFromInput ? catalogViewDom.yearFromInput.value : ""
+  ).trim();
+  const yearToRaw = (catalogViewDom.yearToInput ? catalogViewDom.yearToInput.value : "").trim();
+  const minRatingRaw = (
+    catalogViewDom.minRatingInput ? catalogViewDom.minRatingInput.value : ""
+  ).trim();
+
+  const filters = { genre, yearFrom: null, yearTo: null, minAvgRating: null };
+
+  if (yearFromRaw !== "") {
+    const year = Number(yearFromRaw);
+    if (!Number.isInteger(year) || year < 1888 || year > 2100) {
+      return { ok: false, message: "El año inicial debe estar entre 1888 y 2100." };
+    }
+    filters.yearFrom = year;
+  }
+  if (yearToRaw !== "") {
+    const year = Number(yearToRaw);
+    if (!Number.isInteger(year) || year < 1888 || year > 2100) {
+      return { ok: false, message: "El año final debe estar entre 1888 y 2100." };
+    }
+    filters.yearTo = year;
+  }
+  if (filters.yearFrom !== null && filters.yearTo !== null && filters.yearFrom > filters.yearTo) {
+    return { ok: false, message: "El año inicial no puede ser mayor que el año final." };
+  }
+  if (minRatingRaw !== "") {
+    const rating = Number(minRatingRaw);
+    if (!Number.isFinite(rating) || rating < 0 || rating > 10) {
+      return { ok: false, message: "La valoración mínima debe estar entre 0 y 10." };
+    }
+    filters.minAvgRating = rating;
+  }
+  return { ok: true, filters };
+}
+
+/** Aplica los filtros del `FilterBar` y recarga la primera página. */
+function handleCatalogFiltersSubmit(event) {
+  event.preventDefault();
+  const result = readCatalogFilters();
+  if (!result.ok) {
+    showCatalogError(result.message);
+    return;
+  }
+  hideCatalogError();
+  catalogView.filters = result.filters;
+  resetCatalogPaging();
+  void loadCatalogPage({ append: false });
+}
+
+/** Limpia los filtros y recarga la primera página. */
+function handleCatalogFiltersReset() {
+  resetCatalogFilters();
+  hideCatalogError();
+  resetCatalogPaging();
+  void loadCatalogPage({ append: false });
+}
+
+/**
+ * Vacía el listado en memoria y el grid del DOM. Se llama ANTES de
+ * cada lectura completa para que un error de carga no deje pintadas
+ * tarjetas de otro tipo (AC-111: «solo docs del tipo filtrado»).
+ */
+function clearCatalogGrid() {
+  catalogView.items = [];
+  catalogView.cursor = null;
+  catalogView.hasMore = false;
+  if (catalogViewDom.grid) catalogViewDom.grid.replaceChildren();
+}
+
+/** Reinicia el listado y el cursor (nueva consulta desde la página 1). */
+function resetCatalogPaging() {
+  clearCatalogGrid();
+  updateCatalogLoadMoreState();
+  renderCatalogState();
+}
+
+/**
+ * Lee UNA página del catálogo del tipo activo y la pinta.
+ * @param {{append?: boolean}} [options] `append:true` concatena la
+ *        página siguiente al listado ya pintado (AC-110).
+ */
+async function loadCatalogPage(options = {}) {
+  const append = options.append === true;
+  if (append && catalogView.loading) return;
+
+  const requestId = ++catalogView.requestId;
+  catalogView.loading = true;
+
+  if (!append) {
+    // AC-111: el grid se vacía ANTES de leer. Si la consulta falla,
+    // no pueden quedar tarjetas de otro tipo pintadas.
+    clearCatalogGrid();
+    showCatalogLoading(true);
+    hideCatalogError();
+  }
+  updateCatalogLoadMoreState();
+
+  const filters = catalogView.filters;
+  const query = {
+    pageSize: CATALOG_PAGE_SIZE,
+    cursor: append ? catalogView.cursor : null,
+    genre: filters.genre ? filters.genre : null,
+    yearFrom: filters.yearFrom,
+    yearTo: filters.yearTo,
+    minAvgRating: filters.minAvgRating,
+    sort: DEFAULT_CATALOG_SORT,
+  };
+
+  const result = await catalogRepository.listByType(catalogView.mediaType, query);
+
+  // Respuesta obsoleta (cambio de tipo o de filtros): se descarta.
+  if (requestId !== catalogView.requestId) return;
+
+  catalogView.loading = false;
+  showCatalogLoading(false);
+
+  if (!result || result.ok !== true) {
+    showCatalogError(
+      (result && result.message) || "No se ha podido cargar el catálogo.",
+    );
+    updateCatalogLoadMoreState();
+    renderCatalogState();
+    return;
+  }
+
+  hideCatalogError();
+  const page = result.value || {};
+  const items = Array.isArray(page.items) ? page.items : [];
+  // AC-111: en la vista solo se pintan ítems del tipo activo.
+  const typed = items.filter((item) => item && item.mediaType === catalogView.mediaType);
+
+  if (append) {
+    appendCatalogItems(typed);
+  } else {
+    catalogView.items = typed;
+    renderCatalogGrid();
+  }
+
+  const cursor = typeof page.cursor === "string" && page.cursor !== "" ? page.cursor : null;
+  catalogView.cursor = cursor;
+  catalogView.hasMore = cursor !== null;
+  updateCatalogLoadMoreState();
+  renderCatalogState();
+}
+
+/**
+ * Opciones de la `MediaCard` en la vista de catálogo (AC-116: el
+ * mismo componente de las 4 vistas).
+ * T-117 (AC-115/AC-117) inyectará la `entry` personal y el guardado
+ * en `trackingRepository`; T-118 (UI-14) inyectará las colecciones.
+ */
+function catalogCardOptions() {
+  return {
+    entry: null,
+    collections: [],
+    onAdd: handleCatalogCardUnavailable,
+    onStatusChange: handleCatalogCardUnavailable,
+  };
+}
+
+/**
+ * Punto de integración de T-117 (AC-115/AC-117): las acciones rápidas
+ * de la `MediaCard` necesitan `trackingRepository`, que se conecta en
+ * T-117. Hasta entonces la acción informa en español de que el
+ * seguimiento todavía no está disponible (REQ-E2, sin falso éxito).
+ * @returns {{ok: false, code: string, message: string}}
+ */
+function handleCatalogCardUnavailable() {
+  return {
+    ok: false,
+    code: "unavailable",
+    message: "El seguimiento de títulos todavía no está disponible en el catálogo.",
+  };
+}
+
+/** Pinta el grid de `MediaCard` con la página actual. */
+function renderCatalogGrid() {
+  const grid = catalogViewDom.grid;
+  if (!grid) return;
+  mountMediaCards(grid, catalogView.items, catalogCardOptions());
+  updateCatalogGenreSuggestions();
+}
+
+/**
+ * Concatena la página siguiente al listado SIN recargar la vista
+ * (AC-110). Los duplicados por id se descartan.
+ * @param {object[]} items
+ */
+function appendCatalogItems(items) {
+  const grid = catalogViewDom.grid;
+  if (!grid || items.length === 0) return;
+  const known = new Set(catalogView.items.map((item) => item.id));
+  const fresh = items.filter((item) => item && !known.has(item.id));
+  if (fresh.length === 0) return;
+  const fragment = document.createDocumentFragment();
+  for (const item of fresh) {
+    fragment.appendChild(createMediaCard(item, catalogCardOptions()));
+  }
+  grid.appendChild(fragment);
+  catalogView.items = catalogView.items.concat(fresh);
+  updateCatalogGenreSuggestions();
+}
+
+/** Sugiere los géneros presentes en los ítems ya cargados (REQ-103). */
+function updateCatalogGenreSuggestions() {
+  const list = catalogViewDom.genreList;
+  if (!list) return;
+  const genres = new Set();
+  for (const item of catalogView.items) {
+    for (const genre of Array.isArray(item.genres) ? item.genres : []) {
+      if (typeof genre === "string" && genre.trim() !== "") genres.add(genre.trim());
+    }
+  }
+  const options = [...genres]
+    .sort((a, b) => a.localeCompare(b, "es"))
+    .map((genre) => {
+      const option = document.createElement("option");
+      option.value = genre;
+      return option;
+    });
+  list.replaceChildren(...options);
+}
+
+/** Pinta el estado vacío y el contador de títulos. */
+function renderCatalogState() {
+  const hasItems = catalogView.items.length > 0;
+  if (catalogViewDom.empty && catalogViewDom.emptyText) {
+    catalogViewDom.emptyText.textContent = hasCatalogFilters()
+      ? `No hay títulos de ${mediaTypeLabel(catalogView.mediaType)} que cumplan los filtros.`
+      : `Todavía no hay títulos de ${mediaTypeLabel(catalogView.mediaType)} en el catálogo.`;
+    catalogViewDom.empty.hidden = hasItems;
+  }
+  if (catalogViewDom.count) {
+    catalogViewDom.count.textContent = hasItems
+      ? `${catalogView.items.length} título${catalogView.items.length === 1 ? "" : "s"}`
+      : "";
+  }
+}
+
+/** Muestra u oculta el botón «Cargar más» según el cursor (API-02). */
+function updateCatalogLoadMoreState() {
+  if (catalogViewDom.loadMoreWrap) {
+    catalogViewDom.loadMoreWrap.hidden = !catalogView.hasMore;
+  }
+  if (catalogViewDom.loadMoreBtn) {
+    catalogViewDom.loadMoreBtn.disabled = catalogView.loading;
+    catalogViewDom.loadMoreBtn.textContent = catalogView.loading ? "Cargando…" : "Cargar más";
+  }
+}
+
+/** Muestra u oculta el estado de carga. */
+function showCatalogLoading(visible) {
+  if (catalogViewDom.loading) catalogViewDom.loading.hidden = !visible;
+}
+
+/** Muestra un error de la vista de catálogo (REQ-E2). */
+function showCatalogError(message) {
+  const error = catalogViewDom.error;
+  if (!error) return;
+  error.textContent = message;
+  error.hidden = false;
+}
+
+/** Oculta el error de la vista de catálogo. */
+function hideCatalogError() {
+  const error = catalogViewDom.error;
+  if (!error) return;
+  error.hidden = true;
+  error.textContent = "";
+}
+
+// --- Navegación por teclado de pestañas (§6) ----------------
+// La navegación por teclado de las pestañas de tipo vive en
+// `handleCatalogTabsKeydown()` (T-114, patrón ARIA `tablist`).
 
 function hideAllPanels() {
   const panels = ["dashboard-panel", "favorites-panel", "collections-panel", "catalog-panel"];
@@ -613,114 +1086,27 @@ function showPanel(panelId) {
   if (panel) panel.hidden = false;
 }
 
-// --- Suscripción al store -----------------------------------
+// --- Carga del catálogo (T-114) -----------------------------
+// La vista de catálogo NO se suscribe: lee páginas con cursor opaco
+// (`loadCatalogPage`) y concatena las siguientes con «Cargar más».
 
-async function subscribeToCurrentTab() {
-  // Cancelar suscripción previa (evitar fugas)
-  await catalogUnsubscribe();
-
-  currentItems = [];
-  paginationHasMore = false;
-  paginationLastDoc = null;
-  updateLoadMoreVisibility();
-  renderList();
-  showLoading(true);
-  hideError();
-
-  try {
-    unsubscribeFn = await subscribeItems(activeMediaType, {
-      onItems(items, meta) {
-        const incoming = items || [];
-        // LOW #4 (Q-003): si el usuario cargó páginas extra vía "Cargar más",
-        // preservar esos ítems adicionales; reemplazar solo la primera página.
-        const hadExtraItems = currentItems.length > incoming.length;
-        if (hadExtraItems) {
-          currentItems = incoming.concat(currentItems.slice(incoming.length));
-        } else {
-          currentItems = incoming;
-        }
-        // MED #2: capturar cursor de paginación (Q-003/§6)
-        // F-001: NO resetear paginationLastDoc si preservamos ítems extra
-        if (meta && typeof meta === "object") {
-          paginationHasMore = Boolean(meta.hasMore);
-          if (!hadExtraItems) {
-            paginationLastDoc = meta.lastDoc || null;
-          }
-        } else {
-          paginationHasMore = false;
-          if (!hadExtraItems) {
-            paginationLastDoc = null;
-          }
-        }
-        updateLoadMoreVisibility();
-        showLoading(false);
-        renderList();
-      },
-      onError(error) {
-        showLoading(false);
-        showError("Error al cargar los elementos: " + (error?.message || "desconocido"));
-      },
-    });
-    subscribedMediaType = activeMediaType;
-  } catch (error) {
-    showLoading(false);
-    showError("Error al suscribirse: " + (error?.message || "desconocido"));
-  }
-}
-
-// --- Paginación por cursor (MED #2 / Q-003) -----------------
-
-function updateLoadMoreVisibility() {
-  if (!loadMoreWrapEl || !btnLoadMore) return;
-  loadMoreWrapEl.hidden = !paginationHasMore;
-  btnLoadMore.disabled = isLoadingMore;
-  btnLoadMore.textContent = isLoadingMore ? "Cargando…" : "Cargar más";
-}
-
-async function loadMoreItems() {
-  if (!paginationHasMore || !paginationLastDoc || isLoadingMore) return;
-  isLoadingMore = true;
-  updateLoadMoreVisibility();
-  try {
-    const result = await listItems(activeMediaType, { startAfter: paginationLastDoc });
-    const newItems = result.items || [];
-    // F-001: deduplicar por id al concatenar (evitar ítems repetidos)
-    const existingIds = new Set(currentItems.map((item) => item.id));
-    const uniqueNewItems = newItems.filter((item) => !existingIds.has(item.id));
-    currentItems = currentItems.concat(uniqueNewItems);
-    paginationHasMore = Boolean(result.hasMore);
-    paginationLastDoc = result.lastDoc || null;
-    updateLoadMoreVisibility();
-    renderList();
-  } catch (error) {
-    showError("No se pudo cargar la siguiente página: " + (error?.message || "error"));
-  } finally {
-    isLoadingMore = false;
-    updateLoadMoreVisibility();
-  }
-}
-
-if (btnLoadMore) {
-  btnLoadMore.addEventListener("click", loadMoreItems);
-}
-
-async function catalogUnsubscribe() {
-  const current = unsubscribeFn;
-  // Liberar el estado antes del `await` para que la vista no reutilice
-  // una suscripción que ya está en curso de cancelarse (T-112).
-  unsubscribeFn = null;
-  subscribedMediaType = null;
-  if (typeof current === "function") {
-    try {
-      await current();
-    } catch {
-      // Ignorar errores al cancelar
-    }
-  }
+/**
+ * Vacía la vista de catálogo (logout / cambio de sesión).
+ * Invalida las peticiones en vuelo y reinicia listado, paginación y
+ * filtros (REQ-103), de modo que la vista no conserve tarjetas ni
+ * filtros del tipo anterior (AC-111).
+ */
+function resetCatalogView() {
+  catalogView.requestId += 1;
+  catalogView.loading = false;
+  clearCatalogGrid();
+  resetCatalogFilters();
+  updateCatalogLoadMoreState();
+  renderCatalogState();
 }
 
 function catalogCleanup() {
-  catalogUnsubscribe();
+  resetCatalogView();
   dashboardUnsubscribeAll();
   favoritesUnsubscribeAll();
   collectionsUnsubscribeAll();
@@ -1836,7 +2222,7 @@ function renderDashboard() {
       const count = stats.totalsByType[type] || 0;
       html += `
         <div class="stat-card">
-          <span class="stat-card__label">${escapeHtml(MEDIA_TYPE_LABELS[type])}</span>
+          <span class="stat-card__label">${escapeHtml(mediaTypeLabel(type))}</span>
           <span class="stat-card__value">${count}</span>
         </div>`;
     }
@@ -1966,255 +2352,15 @@ function renderRecentList(container, items, dateField) {
   }
 }
 
-// --- Render de la lista -------------------------------------
-
-function renderList() {
-  // Aplicar filtro y orden en cliente (AC-016, LOW #5)
-  const filters = {};
-  if (filterStatus) filters.status = filterStatus;
-  if (filterMinRating) filters.minRating = Number(filterMinRating);
-  if (filterYear) filters.year = Number(filterYear);
-
-  const filtered = filterItems(currentItems, filters);
-  const sorted = sortItems(filtered, sortOption);
-
-  listEl.innerHTML = "";
-
-  if (sorted.length === 0) {
-    emptyEl.hidden = false;
-    return;
-  }
-
-  emptyEl.hidden = true;
-
-  sorted.forEach((item) => {
-    const li = createCard(item);
-    listEl.appendChild(li);
-  });
-}
-
-function createCard(item) {
-  const li = document.createElement("li");
-  li.className = "catalog-card";
-  li.dataset.mediaType = item.mediaType || activeMediaType;
-  li.dataset.itemId = item.id;
-  li.tabIndex = 0;
-  li.setAttribute("role", "button");
-  li.setAttribute("aria-label", `Ver ficha de ${item.title || "elemento"}`);
-
-  // Click en la tarjeta abre la ficha (UI-002)
-  const openDetail = (event) => {
-    // No abrir si se hizo click en los controles de la tarjeta
-    if (event.target.closest(".catalog-card__actions")) return;
-    if (event.target.closest(".heart-button")) return;
-    openItemDetail(item.mediaType || activeMediaType, item.id);
-  };
-  li.addEventListener("click", openDetail);
-  li.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      openDetail(event);
-    }
-  });
-
-  // Póster o placeholder
-  if (item.posterUrl) {
-    const img = document.createElement("img");
-    img.className = "catalog-card__poster";
-    img.src = item.posterUrl;
-    img.alt = "";
-    img.loading = "lazy";
-    li.appendChild(img);
-  } else {
-    const placeholder = document.createElement("div");
-    placeholder.className = "catalog-card__placeholder";
-    placeholder.setAttribute("aria-hidden", "true");
-    placeholder.textContent = "🎬";
-    li.appendChild(placeholder);
-  }
-
-  // Cuerpo
-  const body = document.createElement("div");
-  body.className = "catalog-card__body";
-
-  const title = document.createElement("h3");
-  title.className = "catalog-card__title";
-  title.textContent = item.title || "Sin título";
-  body.appendChild(title);
-
-  const meta = document.createElement("div");
-  meta.className = "catalog-card__meta";
-
-  if (item.year) {
-    const year = document.createElement("span");
-    year.className = "catalog-card__year";
-    year.textContent = String(item.year);
-    meta.appendChild(year);
-  }
-
-  // Badge de estado
-  const status = item.status || "pending";
-  const badge = document.createElement("span");
-  badge.className = `catalog-badge catalog-badge--${status}`;
-  badge.textContent = STATUS_LABELS[status] || status;
-  meta.appendChild(badge);
-
-  // Rating si existe
-  if (typeof item.rating === "number" && Number.isFinite(item.rating)) {
-    const rating = document.createElement("span");
-    rating.className = "catalog-card__rating";
-    rating.textContent = `★ ${item.rating}`;
-    rating.setAttribute("aria-label", `Valoración: ${item.rating} sobre 10`);
-    meta.appendChild(rating);
-  }
-
-  body.appendChild(meta);
-  li.appendChild(body);
-
-  // Corazón (spec 004, UI-003, AC-001, AC-004)
-  const heartContainer = document.createElement("div");
-  heartContainer.className = "catalog-card__heart";
-  const heartBtn = createHeartButton(item.mediaType || activeMediaType, item.id, item.isFavorite);
-  heartContainer.appendChild(heartBtn);
-  li.appendChild(heartContainer);
-
-  // Acciones
-  const actions = document.createElement("div");
-  actions.className = "catalog-card__actions";
-
-  // Select de estado
-  const statusSelect = document.createElement("select");
-  statusSelect.className = "catalog-card__status-select";
-  statusSelect.setAttribute("aria-label", "Cambiar estado");
-  ITEM_STATUSES.forEach((s) => {
-    const opt = document.createElement("option");
-    opt.value = s;
-    opt.textContent = STATUS_LABELS[s];
-    if (s === status) opt.selected = true;
-    statusSelect.appendChild(opt);
-  });
-  statusSelect.addEventListener("change", async () => {
-    const newStatus = statusSelect.value;
-    statusSelect.disabled = true;
-    try {
-      await setItemStatus(item.mediaType || activeMediaType, item.id, newStatus);
-    } catch (error) {
-      showInlineError(li, "No se pudo cambiar el estado: " + (error?.message || "error"));
-      // Restaurar el valor anterior
-      statusSelect.value = status;
-    } finally {
-      statusSelect.disabled = false;
-    }
-  });
-  actions.appendChild(statusSelect);
-
-  // Botón borrar
-  const deleteBtn = document.createElement("button");
-  deleteBtn.type = "button";
-  deleteBtn.className = "catalog-card__delete";
-  deleteBtn.textContent = "Borrar";
-  deleteBtn.addEventListener("click", async () => {
-    const confirmed = window.confirm(
-      `¿Seguro que quieres borrar «${item.title || "este elemento"}»? Esta acción no se puede deshacer.`
-    );
-    if (!confirmed) return;
-    deleteBtn.disabled = true;
-    try {
-      await deleteItem(item.mediaType || activeMediaType, item.id);
-    } catch (error) {
-      showInlineError(li, "No se pudo borrar: " + (error?.message || "error"));
-      deleteBtn.disabled = false;
-    }
-  });
-  actions.appendChild(deleteBtn);
-
-  li.appendChild(actions);
-
-  return li;
-}
-
-// --- Helpers de UI ------------------------------------------
-
-function showLoading(visible) {
-  loadingEl.hidden = !visible;
-  if (visible) {
-    emptyEl.hidden = true;
-    listEl.innerHTML = "";
-  }
-}
-
-function showError(message) {
-  errorEl.textContent = message;
-  errorEl.hidden = false;
-}
-
-function hideError() {
-  errorEl.hidden = true;
-  errorEl.textContent = "";
-}
-
-function showInlineError(cardEl, message) {
-  // Eliminar error inline previo en esta tarjeta
-  const prev = cardEl.querySelector(".catalog-card__inline-error");
-  if (prev) prev.remove();
-
-  const p = document.createElement("p");
-  p.className = "catalog-card__inline-error";
-  p.textContent = message;
-  p.setAttribute("role", "alert");
-  // Insertar antes de las acciones
-  const actions = cardEl.querySelector(".catalog-card__actions");
-  if (actions) {
-    cardEl.insertBefore(p, actions);
-  } else {
-    cardEl.appendChild(p);
-  }
-
-  // Auto-ocultar tras 5s
-  setTimeout(() => {
-    if (p.parentNode) p.remove();
-  }, 5000);
-}
-
-// --- Filtros y orden ----------------------------------------
-
-filterStatusEl.addEventListener("change", () => {
-  filterStatus = filterStatusEl.value;
-  renderList();
-});
-
-filterRatingEl.addEventListener("change", () => {
-  filterMinRating = filterRatingEl.value;
-  renderList();
-});
-
-// LOW #5: filtro de año con debounce para no re-renderizar en cada tecla.
-let filterYearDebounce = null;
-filterYearEl.addEventListener("input", () => {
-  clearTimeout(filterYearDebounce);
-  filterYearDebounce = setTimeout(() => {
-    const raw = filterYearEl.value.trim();
-    filterYear = raw;
-    renderList();
-  }, 300);
-});
-
-sortEl.addEventListener("change", () => {
-  sortOption = sortEl.value;
-  renderList();
-});
-
 // --- Init del catálogo --------------------------------------
 
 function catalogInit() {
   if (catalogInitialized) return;
   catalogInitialized = true;
-  buildTabs();
-  buildStatusFilter();
-  buildRatingFilter();
-  buildYearFilter();
-  buildSortSelect();
-  updateLoadMoreVisibility();
+  mountCatalogView();
+  syncCatalogTabs();
+  updateCatalogLoadMoreState();
+  renderCatalogState();
 
   // Vista inicial: Dashboard (spec 003, AC-001), reached desde el nav
   // principal (T-112). El resto de vistas se cargan al seleccionarlas.
@@ -2340,9 +2486,11 @@ const SEARCH_PROVIDERS = {
   book: searchGoogleBooks,
 };
 
-btnAddItem.addEventListener("click", () => {
-  openSearchModal();
-});
+if (btnAddItem) {
+  btnAddItem.addEventListener("click", () => {
+    openSearchModal();
+  });
+}
 
 btnManualForm.addEventListener("click", () => {
   closeModal("search-modal");
@@ -4027,7 +4175,7 @@ function renderDashboardFavoritesBlock() {
   } else {
     html += `<ul class="dashboard__favorites-list">`;
     for (const entry of stats.recent) {
-      const typeLabel = entry.kind === "chapter" ? "Capítulo" : (MEDIA_TYPE_LABELS[entry.mediaType] || entry.mediaType);
+      const typeLabel = entry.kind === "chapter" ? "Capítulo" : mediaTypeLabel(entry.mediaType);
       html += `<li class="dashboard__favorites-item" data-kind="${escapeHtml(entry.kind)}" data-media-type="${escapeHtml(entry.mediaType || "")}" data-id="${escapeHtml(entry.id || "")}" data-parent-item-id="${escapeHtml(entry.parentItemId || "")}" tabindex="0" role="button">`;
       html += `<span class="dashboard__favorites-item-title">${escapeHtml(entry.title || "Sin título")}</span>`;
       html += `<span class="dashboard__favorites-item-type">${escapeHtml(typeLabel)}</span>`;
