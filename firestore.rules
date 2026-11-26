@@ -61,6 +61,46 @@ service cloud.firestore {
           || (data.itemIds is list && data.itemIds.size() <= 50));
     }
 
+    // Colecciones de películas (issue #86, SEC-M01): mismas validaciones
+    // condicionales que arriba (parches parciales de updateDoc).
+    function isValidMovieCollection() {
+      let data = request.resource.data;
+      return (!("name" in data)
+          || (data.name is string && data.name.size() >= 1 && data.name.size() <= 60))
+        && (!("description" in data) || data.description == null
+          || (data.description is string && data.description.size() <= 300));
+    }
+
+    // Docs de la pestaña Películas (issue #86, SEC-M02, AC-M23): solo se
+    // exige formato si el campo está presente, para no romper parches
+    // parciales de updateDoc ni los serverTimestamp ausentes en updates
+    // (addedAt/updatedAt nunca se requieren).
+    function isValidMovieDoc() {
+      let data = request.resource.data;
+      return (!("status" in data)
+          || data.status in ["watchlist", "watching", "watched", "dropped"])
+        && (!("isFavorite" in data) || data.isFavorite is bool)
+        && (!("hasSpoilers" in data) || data.hasSpoilers is bool)
+        && (!("watchCount" in data)
+          || (data.watchCount is int && data.watchCount >= 0
+            && data.watchCount <= 1000))
+        && (!("userRating" in data) || data.userRating == null
+          || ((data.userRating is int || data.userRating is float)
+            && data.userRating >= 0 && data.userRating <= 10))
+        && (!("userReview" in data) || data.userReview == null
+          || (data.userReview is string && data.userReview.size() <= 2000))
+        && (!("tags" in data)
+          || (data.tags is list && data.tags.size() <= 20
+            && data.tags.all(t, t is string && t.size() <= 30)))
+        && (!("collectionIds" in data)
+          || (data.collectionIds is list && data.collectionIds.size() <= 50
+            && data.collectionIds.all(c, c is string)))
+        && (!("genreIds" in data)
+          || (data.genreIds is list && data.genreIds.size() <= 30
+            && data.genreIds.all(g, g is int || g is float)))
+        && (!("source" in data) || data.source in ["tmdb", "manual"]);
+    }
+
     // Catálogo global unificado (spec 002/003): lectura solo para la
     // allowlist; escritura exclusiva de consola/Admin SDK (SEC-02,
     // AC-101).
@@ -81,8 +121,20 @@ service cloud.firestore {
       allow write: if isAllowedUser() && isOwner(userId);
 
       // Datos de ocio: privados del propietario (owner-only).
+      // Películas (issue #86, SEC-M02): create/update validados; borrar,
+      // libre para el dueño (REQ-F2 MODIFIED: owner-only intacto).
       match /movies/{itemId} {
-        allow read, write: if isAllowedUser() && isOwner(userId);
+        allow read: if isAllowedUser() && isOwner(userId);
+        allow create, update: if isAllowedUser() && isOwner(userId) && isValidMovieDoc();
+        allow delete: if isAllowedUser() && isOwner(userId);
+      }
+
+      // Colecciones de películas (issue #86, SEC-M01, AC-M22): anidadas
+      // bajo /users/{userId} — ruta física users/{uid}/movie_collections —
+      // para que isOwner(userId) y el aislamiento entre usuarios apliquen.
+      match /movie_collections/{id} {
+        allow read, delete: if isAllowedUser() && isOwner(userId);
+        allow create, update: if isAllowedUser() && isOwner(userId) && isValidMovieCollection();
       }
 
       match /series/{itemId} {
