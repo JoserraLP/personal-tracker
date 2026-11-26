@@ -10,6 +10,7 @@
   <link rel="icon" type="image/png" href="./resources/icon.png">
   <link rel="apple-touch-icon" href="./resources/icon.png">
   <link rel="stylesheet" href="./css/app.css">
+  <link rel="stylesheet" href="./css/movies.css">
 </head>
 <body>
   <main class="shell">
@@ -45,10 +46,405 @@
       </header>
 
       <!-- Navegación placeholder: las secciones se incorporan en fases posteriores. -->
-      <nav id="app-nav" class="app-nav" aria-label="Navegación principal"></nav>
+      <nav id="app-nav" class="app-nav" aria-label="Navegación principal">
+        <!-- Primera categoría (REQ-D2 MOD, UI-M01). El botón alterna
+             `#movies-section` y mantiene `aria-expanded` al día (T-M11). -->
+        <button id="nav-movies" class="app-nav__item" type="button" aria-expanded="false" aria-controls="movies-section">Películas</button>
+      </nav>
 
       <div id="app-main" class="app-main">
         <p id="app-empty" class="app-empty muted" hidden>Selecciona o añade una categoría para empezar</p>
+
+        <!-- =============================================================
+             Sección de películas (UI-M01..UI-M08).
+             Esqueleto en HTML: los datos los inyecta `js/movies/moviesView.js`.
+             Todos los ids de la tabla de UI-M01..UI-M08 son estables
+             (REQ-C2) y no deben renombrarse.
+             ============================================================= -->
+        <section id="movies-section" class="movies-section" hidden aria-labelledby="movies-heading">
+          <header class="movies-section__header">
+            <h2 id="movies-heading" class="movies-section__title">Películas</h2>
+            <!-- Alta manual (UI-M08, REQ-M02): disponible aunque TMDB falle. -->
+            <button id="movies-manual-open" class="btn btn--secondary" type="button">Añadir manualmente</button>
+          </header>
+
+          <!-- Avisos generales de la sección (UI-M08). -->
+          <p id="movies-error" class="movies-message movies-message--error" role="alert" hidden></p>
+          <p id="movies-tmdb-warning" class="movies-message movies-message--warning" role="status" hidden></p>
+
+          <!-- UI-M02: barra de estadísticas, siempre visible sobre las pestañas. -->
+          <section id="movies-stats" class="movies-stats" aria-labelledby="movies-stats-heading">
+            <h3 id="movies-stats-heading" class="sr-only">Estadísticas de películas</h3>
+            <dl class="movies-stats__list">
+              <div class="movies-stats__item">
+                <dt class="movies-stats__label">Vistas</dt>
+                <dd id="movies-stats-watched" class="movies-stats__value">—</dd>
+              </div>
+              <div class="movies-stats__item">
+                <dt class="movies-stats__label">Visionados</dt>
+                <dd id="movies-stats-rewatches" class="movies-stats__value">—</dd>
+              </div>
+              <div class="movies-stats__item">
+                <dt class="movies-stats__label">Horas</dt>
+                <dd id="movies-stats-hours" class="movies-stats__value">—</dd>
+              </div>
+              <div class="movies-stats__item">
+                <dt class="movies-stats__label">Pendientes</dt>
+                <dd id="movies-stats-pending" class="movies-stats__value">—</dd>
+              </div>
+              <div class="movies-stats__item">
+                <dt class="movies-stats__label">Mi nota media</dt>
+                <dd id="movies-stats-avg-user" class="movies-stats__value">—</dd>
+              </div>
+              <div class="movies-stats__item">
+                <dt class="movies-stats__label">Nota media TMDB</dt>
+                <dd id="movies-stats-avg-tmdb" class="movies-stats__value">—</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- UI-M01: pestañas de la sección. -->
+          <div class="movies-tabs" role="tablist" aria-label="Secciones de películas">
+            <button id="movies-tab-catalog" class="movies-tab" type="button" role="tab" aria-selected="true" aria-controls="movies-panel-catalog">Explorar catálogo</button>
+            <button id="movies-tab-library" class="movies-tab" type="button" role="tab" aria-selected="false" aria-controls="movies-panel-library" tabindex="-1">Mi biblioteca</button>
+            <button id="movies-tab-collections" class="movies-tab" type="button" role="tab" aria-selected="false" aria-controls="movies-panel-collections" tabindex="-1">Mis colecciones</button>
+          </div>
+
+          <!-- UI-M03: explorar catálogo. -->
+          <section id="movies-panel-catalog" class="movies-panel" role="tabpanel" aria-labelledby="movies-tab-catalog" tabindex="0">
+            <div class="movies-search">
+              <label class="movies-label" for="movies-catalog-search">Buscar en el catálogo</label>
+              <input id="movies-catalog-search" class="movies-input" type="search" name="catalogQuery" placeholder="Busca por título (mínimo 2 caracteres)" autocomplete="off" minlength="2">
+            </div>
+
+            <p id="movies-catalog-error" class="movies-message movies-message--error" role="alert" hidden></p>
+
+            <!-- Con búsqueda activa se muestran los resultados y se ocultan las listas. -->
+            <div id="movies-catalog-results" class="movies-panel__results" hidden>
+              <h3 class="movies-panel__subtitle">Resultados de la búsqueda</h3>
+              <div id="movies-catalog-grid" class="movies-grid"></div>
+              <p id="movies-catalog-empty" class="movies-empty" hidden>Sin resultados para «X».</p>
+            </div>
+
+            <div id="movies-catalog-sections" class="movies-panel__sections">
+              <section class="movies-list" aria-labelledby="movies-catalog-trending-heading">
+                <h3 id="movies-catalog-trending-heading" class="movies-panel__subtitle">Tendencias de la semana</h3>
+                <div id="movies-catalog-trending" class="movies-grid"></div>
+              </section>
+              <section class="movies-list" aria-labelledby="movies-catalog-popular-heading">
+                <h3 id="movies-catalog-popular-heading" class="movies-panel__subtitle">Populares</h3>
+                <div id="movies-catalog-popular" class="movies-grid"></div>
+              </section>
+              <section class="movies-list" aria-labelledby="movies-catalog-top-rated-heading">
+                <h3 id="movies-catalog-top-rated-heading" class="movies-panel__subtitle">Mejor valoradas</h3>
+                <div id="movies-catalog-top-rated" class="movies-grid"></div>
+              </section>
+              <section class="movies-list" aria-labelledby="movies-catalog-upcoming-heading">
+                <h3 id="movies-catalog-upcoming-heading" class="movies-panel__subtitle">Próximos estrenos</h3>
+                <div id="movies-catalog-upcoming" class="movies-grid"></div>
+              </section>
+            </div>
+          </section>
+
+          <!-- UI-M05: mi biblioteca (buscador, filtros combinables y orden). -->
+          <section id="movies-panel-library" class="movies-panel" role="tabpanel" aria-labelledby="movies-tab-library" tabindex="0" hidden>
+            <div class="movies-filters" role="group" aria-label="Filtros de la biblioteca">
+              <div class="movies-field">
+                <label class="movies-label" for="movies-library-search">Buscar en mi biblioteca</label>
+                <input id="movies-library-search" class="movies-input" type="search" name="libraryQuery" placeholder="Busca por título" autocomplete="off">
+              </div>
+              <div class="movies-field">
+                <label class="movies-label" for="movies-library-status">Estado</label>
+                <select id="movies-library-status" class="movies-input" name="status">
+                  <option value="">Todos</option>
+                  <option value="watchlist">Pendientes</option>
+                  <option value="watching">Viendo</option>
+                  <option value="watched">Vistas</option>
+                  <option value="dropped">Abandonadas</option>
+                  <!-- Pseudofiltro: `isFavorite == true` (ALG-M02). -->
+                  <option value="favorites">Favoritas</option>
+                </select>
+              </div>
+              <div class="movies-field">
+                <label class="movies-label" for="movies-library-genre">Género</label>
+                <!-- Las opciones se rellenan desde `TMDB_GENRES_ES` (js/movies/moviesState.js, D-M08). -->
+                <select id="movies-library-genre" class="movies-input" name="genre">
+                  <option value="">Todos los géneros</option>
+                </select>
+              </div>
+              <div class="movies-field">
+                <label class="movies-label" for="movies-library-collection">Colección</label>
+                <!-- «Todas» + los nombres de las colecciones del usuario (DB-M02). -->
+                <select id="movies-library-collection" class="movies-input" name="collection">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="movies-field">
+                <label class="movies-label" for="movies-library-rating-min">Nota mínima</label>
+                <input id="movies-library-rating-min" class="movies-input" type="number" name="ratingMin" min="0" max="10" step="0.5" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="movies-field">
+                <label class="movies-label" for="movies-library-rating-max">Nota máxima</label>
+                <input id="movies-library-rating-max" class="movies-input" type="number" name="ratingMax" min="0" max="10" step="0.5" inputmode="decimal" placeholder="10">
+              </div>
+              <div class="movies-field">
+                <label class="movies-label" for="movies-library-sort">Ordenar por</label>
+                <select id="movies-library-sort" class="movies-input" name="sort">
+                  <option value="addedAt" selected>Fecha de añadido</option>
+                  <option value="lastWatchedAt">Último visionado</option>
+                  <option value="userRating">Mi puntuación</option>
+                  <option value="tmdbRating">Puntuación TMDB</option>
+                  <option value="watchCount">Veces vista</option>
+                  <option value="releaseYear">Año de estreno</option>
+                  <option value="title">Título (A-Z)</option>
+                </select>
+              </div>
+              <div class="movies-field movies-field--actions">
+                <button id="movies-library-clear" class="btn btn--secondary" type="button">Limpiar filtros</button>
+              </div>
+            </div>
+
+            <p id="movies-library-count" class="movies-count">0 películas</p>
+            <p id="movies-library-error" class="movies-message movies-message--error" role="alert" hidden></p>
+            <div id="movies-library-grid" class="movies-grid"></div>
+            <p id="movies-library-empty" class="movies-empty" hidden>No hay películas que coincidan con los filtros.</p>
+          </section>
+
+          <!-- UI-M07: mis colecciones. -->
+          <section id="movies-panel-collections" class="movies-panel" role="tabpanel" aria-labelledby="movies-tab-collections" tabindex="0" hidden>
+            <form id="movies-collections-form" class="movies-form">
+              <h3 class="movies-panel__subtitle">Nueva colección</h3>
+              <div class="movies-field">
+                <label class="movies-label" for="movies-collection-name">Nombre</label>
+                <input id="movies-collection-name" class="movies-input" type="text" name="name" maxlength="60" required>
+              </div>
+              <div class="movies-field">
+                <label class="movies-label" for="movies-collection-description">Descripción</label>
+                <textarea id="movies-collection-description" class="movies-input" name="description" rows="2" maxlength="300"></textarea>
+              </div>
+              <div class="movies-field movies-field--actions">
+                <button id="movies-collection-submit" class="btn" type="submit">Crear colección</button>
+              </div>
+            </form>
+
+            <p id="movies-collections-empty" class="movies-empty">Aún no tienes colecciones.</p>
+            <ul id="movies-collections-list" class="movies-collections"></ul>
+          </section>
+
+          <!-- UI-M08: alta manual de películas (sin conexión o sin resultados en TMDB). -->
+          <form id="movies-manual-form" class="movies-form movies-form--manual" hidden>
+            <h3 class="movies-panel__subtitle">Añadir película manualmente</h3>
+            <div class="movies-field">
+              <label class="movies-label" for="movies-manual-title">Título (obligatorio)</label>
+              <input id="movies-manual-title" class="movies-input" type="text" name="title" maxlength="200" required>
+            </div>
+            <div class="movies-field">
+              <label class="movies-label" for="movies-manual-year">Año de estreno</label>
+              <input id="movies-manual-year" class="movies-input" type="number" name="year" min="1888" max="2100" step="1" inputmode="numeric">
+            </div>
+            <div class="movies-field">
+              <label class="movies-label" for="movies-manual-runtime">Duración (minutos)</label>
+              <input id="movies-manual-runtime" class="movies-input" type="number" name="runtime" min="1" max="1000" step="1" inputmode="numeric">
+            </div>
+            <div class="movies-field">
+              <label class="movies-label" for="movies-manual-overview">Sinopsis</label>
+              <textarea id="movies-manual-overview" class="movies-input" name="overview" rows="3" maxlength="2000"></textarea>
+            </div>
+            <div class="movies-field">
+              <label class="movies-label" for="movies-manual-genres">Géneros</label>
+              <!-- Multi-select con el diccionario `TMDB_GENRES_ES` (D-M08). -->
+              <select id="movies-manual-genres" class="movies-input" name="genres" multiple size="6"></select>
+              <p class="movies-hint">Mantén Ctrl (o Cmd) para seleccionar varios géneros.</p>
+            </div>
+            <p id="movies-manual-error" class="movies-message movies-message--error" role="alert" hidden></p>
+            <div class="movies-field movies-field--actions">
+              <button id="movies-manual-submit" class="btn" type="submit">Guardar película</button>
+            </div>
+          </form>
+
+          <!-- =============================================================
+               UI-M06: ficha de película en un `<dialog>` nativo (D-M05).
+               El diálogo gestiona ESC y la capa modal; el foco inicial
+               va al título (`#movie-detail-title`, `tabindex="-1"`).
+               ============================================================= -->
+          <dialog id="movie-detail" class="movie-detail" aria-labelledby="movie-detail-title">
+            <div class="movie-detail__header">
+              <img id="movie-detail-backdrop" class="movie-detail__backdrop" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" hidden>
+              <div class="movie-detail__headline">
+                <img id="movie-detail-poster" class="movie-detail__poster" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" hidden>
+                <div class="movie-detail__headline-text">
+                  <h2 id="movie-detail-title" class="movie-detail__title" tabindex="-1">Cargando…</h2>
+                  <p id="movie-detail-original-title" class="movie-detail__original-title"></p>
+                  <p class="movie-detail__facts">
+                    <span id="movie-detail-release" class="movie-detail__release"></span>
+                    <span id="movie-detail-runtime" class="movie-detail__runtime"></span>
+                    <span id="movie-detail-tmdb-rating" class="movie-detail__tmdb-rating"></span>
+                  </p>
+                  <p id="movie-detail-genres" class="movie-detail__genres"></p>
+                </div>
+              </div>
+              <button id="movie-detail-close" class="btn btn--secondary" type="button">Cerrar</button>
+            </div>
+
+            <div class="movie-detail__body">
+              <!-- Bloque «catálogo»: metadatos de TMDB (API-M06, AC-M04). -->
+              <section class="movie-detail__block" aria-labelledby="movie-detail-info-heading">
+                <h3 id="movie-detail-info-heading" class="sr-only">Datos de la película</h3>
+                <p id="movie-detail-overview" class="movie-detail__overview"></p>
+                <dl class="movie-detail__facts-list">
+                  <dt class="movies-label">Director</dt>
+                  <dd id="movie-detail-director" class="movie-detail__director"></dd>
+                  <dt class="movies-label">Reparto</dt>
+                  <dd id="movie-detail-cast" class="movie-detail__cast"></dd>
+                </dl>
+                <p class="movie-detail__links">
+                  <a id="movie-detail-trailer" class="btn btn--secondary" href="#" target="_blank" rel="noopener noreferrer" hidden>Ver tráiler</a>
+                </p>
+                <!-- «Dónde ver»: la sección se oculta si no hay proveedores (UI-M06). -->
+                <section id="movie-detail-providers" class="movie-detail__providers" hidden aria-labelledby="movie-detail-providers-heading">
+                  <h3 id="movie-detail-providers-heading" class="movie-detail__subtitle">Dónde ver</h3>
+                  <ul id="movie-detail-providers-list" class="movie-detail__list"></ul>
+                </section>
+              </section>
+
+              <!-- Bloque «seguimiento»: estado, favoritos, visionados y notas. -->
+              <section class="movie-detail__block" aria-labelledby="movie-detail-tracking-heading">
+                <h3 id="movie-detail-tracking-heading" class="movie-detail__subtitle">Seguimiento</h3>
+
+                <div class="movie-detail__row">
+                  <div class="movies-field">
+                    <label class="movies-label" for="movie-detail-status">Estado</label>
+                    <select id="movie-detail-status" class="movies-input">
+                      <option value="watchlist">Pendiente</option>
+                      <option value="watching">Viendo</option>
+                      <option value="watched">Vista</option>
+                      <option value="dropped">Abandonada</option>
+                    </select>
+                  </div>
+                  <div class="movies-field">
+                    <span class="movies-label" id="movie-detail-favorite-label">Favorito</span>
+                    <button id="movie-detail-favorite" class="btn btn--secondary" type="button" aria-pressed="false" aria-labelledby="movie-detail-favorite-label">
+                      <span aria-hidden="true">★</span>
+                      <span data-movie-role="favorite-label">Marcar como favorita</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="movie-detail__row">
+                  <div class="movies-field">
+                    <span class="movies-label">Veces vista</span>
+                    <span id="movie-detail-watch-count" class="movie-detail__watch-count">0</span>
+                  </div>
+                  <div class="movies-field">
+                    <button id="movie-detail-watch-inc" class="btn btn--secondary" type="button" aria-label="Sumar un visionado">+1</button>
+                    <button id="movie-detail-watch-dec" class="btn btn--secondary" type="button" aria-label="Restar un visionado">−1</button>
+                  </div>
+                  <div class="movies-field">
+                    <label class="movies-label" for="movie-detail-watch-input">Visionados (edición manual)</label>
+                    <input id="movie-detail-watch-input" class="movies-input" type="number" name="watchCount" min="0" max="1000" step="1" inputmode="numeric">
+                  </div>
+                </div>
+
+                <ul id="movie-detail-watch-dates" class="movie-detail__dates"></ul>
+
+                <div class="movies-field">
+                  <label class="movies-label" for="movie-detail-user-rating">Mi nota (0-10, medios puntos)</label>
+                  <input id="movie-detail-user-rating" class="movies-input" type="number" name="userRating" min="0" max="10" step="0.5" inputmode="decimal" placeholder="Sin nota">
+                  <!-- La nota personal se muestra separada de la de TMDB (AC-M24). -->
+                  <output id="movie-detail-user-rating-display" class="movie-detail__user-rating" for="movie-detail-user-rating">Mi nota: —</output>
+                </div>
+
+                <div class="movies-field">
+                  <label class="movies-label" for="movie-detail-review">Mi reseña</label>
+                  <textarea id="movie-detail-review" class="movies-input" name="userReview" rows="4" maxlength="2000"></textarea>
+                  <label class="movies-checkbox">
+                    <input id="movie-detail-spoilers" type="checkbox" name="hasSpoilers">
+                    Mi reseña contiene spoilers
+                  </label>
+                  <div id="movie-detail-spoiler-warning" class="movie-detail__warning" hidden>
+                    <p class="movie-detail__warning-text">Contiene spoilers</p>
+                    <button id="movie-detail-spoiler-reveal" class="btn btn--secondary" type="button">Mostrar reseña</button>
+                  </div>
+                </div>
+
+                <div class="movies-field">
+                  <label class="movies-label" for="movie-detail-tags">Etiquetas (separadas por comas)</label>
+                  <input id="movie-detail-tags" class="movies-input" type="text" name="tags" maxlength="600">
+                </div>
+
+                <fieldset class="movie-detail__collections">
+                  <legend class="movies-label">Colecciones</legend>
+                  <!-- Un checkbox por colección del usuario (DB-M01, DB-M02). -->
+                  <div id="movie-detail-collections" class="movie-detail__collections-list"></div>
+                </fieldset>
+
+                <!-- Aviso de cambios pendientes: visible solo con cambios sin guardar (D-M09, AC-M26). -->
+                <p id="movie-detail-dirty-warning" class="movie-detail__warning" hidden>Cambios sin guardar</p>
+
+                <div class="movie-detail__actions">
+                  <button id="movie-detail-save" class="btn" type="button">Guardar</button>
+                  <button id="movie-detail-refresh" class="btn btn--secondary" type="button">Actualizar datos</button>
+                  <!-- El borrado pide confirmación con «¿Eliminar esta película de tu biblioteca?» (AC-M27). -->
+                  <button id="movie-detail-delete" class="btn btn--danger" type="button">Eliminar</button>
+                </div>
+              </section>
+            </div>
+          </dialog>
+
+          <!-- =============================================================
+               Plantilla de la tarjeta de película (UI-M04), compartida por
+               catálogo y biblioteca. Al clonarla, la vista da a cada
+               instancia ids únicos (p. ej. `movie-card-open-<movieId>`)
+               para no duplicar ids y localiza los elementos por los
+               atributos `data-movie-role`.
+               ============================================================= -->
+          <template id="movie-card-template">
+            <article class="movie-card" data-movie-role="card">
+              <button id="movie-card-open" class="movie-card__open" type="button" data-movie-role="open">
+                <img class="movie-card__poster" data-movie-role="poster" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" decoding="async">
+                <span class="movie-card__title" data-movie-role="title"></span>
+                <span class="movie-card__year" data-movie-role="year"></span>
+                <span class="movie-card__rating" data-movie-role="rating"></span>
+              </button>
+              <p class="movie-card__meta">
+                <span class="movie-card__status" data-movie-role="status"></span>
+                <span id="movie-card-watchcount" class="movie-card__watchcount" data-movie-role="watchcount" hidden></span>
+              </p>
+              <div class="movie-card__actions">
+                <!-- Solo catálogo: alta inmediata con `status:"watchlist"`. -->
+                <button id="movie-card-add" class="btn btn--secondary" type="button" data-movie-role="add">Añadir</button>
+                <!-- Solo biblioteca: alterna `isFavorite` (AC-M14). -->
+                <button id="movie-card-favorite" class="btn btn--secondary" type="button" aria-pressed="false" data-movie-role="favorite" hidden>
+                  <span aria-hidden="true">★</span>
+                  <span data-movie-role="favorite-label">Favorita</span>
+                </button>
+              </div>
+            </article>
+          </template>
+
+          <!-- =============================================================
+               Plantilla de una colección (UI-M07): nombre, recuento y
+               acciones. Al clonarla, la vista da a cada instancia ids
+               únicos (p. ej. `movies-collection-open-<collectionId>`) para
+               no duplicar ids y localiza los elementos por los atributos
+               `data-movie-role`.
+               ============================================================= -->
+          <template id="movies-collection-item-template">
+            <li class="movies-collection" id="movies-collection-item" data-movie-role="collection-item">
+              <div class="movies-collection__data">
+                <p class="movies-collection__name" data-movie-role="collection-name"></p>
+                <p class="movies-collection__count" data-movie-role="collection-count">0 películas</p>
+                <p class="movies-collection__description" data-movie-role="collection-description"></p>
+              </div>
+              <div class="movies-collection__actions">
+                <button id="movies-collection-open" class="btn btn--secondary" type="button" data-movie-role="collection-open">Ver películas</button>
+                <!-- Renombrar también permite editar la descripción (UI-M07). -->
+                <button id="movies-collection-rename" class="btn btn--secondary" type="button" data-movie-role="collection-rename">Renombrar</button>
+                <button id="movies-collection-delete" class="btn btn--danger" type="button" data-movie-role="collection-delete">Eliminar</button>
+              </div>
+            </li>
+          </template>
+        </section>
       </div>
     </section>
 
