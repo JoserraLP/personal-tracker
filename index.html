@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#171512">
+  <meta name="description" content="Personal Tracker">
+  <title>Personal Tracker</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./resources/icon.png">
+  <link rel="apple-touch-icon" href="./resources/icon.png">
+  <link rel="stylesheet" href="./css/app.css">
+</head>
+<body>
+  <main class="shell">
+    <!-- Estado inicial: se resuelve al observar la sesión. -->
+    <section id="view-loading" class="view view--loading">
+      <p class="muted">Cargando…</p>
+    </section>
+
+    <!-- Sin sesión: acceso con Google. -->
+    <section id="view-login" class="view" hidden>
+      <h1 class="title">Personal Tracker</h1>
+      <p class="subtitle">Acceso restringido a la lista de invitados.</p>
+      <button id="btn-login" class="btn btn--google" type="button">
+        <span class="btn__icon" aria-hidden="true">G</span>
+        Entrar con Google
+      </button>
+      <p id="login-error" class="error" role="alert" hidden></p>
+    </section>
+
+    <!-- Sesión válida: barra superior, navegación placeholder y área principal. -->
+    <section id="view-allowed" class="view view--allowed" hidden>
+      <header class="app-topbar">
+        <div class="app-topbar__identity">
+          <img id="user-photo" class="avatar" src="./resources/icon.png" alt="" hidden>
+          <div class="app-topbar__data">
+            <h1 id="user-name" class="app-topbar__name">invitado</h1>
+            <p id="user-email" class="app-topbar__email muted"></p>
+          </div>
+        </div>
+        <div class="app-topbar__actions">
+          <button id="btn-logout" class="btn btn--logout" type="button">Salir</button>
+        </div>
+      </header>
+
+      <!-- Navegación placeholder: las secciones se incorporan en fases posteriores. -->
+      <nav id="app-nav" class="app-nav" aria-label="Navegación principal"></nav>
+
+      <div id="app-main" class="app-main">
+        <p id="app-empty" class="app-empty muted" hidden>Selecciona o añade una categoría para empezar</p>
+      </div>
+    </section>
+
+    <!-- Correo fuera de la lista de invitados. -->
+    <section id="view-denied" class="view" hidden>
+      <h1 class="title">Acceso no autorizado</h1>
+      <p class="subtitle">Tu correo no está en la lista de invitados.</p>
+      <button id="btn-back" class="btn" type="button">Volver</button>
+    </section>
+  </main>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

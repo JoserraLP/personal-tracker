@@ -1,0 +1,230 @@
+/* =============================================================
+   Personal Tracker — estilos del núcleo base.
+
+   Alcance: shell de la aplicación (`.shell`, `.view`), puerta de
+   acceso (`.btn--google`), barra superior con los datos del
+   usuario (`.app-topbar`), navegación placeholder (`.app-nav`),
+   área principal con su estado vacío (`.app-main`, `.app-empty`)
+   y utilidades (`.error`, `.muted`, `.sr-only`).
+
+   Los textos de UI están en español (specs/00-overview.md, REQ-C5).
+   ============================================================= */
+
+:root {
+  --bg: #171512;
+  --panel: #211e1a;
+  --text: #f2efe9;
+  --muted: #a8a29a;
+  --accent: #8ab4f8;
+  --error: #ff8a80;
+  --border: #3a352e;
+  --radius: 14px;
+}
+
+/* El atributo HTML `hidden` siempre debe ganar a cualquier `display`
+   declarado por clase. */
+[hidden] { display: none !important; }
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; min-height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+/* -------------------------------------------------------------
+   Shell
+   ------------------------------------------------------------- */
+
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.view {
+  width: min(420px, 100%);
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
+}
+
+.view--loading { background: none; box-shadow: none; }
+
+.view--allowed {
+  width: min(960px, 100%);
+  text-align: left;
+  padding: 24px;
+}
+
+/* -------------------------------------------------------------
+   Textos y utilidades
+   ------------------------------------------------------------- */
+
+.title { margin: 0 0 8px; font-size: 1.5rem; }
+
+.subtitle { margin: 0 0 20px; color: var(--muted); overflow-wrap: anywhere; }
+
+.muted { color: var(--muted); }
+
+.error { margin: 16px 0 0; color: var(--error); font-size: 0.95rem; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* -------------------------------------------------------------
+   Avatar
+   ------------------------------------------------------------- */
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--border);
+}
+
+/* -------------------------------------------------------------
+   Botones
+   ------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: #2e2a24;
+  border: 1px solid #454039;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn:hover { background: #38332b; }
+
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.btn:disabled { opacity: 0.6; cursor: wait; }
+
+.btn--google { background: #ffffff; color: #1f1f1f; border-color: #dadce0; }
+
+.btn--google:hover { background: #f1f3f4; }
+
+.btn--logout { width: auto; padding: 10px 18px; }
+
+.btn__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: conic-gradient(#ea4335, #fbbc05, #34a853, #4285f4, #ea4335);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* -------------------------------------------------------------
+   Barra superior (datos del usuario)
+   ------------------------------------------------------------- */
+
+.app-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-topbar__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-topbar__data { min-width: 0; }
+
+.app-topbar__name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.app-topbar__email {
+  margin: 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.app-topbar__actions { display: flex; align-items: center; gap: 8px; }
+
+/* -------------------------------------------------------------
+   Navegación placeholder
+   ------------------------------------------------------------- */
+
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 0;
+  padding: 16px 0;
+}
+
+/* -------------------------------------------------------------
+   Área principal y estado vacío
+   ------------------------------------------------------------- */
+
+.app-main {
+  padding-top: 8px;
+  min-height: 220px;
+}
+
+.app-empty {
+  margin: 0;
+  padding: 32px 16px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+/* -------------------------------------------------------------
+   Responsive
+   ------------------------------------------------------------- */
+
+@media (max-width: 560px) {
+  .shell { padding: 16px; }
+
+  .view { padding: 24px 20px; }
+
+  .app-topbar { align-items: flex-start; }
+
+  .app-topbar__actions { width: 100%; }
+
+  .btn--logout { width: 100%; }
+}
