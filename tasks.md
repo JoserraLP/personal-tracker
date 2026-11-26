@@ -31,7 +31,7 @@ pendientes). Specs citadas por ID (`rg "API-M01" openspec/changes/movies/`).
 | T-M07 | dev-frontend | `js/movies/moviesView.js` | UI-M01..M04, ALG-M01 | T-M04, T-M05 | `mountMovies()`: pestañas, stats en español (AC-M20), 4 listas + búsqueda con debounce 300 ms, tarjetas `w500` con estados error/vacío | done |
 | T-M08 | dev-frontend | `js/movies/moviesView.js` | UI-M05, ALG-M02 | T-M07 | Mi biblioteca: filtros combinables, orden (7 claves), contador, estados vacíos; AC-M14, AC-M18, AC-M19 | done |
 | T-M09 | dev-frontend | `js/movies/moviesView.js` | UI-M06, UI-M08, ALG-M03, ALG-M04, ALG-M06, D-M09 | T-M08 | Ficha `<dialog>` completa: metadatos, tráiler, «Dónde ver», estado/favorito/±1, nota 0–10, reseña spoiler, colecciones, caché, alta manual, avisos es; AC-M01, AC-M04, AC-M06, AC-M08, AC-M10..AC-M15, AC-M21, AC-M24, AC-M26, AC-M27 | done |
-| T-M10 | dev-frontend | `js/movies/moviesView.js` | UI-M07, DB-M02 | T-M09 | Colecciones: crear/renombrar/describir/eliminar, recuento, filtrado; AC-M15, AC-M16 | todo |
+| T-M10 | dev-frontend | `js/movies/moviesView.js` | UI-M07, DB-M02 | T-M09 | Colecciones: crear/renombrar/describir/eliminar, recuento, filtrado; AC-M15, AC-M16 | done |
 | T-M11 | dev-frontend | `js/app.js` | UI-M01, REQ-D2 (MOD), REQ-D3 (MOD) | T-M10 | `#nav-movies` alterna `#movies-section` con `aria-expanded` y `#app-empty` conservado; AC-M17 | todo |
 | T-M12 | devops | `firestore.rules` | SEC-M01..M03, REQ-F2 (MOD) | — | `match /movie_collections/{id}` owner-only + `isValidMovieDoc()` en `movies`; reglas previas intactas; AC-M22, AC-M23 | done |
 | T-M13 | devops | `firestore.indexes.json` | DB-M04, REQ-F2 (MOD) | T-M12 | 6 índices compuestos de DB-M04 (`collectionGroup:"movies"`), estructura preservada | done |
