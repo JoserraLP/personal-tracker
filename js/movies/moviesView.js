@@ -1,7 +1,7 @@
 // =============================================================
 // moviesView.js — Vista de la sección «Películas».
 //
-// Alcance de esta tarea (T-M07):
+// Alcance de esta tarea (T-M07) y de su ampliación (T-M08):
 //   - UI-M01: conmutación de las tres pestañas («Explorar
 //     catálogo», «Mi biblioteca», «Mis colecciones») con
 //     `role="tablist"`, `aria-selected` y navegación por teclado.
@@ -16,6 +16,14 @@
 //     favorito con `aria-pressed`).
 //   - ALG-M01: las estadísticas salen de `computeStats`
 //     (`js/movies/moviesState.js`), no se recalculan aquí.
+//   - UI-M05: «Mi biblioteca» con buscador instantáneo, filtros
+//     combinables (estado/favoritas, género, colección y rango de
+//     nota), botón «Limpiar filtros», selector de orden con las
+//     siete claves de `SORT_OPTIONS`, contador «N películas» y
+//     estados vacíos en español.
+//   - ALG-M02: el filtrado y el orden de la biblioteca se delegan
+//     en `filterMovies` y `sortMovies` (`js/movies/moviesState.js`):
+//     aquí solo se leen los controles y se pinta el resultado.
 //
 // Dependencias ya implementadas (se consumen, no se duplican):
 //   - `js/movies/moviesState.js` (T-M04): etiquetas de estado,
@@ -26,7 +34,6 @@
 //   - `index.html` (T-M05): esqueleto con los ids estables.
 //
 // Tareas posteriores que amplían este mismo módulo:
-//   - T-M08 (UI-M05): filtros y orden de «Mi biblioteca».
 //   - T-M09 (UI-M06, UI-M08): ficha en `<dialog>` y alta manual.
 //   - T-M10 (UI-M07): panel «Mis colecciones».
 //
@@ -37,13 +44,16 @@
 import {
   DEFAULT_SORT_KEY,
   DEFAULT_TAB,
+  LIBRARY_STATUS_OPTIONS,
   MOVIE_TABS,
+  SORT_OPTIONS,
   STATUS_LABELS,
   TMDB_GENRE_OPTIONS,
   computeStats,
   createLibraryFilters,
   createMoviesState,
   filterMovies,
+  hasActiveLibraryFilters,
   sortMovies,
 } from "./moviesState.js";
 
@@ -177,6 +187,33 @@ const POSTER_PLACEHOLDER =
   );
 
 // -------------------------------------------------------------
+// Constantes de «Mi biblioteca» (UI-M05)
+// -------------------------------------------------------------
+
+/** Estado vacío: la biblioteca no tiene ninguna película. */
+const LIBRARY_EMPTY_MESSAGE =
+  "Tu biblioteca está vacía. Añade películas desde «Explorar catálogo».";
+
+/** Estado vacío: hay películas, pero ninguna cumple los filtros (AC-M18). */
+const LIBRARY_NO_RESULTS_MESSAGE =
+  "No hay películas que coincidan con los filtros.";
+
+/** Límites del filtro de nota personal (UI-M05: 0–10, paso 0.5). */
+const RATING_MIN = 0;
+const RATING_MAX = 10;
+const RATING_STEP = 0.5;
+
+/**
+ * Aviso en español cuando el rango de nota no es válido (UI-M05).
+ */
+const RATING_RANGE_ERROR =
+  "Las notas deben estar entre 0 y 10 y en medios puntos (0,5).";
+
+/** Aviso en español cuando el rango de nota está invertido (UI-M05). */
+const RATING_RANGE_ORDER_ERROR =
+  "La nota mínima no puede ser mayor que la nota máxima.";
+
+// -------------------------------------------------------------
 // Formateadores (es-ES)
 // -------------------------------------------------------------
 
@@ -245,7 +282,9 @@ function safeIdPart(value) {
  * @typedef {Object} MoviesViewState
  * @property {string} activeTab
  * @property {ReturnType<typeof createLibraryFilters>} libraryFilters
- * @property {Array<Record<string, unknown>>} library
+ * @property {Array<Record<string, unknown>>} library Biblioteca completa.
+ * @property {Array<Record<string, unknown>>} libraryFiltered Biblioteca que
+ *   devuelve el servidor con los filtros de servidor aplicados.
  * @property {Map<string, Record<string, unknown>>} libraryByDocId
  * @property {Map<string, Record<string, unknown>>} libraryByTmdbId
  * @property {Array<Record<string, unknown>>} collections
@@ -270,6 +309,7 @@ function createViewState() {
     activeTab: base.activeTab,
     libraryFilters: base.libraryFilters,
     library: [],
+    libraryFiltered: [],
     libraryByDocId: new Map(),
     libraryByTmdbId: new Map(),
     collections: [],
@@ -293,8 +333,17 @@ let dom = null;
 /** Estado vivo de la vista. */
 let state = createViewState();
 
-/** Suscriptores de Firestore activos (para poder cancelarlos). */
-let unsubscribers = [];
+/** Suscriptor de la biblioteca con los filtros de servidor (UI-M05). */
+let moviesUnsubscribe = null;
+
+/** Suscriptor de la biblioteca sin filtros: alimenta las estadísticas (UI-M02). */
+let statsUnsubscribe = null;
+
+/** Suscriptor de las colecciones (DB-M02). */
+let collectionsUnsubscribe = null;
+
+/** Firma de los filtros de servidor suscritos (evita resuscripciones inútiles). */
+let serverFiltersSignature = "";
 
 /** Temporizadores de búsqueda pendientes. */
 let searchTimer = null;
@@ -304,6 +353,9 @@ let searchToken = 0;
 
 /** Temporizador de búsqueda de la biblioteca. */
 let librarySearchTimer = null;
+
+/** Último error de carga de la biblioteca (se muestra en `movies-library-error`). */
+let libraryLoadError = "";
 
 /** Controlador devuelto por `mountMovies`. */
 let activeController = null;
@@ -979,8 +1031,49 @@ async function runCatalogSearch(query) {
 }
 
 // -------------------------------------------------------------
-// Biblioteca (base compartida; T-M08 la completa con UI-M05)
+// Biblioteca: buscador, filtros combinables y orden (UI-M05)
 // -------------------------------------------------------------
+
+/**
+ * Rellena el filtro de estado con las opciones de `moviesState.js`
+ * (UI-M05): «Todos», «Pendientes», «Viendo», «Vistas»,
+ * «Abandonadas» y «Favoritas» (pseudofiltro `isFavorite`).
+ */
+function populateStatusFilter() {
+  const select = dom?.library?.status;
+  if (!select) return;
+
+  clearNode(select);
+
+  for (const option of LIBRARY_STATUS_OPTIONS) {
+    const node = document.createElement("option");
+    node.value = option.value;
+    node.textContent = option.label;
+    select.append(node);
+  }
+
+  select.value = "";
+}
+
+/**
+ * Rellena el selector de orden con las siete claves de `SORT_OPTIONS`
+ * (UI-M05, ALG-M02). El orden por defecto es «Fecha de añadido».
+ */
+function populateSortFilter() {
+  const select = dom?.library?.sort;
+  if (!select) return;
+
+  clearNode(select);
+
+  for (const option of SORT_OPTIONS) {
+    const node = document.createElement("option");
+    node.value = option.value;
+    node.textContent = option.label;
+    select.append(node);
+  }
+
+  select.value = DEFAULT_SORT_KEY;
+}
 
 /**
  * Rellena el filtro de género con el diccionario estático (D-M08).
@@ -1007,6 +1100,9 @@ function populateGenreFilter() {
  * Rellena el filtro de colección con los nombres del usuario
  * (DB-M02). «Todas» es la opción por defecto.
  *
+ * Si la colección seleccionada ya no existe (por ejemplo, porque se
+ * ha borrado), el filtro vuelve a «Todas» y se reaplican los filtros.
+ *
  * @param {Array<Record<string, unknown>>} collections
  */
 function populateCollectionFilter(collections) {
@@ -1028,25 +1124,141 @@ function populateCollectionFilter(collections) {
     select.append(option);
   }
 
-  if (previous) select.value = previous;
+  const stillExists = collections.some(
+    (collection) => String(collection.id) === previous
+  );
+
+  if (previous !== "" && stillExists) {
+    select.value = previous;
+    return;
+  }
+
+  // La colección seleccionada ya no existe: el filtro vuelve a «Todas».
+  select.value = "";
+  if (previous !== "") applyLibraryFilters();
+}
+
+/**
+ * Valor numérico escrito en un filtro de nota. Acepta coma decimal
+ * («7,5»). Vacío o no numérico se trata como «sin fijar».
+ *
+ * @param {HTMLInputElement|null|undefined} input
+ * @returns {number|null}
+ */
+function readRatingValue(input) {
+  if (!input) return null;
+
+  const raw = typeof input.value === "string" ? input.value.trim() : "";
+  if (raw === "") return null;
+
+  const parsed = Number(raw.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/**
+ * `true` si una nota está dentro del rango y del paso válidos.
+ *
+ * @param {number|null} value
+ * @returns {boolean}
+ */
+function isValidRatingValue(value) {
+  if (value === null) return true;
+  if (value < RATING_MIN || value > RATING_MAX) return false;
+  return (
+    Math.abs(value / RATING_STEP - Math.round(value / RATING_STEP)) < 1e-9
+  );
+}
+
+/**
+ * Estado del filtro de nota (UI-M05: 0–10, paso 0.5).
+ *
+ * Un valor inválido **no** se aplica: el filtro correspondiente se
+ * deja sin fijar y el input se marca con `aria-invalid` para que el
+ * error se anuncie en lugar de «corregir» en silencio lo que ha
+ * escrito el usuario.
+ *
+ * @returns {{
+ *   min: number|null,
+ *   max: number|null,
+ *   minValid: boolean,
+ *   maxValid: boolean,
+ *   inverted: boolean,
+ *   valid: boolean
+ * }}
+ */
+function readRatingRange() {
+  const library = dom?.library ?? {};
+
+  const min = readRatingValue(library.ratingMin);
+  const max = readRatingValue(library.ratingMax);
+
+  const minValid = isValidRatingValue(min);
+  const maxValid = isValidRatingValue(max);
+  const inverted = min !== null && max !== null && min > max;
+
+  if (library.ratingMin) {
+    library.ratingMin.setAttribute("aria-invalid", minValid ? "false" : "true");
+  }
+  if (library.ratingMax) {
+    library.ratingMax.setAttribute("aria-invalid", maxValid ? "false" : "true");
+  }
+
+  return {
+    min: minValid && !inverted ? min : null,
+    max: maxValid && !inverted ? max : null,
+    minValid,
+    maxValid,
+    inverted,
+    valid: minValid && maxValid && !inverted,
+  };
+}
+
+/**
+ * Mensaje de error del rango de nota (o `null` si es válido).
+ *
+ * @returns {string|null}
+ */
+function readRatingError() {
+  const range = readRatingRange();
+
+  if (!range.minValid || !range.maxValid) return RATING_RANGE_ERROR;
+  if (range.inverted) return RATING_RANGE_ORDER_ERROR;
+
+  return null;
+}
+
+/**
+ * Muestra en `movies-library-error` el aviso que corresponda: primero
+ * el del rango de nota y, si no hay, el error de carga de la
+ * biblioteca.
+ */
+function renderLibraryError() {
+  setMessage(dom?.library?.error, readRatingError() ?? libraryLoadError);
 }
 
 /**
  * Lee los controles de filtro de la biblioteca y los normaliza con
- * `createLibraryFilters` (T-M04).
+ * `createLibraryFilters` (T-M04). Los filtros se combinan con AND
+ * (AC-M18): estado/favoritas, género, colección, rango de nota y
+ * búsqueda.
  *
  * @returns {ReturnType<typeof createLibraryFilters>}
  */
 function readLibraryFilters() {
   const library = dom?.library ?? {};
+  const status = library.status?.value ?? "";
+  const range = readRatingRange();
 
   return createLibraryFilters({
     query: library.search?.value ?? "",
-    status: library.status?.value ?? "",
+    status,
+    // «Favoritas» es un pseudofiltro: `isFavorite === true`.
+    favorite: status === "favorites",
     genreId: library.genre?.value ? Number(library.genre.value) : null,
     collectionId: library.collection?.value ?? "",
-    ratingMin: library.ratingMin?.value ?? null,
-    ratingMax: library.ratingMax?.value ?? null,
+    // Un extremo inválido no se aplica: el filtro se deja sin fijar.
+    ratingMin: range.min,
+    ratingMax: range.max,
     sort: library.sort?.value || DEFAULT_SORT_KEY,
   });
 }
@@ -1054,26 +1266,34 @@ function readLibraryFilters() {
 /**
  * Pinta la biblioteca: filtra en cliente (ALG-M02), ordena en
  * cliente (D-M03) y actualiza el recuento y el estado vacío.
+ *
+ * El origen es el snapshot que devuelve el servidor con los filtros
+ * de servidor aplicados; el filtrado en cliente se mantiene para la
+ * búsqueda y el rango de nota.
  */
 function renderLibrary() {
   const grid = dom?.library?.grid;
-  const movies = filterMovies(state.library, state.libraryFilters);
+  const movies = filterMovies(state.libraryFiltered, state.libraryFilters);
   const sorted = sortMovies(movies, state.libraryFilters.sort);
 
   renderCards(grid, sorted, "library");
 
+  // Contador «N películas» (UI-M05).
   const count = dom?.library?.count;
   if (count) {
     const total = formatInteger(sorted.length) ?? "0";
     count.textContent = `${total} ${sorted.length === 1 ? "película" : "películas"}`;
   }
 
+  // Estados vacíos en español: biblioteca vacía o sin resultados.
   const empty = dom?.library?.empty;
   if (empty) {
-    empty.textContent =
-      state.library.length === 0
-        ? "Tu biblioteca está vacía. Añade películas desde «Explorar catálogo»."
-        : "No hay películas que coincidan con los filtros.";
+    const libraryIsEmpty =
+      state.library.length === 0 && !hasActiveLibraryFilters(state.libraryFilters);
+
+    empty.textContent = libraryIsEmpty
+      ? LIBRARY_EMPTY_MESSAGE
+      : LIBRARY_NO_RESULTS_MESSAGE;
     empty.hidden = sorted.length > 0;
   }
 }
@@ -1083,14 +1303,22 @@ function renderLibrary() {
  */
 function applyLibraryFilters() {
   state.libraryFilters = readLibraryFilters();
+  syncServerSubscription();
+  renderLibraryError();
   renderLibrary();
 }
 
 /**
- * Restablece los controles y los filtros de la biblioteca.
+ * Restablece los controles y los filtros de la biblioteca
+ * («Limpiar filtros» de UI-M05): la lista completa vuelve a pintarse.
  */
 function clearLibraryFilters() {
   const library = dom?.library ?? {};
+
+  if (librarySearchTimer !== null) {
+    clearTimeout(librarySearchTimer);
+    librarySearchTimer = null;
+  }
 
   if (library.search) library.search.value = "";
   if (library.status) library.status.value = "";
@@ -1100,18 +1328,26 @@ function clearLibraryFilters() {
   if (library.ratingMax) library.ratingMax.value = "";
   if (library.sort) library.sort.value = DEFAULT_SORT_KEY;
 
-  state.libraryFilters = createLibraryFilters();
-  renderLibrary();
+  // Los controles ya están vacíos: `applyLibraryFilters` relee los
+  // valores por defecto y renueva la suscripción sin filtros.
+  applyLibraryFilters();
 }
 
 /**
  * Búsqueda instantánea de la biblioteca (mismo debounce que el
- * catálogo).
+ * catálogo). Al vaciar el buscador se aplica al momento.
  */
 function onLibrarySearchInput() {
   if (librarySearchTimer !== null) {
     clearTimeout(librarySearchTimer);
     librarySearchTimer = null;
+  }
+
+  const query = dom?.library?.search?.value?.trim() ?? "";
+
+  if (query === "") {
+    applyLibraryFilters();
+    return;
   }
 
   librarySearchTimer = setTimeout(() => {
@@ -1125,12 +1361,119 @@ function onLibrarySearchInput() {
 // -------------------------------------------------------------
 
 /**
- * Recibe el snapshot de la biblioteca: actualiza los índices, las
- * estadísticas (UI-M02) y la lista de la biblioteca.
+ * Aplica en memoria el nuevo estado de favorito de una película
+ * (AC-M14). No repinta: el parcheo de la tarjeta y el repintado (si
+ * el filtro deja de incluir la película) los hace `syncLibraryCard`.
+ *
+ * @param {string} docId
+ * @param {boolean} isFavorite
+ * @returns {boolean} `true` si la película estaba en la biblioteca.
+ */
+function applyLibraryFavorite(docId, isFavorite) {
+  let patched = false;
+
+  const patchList = (list) =>
+    list.map((movie) => {
+      if (movie?.id !== docId) return movie;
+      patched = true;
+      return { ...movie, isFavorite };
+    });
+
+  state.library = patchList(state.library);
+  state.libraryFiltered = patchList(state.libraryFiltered);
+
+  const current = state.libraryByDocId.get(docId);
+  if (current) {
+    const byDocId = new Map(state.libraryByDocId);
+    byDocId.set(docId, { ...current, isFavorite });
+    state.libraryByDocId = byDocId;
+  }
+
+  return patched;
+}
+
+/**
+ * Tarjeta viva de una película de la biblioteca dentro de la rejilla.
+ *
+ * @param {string} docId
+ * @returns {HTMLElement|null}
+ */
+function findLibraryCard(docId) {
+  const grid = dom?.library?.grid;
+  if (!grid) return null;
+
+  for (const node of grid.children) {
+    if (!(node instanceof HTMLElement)) continue;
+    const model = cardModels.get(node);
+    if (model && model.docId === docId) return node;
+  }
+
+  return null;
+}
+
+/**
+ * Refleja el nuevo estado de favorito en la tarjeta, sin repintar la
+ * rejilla entera (AC-M14). Si el filtro activo deja de incluir la
+ * película (por ejemplo, con el filtro «Favoritas»), se repinta la
+ * rejilla y la tarjeta desaparece de la lista.
+ *
+ * @param {string} docId
+ * @param {boolean} isFavorite
+ * @returns {HTMLElement|null} Botón de favorito vivo, o `null` si la
+ *   película ya no está en la lista.
+ */
+function syncLibraryCard(docId, isFavorite) {
+  const card = findLibraryCard(docId);
+  const movie = state.libraryByDocId.get(docId);
+
+  if (!card || !movie) {
+    renderLibrary();
+    return null;
+  }
+
+  const button = card.querySelector('[data-movie-role="favorite"]');
+  if (button instanceof HTMLElement) {
+    updateFavoriteButton(button, isFavorite);
+  }
+
+  const stillVisible = filterMovies([movie], state.libraryFilters).length > 0;
+  if (!stillVisible) {
+    renderLibrary();
+    return null;
+  }
+
+  return button instanceof HTMLElement ? button : null;
+}
+
+/**
+ * Devuelve el foco al botón de favorito tras un repintado (AC-M14).
+ * Si la película ya no está en la lista, el foco vuelve a la rejilla.
+ *
+ * @param {string} docId
+ */
+function restoreLibraryFavoriteFocus(docId) {
+  const grid = dom?.library?.grid;
+  const button = byId(`movie-card-favorite-doc-${safeIdPart(docId)}`);
+
+  if (button instanceof HTMLElement) {
+    button.focus();
+    return;
+  }
+
+  if (grid instanceof HTMLElement) {
+    if (!grid.hasAttribute("tabindex")) grid.setAttribute("tabindex", "-1");
+    grid.focus();
+  }
+}
+
+/**
+ * Recibe el snapshot de la biblioteca **sin** filtros: alimenta la
+ * barra de estadísticas (UI-M02) y el índice de películas ya añadidas
+ * que usa el catálogo.
  *
  * @param {Array<Record<string, unknown>>} movies
  */
-function onLibrarySnapshot(movies) {
+function onLibraryStatsSnapshot(movies) {
   const list = Array.isArray(movies) ? movies : [];
 
   state.library = list;
@@ -1147,8 +1490,24 @@ function onLibrarySnapshot(movies) {
   }
 
   renderStats(list);
-  renderLibrary();
   syncCatalogAddButtons();
+}
+
+/**
+ * Recibe el snapshot de la biblioteca **con** los filtros de servidor:
+ * es la lista que se pinta en la rejilla (UI-M05).
+ *
+ * @param {Array<Record<string, unknown>>} movies
+ */
+function onLibrarySnapshot(movies) {
+  state.libraryFiltered = Array.isArray(movies) ? movies : [];
+
+  // El snapshot llegó bien: se descarta cualquier error de carga
+  // anterior para que el aviso no se quede pegado.
+  libraryLoadError = "";
+  renderLibraryError();
+
+  renderLibrary();
 }
 
 /**
@@ -1163,27 +1522,129 @@ function onCollectionsSnapshot(collections) {
 }
 
 /**
- * Suscribe la biblioteca y las colecciones. Sin sesión activa se
- * avisa en español y la vista sigue operativa (SEC-M03).
+ * Filtros que el servidor puede aplicar (ALG-M02): una igualdad
+ * (`status` o `isFavorite`) y hasta dos `array-contains`
+ * (`genreIds`, `collectionIds`).
+ *
+ * «Favoritas» no es un estado interno: se traduce al pseudofiltro
+ * `isFavorite === true` para no mezclar ambas condiciones en la
+ * consulta.
+ *
+ * @returns {{
+ *   status: string,
+ *   favorite: boolean,
+ *   genreId: number|null,
+ *   collectionId: string
+ * }}
  */
-function subscribeLibraryData() {
+function readServerFilters() {
+  const library = dom?.library ?? {};
+  const status = library.status?.value ?? "";
+  const isFavorites = status === "favorites";
+
+  return {
+    status: isFavorites ? "" : normalizeServerStatus(status),
+    favorite: isFavorites,
+    genreId: library.genre?.value ? Number(library.genre.value) : null,
+    collectionId: library.collection?.value ?? "",
+  };
+}
+
+/**
+ * Traduce el valor del selector de estado al estado interno válido
+ * para el servidor (DB-M01). Cualquier valor desconocido se ignora.
+ *
+ * @param {string} status
+ * @returns {string}
+ */
+function normalizeServerStatus(status) {
+  return Object.prototype.hasOwnProperty.call(STATUS_LABELS, status)
+    ? status
+    : "";
+}
+
+/**
+ * Firma comparable de los filtros de servidor: permite detectar un
+ * cambio real y evitar resuscripciones innecesarias.
+ *
+ * @param {{ status: string, favorite: boolean, genreId: number|null, collectionId: string }} filters
+ * @returns {string}
+ */
+function computeServerFiltersSignature(filters) {
+  return [
+    filters.status,
+    filters.favorite,
+    filters.genreId ?? "",
+    filters.collectionId,
+  ].join("|");
+}
+
+/**
+ * Suscribe la biblioteca con los filtros de servidor (UI-M05). Cada
+ * cambio de filtro renueva la suscripción para que Firestore use los
+ * índices correspondientes.
+ *
+ * @param {{ status: string, favorite: boolean, genreId: number|null, collectionId: string }} serverFilters
+ */
+function subscribeLibraryData(serverFilters) {
+  serverFiltersSignature = computeServerFiltersSignature(serverFilters);
+
+  if (typeof moviesUnsubscribe === "function") {
+    try {
+      moviesUnsubscribe();
+    } catch {
+      // Una baja fallida no debe impedir la nueva suscripción.
+    }
+    moviesUnsubscribe = null;
+  }
+
   try {
-    const unsubscribeMovies = subscribeMovies(onLibrarySnapshot, (error) => {
-      setMessage(
-        dom?.library?.error,
-        `No se pudo cargar tu biblioteca de películas. ${describeRepositoryError(error)}`
-      );
+    moviesUnsubscribe = subscribeMovies(
+      serverFilters,
+      onLibrarySnapshot,
+      (error) => {
+        libraryLoadError = `No se pudo cargar tu biblioteca de películas. ${describeRepositoryError(error)}`;
+        renderLibraryError();
+      }
+    );
+  } catch (error) {
+    setMessage(dom?.messages?.error, describeRepositoryError(error));
+  }
+}
+
+/**
+ * Renueva la suscripción de la biblioteca cuando cambian los filtros
+ * que el servidor puede aplicar (estado/favoritas, género y
+ * colección).
+ */
+function syncServerSubscription() {
+  const serverFilters = readServerFilters();
+  if (computeServerFiltersSignature(serverFilters) === serverFiltersSignature) {
+    return;
+  }
+
+  subscribeLibraryData(serverFilters);
+}
+
+/**
+ * Suscribe las fuentes auxiliares: la biblioteca sin filtros (para
+ * las estadísticas, UI-M02) y las colecciones (DB-M02). Sin sesión
+ * activa se avisa en español y la vista sigue operativa (SEC-M03).
+ */
+function subscribeLibrarySources() {
+  try {
+    statsUnsubscribe = subscribeMovies({}, onLibraryStatsSnapshot, (error) => {
+      libraryLoadError = `No se pudo cargar tu biblioteca de películas. ${describeRepositoryError(error)}`;
+      renderLibraryError();
     });
-    unsubscribers.push(unsubscribeMovies);
   } catch (error) {
     setMessage(dom?.messages?.error, describeRepositoryError(error));
   }
 
   try {
-    const unsubscribeCollections = subscribeCollections(onCollectionsSnapshot, () => {
+    collectionsUnsubscribe = subscribeCollections(onCollectionsSnapshot, () => {
       // Un fallo en las colecciones no debe romper la biblioteca.
     });
-    unsubscribers.push(unsubscribeCollections);
   } catch {
     // Sin colecciones no hay filtro por colección; el resto funciona.
   }
@@ -1246,6 +1707,11 @@ async function handleAddMovie(button) {
 /**
  * Favorito de la tarjeta de biblioteca (UI-M04, AC-M14).
  *
+ * El cambio se aplica de forma optimista: el estado en memoria y la
+ * tarjeta se actualizan al instante, de modo que el filtro
+ * «Favoritas» refleja el nuevo estado sin esperar al snapshot. Si la
+ * escritura falla, se revierte sobre los nodos vivos.
+ *
  * @param {HTMLElement} button
  */
 async function handleToggleFavorite(button) {
@@ -1253,16 +1719,27 @@ async function handleToggleFavorite(button) {
   const model = card ? cardModels.get(card) : null;
   if (!model || model.context !== "library" || !model.docId) return;
 
-  const next = !model.isFavorite;
+  const docId = model.docId;
+  const previous = model.isFavorite;
+  const next = !previous;
+
   updateFavoriteButton(button, next);
+  applyLibraryFavorite(docId, next);
+  syncLibraryCard(docId, next);
 
   try {
-    await setFavorite(model.docId, next);
+    await setFavorite(docId, next);
     setMessage(dom?.messages?.error, "");
   } catch (error) {
-    updateFavoriteButton(button, model.isFavorite);
+    // La reversión actúa sobre la tarjeta viva, no sobre un nodo
+    // desconectado por un repintado anterior.
+    applyLibraryFavorite(docId, previous);
+    syncLibraryCard(docId, previous);
     setMessage(dom?.messages?.error, describeRepositoryError(error));
   }
+
+  // Tras el repintado, el foco vuelve al botón de favorito.
+  restoreLibraryFavoriteFocus(docId);
 }
 
 /**
@@ -1402,10 +1879,14 @@ export function mountMovies(options = {}) {
   // Se limpian las rejillas por si quedaran tarjetas de un montaje
   // anterior.
   clearAllGrids();
-  unsubscribers = [];
+  moviesUnsubscribe = null;
+  statsUnsubscribe = null;
+  collectionsUnsubscribe = null;
+  serverFiltersSignature = "";
   searchTimer = null;
   librarySearchTimer = null;
   searchToken = 0;
+  libraryLoadError = "";
 
   if (typeof options?.onOpenMovie === "function") {
     detailOpener = options.onOpenMovie;
@@ -1432,9 +1913,21 @@ export function mountMovies(options = {}) {
   // --- Tarjetas (UI-M04) -----------------------------------------
   dom.section.addEventListener("click", onSectionClick);
 
-  // --- Biblioteca (base compartida con T-M08) ---------------------
+  // --- Biblioteca (UI-M05) ----------------------------------------
+  // Los selectores de estado y de orden se rellenan desde
+  // `moviesState.js` para que las opciones y las etiquetas no se
+  // dupliquen en la vista.
+  populateStatusFilter();
   populateGenreFilter();
+  populateSortFilter();
+
+  // El contador y los estados vacíos se anuncian a los lectores de
+  // pantalla al cambiar.
+  dom.library.count?.setAttribute("aria-live", "polite");
+  dom.library.empty?.setAttribute("role", "status");
+
   dom.library.search?.addEventListener("input", onLibrarySearchInput);
+  dom.library.search?.addEventListener("search", onLibrarySearchInput);
   dom.library.status?.addEventListener("change", applyLibraryFilters);
   dom.library.genre?.addEventListener("change", applyLibraryFilters);
   dom.library.collection?.addEventListener("change", applyLibraryFilters);
@@ -1445,7 +1938,10 @@ export function mountMovies(options = {}) {
 
   // --- Estadísticas y datos (UI-M02, ALG-M01) ---------------------
   renderStats([]);
-  subscribeLibraryData();
+  // La biblioteca se suscribe con los filtros de servidor (ALG-M02);
+  // las estadísticas usan la biblioteca completa.
+  subscribeLibrarySources();
+  subscribeLibraryData(readServerFilters());
 
   // --- Estado inicial ---------------------------------------------
   activateTab(state.activeTab);
@@ -1468,14 +1964,24 @@ export function mountMovies(options = {}) {
 export function unmountMovies() {
   if (!activeController) return;
 
-  for (const unsubscribe of unsubscribers) {
+  // Bajas de las suscripciones: biblioteca filtrada, biblioteca
+  // completa (estadísticas) y colecciones.
+  for (const unsubscribe of [
+    moviesUnsubscribe,
+    statsUnsubscribe,
+    collectionsUnsubscribe,
+  ]) {
+    if (typeof unsubscribe !== "function") continue;
     try {
       unsubscribe();
     } catch {
       // Una baja fallida no debe impedir el desmontaje.
     }
   }
-  unsubscribers = [];
+  moviesUnsubscribe = null;
+  statsUnsubscribe = null;
+  collectionsUnsubscribe = null;
+  serverFiltersSignature = "";
 
   if (searchTimer !== null) {
     clearTimeout(searchTimer);
@@ -1490,6 +1996,7 @@ export function unmountMovies() {
   dom?.catalog?.search?.removeEventListener("input", onCatalogSearchInput);
   dom?.catalog?.search?.removeEventListener("search", onCatalogSearchInput);
   dom?.library?.search?.removeEventListener("input", onLibrarySearchInput);
+  dom?.library?.search?.removeEventListener("search", onLibrarySearchInput);
   dom?.library?.status?.removeEventListener("change", applyLibraryFilters);
   dom?.library?.genre?.removeEventListener("change", applyLibraryFilters);
   dom?.library?.collection?.removeEventListener("change", applyLibraryFilters);
@@ -1521,6 +2028,10 @@ export function unmountMovies() {
   catalogListEmptyNodes.clear();
   dom = null;
   state = createViewState();
+  libraryLoadError = "";
+  // El abridor de la ficha (UI-M06) lo registrará T-M09 en el
+  // siguiente montaje: no se conserva entre montajes.
+  detailOpener = null;
   activeController = null;
 }
 
