@@ -1,7 +1,8 @@
 // =============================================================
 // moviesView.js — Vista de la sección «Películas».
 //
-// Alcance de esta tarea (T-M07) y de su ampliación (T-M08):
+// Alcance de esta tarea (T-M07), de su ampliación (T-M08) y de la
+// ficha de película (T-M09):
 //   - UI-M01: conmutación de las tres pestañas («Explorar
 //     catálogo», «Mi biblioteca», «Mis colecciones») con
 //     `role="tablist"`, `aria-selected` y navegación por teclado.
@@ -24,6 +25,25 @@
 //   - ALG-M02: el filtrado y el orden de la biblioteca se delegan
 //     en `filterMovies` y `sortMovies` (`js/movies/moviesState.js`):
 //     aquí solo se leen los controles y se pinta el resultado.
+//   - UI-M06: ficha completa en `<dialog id="movie-detail">` con
+//     el bloque «catálogo» (póster, backdrop, títulos, fecha,
+//     duración, géneros, sinopsis, director, reparto, tráiler y
+//     «Dónde ver») y el bloque «seguimiento» (estado, favorito,
+//     visionados con fechas, nota personal 0–10 con medios
+//     puntos, reseña con spoilers, etiquetas y colecciones). La
+//     nota de TMDB se muestra separada de la personal (AC-M24).
+//   - UI-M08: alta manual de películas (sin TMDB) con avisos en
+//     español y degradación cuando falta la clave o falla la red
+//     (AC-M01, AC-M06, AC-M08).
+//   - ALG-M03: las escrituras de visionado delegan en el
+//     repositorio (`watch`, `unwatch`, `setStatus`,
+//     `setWatchCount`).
+//   - ALG-M04: la nota personal se valida con `parseUserRating`.
+//   - ALG-M06: la ficha usa `ensureDetailCached` (caché de 30
+//     días) y «Actualizar datos» fuerza la recarga.
+//   - D-M09: favorito, estado, visionados y colecciones se guardan
+//     de inmediato; nota, reseña, etiquetas y spoilers requieren
+//     «Guardar» y «Cerrar» descarta lo pendiente (AC-M26).
 //
 // Dependencias ya implementadas (se consumen, no se duplican):
 //   - `js/movies/moviesState.js` (T-M04): etiquetas de estado,
@@ -33,8 +53,7 @@
 //   - `js/movies/tmdbClient.js` (T-M01): único punto de red.
 //   - `index.html` (T-M05): esqueleto con los ids estables.
 //
-// Tareas posteriores que amplían este mismo módulo:
-//   - T-M09 (UI-M06, UI-M08): ficha en `<dialog>` y alta manual.
+// Tarea posterior que amplía este mismo módulo:
 //   - T-M10 (UI-M07): panel «Mis colecciones».
 //
 // Todos los textos visibles están en español (es-ES) y el fichero va
@@ -49,29 +68,45 @@ import {
   SORT_OPTIONS,
   STATUS_LABELS,
   TMDB_GENRE_OPTIONS,
+  TMDB_GENRES_ES,
+  USER_RATING_ERROR_MESSAGE,
+  UserRatingError,
   computeStats,
   createLibraryFilters,
   createMoviesState,
   filterMovies,
   hasActiveLibraryFilters,
+  parseUserRating,
   sortMovies,
 } from "./moviesState.js";
 
 import {
   addFromTmdb,
+  addManual,
+  deleteMovie,
+  ensureDetailCached,
+  setCollections,
   setFavorite,
+  setStatus,
+  setWatchCount,
   subscribeCollections,
   subscribeMovies,
+  unwatch,
+  updatePersonal,
+  watch,
 } from "./moviesRepository.js";
 
 import {
+  backdropUrl,
   fetchPopular,
   fetchTopRated,
   fetchTrendingWeek,
   fetchUpcoming,
+  getMovieDetail,
   isTmdbConfigured,
   posterUrl,
   searchMovies,
+  trailerUrl,
 } from "./tmdbClient.js";
 
 // -------------------------------------------------------------
@@ -214,6 +249,47 @@ const RATING_RANGE_ORDER_ERROR =
   "La nota mínima no puede ser mayor que la nota máxima.";
 
 // -------------------------------------------------------------
+// Constantes de la ficha y del alta manual (UI-M06, UI-M08)
+// -------------------------------------------------------------
+
+/** Confirmación de borrado de una película (AC-M27). */
+const DELETE_CONFIRM_MESSAGE =
+  "¿Eliminar esta película de tu biblioteca?";
+
+/** Aviso del contador de visionados (ALG-M03). */
+const WATCH_COUNT_ERROR_MESSAGE =
+  "El número de visionados debe ser un entero entre 0 y 1000.";
+
+/** Tope de visionados (DB-M01). */
+const MAX_WATCH_COUNT = 1000;
+
+/** Aviso cuando la ficha se abre para una película que no está en la biblioteca. */
+const DETAIL_CATALOG_HINT =
+  "Esta película no está en tu biblioteca: añádela desde el catálogo " +
+  "para poder seguirla.";
+
+/** Mensaje de éxito del alta manual (UI-M08). */
+const MANUAL_SUCCESS_MESSAGE = "Película añadida a tu biblioteca.";
+
+/** Título provisional mientras llegan los datos de la ficha. */
+const DETAIL_LOADING_TITLE = "Cargando…";
+
+/** Mensaje cuando la película no tiene datos suficientes. */
+const DETAIL_UNKNOWN_MOVIE_MESSAGE =
+  "No se ha podido cargar la ficha de la película.";
+
+/** Límites del alta manual (coinciden con DB-M01). */
+const MANUAL_MIN_YEAR = 1870;
+const MANUAL_MAX_YEAR = 2100;
+const MANUAL_MIN_RUNTIME = 1;
+const MANUAL_MAX_RUNTIME = 10000;
+
+/** Avisos del alta manual en español (UI-M08). */
+const MANUAL_TITLE_ERROR = "El título es obligatorio.";
+const MANUAL_YEAR_ERROR = "El año de estreno no es válido.";
+const MANUAL_RUNTIME_ERROR = "La duración no es válida.";
+
+// -------------------------------------------------------------
 // Formateadores (es-ES)
 // -------------------------------------------------------------
 
@@ -224,6 +300,11 @@ const ratingFormatter = new Intl.NumberFormat("es-ES", {
 
 const integerFormatter = new Intl.NumberFormat("es-ES", {
   maximumFractionDigits: 0,
+});
+
+/** Fecha larga en español («15 de noviembre de 2010»). */
+const longDateFormatter = new Intl.DateTimeFormat("es-ES", {
+  dateStyle: "long",
 });
 
 /**
@@ -380,6 +461,69 @@ const catalogListEmptyNodes = new Map();
 const tabListeners = new Map();
 
 // -------------------------------------------------------------
+// Estado de la ficha de película (UI-M06)
+// -------------------------------------------------------------
+
+/**
+ * Valores de la parte personal de la ficha en el momento del último
+ * guardado. Sirven para detectar cambios pendientes (D-M09, AC-M26).
+ *
+ * @typedef {Object} DetailPersonal
+ * @property {string} userRating Texto escrito en el campo de nota.
+ * @property {string} userReview Texto escrito en la reseña.
+ * @property {string} tags Texto escrito en el campo de etiquetas.
+ * @property {boolean} hasSpoilers Estado de la casilla de spoilers.
+ */
+
+/**
+ * @typedef {Object} DetailState
+ * @property {string|null} docId Id del documento en la biblioteca.
+ * @property {string|null} tmdbId Id de TMDB (null si es manual).
+ * @property {boolean} inLibrary `true` si la película está en la biblioteca.
+ * @property {Record<string, unknown>|null} movie Modelo pintado.
+ * @property {DetailPersonal} saved Últimos valores guardados.
+ * @property {boolean} spoilerRevealed `true` si la reseña se ha revelado.
+ * @property {boolean} busy `true` mientras hay una escritura en curso.
+ * @property {HTMLElement|null} trigger Elemento que abrió la ficha.
+ */
+
+/**
+ * Estado inicial de la ficha.
+ *
+ * @returns {DetailState}
+ */
+function createDetailState() {
+  return {
+    docId: null,
+    tmdbId: null,
+    inLibrary: false,
+    movie: null,
+    saved: { userRating: "", userReview: "", tags: "", hasSpoilers: false },
+    spoilerRevealed: false,
+    busy: false,
+    trigger: null,
+  };
+}
+
+/** Estado vivo de la ficha. */
+let detailState = createDetailState();
+
+/** Nodo de error creado dentro del diálogo (role="alert"). */
+let detailErrorNode = null;
+
+/** Nodo de aviso creado dentro del diálogo (role="status"). */
+let detailStatusNode = null;
+
+/** Aviso de la ficha cuando la película no está en la biblioteca. */
+let detailHintNode = null;
+
+/** Nodo de aviso del alta manual (role="status"). */
+let manualStatusNode = null;
+
+/** Copia del texto literal escrito en el campo de nota (ALG-M04). */
+let userRatingTracker = null;
+
+// -------------------------------------------------------------
 // Helpers de DOM
 // -------------------------------------------------------------
 
@@ -422,6 +566,17 @@ function setMessage(node, message) {
 function clearNode(container) {
   if (!container) return;
   while (container.firstChild) container.removeChild(container.firstChild);
+}
+
+/**
+ * Escribe un texto en un nodo (sin tocar su visibilidad).
+ *
+ * @param {HTMLElement|null} node
+ * @param {string} text
+ */
+function setText(node, text) {
+  if (!node) return;
+  node.textContent = typeof text === "string" ? text : "";
 }
 
 /**
@@ -484,6 +639,54 @@ function collectDom() {
     messages: {
       error: byId("movies-error"),
       tmdbWarning: byId("movies-tmdb-warning"),
+    },
+    detail: {
+      dialog: byId("movie-detail"),
+      title: byId("movie-detail-title"),
+      originalTitle: byId("movie-detail-original-title"),
+      poster: byId("movie-detail-poster"),
+      backdrop: byId("movie-detail-backdrop"),
+      release: byId("movie-detail-release"),
+      runtime: byId("movie-detail-runtime"),
+      genres: byId("movie-detail-genres"),
+      overview: byId("movie-detail-overview"),
+      director: byId("movie-detail-director"),
+      cast: byId("movie-detail-cast"),
+      trailer: byId("movie-detail-trailer"),
+      providers: byId("movie-detail-providers"),
+      providersList: byId("movie-detail-providers-list"),
+      tmdbRating: byId("movie-detail-tmdb-rating"),
+      status: byId("movie-detail-status"),
+      favorite: byId("movie-detail-favorite"),
+      watchCount: byId("movie-detail-watch-count"),
+      watchInc: byId("movie-detail-watch-inc"),
+      watchDec: byId("movie-detail-watch-dec"),
+      watchInput: byId("movie-detail-watch-input"),
+      watchDates: byId("movie-detail-watch-dates"),
+      userRating: byId("movie-detail-user-rating"),
+      userRatingDisplay: byId("movie-detail-user-rating-display"),
+      review: byId("movie-detail-review"),
+      spoilers: byId("movie-detail-spoilers"),
+      spoilerWarning: byId("movie-detail-spoiler-warning"),
+      spoilerReveal: byId("movie-detail-spoiler-reveal"),
+      tags: byId("movie-detail-tags"),
+      collections: byId("movie-detail-collections"),
+      save: byId("movie-detail-save"),
+      refresh: byId("movie-detail-refresh"),
+      remove: byId("movie-detail-delete"),
+      close: byId("movie-detail-close"),
+      dirtyWarning: byId("movie-detail-dirty-warning"),
+    },
+    manual: {
+      open: byId("movies-manual-open"),
+      form: byId("movies-manual-form"),
+      title: byId("movies-manual-title"),
+      year: byId("movies-manual-year"),
+      runtime: byId("movies-manual-runtime"),
+      overview: byId("movies-manual-overview"),
+      genres: byId("movies-manual-genres"),
+      submit: byId("movies-manual-submit"),
+      error: byId("movies-manual-error"),
     },
     templates: {
       card: byId("movie-card-template"),
@@ -910,7 +1113,11 @@ async function loadCatalogList(list) {
     state.catalog.lists[list.key] = [];
     clearNode(grid);
     if (emptyNode) emptyNode.hidden = true;
-    setMessage(dom?.catalog?.error, describeTmdbError(error));
+    const message = describeTmdbError(error);
+    setMessage(dom?.catalog?.error, message);
+    // El aviso general recuerda que el alta manual sigue operativa
+    // (UI-M08, ALG-M05, AC-M06).
+    setTmdbWarning(message);
     return false;
   } finally {
     if (grid) grid.removeAttribute("aria-busy");
@@ -930,7 +1137,10 @@ async function loadCatalog() {
   if (state.catalog.loaded || state.catalog.loading) return;
 
   if (!isTmdbConfigured()) {
+    // Sin clave no hay peticiones de red (AC-M01, ALG-M05): el aviso
+    // se muestra en el catálogo y en el aviso general de la sección.
     setMessage(dom?.catalog?.error, TMDB_ERROR_MESSAGES.NO_API_KEY);
+    setTmdbWarning(TMDB_ERROR_MESSAGES.NO_API_KEY);
     return;
   }
 
@@ -941,6 +1151,7 @@ async function loadCatalog() {
     );
     // Solo se marca como cargado si todas las listas respondieron.
     state.catalog.loaded = results.every((ok) => ok === true);
+    if (state.catalog.loaded) setTmdbWarning("");
   } finally {
     state.catalog.loading = false;
   }
@@ -1019,12 +1230,17 @@ async function runCatalogSearch(query) {
       emptyNode.hidden = movies.length > 0;
     }
     setMessage(dom?.catalog?.error, "");
+    setTmdbWarning("");
   } catch (error) {
     if (token !== searchToken) return;
 
     clearNode(grid);
     setVisible(dom?.catalog?.empty, false);
-    setMessage(dom?.catalog?.error, describeTmdbError(error));
+    const message = describeTmdbError(error);
+    setMessage(dom?.catalog?.error, message);
+    // Aviso general: la app sigue operativa y el alta manual continúa
+    // disponible (AC-M06).
+    setTmdbWarning(message);
   } finally {
     if (token === searchToken && grid) grid.removeAttribute("aria-busy");
   }
@@ -1491,6 +1707,10 @@ function onLibraryStatsSnapshot(movies) {
 
   renderStats(list);
   syncCatalogAddButtons();
+
+  // Si hay una ficha abierta, sus campos de seguimiento se refrescan
+  // con el snapshot sin tocar la parte personal (D-M09, AC-M26).
+  refreshOpenDetailTracking();
 }
 
 /**
@@ -1655,9 +1875,9 @@ function subscribeLibrarySources() {
 // -------------------------------------------------------------
 
 /**
- * Abre la ficha de una película. T-M09 registrará el abridor con
- * `setMovieDetailOpener`; mientras tanto se emite el evento
- * `movies:open-detail` para que la ficha pueda engancharse.
+ * Abre la ficha de una película. Si hay un abridor externo
+ * registrado (`setMovieDetailOpener`) se delega en él; si no, se
+ * abre la ficha de `<dialog id="movie-detail">` (UI-M06).
  *
  * @param {CardModel} model
  */
@@ -1667,17 +1887,7 @@ function openMovieDetail(model) {
     return;
   }
 
-  dom?.section?.dispatchEvent(
-    new CustomEvent("movies:open-detail", {
-      bubbles: true,
-      detail: {
-        movie: model.raw,
-        tmdbId: model.tmdbId,
-        docId: model.docId,
-        context: model.context,
-      },
-    })
-  );
+  void openMovieDetailDialog(model);
 }
 
 /**
@@ -1842,6 +2052,1674 @@ function onTabKeydown(event, currentKey) {
 }
 
 // -------------------------------------------------------------
+// Ficha de película (UI-M06, ALG-M03, ALG-M04, ALG-M06, D-M09)
+// -------------------------------------------------------------
+
+/**
+ * Normaliza una fecha (cadena ISO, `Date`, `Timestamp` de Firestore o
+ * número de milisegundos) a milisegundos. Lo no reconocido es `null`.
+ *
+ * @param {unknown} value
+ * @returns {number|null}
+ */
+function toMillis(value) {
+  if (value === null || value === undefined) return null;
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (value instanceof Date) {
+    const millis = value.getTime();
+    return Number.isFinite(millis) ? millis : null;
+  }
+
+  if (typeof value === "string") {
+    const millis = Date.parse(value);
+    return Number.isFinite(millis) ? millis : null;
+  }
+
+  if (typeof value === "object") {
+    const candidate = /** @type {{ toMillis?: () => number, toDate?: () => Date, seconds?: number, nanoseconds?: number }} */ (
+      value
+    );
+
+    if (typeof candidate.toMillis === "function") {
+      try {
+        const millis = candidate.toMillis();
+        return Number.isFinite(millis) ? millis : null;
+      } catch {
+        return null;
+      }
+    }
+
+    if (typeof candidate.toDate === "function") {
+      try {
+        const millis = candidate.toDate().getTime();
+        return Number.isFinite(millis) ? millis : null;
+      } catch {
+        return null;
+      }
+    }
+
+    if (
+      typeof candidate.seconds === "number" &&
+      Number.isFinite(candidate.seconds)
+    ) {
+      const fraction =
+        typeof candidate.nanoseconds === "number" &&
+        Number.isFinite(candidate.nanoseconds)
+          ? candidate.nanoseconds / 1e6
+          : 0;
+      return candidate.seconds * 1000 + fraction;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Fecha en formato largo es-ES («15 de noviembre de 2010»).
+ *
+ * @param {unknown} value
+ * @returns {string|null}
+ */
+function formatDateEs(value) {
+  const millis = toMillis(value);
+  if (millis === null) return null;
+
+  const date = new Date(millis);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return longDateFormatter.format(date);
+}
+
+/**
+ * Fecha de estreno «YYYY-MM-DD» en formato largo es-ES. Se construye
+ * en hora local para que el día no se desplace por el uso horario.
+ *
+ * @param {unknown} value
+ * @returns {string|null}
+ */
+function formatReleaseDateEs(value) {
+  if (typeof value !== "string") return null;
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return longDateFormatter.format(date);
+}
+
+/**
+ * Adapta el detalle de TMDB al modelo de película que pinta la ficha.
+ * Los campos personales se dejan vacíos: una película del catálogo
+ * todavía no está en la biblioteca.
+ *
+ * @param {Record<string, unknown>} tmdbDetail Detalle de `tmdbClient.js`.
+ * @returns {Record<string, unknown>}
+ */
+function tmdbDetailToMovie(tmdbDetail) {
+  const source =
+    tmdbDetail && typeof tmdbDetail === "object" ? tmdbDetail : {};
+
+  const genreIds = Array.isArray(source.genreIds)
+    ? source.genreIds.filter((id) => typeof id === "number")
+    : [];
+
+  const genres =
+    Array.isArray(source.genres) && source.genres.length > 0
+      ? source.genres.filter((name) => typeof name === "string")
+      : genreIds.map((id) => TMDB_GENRES_ES[id]).filter(Boolean);
+
+  return {
+    id: null,
+    source: "tmdb",
+    tmdbId: typeof source.id === "number" ? source.id : null,
+    title: typeof source.title === "string" ? source.title : "",
+    originalTitle:
+      typeof source.originalTitle === "string" ? source.originalTitle : "",
+    posterPath:
+      typeof source.posterPath === "string" ? source.posterPath : null,
+    backdropPath:
+      typeof source.backdropPath === "string" ? source.backdropPath : null,
+    releaseDate:
+      typeof source.releaseDate === "string" ? source.releaseDate : null,
+    releaseYear: yearFromReleaseDate(source.releaseDate),
+    runtime: typeof source.runtime === "number" ? source.runtime : null,
+    genreIds,
+    genres,
+    overview: typeof source.overview === "string" ? source.overview : "",
+    director:
+      typeof source.director === "string" && source.director !== ""
+        ? source.director
+        : null,
+    cast: Array.isArray(source.cast)
+      ? source.cast.filter((name) => typeof name === "string")
+      : [],
+    trailerKey:
+      typeof source.trailerKey === "string" ? source.trailerKey : null,
+    watchProviders: Array.isArray(source.watchProviders)
+      ? source.watchProviders.filter((name) => typeof name === "string")
+      : [],
+    tmdbRating:
+      typeof source.voteAverage === "number" ? source.voteAverage : null,
+    tmdbVoteCount:
+      typeof source.voteCount === "number" ? source.voteCount : null,
+    detailCachedAt: null,
+    status: "watchlist",
+    isFavorite: false,
+    watchCount: 0,
+    watchDates: [],
+    lastWatchedAt: null,
+    userRating: null,
+    userReview: null,
+    tags: [],
+    hasSpoilers: false,
+    collectionIds: [],
+    addedAt: null,
+    updatedAt: null,
+  };
+}
+
+/**
+ * Traduce un error de la ficha al mensaje de UI. Los errores de TMDB
+ * usan el mapeo de ALG-M05; los del repositorio, su propio mensaje en
+ * español.
+ *
+ * @param {unknown} error
+ * @returns {string}
+ */
+function describeDetailError(error) {
+  const code =
+    error && typeof error === "object" && typeof error.code === "string"
+      ? error.code
+      : "";
+
+  if (code && Object.prototype.hasOwnProperty.call(TMDB_ERROR_MESSAGES, code)) {
+    return describeTmdbError(error);
+  }
+
+  return describeRepositoryError(error);
+}
+
+// -------------------------------------------------------------
+// Ficha: aviso de TMDB y mensajes internos
+// -------------------------------------------------------------
+
+/**
+ * Muestra un aviso de TMDB en `movies-tmdb-warning` (UI-M08,
+ * ALG-M05). El alta manual sigue operativa aunque se avise.
+ *
+ * @param {string} message
+ */
+function setTmdbWarning(message) {
+  setMessage(dom?.messages?.tmdbWarning, message);
+}
+
+/**
+ * Crea (una sola vez) el nodo de error del diálogo.
+ *
+ * @returns {HTMLElement|null}
+ */
+function ensureDetailErrorNode() {
+  if (detailErrorNode && detailErrorNode.isConnected) return detailErrorNode;
+
+  const dialog = dom?.detail?.dialog;
+  if (!dialog) return null;
+
+  const node = document.createElement("p");
+  node.className = "movies-message movies-message--error";
+  node.setAttribute("role", "alert");
+  node.hidden = true;
+
+  const body = dialog.querySelector(".movie-detail__body");
+  if (body) body.prepend(node);
+
+  detailErrorNode = node;
+  return node;
+}
+
+/**
+ * Crea (una sola vez) el nodo de aviso del diálogo.
+ *
+ * @returns {HTMLElement|null}
+ */
+function ensureDetailStatusNode() {
+  if (detailStatusNode && detailStatusNode.isConnected) return detailStatusNode;
+
+  const dialog = dom?.detail?.dialog;
+  if (!dialog) return null;
+
+  const node = document.createElement("p");
+  node.className = "movies-message";
+  node.setAttribute("role", "status");
+  node.hidden = true;
+
+  const body = dialog.querySelector(".movie-detail__body");
+  if (body) body.prepend(node);
+
+  detailStatusNode = node;
+  return node;
+}
+
+/**
+ * Crea (una sola vez) el nodo de aviso del diálogo cuando la película
+ * no está en la biblioteca: el bloque «seguimiento» queda deshabilitado
+ * y se explica por qué (UI-M06).
+ *
+ * @returns {HTMLElement|null}
+ */
+function ensureDetailHintNode() {
+  if (detailHintNode && detailHintNode.isConnected) return detailHintNode;
+
+  const dialog = dom?.detail?.dialog;
+  if (!dialog) return null;
+
+  const node = document.createElement("p");
+  node.className = "movies-hint";
+  node.setAttribute("role", "status");
+  node.textContent = DETAIL_CATALOG_HINT;
+  node.hidden = true;
+
+  const body = dialog.querySelector(".movie-detail__body");
+  if (body) body.prepend(node);
+
+  detailHintNode = node;
+  return node;
+}
+
+/**
+ * Muestra u oculta el aviso «no está en tu biblioteca» según el
+ * contexto de la ficha.
+ *
+ * @param {boolean} inLibrary
+ */
+function setDetailHintVisible(inLibrary) {
+  if (detailHintNode) detailHintNode.hidden = inLibrary === true;
+}
+
+/**
+ * Escribe un error en el diálogo y en el aviso general de la sección.
+ *
+ * @param {string} message
+ */
+function showDetailError(message) {
+  const text = typeof message === "string" ? message : "";
+  const node = ensureDetailErrorNode();
+  if (node) setMessage(node, text);
+  setMessage(dom?.messages?.error, text);
+}
+
+/**
+ * Escribe un aviso informativo en el diálogo.
+ *
+ * @param {string} message
+ */
+function showDetailStatus(message) {
+  const text = typeof message === "string" ? message : "";
+  const node = ensureDetailStatusNode();
+  if (node) setMessage(node, text);
+}
+
+/**
+ * Limpia los mensajes del diálogo.
+ */
+function clearDetailMessages() {
+  for (const node of [detailErrorNode, detailStatusNode]) {
+    if (node) setMessage(node, "");
+  }
+}
+
+// -------------------------------------------------------------
+// Ficha: painting (UI-M06)
+// -------------------------------------------------------------
+
+/**
+ * Pinta el bloque «catálogo» de la ficha (UI-M06, AC-M04).
+ *
+ * @param {Record<string, unknown>} movie
+ */
+function renderDetailMeta(movie) {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const data = movie ?? {};
+  const title =
+    typeof data.title === "string" && data.title !== ""
+      ? data.title
+      : "Sin título";
+
+  setText(d.title, title);
+
+  const originalTitle =
+    typeof data.originalTitle === "string" ? data.originalTitle : "";
+  setText(d.originalTitle, originalTitle);
+  setVisible(d.originalTitle, originalTitle !== "");
+
+  // Póster (w500) y backdrop (w1280).
+  const posterSrc = posterUrl(
+    typeof data.posterPath === "string" ? data.posterPath : null,
+    POSTER_SIZE
+  );
+  if (d.poster instanceof HTMLImageElement) {
+    d.poster.src = posterSrc ?? POSTER_PLACEHOLDER;
+    d.poster.alt = posterSrc ? `Póster de ${title}` : "Sin póster";
+    d.poster.hidden = false;
+  }
+
+  const backdropSrc = backdropUrl(
+    typeof data.backdropPath === "string" ? data.backdropPath : null
+  );
+  if (d.backdrop instanceof HTMLImageElement) {
+    if (backdropSrc) {
+      d.backdrop.src = backdropSrc;
+      d.backdrop.alt = "";
+      d.backdrop.hidden = false;
+    } else {
+      d.backdrop.removeAttribute("src");
+      d.backdrop.hidden = true;
+    }
+  }
+
+  // Fecha de estreno (es-ES).
+  const release = formatReleaseDateEs(data.releaseDate);
+  const releaseYear =
+    typeof data.releaseYear === "number" ? data.releaseYear : null;
+  setText(d.release, release ?? (releaseYear === null ? "" : String(releaseYear)));
+  setVisible(d.release, release !== null || releaseYear !== null);
+
+  // Duración en minutos («148 min»).
+  const runtime =
+    typeof data.runtime === "number" && Number.isFinite(data.runtime)
+      ? data.runtime
+      : null;
+  setText(d.runtime, runtime === null ? "" : `${runtime} min`);
+  setVisible(d.runtime, runtime !== null);
+
+  // Géneros: los del documento o, si no hay, los del diccionario.
+  const genres =
+    Array.isArray(data.genres) && data.genres.length > 0
+      ? data.genres.filter((name) => typeof name === "string")
+      : (Array.isArray(data.genreIds)
+          ? data.genreIds
+              .map((id) => TMDB_GENRES_ES[id])
+              .filter((name) => typeof name === "string")
+          : []);
+  setText(d.genres, genres.join(", "));
+  setVisible(d.genres, genres.length > 0);
+
+  // Sinopsis, director y reparto.
+  const overview = typeof data.overview === "string" ? data.overview : "";
+  setText(d.overview, overview);
+  setVisible(d.overview, overview !== "");
+
+  const director =
+    typeof data.director === "string" && data.director !== ""
+      ? data.director
+      : null;
+  setText(d.director, director ?? "—");
+
+  const cast = Array.isArray(data.cast)
+    ? data.cast.filter((name) => typeof name === "string" && name !== "")
+    : [];
+  setText(d.cast, cast.length > 0 ? cast.join(", ") : "—");
+
+  // Tráiler (API-M08).
+  const trailer = trailerUrl(
+    typeof data.trailerKey === "string" ? data.trailerKey : null
+  );
+  if (d.trailer instanceof HTMLAnchorElement) {
+    if (trailer) {
+      d.trailer.href = trailer;
+      d.trailer.textContent = "Ver tráiler";
+      d.trailer.hidden = false;
+    } else {
+      d.trailer.removeAttribute("href");
+      d.trailer.hidden = true;
+    }
+  }
+
+  // «Dónde ver»: la sección se oculta si no hay proveedores (UI-M06).
+  const providers = Array.isArray(data.watchProviders)
+    ? data.watchProviders.filter((name) => typeof name === "string" && name !== "")
+    : [];
+  clearNode(d.providersList);
+  for (const provider of providers) {
+    const item = document.createElement("li");
+    item.textContent = provider;
+    d.providersList?.append(item);
+  }
+  setVisible(d.providers, providers.length > 0);
+
+  // Nota de TMDB, siempre separada de la nota personal (AC-M24).
+  const tmdbRating = formatRating(data.tmdbRating);
+  const tmdbVotes = formatInteger(data.tmdbVoteCount);
+  let tmdbText = "";
+  if (tmdbRating !== null) {
+    tmdbText =
+      tmdbVotes === null
+        ? `TMDB ${tmdbRating}`
+        : `TMDB ${tmdbRating} (${tmdbVotes} votos)`;
+  }
+  setText(d.tmdbRating, tmdbText);
+  setVisible(d.tmdbRating, tmdbText !== "");
+}
+
+/**
+ * Pinta el bloque «seguimiento»: estado, favorito y visionados
+ * (UI-M06, AC-M10, AC-M11).
+ *
+ * @param {Record<string, unknown>} movie
+ */
+function renderDetailTracking(movie) {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const data = movie ?? {};
+
+  const status = typeof data.status === "string" ? data.status : "watchlist";
+  if (d.status instanceof HTMLSelectElement) {
+    d.status.value = Object.prototype.hasOwnProperty.call(STATUS_LABELS, status)
+      ? status
+      : "watchlist";
+  }
+
+  setDetailFavorite(data.isFavorite === true);
+
+  const watchCount =
+    typeof data.watchCount === "number" && Number.isFinite(data.watchCount)
+      ? Math.max(0, Math.trunc(data.watchCount))
+      : 0;
+  setText(d.watchCount, String(watchCount));
+  if (d.watchInput instanceof HTMLInputElement) {
+    d.watchInput.value = String(watchCount);
+  }
+
+  // Fechas de visionado en español.
+  clearNode(d.watchDates);
+  const dates = Array.isArray(data.watchDates) ? data.watchDates : [];
+  for (const value of dates) {
+    const text = formatDateEs(value);
+    if (!text) continue;
+    const item = document.createElement("li");
+    item.textContent = text;
+    d.watchDates?.append(item);
+  }
+  if (dates.length === 0) {
+    const item = document.createElement("li");
+    item.className = "movies-hint";
+    item.textContent = "Sin visionados registrados.";
+    d.watchDates?.append(item);
+  }
+}
+
+/**
+ * Pinta el estado del botón de favorito de la ficha (`aria-pressed`).
+ *
+ * @param {boolean} isFavorite
+ */
+function setDetailFavorite(isFavorite) {
+  const button = dom?.detail?.favorite;
+  if (!(button instanceof HTMLElement)) return;
+
+  button.setAttribute("aria-pressed", isFavorite ? "true" : "false");
+  const label = button.querySelector('[data-movie-role="favorite-label"]');
+  if (label) label.textContent = isFavorite ? "Favorita" : "Marcar como favorita";
+}
+
+/**
+ * Muestra la nota personal junto a la de TMDB, sin mezclarlas
+ * (AC-M24).
+ *
+ * @param {unknown} value
+ */
+function renderUserRatingDisplay(value) {
+  const node = dom?.detail?.userRatingDisplay;
+  if (!node) return;
+
+  const text = formatRating(value);
+  node.textContent = text === null ? "Mi nota —" : `Mi nota ${text}`;
+}
+
+/**
+ * Pinta la parte personal de la ficha: nota, reseña, spoilers,
+ * etiquetas y colecciones (UI-M06, D-M09).
+ *
+ * @param {Record<string, unknown>} movie
+ */
+function renderDetailPersonal(movie) {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const data = movie ?? {};
+
+  const userRating =
+    typeof data.userRating === "number" && Number.isFinite(data.userRating)
+      ? data.userRating
+      : null;
+
+  if (d.userRating instanceof HTMLInputElement) {
+    d.userRating.value = userRating === null ? "" : String(userRating);
+    d.userRating.setAttribute("aria-invalid", "false");
+    setUserRatingRaw(userRating === null ? "" : String(userRating));
+  }
+  renderUserRatingDisplay(userRating);
+
+  const userReview = typeof data.userReview === "string" ? data.userReview : "";
+  if (d.review instanceof HTMLTextAreaElement) d.review.value = userReview;
+
+  const hasSpoilers = data.hasSpoilers === true;
+  if (d.spoilers instanceof HTMLInputElement) d.spoilers.checked = hasSpoilers;
+
+  const tags = Array.isArray(data.tags)
+    ? data.tags.filter((tag) => typeof tag === "string")
+    : [];
+  if (d.tags instanceof HTMLInputElement) d.tags.value = tags.join(", ");
+
+  // Últimos valores guardados: punto de partida del aviso «Cambios sin
+  // guardar» (D-M09, AC-M26).
+  detailState.saved = {
+    userRating: userRating === null ? "" : String(userRating),
+    userReview,
+    tags: tags.join(", "),
+    hasSpoilers,
+  };
+
+  detailState.spoilerRevealed = false;
+
+  renderDetailCollections(data);
+  renderSpoilerState();
+  updateDirtyWarning();
+}
+
+/**
+ * Pinta un checkbox por colección del usuario (DB-M02, AC-M15).
+ *
+ * @param {Record<string, unknown>} movie
+ */
+function renderDetailCollections(movie) {
+  const container = dom?.detail?.collections;
+  if (!container) return;
+
+  clearNode(container);
+
+  const selected = new Set(
+    Array.isArray(movie?.collectionIds)
+      ? movie.collectionIds.map((id) => String(id))
+      : []
+  );
+
+  for (const collection of state.collections) {
+    const id = String(collection?.id ?? "");
+    if (id === "") continue;
+
+    const label = document.createElement("label");
+    label.className = "movies-checkbox";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = id;
+    input.checked = selected.has(id);
+    input.dataset.collectionId = id;
+
+    label.append(input, document.createTextNode(` ${String(collection.name ?? "")}`));
+    container.append(label);
+  }
+
+  if (state.collections.length === 0) {
+    const hint = document.createElement("p");
+    hint.className = "movies-hint";
+    hint.textContent = "Aún no tienes colecciones.";
+    container.append(hint);
+  }
+}
+
+/**
+ * Oculta la reseña cuando tiene spoilers y el usuario no la ha
+ * revelado (AC-M13).
+ */
+function renderSpoilerState() {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const hasSpoilers =
+    d.spoilers instanceof HTMLInputElement ? d.spoilers.checked : false;
+  const reviewText =
+    d.review instanceof HTMLTextAreaElement ? d.review.value.trim() : "";
+
+  const hidden =
+    hasSpoilers && reviewText !== "" && !detailState.spoilerRevealed;
+
+  if (d.review instanceof HTMLTextAreaElement) d.review.hidden = hidden;
+  setVisible(d.spoilerWarning, hidden);
+}
+
+/**
+ * Lee los campos de la parte personal de la ficha.
+ *
+ * @returns {DetailPersonal}
+ */
+function readPersonalForm() {
+  const d = dom?.detail ?? {};
+
+  return {
+    userRating: readUserRatingInput(),
+    userReview: d.review instanceof HTMLTextAreaElement ? d.review.value : "",
+    tags: d.tags instanceof HTMLInputElement ? d.tags.value : "",
+    hasSpoilers:
+      d.spoilers instanceof HTMLInputElement ? d.spoilers.checked : false,
+  };
+}
+
+/**
+ * `true` si hay cambios pendientes de nota, reseña, etiquetas o
+ * spoilers (D-M09, AC-M26).
+ *
+ * @returns {boolean}
+ */
+function isDetailDirty() {
+  const current = readPersonalForm();
+  const saved = detailState.saved;
+
+  return (
+    current.userRating !== saved.userRating ||
+    current.userReview !== saved.userReview ||
+    current.tags !== saved.tags ||
+    current.hasSpoilers !== saved.hasSpoilers
+  );
+}
+
+/**
+ * Muestra u oculta el aviso «Cambios sin guardar» (AC-M26).
+ */
+function updateDirtyWarning() {
+  const node = dom?.detail?.dirtyWarning;
+  if (!node) return;
+
+  const dirty = isDetailDirty();
+  node.textContent = "Cambios sin guardar";
+  node.hidden = !dirty;
+}
+
+/**
+ * Divide el texto de las etiquetas en una lista (DB-M01: ≤20
+ * etiquetas de ≤30 caracteres; el repositorio lo valida).
+ *
+ * @param {string} value
+ * @returns {string[]}
+ */
+function parseTagsInput(value) {
+  return String(value ?? "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag !== "");
+}
+
+// -------------------------------------------------------------
+// Ficha: nota personal y texto literal (ALG-M04, AC-M12)
+// -------------------------------------------------------------
+
+/**
+ * Mantiene una copia del texto literal escrito en el campo de nota.
+ *
+ * Los inputs de tipo `number` devuelven "" cuando el contenido no es
+ * un número válido para el campo («7,5» con coma decimal), así que se
+ * conserva el texto escrito para poder interpretarlo (ALG-M04).
+ *
+ * @param {HTMLInputElement|null} input
+ * @returns {{ read: () => string, reset: (value: string) => void }}
+ */
+function createRawTextTracker(input) {
+  let raw = "";
+
+  const sync = () => {
+    if (!input) return;
+    if (input.value !== "") {
+      raw = input.value;
+      return;
+    }
+    if (!input.validity || input.validity.badInput !== true) raw = "";
+  };
+
+  const onBeforeInput = (event) => {
+    if (!input) return;
+
+    const start = input.selectionStart ?? raw.length;
+    const end = input.selectionEnd ?? start;
+
+    if (typeof event.data === "string") {
+      raw = raw.slice(0, start) + event.data + raw.slice(end);
+      return;
+    }
+
+    if (event.inputType === "deleteContentBackward") {
+      raw =
+        start === end && start > 0
+          ? raw.slice(0, start - 1)
+          : raw.slice(0, start) + raw.slice(end);
+      return;
+    }
+
+    if (event.inputType === "deleteContentForward") {
+      raw =
+        start === end
+          ? raw.slice(0, start) + raw.slice(end + 1)
+          : raw.slice(0, start) + raw.slice(end);
+      return;
+    }
+
+    if (event.inputType.startsWith("delete")) {
+      raw = raw.slice(0, start) + raw.slice(end);
+    }
+  };
+
+  input?.addEventListener("beforeinput", onBeforeInput);
+  input?.addEventListener("input", sync);
+  input?.addEventListener("change", sync);
+
+  return {
+    read: () => raw,
+    reset: (value) => {
+      raw = typeof value === "string" ? value : "";
+    },
+    /** Retira las escuchas: el input vive en `index.html` y sobrevive al desmontaje. */
+    destroy: () => {
+      input?.removeEventListener("beforeinput", onBeforeInput);
+      input?.removeEventListener("input", sync);
+      input?.removeEventListener("change", sync);
+    },
+  };
+}
+
+/**
+ * Texto escrito en el campo de nota personal. Si el navegador ha
+ * rechazado el contenido (coma decimal), se devuelve la copia literal.
+ *
+ * @returns {string}
+ */
+function readUserRatingInput() {
+  const input = dom?.detail?.userRating;
+  if (!(input instanceof HTMLInputElement)) return "";
+
+  if (input.value !== "") return input.value.trim();
+
+  if (input.validity && input.validity.badInput === true) {
+    return userRatingTracker ? userRatingTracker.read().trim() : "";
+  }
+
+  return "";
+}
+
+/**
+ * Actualiza la copia literal del campo de nota.
+ *
+ * @param {string} value
+ */
+function setUserRatingRaw(value) {
+  if (userRatingTracker) userRatingTracker.reset(value);
+}
+
+// -------------------------------------------------------------
+// Ficha: apertura, carga y cierre (UI-M06, ALG-M06)
+// -------------------------------------------------------------
+
+/**
+ * Devuelve el id del documento de la biblioteca que corresponde a la
+ * película de la tarjeta. Una película del catálogo que ya está en la
+ * biblioteca se resuelve a su documento.
+ *
+ * @param {CardModel} model
+ * @returns {string|null}
+ */
+function resolveDetailDocId(model) {
+  if (model?.docId) return model.docId;
+
+  if (model?.tmdbId) {
+    const movie = state.libraryByTmdbId.get(model.tmdbId);
+    if (movie && typeof movie.id === "string") return movie.id;
+  }
+
+  return null;
+}
+
+/**
+ * Deja la ficha en blanco mientras llegan los datos.
+ */
+function renderDetailSkeleton() {
+  const d = dom?.detail;
+  if (!d) return;
+
+  setText(d.title, DETAIL_LOADING_TITLE);
+  setText(d.originalTitle, "");
+  setVisible(d.originalTitle, false);
+  setText(d.release, "");
+  setVisible(d.release, false);
+  setText(d.runtime, "");
+  setVisible(d.runtime, false);
+  setText(d.genres, "");
+  setVisible(d.genres, false);
+  setText(d.overview, "");
+  setVisible(d.overview, false);
+  setText(d.director, "—");
+  setText(d.cast, "—");
+  setText(d.tmdbRating, "");
+  setVisible(d.tmdbRating, false);
+  setText(d.watchCount, "0");
+
+  clearNode(d.watchDates);
+  clearNode(d.providersList);
+  clearNode(d.collections);
+  setVisible(d.providers, false);
+  setVisible(d.trailer, false);
+
+  if (d.userRating instanceof HTMLInputElement) {
+    d.userRating.value = "";
+    setUserRatingRaw("");
+  }
+  if (d.review instanceof HTMLTextAreaElement) d.review.value = "";
+  if (d.tags instanceof HTMLInputElement) d.tags.value = "";
+  if (d.spoilers instanceof HTMLInputElement) d.spoilers.checked = false;
+
+  renderUserRatingDisplay(null);
+  updateDirtyWarning();
+  updateDetailControls();
+}
+
+/**
+ * Abre la ficha de una película (UI-M06).
+ *
+ * @param {CardModel} model
+ * @returns {Promise<void>}
+ */
+async function openMovieDetailDialog(model) {
+  const d = dom?.detail;
+  if (!d?.dialog) return;
+
+  const docId = resolveDetailDocId(model);
+  const trigger =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+  detailState = {
+    ...createDetailState(),
+    docId,
+    tmdbId: model?.tmdbId ?? null,
+    inLibrary: Boolean(docId),
+    trigger,
+  };
+
+  renderDetailSkeleton();
+  clearDetailMessages();
+
+  if (!d.dialog.open) {
+    try {
+      d.dialog.showModal();
+    } catch {
+      // Navegador sin soporte de diálogo modal: se abre igualmente.
+      d.dialog.setAttribute("open", "");
+    }
+  }
+
+  // Foco inicial en el título del diálogo (UI-M10, NFR-M02).
+  d.title?.focus?.();
+
+  if (docId) {
+    await loadLibraryDetail(docId, false);
+    return;
+  }
+
+  await loadCatalogDetail(model?.tmdbId ?? null);
+}
+
+/**
+ * Carga la ficha de una película de la biblioteca respetando la caché
+ * de 30 días (ALG-M06, AC-M21).
+ *
+ * @param {string} docId
+ * @param {boolean} force `true` para «Actualizar datos».
+ * @returns {Promise<boolean>} `true` si los datos se han cargado.
+ */
+async function loadLibraryDetail(docId, force) {
+  setDetailBusy(true);
+
+  try {
+    const result = await ensureDetailCached(docId, { force });
+    if (detailState.docId !== docId) return false;
+
+    detailState.movie = result.movie;
+    detailState.inLibrary = true;
+    renderDetailMeta(result.movie);
+    renderDetailTracking(result.movie);
+    renderDetailPersonal(result.movie);
+    updateDetailControls();
+    clearDetailMessages();
+    return true;
+  } catch (error) {
+    // Si hay caché previa se muestra y se avisa en español (ALG-M06).
+    const cached = state.libraryByDocId.get(docId);
+    if (cached) {
+      detailState.movie = cached;
+      detailState.inLibrary = true;
+      renderDetailMeta(cached);
+      renderDetailTracking(cached);
+      renderDetailPersonal(cached);
+      updateDetailControls();
+      showDetailError(describeDetailError(error));
+      return false;
+    }
+
+    showDetailError(describeDetailError(error));
+    return false;
+  } finally {
+    setDetailBusy(false);
+  }
+}
+
+/**
+ * Carga la ficha de una película del catálogo (sin biblioteca). Solo
+ * hay una petición a TMDB: la del detalle.
+ *
+ * @param {string|null} tmdbId
+ * @returns {Promise<boolean>}
+ */
+async function loadCatalogDetail(tmdbId) {
+  if (!tmdbId) {
+    showDetailError(DETAIL_UNKNOWN_MOVIE_MESSAGE);
+    return false;
+  }
+
+  if (!isTmdbConfigured()) {
+    showDetailError(TMDB_ERROR_MESSAGES.NO_API_KEY);
+    setTmdbWarning(TMDB_ERROR_MESSAGES.NO_API_KEY);
+    return false;
+  }
+
+  setDetailBusy(true);
+
+  try {
+    const tmdbDetail = await getMovieDetail(Number(tmdbId));
+    if (detailState.tmdbId !== String(tmdbId)) return false;
+
+    const movie = tmdbDetailToMovie(tmdbDetail);
+    detailState.movie = movie;
+    detailState.inLibrary = false;
+    renderDetailMeta(movie);
+    renderDetailTracking(movie);
+    renderDetailPersonal(movie);
+    updateDetailControls();
+    clearDetailMessages();
+    return true;
+  } catch (error) {
+    const message = describeTmdbError(error);
+    showDetailError(message);
+    setTmdbWarning(message);
+    return false;
+  } finally {
+    setDetailBusy(false);
+  }
+}
+
+/**
+ * Cierra la ficha.
+ */
+function closeMovieDetail() {
+  const dialog = dom?.detail?.dialog;
+  if (dialog?.open) dialog.close();
+}
+
+/**
+ * Al cerrarse la ficha: se descartan los cambios pendientes y el foco
+ * vuelve al elemento que la abrió (UI-M10, AC-M26).
+ */
+function onDetailDialogClose() {
+  const trigger = detailState.trigger;
+
+  detailState = createDetailState();
+  clearDetailMessages();
+  setMessage(dom?.messages?.error, "");
+
+  if (trigger && trigger.isConnected && typeof trigger.focus === "function") {
+    trigger.focus();
+  }
+}
+
+/**
+ * Habilita o deshabilita los controles según el contexto y el estado
+ * de la escritura en curso.
+ */
+function updateDetailControls() {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const busy = detailState.busy;
+  const library = detailState.inLibrary;
+
+  if (d.status instanceof HTMLSelectElement) d.status.disabled = !library || busy;
+  if (d.favorite instanceof HTMLButtonElement) {
+    d.favorite.disabled = !library || busy;
+  }
+  if (d.watchInc instanceof HTMLButtonElement) {
+    d.watchInc.disabled = !library || busy;
+  }
+  if (d.watchDec instanceof HTMLButtonElement) {
+    d.watchDec.disabled = !library || busy;
+  }
+  if (d.watchInput instanceof HTMLInputElement) {
+    d.watchInput.disabled = !library || busy;
+  }
+  if (d.userRating instanceof HTMLInputElement) {
+    d.userRating.disabled = !library || busy;
+  }
+  if (d.review instanceof HTMLTextAreaElement) {
+    d.review.disabled = !library || busy;
+  }
+  if (d.spoilers instanceof HTMLInputElement) {
+    d.spoilers.disabled = !library || busy;
+  }
+  if (d.tags instanceof HTMLInputElement) {
+    d.tags.disabled = !library || busy;
+  }
+  if (d.save instanceof HTMLButtonElement) d.save.disabled = !library || busy;
+  if (d.remove instanceof HTMLButtonElement) d.remove.disabled = !library || busy;
+  if (d.refresh instanceof HTMLButtonElement) d.refresh.disabled = busy;
+
+  for (const input of dom.detail.collections?.querySelectorAll(
+    'input[type="checkbox"]'
+  ) ?? []) {
+    if (input instanceof HTMLInputElement) input.disabled = !library || busy;
+  }
+
+  setDetailHintVisible(library);
+}
+
+/**
+ * Marca la ficha como ocupada (o no) y actualiza los controles.
+ *
+ * @param {boolean} busy
+ */
+function setDetailBusy(busy) {
+  detailState.busy = busy === true;
+  updateDetailControls();
+}
+
+/**
+ * Refresca el bloque «seguimiento» de la ficha abierta con el
+ * snapshot de la biblioteca sin filtros.
+ *
+ * Solo se actualizan los campos de seguimiento (estado, favorito,
+ * visionados y fechas). La parte personal —nota, reseña, etiquetas y
+ * spoilers— **no** se toca: las ediciones sin guardar se conservan
+ * (D-M09, AC-M26).
+ *
+ * @returns {void}
+ */
+function refreshOpenDetailTracking() {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  // Con una escritura en curso la ficha refleja el estado local: el
+  // snapshot todavía puede traer el valor anterior.
+  if (detailState.busy) return;
+
+  const movie = state.libraryByDocId.get(docId);
+  if (!movie) return;
+
+  const current = detailState.movie ?? {};
+
+  detailState.movie = {
+    ...current,
+    status: typeof movie.status === "string" ? movie.status : current.status,
+    isFavorite: movie.isFavorite === true,
+    watchCount:
+      typeof movie.watchCount === "number" && Number.isFinite(movie.watchCount)
+        ? Math.max(0, Math.trunc(movie.watchCount))
+        : typeof current.watchCount === "number"
+          ? current.watchCount
+          : 0,
+    watchDates: Array.isArray(movie.watchDates)
+      ? movie.watchDates
+      : Array.isArray(current.watchDates)
+        ? current.watchDates
+        : [],
+    lastWatchedAt:
+      movie.lastWatchedAt ?? current.lastWatchedAt ?? null,
+  };
+
+  // Si el usuario está escribiendo el contador no se repinta: su texto
+  // se perdería.
+  const watchInput = dom?.detail?.watchInput;
+  if (watchInput && document.activeElement === watchInput) return;
+
+  renderDetailTracking(detailState.movie);
+}
+
+// -------------------------------------------------------------
+// Ficha: escrituras (ALG-M03, D-M09)
+// -------------------------------------------------------------
+
+/**
+ * Aplica en memoria el nuevo estado y repinta el bloque de
+ * seguimiento. La escritura real la hace el repositorio.
+ *
+ * @param {string} status
+ */
+function applyLocalStatus(status) {
+  const movie = detailState.movie;
+  if (!movie) return;
+
+  const current = typeof movie.status === "string" ? movie.status : "watchlist";
+  if (current === status) return;
+
+  const next = { ...movie, status };
+
+  // La transición a «Vista» cuenta un visionado (ALG-M03, AC-M11).
+  if (status === "watched" && current !== "watched") {
+    const now = new Date();
+    const dates = Array.isArray(movie.watchDates) ? movie.watchDates.slice() : [];
+    dates.push(now);
+    const count =
+      typeof movie.watchCount === "number" && Number.isFinite(movie.watchCount)
+        ? movie.watchCount
+        : 0;
+
+    next.watchCount = Math.min(MAX_WATCH_COUNT, count + 1);
+    next.watchDates = dates;
+    next.lastWatchedAt = now;
+  }
+
+  detailState.movie = next;
+  renderDetailTracking(next);
+}
+
+/**
+ * Aplica en memoria un cambio del contador de visionados.
+ *
+ * @param {number} count
+ */
+function applyLocalWatchCount(count) {
+  const movie = detailState.movie;
+  if (!movie) return;
+
+  const dates = Array.isArray(movie.watchDates) ? movie.watchDates.slice() : [];
+  const trimmed =
+    count === 0 ? [] : dates.length > count ? dates.slice(dates.length - count) : dates;
+
+  detailState.movie = {
+    ...movie,
+    watchCount: count,
+    watchDates: trimmed,
+    lastWatchedAt: trimmed.length > 0 ? trimmed[trimmed.length - 1] : null,
+  };
+
+  renderDetailTracking(detailState.movie);
+}
+
+/**
+ * Cambia el estado de la película (guardado inmediato, D-M09).
+ */
+async function handleDetailStatusChange() {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  const status = dom?.detail?.status?.value ?? "";
+  if (!Object.prototype.hasOwnProperty.call(STATUS_LABELS, status)) return;
+
+  setDetailBusy(true);
+  try {
+    await setStatus(docId, status);
+    applyLocalStatus(status);
+    showDetailStatus("Estado actualizado.");
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+  }
+}
+
+/**
+ * Alterna el favorito de la ficha (guardado inmediato, D-M09,
+ * AC-M14).
+ */
+async function handleDetailFavoriteToggle() {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  const button = dom?.detail?.favorite;
+  const previous = button?.getAttribute("aria-pressed") === "true";
+  const next = !previous;
+
+  setDetailFavorite(next);
+  if (detailState.movie) {
+    detailState.movie = { ...detailState.movie, isFavorite: next };
+  }
+
+  try {
+    await setFavorite(docId, next);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    setDetailFavorite(previous);
+    if (detailState.movie) {
+      detailState.movie = { ...detailState.movie, isFavorite: previous };
+    }
+    showDetailError(describeDetailError(error));
+  }
+}
+
+/**
+ * «+1»: suma un visionado (ALG-M03, AC-M10).
+ */
+async function handleDetailWatchInc() {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  setDetailBusy(true);
+  try {
+    await watch(docId);
+    const movie = detailState.movie;
+    const count =
+      movie && typeof movie.watchCount === "number" ? movie.watchCount : 0;
+    if (count < MAX_WATCH_COUNT) applyLocalWatchCount(count + 1);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+  }
+}
+
+/**
+ * «−1»: resta un visionado (ALG-M03, AC-M10).
+ */
+async function handleDetailWatchDec() {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  setDetailBusy(true);
+  try {
+    await unwatch(docId);
+    const movie = detailState.movie;
+    const count =
+      movie && typeof movie.watchCount === "number" ? movie.watchCount : 0;
+    if (count > 0) applyLocalWatchCount(count - 1);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+  }
+}
+
+/**
+ * Edición manual del número de visionados (ALG-M03).
+ */
+async function handleDetailWatchInputChange() {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  const input = dom?.detail?.watchInput;
+  const raw = input?.value?.trim() ?? "";
+
+  if (raw === "") {
+    renderDetailTracking(detailState.movie ?? {});
+    return;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > MAX_WATCH_COUNT) {
+    showDetailError(WATCH_COUNT_ERROR_MESSAGE);
+    renderDetailTracking(detailState.movie ?? {});
+    return;
+  }
+
+  setDetailBusy(true);
+  try {
+    await setWatchCount(docId, parsed);
+    applyLocalWatchCount(parsed);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+  }
+}
+
+/**
+ * Asigna las colecciones marcadas (guardado inmediato, D-M09,
+ * AC-M15).
+ */
+async function handleDetailCollectionsChange() {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  const container = dom?.detail?.collections;
+  const ids = [];
+  for (const input of container?.querySelectorAll('input[type="checkbox"]') ??
+    []) {
+    if (input instanceof HTMLInputElement && input.checked) {
+      ids.push(input.value);
+    }
+  }
+
+  setDetailBusy(true);
+  try {
+    await setCollections(docId, ids);
+    if (detailState.movie) {
+      detailState.movie = { ...detailState.movie, collectionIds: ids };
+    }
+    showDetailStatus("Colecciones actualizadas.");
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+  }
+}
+
+/**
+ * «Guardar»: persiste nota, reseña, etiquetas y spoilers (D-M09).
+ * La nota se valida con `parseUserRating` (ALG-M04, AC-M12).
+ */
+async function handleDetailSave() {
+  const d = dom?.detail;
+  if (!d || !detailState.inLibrary || !detailState.docId) return;
+
+  const raw = readUserRatingInput();
+
+  let userRating = null;
+  try {
+    userRating = parseUserRating(raw === "" ? null : raw);
+  } catch (error) {
+    const message =
+      error instanceof UserRatingError ? error.message : USER_RATING_ERROR_MESSAGE;
+    if (d.userRating instanceof HTMLInputElement) {
+      d.userRating.setAttribute("aria-invalid", "true");
+    }
+    showDetailError(message);
+    return;
+  }
+
+  if (d.userRating instanceof HTMLInputElement) {
+    d.userRating.setAttribute("aria-invalid", "false");
+  }
+
+  const review = d.review instanceof HTMLTextAreaElement ? d.review.value.trim() : "";
+  const tags = parseTagsInput(d.tags instanceof HTMLInputElement ? d.tags.value : "");
+  const hasSpoilers = d.spoilers instanceof HTMLInputElement ? d.spoilers.checked : false;
+
+  const current = readPersonalForm();
+  const changed =
+    current.userRating !== detailState.saved.userRating ||
+    current.userReview !== detailState.saved.userReview ||
+    current.tags !== detailState.saved.tags ||
+    current.hasSpoilers !== detailState.saved.hasSpoilers;
+
+  if (!changed) {
+    updateDirtyWarning();
+    showDetailStatus("No hay cambios que guardar.");
+    return;
+  }
+
+  setDetailBusy(true);
+  try {
+    await updatePersonal(detailState.docId, {
+      userRating,
+      userReview: review === "" ? null : review,
+      tags,
+      hasSpoilers,
+    });
+
+    detailState.saved = { ...current };
+    if (detailState.movie) {
+      detailState.movie = {
+        ...detailState.movie,
+        userRating,
+        userReview: review === "" ? null : review,
+        tags,
+        hasSpoilers,
+      };
+    }
+
+    renderUserRatingDisplay(userRating);
+    updateDirtyWarning();
+    showDetailStatus("Cambios guardados.");
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+  }
+}
+
+/**
+ * «Actualizar datos»: fuerza la recarga desde TMDB (ALG-M06, AC-M21).
+ */
+async function handleDetailRefresh() {
+  if (detailState.inLibrary && detailState.docId) {
+    const ok = await loadLibraryDetail(detailState.docId, true);
+    if (ok) showDetailStatus("Datos actualizados.");
+    return;
+  }
+
+  if (detailState.tmdbId) {
+    await loadCatalogDetail(detailState.tmdbId);
+  }
+}
+
+/**
+ * «Eliminar»: borra la película tras confirmar (AC-M27).
+ */
+async function handleDetailDelete() {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  const confirmed = window.confirm(DELETE_CONFIRM_MESSAGE);
+  if (!confirmed) return;
+
+  setDetailBusy(true);
+  try {
+    await deleteMovie(docId);
+    closeMovieDetail();
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+  }
+}
+
+/**
+ * «Mostrar reseña»: revela el texto con spoilers (AC-M13).
+ */
+function onDetailSpoilerReveal() {
+  detailState.spoilerRevealed = true;
+  renderSpoilerState();
+  dom?.detail?.review?.focus?.();
+}
+
+/**
+ * Cualquier cambio en la parte personal actualiza el aviso de cambios
+ * pendientes y el estado de spoilers (D-M09).
+ */
+function onDetailPersonalInput() {
+  renderSpoilerState();
+  updateDirtyWarning();
+}
+
+// -------------------------------------------------------------
+// Alta manual (UI-M08, AC-M08)
+// -------------------------------------------------------------
+
+/**
+ * «Añadir manualmente»: muestra u oculta el formulario de alta manual
+ * (UI-M08). El alta sigue operativa aunque TMDB no esté disponible
+ * (AC-M01, AC-M06).
+ */
+function onManualOpen() {
+  const form = dom?.manual?.form;
+  if (!form) return;
+
+  setManualFormVisible(form.hidden);
+}
+
+/**
+ * Rellena el multi-select de géneros con el diccionario estático
+ * (D-M08).
+ */
+function populateManualGenres() {
+  const select = dom?.manual?.genres;
+  if (!(select instanceof HTMLSelectElement)) return;
+
+  clearNode(select);
+  for (const genre of TMDB_GENRE_OPTIONS) {
+    const option = document.createElement("option");
+    option.value = String(genre.id);
+    option.textContent = genre.label;
+    select.append(option);
+  }
+}
+
+/**
+ * Muestra u oculta el formulario de alta manual.
+ *
+ * @param {boolean} visible
+ */
+function setManualFormVisible(visible) {
+  const form = dom?.manual?.form;
+  if (!form) return;
+
+  form.hidden = !visible;
+  if (visible) dom?.manual?.title?.focus?.();
+}
+
+/**
+ * Lee un entero opcional de un input. Devuelve `null` si está vacío y
+ * `undefined` si el valor no es válido.
+ *
+ * @param {HTMLInputElement|null|undefined} input
+ * @param {number} min
+ * @param {number} max
+ * @returns {number|null|undefined}
+ */
+function readOptionalInteger(input, min, max) {
+  if (!(input instanceof HTMLInputElement)) return null;
+
+  const raw = input.value.trim();
+  if (raw === "") return null;
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) return undefined;
+
+  return parsed;
+}
+
+/**
+ * Géneros marcados en el multi-select del alta manual.
+ *
+ * @returns {{ genreIds: number[], genres: string[] }}
+ */
+function readManualGenres() {
+  const select = dom?.manual?.genres;
+  const genreIds = [];
+  const genres = [];
+
+  if (select instanceof HTMLSelectElement) {
+    for (const option of select.selectedOptions) {
+      const id = Number(option.value);
+      if (!Number.isInteger(id)) continue;
+      genreIds.push(id);
+      const label = TMDB_GENRES_ES[id];
+      if (label) genres.push(label);
+    }
+  }
+
+  return { genreIds, genres };
+}
+
+/**
+ * Alta manual de una película (UI-M08, AC-M08). No hace ninguna
+ * llamada a TMDB.
+ */
+async function handleManualSubmit(event) {
+  event.preventDefault();
+
+  const manual = dom?.manual ?? {};
+
+  const title = manual.title?.value?.trim() ?? "";
+  if (title === "") {
+    setMessage(manual.error, MANUAL_TITLE_ERROR);
+    manual.title?.focus?.();
+    return;
+  }
+
+  const year = readOptionalInteger(manual.year, MANUAL_MIN_YEAR, MANUAL_MAX_YEAR);
+  if (year === undefined) {
+    setMessage(manual.error, MANUAL_YEAR_ERROR);
+    manual.year?.focus?.();
+    return;
+  }
+
+  const runtime = readOptionalInteger(
+    manual.runtime,
+    MANUAL_MIN_RUNTIME,
+    MANUAL_MAX_RUNTIME
+  );
+  if (runtime === undefined) {
+    setMessage(manual.error, MANUAL_RUNTIME_ERROR);
+    manual.runtime?.focus?.();
+    return;
+  }
+
+  const overview = manual.overview?.value?.trim() ?? "";
+  const { genreIds, genres } = readManualGenres();
+
+  try {
+    await addManual({
+      title,
+      releaseYear: year ?? null,
+      runtime: runtime ?? null,
+      overview: overview === "" ? null : overview,
+      genres,
+      genreIds,
+    });
+
+    if (manual.form instanceof HTMLFormElement) manual.form.reset();
+    setMessage(manual.error, "");
+    setManualFormVisible(false);
+    showManualStatus(MANUAL_SUCCESS_MESSAGE);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    setMessage(manual.error, describeRepositoryError(error));
+  }
+}
+
+/**
+ * Muestra el aviso de éxito del alta manual.
+ *
+ * @param {string} message
+ */
+function showManualStatus(message) {
+  const form = dom?.manual?.form;
+  if (!form) return;
+
+  if (!manualStatusNode || !manualStatusNode.isConnected) {
+    const node = document.createElement("p");
+    node.className = "movies-message";
+    node.setAttribute("role", "status");
+    manualStatusNode = node;
+    form.insertAdjacentElement("afterend", node);
+  }
+
+  setMessage(manualStatusNode, message);
+}
+
+// -------------------------------------------------------------
 // Montaje
 // -------------------------------------------------------------
 
@@ -1887,6 +3765,12 @@ export function mountMovies(options = {}) {
   librarySearchTimer = null;
   searchToken = 0;
   libraryLoadError = "";
+  detailState = createDetailState();
+  detailHintNode = null;
+  detailErrorNode = null;
+  detailStatusNode = null;
+  manualStatusNode = null;
+  userRatingTracker = null;
 
   if (typeof options?.onOpenMovie === "function") {
     detailOpener = options.onOpenMovie;
@@ -1935,6 +3819,51 @@ export function mountMovies(options = {}) {
   dom.library.ratingMax?.addEventListener("change", applyLibraryFilters);
   dom.library.sort?.addEventListener("change", applyLibraryFilters);
   dom.library.clear?.addEventListener("click", clearLibraryFilters);
+
+  // --- Ficha de película (UI-M06) ---------------------------------
+  // Los nodos auxiliares (aviso, error y estado) se crean una sola
+  // vez por montaje y se retiran al desmontar.
+  ensureDetailHintNode();
+
+  // Copia literal del texto del campo de nota: permite leer «7,5»
+  // aunque el navegador rechace la coma decimal (ALG-M04, AC-M12).
+  userRatingTracker = createRawTextTracker(dom.detail?.userRating ?? null);
+
+  // Cierre del diálogo (botón «Cerrar» y ESC): descarta los cambios
+  // pendientes y devuelve el foco al disparador (UI-M10, AC-M26).
+  dom.detail?.dialog?.addEventListener("close", onDetailDialogClose);
+  dom.detail?.close?.addEventListener("click", closeMovieDetail);
+
+  // Seguimiento: estado, favorito y visionados se guardan de
+  // inmediato (D-M09, ALG-M03).
+  dom.detail?.status?.addEventListener("change", handleDetailStatusChange);
+  dom.detail?.favorite?.addEventListener("click", handleDetailFavoriteToggle);
+  dom.detail?.watchInc?.addEventListener("click", handleDetailWatchInc);
+  dom.detail?.watchDec?.addEventListener("click", handleDetailWatchDec);
+  dom.detail?.watchInput?.addEventListener("change", handleDetailWatchInputChange);
+
+  // Colecciones: se delegan en el contenedor porque los checkboxes se
+  // repintan al abrir la ficha (AC-M15).
+  dom.detail?.collections?.addEventListener("change", handleDetailCollectionsChange);
+
+  // Parte personal: nota, reseña, etiquetas y spoilers requieren
+  // «Guardar» (D-M09, AC-M26).
+  dom.detail?.save?.addEventListener("click", handleDetailSave);
+  dom.detail?.userRating?.addEventListener("input", onDetailPersonalInput);
+  dom.detail?.review?.addEventListener("input", onDetailPersonalInput);
+  dom.detail?.tags?.addEventListener("input", onDetailPersonalInput);
+  dom.detail?.spoilers?.addEventListener("change", onDetailPersonalInput);
+
+  // «Mostrar reseña» (AC-M13), «Actualizar datos» (ALG-M06) y
+  // «Eliminar» (AC-M27).
+  dom.detail?.spoilerReveal?.addEventListener("click", onDetailSpoilerReveal);
+  dom.detail?.refresh?.addEventListener("click", handleDetailRefresh);
+  dom.detail?.remove?.addEventListener("click", handleDetailDelete);
+
+  // --- Alta manual (UI-M08, AC-M08) -------------------------------
+  populateManualGenres();
+  dom.manual?.open?.addEventListener("click", onManualOpen);
+  dom.manual?.form?.addEventListener("submit", handleManualSubmit);
 
   // --- Estadísticas y datos (UI-M02, ALG-M01) ---------------------
   renderStats([]);
@@ -2004,6 +3933,50 @@ export function unmountMovies() {
   dom?.library?.ratingMax?.removeEventListener("change", applyLibraryFilters);
   dom?.library?.sort?.removeEventListener("change", applyLibraryFilters);
   dom?.library?.clear?.removeEventListener("click", clearLibraryFilters);
+
+  // --- Ficha de película (UI-M06) ---------------------------------
+  // La ficha se cierra para no dejar un `<dialog>` modal abierto al
+  // desmontar la sección. La escucha «close» se retira antes de que
+  // se dispare el evento para que no restaure el foco.
+  closeMovieDetail();
+
+  dom?.detail?.dialog?.removeEventListener("close", onDetailDialogClose);
+  dom?.detail?.close?.removeEventListener("click", closeMovieDetail);
+  dom?.detail?.status?.removeEventListener("change", handleDetailStatusChange);
+  dom?.detail?.favorite?.removeEventListener("click", handleDetailFavoriteToggle);
+  dom?.detail?.watchInc?.removeEventListener("click", handleDetailWatchInc);
+  dom?.detail?.watchDec?.removeEventListener("click", handleDetailWatchDec);
+  dom?.detail?.watchInput?.removeEventListener("change", handleDetailWatchInputChange);
+  dom?.detail?.collections?.removeEventListener("change", handleDetailCollectionsChange);
+  dom?.detail?.save?.removeEventListener("click", handleDetailSave);
+  dom?.detail?.userRating?.removeEventListener("input", onDetailPersonalInput);
+  dom?.detail?.review?.removeEventListener("input", onDetailPersonalInput);
+  dom?.detail?.tags?.removeEventListener("input", onDetailPersonalInput);
+  dom?.detail?.spoilers?.removeEventListener("change", onDetailPersonalInput);
+  dom?.detail?.spoilerReveal?.removeEventListener("click", onDetailSpoilerReveal);
+  dom?.detail?.refresh?.removeEventListener("click", handleDetailRefresh);
+  dom?.detail?.remove?.removeEventListener("click", handleDetailDelete);
+
+  // La copia literal de la nota deja de escuchar el input: el nodo
+  // vive en `index.html` y sobrevive al desmontaje.
+  userRatingTracker?.destroy?.();
+  userRatingTracker = null;
+
+  // --- Alta manual (UI-M08) ---------------------------------------
+  dom?.manual?.open?.removeEventListener("click", onManualOpen);
+  dom?.manual?.form?.removeEventListener("submit", handleManualSubmit);
+
+  // Nodos auxiliares creados en tiempo de ejecución: se retiran del
+  // DOM para no dejar restos.
+  detailHintNode?.remove();
+  detailErrorNode?.remove();
+  detailStatusNode?.remove();
+  manualStatusNode?.remove();
+  detailHintNode = null;
+  detailErrorNode = null;
+  detailStatusNode = null;
+  manualStatusNode = null;
+  detailState = createDetailState();
 
   for (const tab of MOVIE_TABS) {
     const button = dom?.tabs?.[tab.key];
