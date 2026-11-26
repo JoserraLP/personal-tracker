@@ -75,7 +75,7 @@ reglas/índices por subcolección) sirve de patrón para las categorías futuras
 
 ## 5. Criterios de éxito
 
-- `AC-M01`–`AC-M25` verificables (BDD en `specs-delta.md`): catálogo TMDB con
+- `AC-M01`–`AC-M27` verificables (BDD en `specs-delta.md`): catálogo TMDB con
   metadatos completos, alta manual sin red, seguimiento con rewatch y fechas,
   colecciones multi-asignación, filtros/orden/estadísticas correctos, reglas de
   Firestore que deniegan accesos ajenos y escrituras inválidas.

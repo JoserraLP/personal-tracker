@@ -35,14 +35,14 @@ pendientes). Specs citadas por ID (`rg "API-M01" openspec/changes/movies/`).
 | T-M11 | dev-frontend | `js/app.js` | UI-M01, REQ-D2 (MOD), REQ-D3 (MOD) | T-M10 | `#nav-movies` alterna `#movies-section` con `aria-expanded` y `#app-empty` conservado; AC-M17 | done |
 | T-M12 | devops | `firestore.rules` | SEC-M01..M03, REQ-F2 (MOD) | — | `match /movie_collections/{id}` owner-only + `isValidMovieDoc()` en `movies`; reglas previas intactas; AC-M22, AC-M23 | done |
 | T-M13 | devops | `firestore.indexes.json` | DB-M04, REQ-F2 (MOD) | T-M12 | 6 índices compuestos de DB-M04 (`collectionGroup:"movies"`), estructura preservada | done |
-| T-M14 | code-reviewer | (read-only) `openspec/changes/movies/*.md` + `git diff` | todos `*-M*` | T-M11, T-M13 | Auditoría sin hallazgos abiertos; cero inconsistencias de IDs entre specs-delta y tasks | todo |
+| T-M14 | code-reviewer | (read-only) `openspec/changes/movies/*.md` + `git diff` | todos `*-M*` | T-M11, T-M13 | Auditoría sin hallazgos abiertos (2 rondas de fixes: REQ-C5 en `js/app.js`/`css/app.css`, AC-M26..M27, citas REQ-M, NFR-M01/M05 medibles, ALG-M03 unwatch→0, UI-M05/M09); cero inconsistencias de IDs entre specs-delta y tasks | done |
 
 ## Estado
 
 - BASE, P-1, P-2, P-3, P-3b y P-4 completados. Árbol podado y verificado.
 - Delta `openspec/changes/movies/` auditado y aprobado (sin hallazgos
-  residuales). T-M01..T-M14 sincronizadas en `tasks.md` raíz y en GitHub Issues
-  (etiquetas `ready`/`blocked`); pendientes de implementación.
+  residuales). T-M01..T-M14 completadas y sincronizadas en `tasks.md` raíz y en
+  GitHub Issues (issues cerradas).
 - Mapa de issues (cambio `movies`): T-M01=#81, T-M02=#80, T-M03=#84,
   T-M04=#88, T-M05=#85, T-M06=#87, T-M07=#90, T-M08=#91, T-M09=#92,
   T-M10=#93, T-M11=#94, T-M12=#86, T-M13=#89, T-M14=#95. Las issues bloqueadas

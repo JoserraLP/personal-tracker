@@ -13,8 +13,8 @@
 //      (UI-M01, REQ-D2 MOD, REQ-D3 MOD).
 //
 // Convenciones:
-//   - Módulos ESM sin build step (specs/00-overview.md §3, REQ-C5).
-//   - Textos de UI en español.
+//   - Módulos ESM sin build step (specs/00-overview.md §3, REQ-C1).
+//   - Textos de UI en español (REQ-C3).
 //   - `js/firebase.js` es el único punto que conoce las URLs del
 //     CDN de Firebase; `js/allowed-emails.js` es la lista de
 //     correos autorizados (control de acceso web).
