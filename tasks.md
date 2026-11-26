@@ -34,7 +34,7 @@ pendientes). Specs citadas por ID (`rg "API-M01" openspec/changes/movies/`).
 | T-M10 | dev-frontend | `js/movies/moviesView.js` | UI-M07, DB-M02 | T-M09 | Colecciones: crear/renombrar/describir/eliminar, recuento, filtrado; AC-M15, AC-M16 | todo |
 | T-M11 | dev-frontend | `js/app.js` | UI-M01, REQ-D2 (MOD), REQ-D3 (MOD) | T-M10 | `#nav-movies` alterna `#movies-section` con `aria-expanded` y `#app-empty` conservado; AC-M17 | todo |
 | T-M12 | devops | `firestore.rules` | SEC-M01..M03, REQ-F2 (MOD) | — | `match /movie_collections/{id}` owner-only + `isValidMovieDoc()` en `movies`; reglas previas intactas; AC-M22, AC-M23 | done |
-| T-M13 | devops | `firestore.indexes.json` | DB-M04, REQ-F2 (MOD) | T-M12 | 6 índices compuestos de DB-M04 (`collectionGroup:"movies"`), estructura preservada | todo |
+| T-M13 | devops | `firestore.indexes.json` | DB-M04, REQ-F2 (MOD) | T-M12 | 6 índices compuestos de DB-M04 (`collectionGroup:"movies"`), estructura preservada | done |
 | T-M14 | code-reviewer | (read-only) `openspec/changes/movies/*.md` + `git diff` | todos `*-M*` | T-M11, T-M13 | Auditoría sin hallazgos abiertos; cero inconsistencias de IDs entre specs-delta y tasks | todo |
 
 ## Estado
