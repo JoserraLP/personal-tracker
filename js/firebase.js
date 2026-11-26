@@ -34,6 +34,8 @@ import {
   arrayUnion,
   arrayRemove,
   runTransaction,
+  Timestamp,
+  writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 import { firebaseConfig } from "./config.js";
@@ -80,4 +82,6 @@ export {
   arrayUnion,
   arrayRemove,
   runTransaction,
+  Timestamp,
+  writeBatch,
 };
