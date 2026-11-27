@@ -38,10 +38,29 @@
 //     claves de orden respetan la colación es-ES, los nulls al
 //     final y el progreso sin `numberOfEpisodes` al final.
 //
-// Tareas siguientes (mismo fichero, en cadena): T-S08 (ficha y alta
-// manual), T-S09 (bloque de episodios) y T-S10 (colecciones). Por
-// eso el módulo deja estos enganches: `setSeriesDetailOpener` para
-// la ficha, `getSeriesViewState` para el estado vivo y
+// Alcance de esta tarea (T-S08):
+//   - UI-S06: ficha completa en `<dialog id="series-detail">` con los
+//     tres bloques de la tabla de UI-S06 (catálogo, seguimiento y
+//     guardado): metadatos de TMDB (póster, backdrop, títulos, fecha
+//     de estreno, «3 temporadas · 24 episodios», estado de emisión
+//     traducido, cadenas, géneros, sinopsis, creadores, reparto,
+//     tráiler, «Dónde ver» y «TMDB 8,4 (12.345 votos)»).
+//   - ALG-S06: la ficha respeta la caché de 30 días
+//     (`ensureDetailCached`); «Actualizar datos» fuerza la recarga.
+//   - D-S09: estado, favorito, «+1 Episodio», revisionados y
+//     colecciones se guardan de inmediato; nota, reseña, etiquetas y
+//     spoilers requieren «Guardar» y avisan con
+//     `series-detail-dirty-warning` mientras hay cambios pendientes.
+//   - ALG-S04: la nota personal se valida con `parseUserRating`
+//     (0–10 en medios puntos) y el error va en español.
+//   - AC-S32: la nota de TMDB y la nota personal se muestran
+//     separadas («TMDB 8,4 (12.345 votos)» y «Mi nota 8,5»).
+//   - UI-S11: alta manual de series sin conexión, con avisos en
+//     español y sin ninguna llamada a TMDB (AC-S08, AC-S01, AC-S06).
+//
+// Tareas siguientes (mismo fichero, en cadena): T-S09 (bloque de
+// episodios) y T-S10 (colecciones). Por eso el módulo deja estos
+// enganches: `getSeriesViewState` para el estado vivo y
 // `refreshSeriesStats` para las estadísticas.
 //
 // Dependencias ya implementadas (se consumen, no se duplican):
@@ -62,31 +81,46 @@ import {
   LIBRARY_STATUS_OPTIONS,
   SORT_OPTIONS,
   STATUS_LABELS,
+  STATUS_OPTIONS,
   TV_GENRE_OPTIONS,
   USER_RATING_ERROR_MESSAGE,
+  UserRatingError,
   computeSeriesStats,
   createLibraryFilters,
   filterSeries,
   parseUserRating,
   sortSeries,
+  tmdbStatusLabel,
 } from "./seriesState.js";
 
 import {
+  MAX_REWATCH_COUNT,
   addFromTmdb,
+  addManual,
+  decRewatch,
+  deleteSeries,
+  ensureDetailCached,
+  incRewatch,
+  setCollections,
   setEpisodeWatched,
   setFavorite,
+  setStatus,
   subscribeCollections,
   subscribeSeries,
+  updatePersonal,
 } from "./seriesRepository.js";
 
 import {
+  backdropUrl,
   fetchOnTheAir,
   fetchPopularSeries,
   fetchTopRatedSeries,
   fetchTrendingWeek,
+  getSeriesDetail,
   isTmdbConfigured,
   posterUrl,
   searchSeries,
+  trailerUrl,
 } from "./tmdbTvClient.js";
 
 // -------------------------------------------------------------
@@ -270,6 +304,76 @@ const POSTER_PLACEHOLDER =
       'font-size="44" text-anchor="middle">Sin póster</text>' +
       "</svg>"
   );
+
+/** Fondo de reserva cuando la serie no tiene `backdropPath` (AC-S05). */
+const BACKDROP_PLACEHOLDER =
+  "data:image/svg+xml;charset=utf-8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" ' +
+      'viewBox="0 0 1280 720" role="presentation">' +
+      '<rect width="1280" height="720" fill="#211d18"/>' +
+      '<text x="640" y="368" fill="#b8b1a5" font-family="system-ui,sans-serif" ' +
+      'font-size="40" text-anchor="middle">Sin imagen de fondo</text>' +
+      "</svg>"
+  );
+
+// -------------------------------------------------------------
+// Constantes de la ficha y del alta manual (UI-S06, UI-S11)
+// -------------------------------------------------------------
+
+/** Confirmación del borrado de una serie (UI-S06, AC-S31). */
+const DETAIL_DELETE_CONFIRM_MESSAGE =
+  "¿Eliminar esta serie de tu biblioteca?";
+
+/** Título temporal mientras se carga la ficha. */
+const DETAIL_LOADING_TITLE = "Cargando…";
+
+/** Aviso cuando la serie no se puede identificar. */
+const DETAIL_UNKNOWN_SERIES_MESSAGE =
+  "No se encontró la serie en tu biblioteca.";
+
+/** Aviso de la vista de catálogo: la serie aún no está en la biblioteca. */
+const DETAIL_CATALOG_HINT =
+  "Esta serie todavía no está en tu biblioteca. Añádela para poder seguirla.";
+
+/** Avisos de la ficha tras una acción correcta. */
+const DETAIL_SAVED_MESSAGE = "Cambios guardados.";
+const DETAIL_NOTHING_TO_SAVE_MESSAGE = "No hay cambios que guardar.";
+const DETAIL_REFRESHED_MESSAGE = "Datos actualizados.";
+const DETAIL_COLLECTIONS_MESSAGE = "Colecciones actualizadas.";
+const DETAIL_STATUS_MESSAGE = "Estado actualizado.";
+const DETAIL_EPISODE_MESSAGE = "Episodio marcado como visto.";
+const DETAIL_REWATCH_UP_MESSAGE = "Revisionado añadido.";
+const DETAIL_REWATCH_DOWN_MESSAGE = "Revisionado retirado.";
+
+/** Mensajes del alta manual en español (UI-S11, AC-S08). */
+const MANUAL_NAME_ERROR = "El nombre de la serie es obligatorio.";
+const MANUAL_YEAR_ERROR = "El año de estreno no es válido.";
+const MANUAL_SEASONS_ERROR = "El número de temporadas no es válido.";
+const MANUAL_EPISODES_ERROR = "El número de episodios no es válido.";
+const MANUAL_SUCCESS_MESSAGE = "Serie añadida a tu biblioteca.";
+
+/** Límites del alta manual (coinciden con DB-S01). */
+const MANUAL_MIN_YEAR = 1900;
+const MANUAL_MAX_YEAR = 2100;
+const MANUAL_MIN_SEASONS = 0;
+const MANUAL_MAX_SEASONS = 1000;
+const MANUAL_MIN_EPISODES = 0;
+const MANUAL_MAX_EPISODES = 100000;
+
+/** Fecha de estreno en formato largo es-ES («13 de marzo de 2022»). */
+const longDateFormatter = new Intl.DateTimeFormat("es-ES", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** Fecha de visionado en formato corto es-ES («27/11/2026»). */
+const shortDateFormatter = new Intl.DateTimeFormat("es-ES", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
 
 // -------------------------------------------------------------
 // Formateadores (es-ES)
@@ -1815,6 +1919,1592 @@ function subscribeLibrarySources() {
 }
 
 // -------------------------------------------------------------
+// Ficha de serie (UI-S06, ALG-S04, ALG-S06, D-S09)
+// -------------------------------------------------------------
+
+/**
+ * Valores de la parte personal de la ficha en el momento del último
+ * guardado: sirven para detectar cambios pendientes (D-S09, AC-S31).
+ *
+ * @typedef {Object} DetailPersonal
+ * @property {string} userRating Texto escrito en el campo de nota.
+ * @property {string} userReview Texto escrito en la reseña.
+ * @property {string} tags Texto escrito en el campo de etiquetas.
+ * @property {boolean} hasSpoilers Estado de la casilla de spoilers.
+ */
+
+/**
+ * @typedef {Object} SeriesDetailState
+ * @property {string|null} docId Id del documento en la biblioteca.
+ * @property {string|null} tmdbId Id de TMDB (`null` si es manual).
+ * @property {boolean} inLibrary `true` si la serie está en la biblioteca.
+ * @property {Record<string, unknown>|null} series Modelo pintado.
+ * @property {DetailPersonal} saved Últimos valores guardados.
+ * @property {boolean} spoilerRevealed `true` si la reseña se ha revelado.
+ * @property {boolean} busy `true` mientras hay una escritura en curso.
+ * @property {HTMLElement|null} trigger Elemento que abrió la ficha.
+ */
+
+/**
+ * Estado inicial de la ficha.
+ *
+ * @returns {SeriesDetailState}
+ */
+function createDetailState() {
+  return {
+    docId: null,
+    tmdbId: null,
+    inLibrary: false,
+    series: null,
+    saved: { userRating: "", userReview: "", tags: "", hasSpoilers: false },
+    spoilerRevealed: false,
+    busy: false,
+    trigger: null,
+  };
+}
+
+/** Estado vivo de la ficha. */
+let detailState = createDetailState();
+
+/** Nodo de error creado dentro del diálogo (`role="alert"`). */
+let detailErrorNode = null;
+
+/** Nodo de aviso creado dentro del diálogo (`role="status"`). */
+let detailStatusNode = null;
+
+/** Nodo de aviso informativo de la vista de catálogo. */
+let detailHintNode = null;
+
+/** Nodo de aviso del alta manual (`role="status"`). */
+let manualStatusNode = null;
+
+/**
+ * Convierte un valor de fecha (cadena «YYYY-MM-DD», `Date` o
+ * `Timestamp` de Firestore) en `Date`. `null` si no se reconoce.
+ *
+ * @param {unknown} value
+ * @returns {Date|null}
+ */
+function toDate(value) {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (value && typeof value === "object" && typeof value.toDate === "function") {
+    try {
+      const date = value.toDate();
+      return date instanceof Date && !Number.isNaN(date.getTime()) ? date : null;
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
+    const date = new Date(`${trimmed}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  return null;
+}
+
+/**
+ * «3 temporadas · 24 episodios» (UI-S06, AC-S04).
+ *
+ * @param {unknown} seasons
+ * @param {unknown} episodes
+ * @returns {string}
+ */
+function formatCounts(seasons, episodes) {
+  const parts = [];
+
+  if (typeof seasons === "number" && Number.isFinite(seasons)) {
+    parts.push(`${seasons} ${seasons === 1 ? "temporada" : "temporadas"}`);
+  }
+
+  if (typeof episodes === "number" && Number.isFinite(episodes)) {
+    parts.push(`${episodes} ${episodes === 1 ? "episodio" : "episodios"}`);
+  }
+
+  return parts.join(" · ");
+}
+
+/**
+ * Lista de nombres separada por comas («Netflix, HBO Max»).
+ *
+ * @param {unknown} values
+ * @returns {string}
+ */
+function formatNameList(values) {
+  if (!Array.isArray(values)) return "";
+
+  return values
+    .filter((item) => typeof item === "string" && item.trim() !== "")
+    .map((item) => item.trim())
+    .join(", ");
+}
+
+/**
+ * «TMDB 8,4 (12.345 votos)» (AC-S04). La nota de TMDB nunca se
+ * mezcla con la nota personal (AC-S32).
+ *
+ * @param {unknown} rating
+ * @param {unknown} voteCount
+ * @returns {string}
+ */
+function formatTmdbRating(rating, voteCount) {
+  const value = formatRating(rating);
+  if (value === null) return "";
+
+  const votes = formatInteger(voteCount);
+  return votes === null ? `TMDB ${value}` : `TMDB ${value} (${votes} votos)`;
+}
+
+/**
+ * Traduce un error de la ficha: los códigos de TMDB siguen el mapa de
+ * ALG-S05 y el resto usa el mensaje del repositorio (ya en español).
+ *
+ * @param {unknown} error
+ * @returns {string}
+ */
+function describeDetailError(error) {
+  if (
+    error &&
+    typeof error === "object" &&
+    typeof error.code === "string" &&
+    Object.prototype.hasOwnProperty.call(TMDB_ERROR_MESSAGES, error.code)
+  ) {
+    return TMDB_ERROR_MESSAGES[error.code];
+  }
+
+  return describeRepositoryError(error);
+}
+
+/**
+ * Convierte un detalle de TMDB en el modelo que pinta la ficha. Los
+ * campos personales quedan vacíos: la vista de catálogo no sigue
+ * ninguna serie (UI-S06).
+ *
+ * @param {Record<string, unknown>} detail
+ * @returns {Record<string, unknown>}
+ */
+function tmdbDetailToSeries(detail) {
+  const data = detail && typeof detail === "object" ? detail : {};
+
+  return {
+    id: null,
+    source: "tmdb",
+    tmdbId: typeof data.id === "number" ? data.id : null,
+    name: typeof data.name === "string" ? data.name : "",
+    originalName: typeof data.originalName === "string" ? data.originalName : "",
+    posterPath: typeof data.posterPath === "string" ? data.posterPath : null,
+    backdropPath:
+      typeof data.backdropPath === "string" ? data.backdropPath : null,
+    firstAirDate:
+      typeof data.firstAirDate === "string" ? data.firstAirDate : null,
+    numberOfSeasons:
+      typeof data.numberOfSeasons === "number" ? data.numberOfSeasons : null,
+    numberOfEpisodes:
+      typeof data.numberOfEpisodes === "number" ? data.numberOfEpisodes : null,
+    tmdbStatus: typeof data.tmdbStatus === "string" ? data.tmdbStatus : null,
+    networks: Array.isArray(data.networks) ? data.networks : [],
+    episodeRuntime:
+      typeof data.episodeRuntime === "number" ? data.episodeRuntime : null,
+    genreIds: Array.isArray(data.genreIds) ? data.genreIds : [],
+    genres: Array.isArray(data.genres) ? data.genres : [],
+    overview: typeof data.overview === "string" ? data.overview : "",
+    creators: Array.isArray(data.creators) ? data.creators : [],
+    cast: Array.isArray(data.cast) ? data.cast : [],
+    trailerKey: typeof data.trailerKey === "string" ? data.trailerKey : null,
+    watchProviders: Array.isArray(data.watchProviders)
+      ? data.watchProviders
+      : [],
+    tmdbRating: typeof data.voteAverage === "number" ? data.voteAverage : null,
+    tmdbVoteCount: typeof data.voteCount === "number" ? data.voteCount : null,
+    status: "watchlist",
+    isFavorite: false,
+    currentSeason: 1,
+    currentEpisode: 1,
+    watchedEpisodesCount: 0,
+    favoriteEpisodesCount: 0,
+    rewatchCount: 0,
+    watchDates: [],
+    lastWatchedAt: null,
+    userRating: null,
+    userReview: null,
+    tags: [],
+    hasSpoilers: false,
+    collectionIds: [],
+  };
+}
+
+/**
+ * Crea (una sola vez) los nodos de aviso del diálogo: error
+ * (`role="alert"`), aviso (`role="status"`) e indicación de la vista
+ * de catálogo.
+ */
+function ensureDetailNodes() {
+  const body = dom?.detail?.dialog?.querySelector(".series-detail__body");
+  if (!body) return;
+
+  if (!detailStatusNode || !detailStatusNode.isConnected) {
+    detailStatusNode = document.createElement("p");
+    detailStatusNode.className = "series-message";
+    detailStatusNode.setAttribute("role", "status");
+    detailStatusNode.hidden = true;
+    body.insertAdjacentElement("afterbegin", detailStatusNode);
+  }
+
+  if (!detailErrorNode || !detailErrorNode.isConnected) {
+    detailErrorNode = document.createElement("p");
+    detailErrorNode.className = "series-message series-message--error";
+    detailErrorNode.setAttribute("role", "alert");
+    detailErrorNode.hidden = true;
+    body.insertAdjacentElement("afterbegin", detailErrorNode);
+  }
+
+  if (!detailHintNode || !detailHintNode.isConnected) {
+    detailHintNode = document.createElement("p");
+    detailHintNode.className = "series-message";
+    detailHintNode.hidden = true;
+    body.insertAdjacentElement("afterbegin", detailHintNode);
+  }
+}
+
+/**
+ * Muestra un error dentro de la ficha (mensaje en español).
+ *
+ * @param {string} message
+ */
+function showDetailError(message) {
+  ensureDetailNodes();
+  setMessage(detailErrorNode, message);
+}
+
+/**
+ * Muestra un aviso dentro de la ficha.
+ *
+ * @param {string} message
+ */
+function showDetailStatus(message) {
+  ensureDetailNodes();
+  setMessage(detailStatusNode, message);
+}
+
+/** Limpia los avisos de la ficha. */
+function clearDetailMessages() {
+  setMessage(detailErrorNode, "");
+  setMessage(detailStatusNode, "");
+  setMessage(detailHintNode, "");
+}
+
+/**
+ * Título visible de la serie en la ficha (para los `aria-label`).
+ *
+ * @returns {string}
+ */
+function detailTitle() {
+  const name = dom?.detail?.title?.textContent?.trim() ?? "";
+  return name === "" ? "la serie" : name;
+}
+
+/**
+ * Pinta los metadatos de TMDB de la ficha (AC-S04, AC-S05, AC-S32).
+ *
+ * @param {Record<string, unknown>|null} series
+ */
+function renderDetailMeta(series) {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const data = series ?? {};
+
+  const title =
+    typeof data.name === "string" && data.name.trim() !== ""
+      ? data.name.trim()
+      : "Sin título";
+  setText(d.title, title);
+
+  const originalName =
+    typeof data.originalName === "string" ? data.originalName.trim() : "";
+  setText(d.originalTitle, originalName === title ? "" : originalName);
+  setVisible(d.originalTitle, originalName !== "" && originalName !== title);
+
+  // Póster (w500) y fondo (w1280); sin ruta, imagen de reserva.
+  if (d.poster instanceof HTMLImageElement) {
+    const url = posterUrl(
+      typeof data.posterPath === "string" ? data.posterPath : null,
+      POSTER_SIZE
+    );
+    d.poster.src = url ?? POSTER_PLACEHOLDER;
+    d.poster.alt = url ? `Póster de ${title}` : "Sin póster";
+    d.poster.hidden = false;
+  }
+
+  if (d.backdrop instanceof HTMLImageElement) {
+    const url = backdropUrl(
+      typeof data.backdropPath === "string" ? data.backdropPath : null,
+      "w1280"
+    );
+    d.backdrop.src = url ?? BACKDROP_PLACEHOLDER;
+    d.backdrop.alt = url ? `Fondo de ${title}` : "";
+    d.backdrop.hidden = false;
+  }
+
+  // Fecha de estreno en español.
+  const firstAirDate = toDate(data.firstAirDate);
+  const firstAirText =
+    firstAirDate === null ? "" : `Estreno: ${longDateFormatter.format(firstAirDate)}`;
+  setText(d.firstAir, firstAirText);
+  setVisible(d.firstAir, firstAirText !== "");
+
+  // «3 temporadas · 24 episodios».
+  const counts = formatCounts(data.numberOfSeasons, data.numberOfEpisodes);
+  setText(d.counts, counts);
+  setVisible(d.counts, counts !== "");
+
+  // Estado de emisión traducido (UI-S12).
+  const rawStatus = typeof data.tmdbStatus === "string" ? data.tmdbStatus : "";
+  const statusLabel = rawStatus === "" ? "" : tmdbStatusLabel(rawStatus);
+  setText(d.tmdbStatus, statusLabel);
+  setVisible(d.tmdbStatus, statusLabel !== "");
+
+  // La nota de TMDB se muestra separada de la nota personal (AC-S32).
+  const tmdbText = formatTmdbRating(data.tmdbRating, data.tmdbVoteCount);
+  setText(d.tmdbRating, tmdbText);
+  setVisible(d.tmdbRating, tmdbText !== "");
+
+  const networks = formatNameList(data.networks);
+  setText(d.networks, networks === "" ? "" : `Cadenas: ${networks}`);
+  setVisible(d.networks, networks !== "");
+
+  const genres = formatNameList(data.genres);
+  setText(d.genres, genres === "" ? "" : `Géneros: ${genres}`);
+  setVisible(d.genres, genres !== "");
+
+  const overview =
+    typeof data.overview === "string" ? data.overview.trim() : "";
+  setText(d.overview, overview);
+  setVisible(d.overview, overview !== "");
+
+  const creators = formatNameList(data.creators);
+  setText(d.creators, creators);
+  setVisible(d.creators, creators !== "");
+
+  const cast = formatNameList(data.cast);
+  setText(d.cast, cast);
+  setVisible(d.cast, cast !== "");
+
+  // Tráiler (API-S09): enlace externo seguro.
+  const trailer = trailerUrl(
+    typeof data.trailerKey === "string" ? data.trailerKey : null
+  );
+  if (d.trailer instanceof HTMLAnchorElement) {
+    if (trailer) {
+      d.trailer.href = trailer;
+      d.trailer.hidden = false;
+    } else {
+      d.trailer.removeAttribute("href");
+      d.trailer.hidden = true;
+    }
+  }
+
+  // «Dónde ver»: la sección se oculta si no hay proveedores (UI-S06).
+  const providers = Array.isArray(data.watchProviders)
+    ? data.watchProviders.filter(
+        (item) => typeof item === "string" && item.trim() !== ""
+      )
+    : [];
+  clearNode(d.providersList);
+  for (const provider of providers) {
+    const item = document.createElement("li");
+    item.textContent = provider;
+    d.providersList?.append(item);
+  }
+  setVisible(d.providers, providers.length > 0);
+}
+
+/**
+ * Pinta la barra de progreso de la ficha: «6/24 · 25%» (AC-S10).
+ * Sin `numberOfEpisodes` se muestra solo el contador.
+ *
+ * @param {Record<string, unknown>|null} series
+ */
+function renderDetailProgress(series) {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const data = series ?? {};
+  const total =
+    typeof data.numberOfEpisodes === "number" &&
+    Number.isFinite(data.numberOfEpisodes)
+      ? data.numberOfEpisodes
+      : null;
+  const watched =
+    typeof data.watchedEpisodesCount === "number" &&
+    Number.isFinite(data.watchedEpisodesCount)
+      ? Math.max(0, Math.trunc(data.watchedEpisodesCount))
+      : 0;
+
+  const label = total === null ? String(watched) : `${watched}/${total}`;
+  const percent =
+    total !== null && total > 0
+      ? Math.min(100, Math.max(0, Math.round((watched / total) * 100)))
+      : 0;
+
+  const labelNode = d.progress?.querySelector(
+    '[data-series-role="progress-label"]'
+  );
+  if (labelNode) labelNode.textContent = label;
+
+  const percentNode = d.progress?.querySelector(
+    '[data-series-role="progress-percent"]'
+  );
+  if (percentNode) {
+    percentNode.textContent = `${percent}%`;
+    percentNode.hidden = total === null;
+  }
+
+  const bar = d.progress?.querySelector('[data-series-role="progress-bar"]');
+  if (bar instanceof HTMLElement) {
+    bar.setAttribute("aria-valuenow", String(percent));
+    bar.setAttribute("aria-valuetext", `${label} · ${percent}%`);
+    bar.hidden = total === null;
+  }
+
+  const fill = d.progress?.querySelector('[data-series-role="progress-fill"]');
+  if (fill instanceof HTMLElement) fill.style.width = `${percent}%`;
+}
+
+/**
+ * Estado del botón de favorito de la ficha (`aria-pressed`).
+ *
+ * @param {HTMLElement|null|undefined} button
+ * @param {boolean} isFavorite
+ * @param {string} title
+ */
+function updateDetailFavoriteButton(button, isFavorite, title) {
+  if (!(button instanceof HTMLElement)) return;
+
+  button.setAttribute("aria-pressed", isFavorite ? "true" : "false");
+
+  const label = button.querySelector('[data-series-role="favorite-label"]');
+  if (label) {
+    label.textContent = isFavorite ? "Favorita" : "Marcar como favorita";
+  }
+
+  // El `aria-labelledby` del esqueleto daría un nombre genérico
+  // («Favorito»): se sustituye por un `aria-label` descriptivo
+  // (UI-S13, NFR-S02).
+  button.removeAttribute("aria-labelledby");
+  button.setAttribute(
+    "aria-label",
+    isFavorite
+      ? `Quitar ${title} de favoritas`
+      : `Marcar ${title} como favorita`
+  );
+}
+
+/**
+ * Estado del botón «+1 Episodio» de la ficha: «Completada» y
+ * desactivado cuando ya se han visto todos los episodios conocidos.
+ *
+ * @param {HTMLElement|null|undefined} button
+ * @param {Record<string, unknown>|null} series
+ * @param {boolean} [editable]
+ */
+function updateDetailNextButton(button, series, editable = true) {
+  if (!(button instanceof HTMLElement)) return;
+
+  const data = series ?? {};
+  const total =
+    typeof data.numberOfEpisodes === "number" &&
+    Number.isFinite(data.numberOfEpisodes)
+      ? data.numberOfEpisodes
+      : null;
+  const watched =
+    typeof data.watchedEpisodesCount === "number" &&
+    Number.isFinite(data.watchedEpisodesCount)
+      ? data.watchedEpisodesCount
+      : 0;
+
+  const completed = total !== null && watched >= total;
+  button.disabled = !editable || completed;
+  button.textContent = completed ? "Completada" : "+1 Episodio";
+  button.setAttribute(
+    "aria-label",
+    completed
+      ? "La serie está completada: no quedan episodios por marcar"
+      : "Marcar el siguiente episodio como visto"
+  );
+}
+
+/**
+ * Pinta las fechas de visionado (revisionados) en es-ES (AC-S14).
+ *
+ * @param {unknown} watchDates
+ */
+function renderDetailWatchDates(watchDates) {
+  const container = dom?.detail?.watchDates;
+  if (!container) return;
+
+  clearNode(container);
+
+  const dates = Array.isArray(watchDates) ? watchDates : [];
+
+  if (dates.length === 0) {
+    const item = document.createElement("li");
+    item.textContent = "Sin fechas de visionado.";
+    container.append(item);
+    return;
+  }
+
+  for (const value of dates) {
+    const date = toDate(value);
+    const item = document.createElement("li");
+    item.textContent = date === null ? "" : shortDateFormatter.format(date);
+    container.append(item);
+  }
+}
+
+/**
+ * Pinta el bloque de seguimiento: estado, favorito, progreso,
+ * «+1 Episodio», revisionados y fechas (UI-S06).
+ *
+ * @param {Record<string, unknown>|null} series
+ */
+function renderDetailTracking(series) {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const data = series ?? {};
+
+  // Estado: las cuatro opciones con etiqueta en español (UI-S12).
+  if (d.status instanceof HTMLSelectElement) {
+    const status =
+      typeof data.status === "string" &&
+      Object.prototype.hasOwnProperty.call(STATUS_LABELS, data.status)
+        ? data.status
+        : "watchlist";
+    d.status.value = status;
+  }
+
+  updateDetailFavoriteButton(d.favorite, data.isFavorite === true, detailTitle());
+  renderDetailProgress(data);
+  updateDetailNextButton(d.next, data, detailState.inLibrary);
+
+  const rewatch =
+    typeof data.rewatchCount === "number" && Number.isFinite(data.rewatchCount)
+      ? Math.max(0, Math.trunc(data.rewatchCount))
+      : 0;
+  setText(d.rewatchCount, String(rewatch));
+
+  renderDetailWatchDates(data.watchDates);
+}
+
+/**
+ * Pinta un checkbox por colección del usuario (DB-S03, AC-S22). La
+ * asignación es múltiple: una serie puede estar en varias.
+ *
+ * @param {Record<string, unknown>|null} series
+ */
+function renderDetailCollections(series) {
+  const container = dom?.detail?.collections;
+  if (!container) return;
+
+  clearNode(container);
+
+  const selected = new Set(
+    Array.isArray(series?.collectionIds)
+      ? series.collectionIds.map((id) => String(id))
+      : []
+  );
+
+  for (const collection of state.collections) {
+    const id = String(collection?.id ?? "");
+    if (id === "") continue;
+
+    const label = document.createElement("label");
+    label.className = "series-checkbox";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = id;
+    input.checked = selected.has(id);
+    input.dataset.collectionId = id;
+
+    label.append(input, document.createTextNode(` ${String(collection.name ?? "")}`));
+    container.append(label);
+  }
+
+  if (state.collections.length === 0) {
+    const hint = document.createElement("p");
+    hint.className = "series-hint";
+    hint.textContent = "Aún no tienes colecciones.";
+    container.append(hint);
+  }
+}
+
+/**
+ * Muestra la nota personal formateada («Mi nota 8,5»), separada de la
+ * nota de TMDB (AC-S32).
+ *
+ * @param {unknown} value
+ */
+function renderDetailUserRatingDisplay(value) {
+  const node = dom?.detail?.userRatingDisplay;
+  if (!node) return;
+
+  const text = formatRating(value);
+  node.textContent = text === null ? "Mi nota —" : `Mi nota ${text}`;
+}
+
+/**
+ * Oculta la reseña cuando tiene spoilers y el usuario no la ha
+ * revelado (AC-S16).
+ */
+function renderDetailSpoilerState() {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const hasSpoilers =
+    d.spoilers instanceof HTMLInputElement ? d.spoilers.checked : false;
+  const reviewText =
+    d.review instanceof HTMLTextAreaElement ? d.review.value.trim() : "";
+
+  const hidden = hasSpoilers && reviewText !== "" && !detailState.spoilerRevealed;
+
+  if (d.review instanceof HTMLTextAreaElement) d.review.hidden = hidden;
+  setVisible(d.spoilerWarning, hidden);
+}
+
+/**
+ * Pinta la parte personal de la ficha: nota, reseña, spoilers,
+ * etiquetas y colecciones (D-S09).
+ *
+ * @param {Record<string, unknown>|null} series
+ */
+function renderDetailPersonal(series) {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const data = series ?? {};
+
+  const userRating =
+    typeof data.userRating === "number" && Number.isFinite(data.userRating)
+      ? data.userRating
+      : null;
+
+  if (d.userRating instanceof HTMLInputElement) {
+    d.userRating.value = userRating === null ? "" : String(userRating);
+    d.userRating.setAttribute("aria-invalid", "false");
+  }
+  renderDetailUserRatingDisplay(userRating);
+
+  const userReview = typeof data.userReview === "string" ? data.userReview : "";
+  if (d.review instanceof HTMLTextAreaElement) d.review.value = userReview;
+
+  const hasSpoilers = data.hasSpoilers === true;
+  if (d.spoilers instanceof HTMLInputElement) d.spoilers.checked = hasSpoilers;
+
+  const tags = Array.isArray(data.tags)
+    ? data.tags.filter((tag) => typeof tag === "string")
+    : [];
+  if (d.tags instanceof HTMLInputElement) d.tags.value = tags.join(", ");
+
+  // Últimos valores guardados: base del aviso «Cambios sin guardar».
+  detailState.saved = {
+    userRating: userRating === null ? "" : String(userRating),
+    userReview,
+    tags: tags.join(", "),
+    hasSpoilers,
+  };
+
+  detailState.spoilerRevealed = false;
+
+  renderDetailCollections(data);
+  renderDetailSpoilerState();
+  updateDetailDirtyWarning();
+}
+
+/**
+ * Lee los campos de la parte personal de la ficha.
+ *
+ * @returns {DetailPersonal}
+ */
+function readDetailPersonalForm() {
+  const d = dom?.detail ?? {};
+
+  return {
+    userRating:
+      d.userRating instanceof HTMLInputElement
+        ? d.userRating.value.trim()
+        : "",
+    userReview: d.review instanceof HTMLTextAreaElement ? d.review.value : "",
+    tags: d.tags instanceof HTMLInputElement ? d.tags.value : "",
+    hasSpoilers:
+      d.spoilers instanceof HTMLInputElement ? d.spoilers.checked : false,
+  };
+}
+
+/**
+ * `true` si hay cambios pendientes de nota, reseña, etiquetas o
+ * spoilers (D-S09, AC-S31).
+ *
+ * @returns {boolean}
+ */
+function isDetailDirty() {
+  const current = readDetailPersonalForm();
+  const saved = detailState.saved;
+
+  return (
+    current.userRating !== saved.userRating ||
+    current.userReview !== saved.userReview ||
+    current.tags !== saved.tags ||
+    current.hasSpoilers !== saved.hasSpoilers
+  );
+}
+
+/**
+ * Muestra u oculta el aviso «Cambios sin guardar» (AC-S31).
+ */
+function updateDetailDirtyWarning() {
+  const node = dom?.detail?.dirtyWarning;
+  if (!node) return;
+
+  node.textContent = "Cambios sin guardar";
+  node.hidden = !isDetailDirty();
+}
+
+/**
+ * Divide el texto de las etiquetas en una lista (≤20 etiquetas de ≤30
+ * caracteres; el repositorio lo valida).
+ *
+ * @param {string} value
+ * @returns {string[]}
+ */
+function parseDetailTags(value) {
+  if (typeof value !== "string") return [];
+
+  const tags = [];
+  for (const raw of value.split(",")) {
+    const tag = raw.trim();
+    if (tag === "") continue;
+    if (!tags.includes(tag)) tags.push(tag);
+  }
+  return tags;
+}
+
+/**
+ * Habilita o deshabilita los controles de la ficha según el contexto
+ * (biblioteca o catálogo) y la escritura en curso.
+ */
+function updateDetailControls() {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const editable =
+    detailState.inLibrary && Boolean(detailState.docId) && !detailState.busy;
+
+  if (d.status instanceof HTMLSelectElement) d.status.disabled = !editable;
+  if (d.favorite instanceof HTMLButtonElement) d.favorite.disabled = !editable;
+  if (d.rewatchInc instanceof HTMLButtonElement) d.rewatchInc.disabled = !editable;
+  if (d.rewatchDec instanceof HTMLButtonElement) d.rewatchDec.disabled = !editable;
+  if (d.save instanceof HTMLButtonElement) d.save.disabled = !editable;
+  if (d.remove instanceof HTMLButtonElement) d.remove.disabled = !editable;
+  if (d.userRating instanceof HTMLInputElement) d.userRating.disabled = !editable;
+  if (d.review instanceof HTMLTextAreaElement) d.review.disabled = !editable;
+  if (d.spoilers instanceof HTMLInputElement) d.spoilers.disabled = !editable;
+  if (d.tags instanceof HTMLInputElement) d.tags.disabled = !editable;
+  if (d.collections) d.collections.hidden = !editable;
+
+  updateDetailNextButton(d.next, detailState.series ?? {}, editable);
+
+  setMessage(detailHintNode, editable ? "" : DETAIL_CATALOG_HINT);
+}
+
+/**
+ * Marca la ficha como ocupada (o libre) mientras hay una escritura.
+ *
+ * @param {boolean} busy
+ */
+function setDetailBusy(busy) {
+  detailState.busy = busy;
+  updateDetailControls();
+}
+
+/**
+ * Vacía la ficha y deja los controles en su estado inicial.
+ */
+function renderDetailSkeleton() {
+  const d = dom?.detail;
+  if (!d) return;
+
+  setText(d.title, DETAIL_LOADING_TITLE);
+  setText(d.originalTitle, "");
+  setVisible(d.originalTitle, false);
+
+  if (d.poster instanceof HTMLImageElement) {
+    d.poster.removeAttribute("src");
+    d.poster.hidden = true;
+  }
+  if (d.backdrop instanceof HTMLImageElement) {
+    d.backdrop.removeAttribute("src");
+    d.backdrop.hidden = true;
+  }
+
+  for (const node of [
+    d.firstAir,
+    d.counts,
+    d.tmdbStatus,
+    d.tmdbRating,
+    d.networks,
+    d.genres,
+    d.overview,
+    d.creators,
+    d.cast,
+  ]) {
+    setText(node, "");
+    setVisible(node, false);
+  }
+
+  if (d.trailer instanceof HTMLAnchorElement) {
+    d.trailer.removeAttribute("href");
+    d.trailer.hidden = true;
+  }
+
+  clearNode(d.providersList);
+  setVisible(d.providers, false);
+
+  if (d.status instanceof HTMLSelectElement) d.status.value = "watchlist";
+  updateDetailFavoriteButton(d.favorite, false, "la serie");
+
+  clearNode(d.watchDates);
+  setText(d.rewatchCount, "0");
+
+  if (d.userRating instanceof HTMLInputElement) {
+    d.userRating.value = "";
+    d.userRating.setAttribute("aria-invalid", "false");
+  }
+  if (d.review instanceof HTMLTextAreaElement) {
+    d.review.value = "";
+    d.review.hidden = false;
+  }
+  if (d.spoilers instanceof HTMLInputElement) d.spoilers.checked = false;
+  if (d.tags instanceof HTMLInputElement) d.tags.value = "";
+
+  clearNode(d.collections);
+  setVisible(d.spoilerWarning, false);
+
+  renderDetailUserRatingDisplay(null);
+  updateDetailDirtyWarning();
+  updateDetailControls();
+}
+
+/**
+ * Abre la ficha de una serie (UI-S06).
+ *
+ * @param {CardModel} model
+ * @returns {Promise<void>}
+ */
+async function openSeriesDetailDialog(model) {
+  const d = dom?.detail;
+  if (!d?.dialog) return;
+
+  const docId = model?.context === "library" ? (model?.docId ?? null) : null;
+  const trigger =
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+
+  detailState = {
+    ...createDetailState(),
+    docId,
+    tmdbId: model?.tmdbId ?? null,
+    inLibrary: Boolean(docId),
+    trigger,
+  };
+
+  ensureDetailNodes();
+  renderDetailSkeleton();
+  clearDetailMessages();
+
+  if (!d.dialog.open) {
+    try {
+      d.dialog.showModal();
+    } catch {
+      // Navegador sin diálogo modal: se abre igualmente.
+      d.dialog.setAttribute("open", "");
+    }
+  }
+
+  // Foco inicial en el título del diálogo (UI-S13, NFR-S02).
+  d.title?.focus?.();
+
+  if (docId) {
+    await loadLibraryDetail(docId, false);
+    return;
+  }
+
+  await loadCatalogDetail(model?.tmdbId ?? null);
+}
+
+/**
+ * Carga la ficha de una serie de la biblioteca respetando la caché
+ * de 30 días (ALG-S06, AC-S29).
+ *
+ * @param {string} docId
+ * @param {boolean} force `true` para «Actualizar datos».
+ * @returns {Promise<boolean>}
+ */
+async function loadLibraryDetail(docId, force) {
+  setDetailBusy(true);
+
+  try {
+    const result = await ensureDetailCached(docId, { force });
+    if (detailState.docId !== docId) return false;
+
+    detailState.series = result.series;
+    detailState.inLibrary = true;
+    renderDetailMeta(result.series);
+    renderDetailTracking(result.series);
+    renderDetailPersonal(result.series);
+    updateDetailControls();
+    clearDetailMessages();
+    return true;
+  } catch (error) {
+    // Si hay datos previos se muestran con un aviso en español
+    // (ALG-S06): la app sigue operativa.
+    const cached = state.libraryByDocId.get(docId);
+    if (cached) {
+      detailState.series = cached;
+      detailState.inLibrary = true;
+      renderDetailMeta(cached);
+      renderDetailTracking(cached);
+      renderDetailPersonal(cached);
+      updateDetailControls();
+      showDetailError(describeDetailError(error));
+      return false;
+    }
+
+    showDetailError(describeDetailError(error));
+    return false;
+  } finally {
+    setDetailBusy(false);
+    updateDetailControls();
+  }
+}
+
+/**
+ * Carga la ficha de una serie del catálogo (sin biblioteca): una sola
+ * petición de detalle a TMDB (API-S06, AC-S04).
+ *
+ * @param {string|null} tmdbId
+ * @returns {Promise<boolean>}
+ */
+async function loadCatalogDetail(tmdbId) {
+  if (!tmdbId) {
+    showDetailError(DETAIL_UNKNOWN_SERIES_MESSAGE);
+    return false;
+  }
+
+  if (!isTmdbConfigured()) {
+    showDetailError(TMDB_ERROR_MESSAGES.NO_API_KEY);
+    setTmdbWarning(TMDB_ERROR_MESSAGES.NO_API_KEY);
+    return false;
+  }
+
+  setDetailBusy(true);
+
+  try {
+    const detail = await getSeriesDetail(Number(tmdbId));
+    if (detailState.tmdbId !== String(tmdbId)) return false;
+
+    const series = tmdbDetailToSeries(detail);
+    detailState.series = series;
+    detailState.inLibrary = false;
+    renderDetailMeta(series);
+    renderDetailTracking(series);
+    renderDetailPersonal(series);
+    updateDetailControls();
+    clearDetailMessages();
+    return true;
+  } catch (error) {
+    const message = describeTmdbError(error);
+    showDetailError(message);
+    setTmdbWarning(message);
+    return false;
+  } finally {
+    setDetailBusy(false);
+    updateDetailControls();
+  }
+}
+
+/**
+ * Cierra la ficha.
+ */
+function closeSeriesDetail() {
+  const dialog = dom?.detail?.dialog;
+  if (dialog?.open) dialog.close();
+}
+
+/**
+ * Al cerrarse la ficha: se descartan los cambios pendientes y el foco
+ * vuelve al elemento que la abrió (UI-S13, AC-S31).
+ */
+function onSeriesDetailClosed() {
+  const trigger = detailState.trigger;
+
+  detailState = createDetailState();
+  clearDetailMessages();
+  setMessage(dom?.messages?.error, "");
+
+  // Los valores sin guardar se descartan: la próxima apertura vuelve
+  // a mostrar los valores guardados (AC-S31).
+  renderDetailPersonal(null);
+
+  if (trigger && trigger.isConnected && typeof trigger.focus === "function") {
+    trigger.focus();
+  }
+}
+
+/**
+ * Cambio manual de estado: se guarda de inmediato (D-S09).
+ */
+async function handleDetailStatusChange() {
+  const d = dom?.detail;
+  const docId = detailState.docId;
+  if (!(d?.status instanceof HTMLSelectElement) || !docId) return;
+
+  const value = d.status.value;
+  if (!Object.prototype.hasOwnProperty.call(STATUS_LABELS, value)) return;
+
+  setDetailBusy(true);
+  try {
+    await setStatus(docId, value);
+    if (detailState.series) {
+      detailState.series = { ...detailState.series, status: value };
+    }
+    showDetailStatus(DETAIL_STATUS_MESSAGE);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+    renderDetailTracking(detailState.series ?? {});
+  } finally {
+    setDetailBusy(false);
+    updateDetailControls();
+  }
+}
+
+/**
+ * Favorito de la serie: se guarda de inmediato (D-S09, AC-S13).
+ */
+async function handleDetailFavorite() {
+  const d = dom?.detail;
+  const docId = detailState.docId;
+  if (!(d?.favorite instanceof HTMLButtonElement) || !docId) return;
+
+  const previous = detailState.series?.isFavorite === true;
+  const next = !previous;
+
+  updateDetailFavoriteButton(d.favorite, next, detailTitle());
+  if (detailState.series) {
+    detailState.series = { ...detailState.series, isFavorite: next };
+  }
+
+  try {
+    await setFavorite(docId, next);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    updateDetailFavoriteButton(d.favorite, previous, detailTitle());
+    if (detailState.series) {
+      detailState.series = { ...detailState.series, isFavorite: previous };
+    }
+    showDetailError(describeDetailError(error));
+  }
+}
+
+/**
+ * «+1 Episodio»: marca el siguiente episodio como visto (ALG-S03,
+ * AC-S11). Se guarda de inmediato (D-S09).
+ */
+async function handleDetailNext() {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  const season = Number(detailState.series?.currentSeason ?? 1);
+  const episode = Number(detailState.series?.currentEpisode ?? 1);
+
+  setDetailBusy(true);
+  try {
+    const result = await setEpisodeWatched(docId, season, episode);
+
+    if (detailState.series) {
+      detailState.series = {
+        ...detailState.series,
+        watchedEpisodesCount: result.watchedEpisodesCount,
+        favoriteEpisodesCount: result.favoriteEpisodesCount,
+        currentSeason: result.currentSeason,
+        currentEpisode: result.currentEpisode,
+        status: result.status,
+      };
+    }
+
+    renderDetailTracking(detailState.series ?? {});
+    showDetailStatus(DETAIL_EPISODE_MESSAGE);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+    updateDetailControls();
+  }
+}
+
+/**
+ * Revisionados: «+1» y «−1» con su lista de fechas (ALG-S09, AC-S14).
+ *
+ * @param {number} delta `1` suma, `-1` resta.
+ */
+async function handleDetailRewatch(delta) {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  const current = detailState.series ?? {};
+  const count =
+    typeof current.rewatchCount === "number" &&
+    Number.isFinite(current.rewatchCount)
+      ? Math.max(0, Math.trunc(current.rewatchCount))
+      : 0;
+  const dates = Array.isArray(current.watchDates)
+    ? [...current.watchDates]
+    : [];
+
+  setDetailBusy(true);
+  try {
+    if (delta > 0) await incRewatch(docId);
+    else await decRewatch(docId);
+
+    // El repositorio devuelve el id del documento ya escrito: el
+    // recuento y las fechas se aplican sobre el documento en memoria
+    // con las mismas reglas de ALG-S09, así la ficha se repinta sin
+    // volver a leer el documento (D-S09).
+    const nextCount =
+      delta > 0
+        ? Math.min(MAX_REWATCH_COUNT, count + 1)
+        : Math.max(0, count - 1);
+
+    if (delta > 0) {
+      dates.push(new Date());
+    } else if (dates.length > 0) {
+      dates.pop();
+    }
+    // `watchDates` nunca queda con más entradas que `rewatchCount`.
+    while (dates.length > nextCount) dates.shift();
+
+    if (detailState.series) {
+      detailState.series = {
+        ...detailState.series,
+        rewatchCount: nextCount,
+        watchDates: dates,
+        lastWatchedAt:
+          dates.length > 0 ? dates[dates.length - 1] : null,
+      };
+    }
+
+    renderDetailTracking(detailState.series ?? {});
+    showDetailStatus(
+      delta > 0 ? DETAIL_REWATCH_UP_MESSAGE : DETAIL_REWATCH_DOWN_MESSAGE
+    );
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+    updateDetailControls();
+  }
+}
+
+/** «+1» de revisionados (AC-S14). */
+function onDetailRewatchInc() {
+  void handleDetailRewatch(1);
+}
+
+/** «−1» de revisionados (AC-S14). */
+function onDetailRewatchDec() {
+  void handleDetailRewatch(-1);
+}
+
+/**
+ * Asigna las colecciones marcadas: se guarda de inmediato (D-S09,
+ * AC-S22).
+ *
+ * @param {Event} event
+ */
+async function handleDetailCollectionsChange(event) {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  const input = event.target instanceof HTMLInputElement ? event.target : null;
+  if (!input || input.type !== "checkbox") return;
+
+  const container = dom?.detail?.collections;
+  const ids = [];
+  for (const node of container?.querySelectorAll('input[type="checkbox"]') ?? []) {
+    if (node instanceof HTMLInputElement && node.checked) ids.push(node.value);
+  }
+
+  setDetailBusy(true);
+  try {
+    await setCollections(docId, ids);
+    if (detailState.series) {
+      detailState.series = { ...detailState.series, collectionIds: ids };
+    }
+    showDetailStatus(DETAIL_COLLECTIONS_MESSAGE);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+    renderDetailCollections(detailState.series ?? {});
+  } finally {
+    setDetailBusy(false);
+    updateDetailControls();
+  }
+}
+
+/**
+ * «Guardar»: persiste nota, reseña, etiquetas y spoilers (D-S09,
+ * AC-S15, AC-S16).
+ */
+async function handleDetailSave() {
+  const d = dom?.detail;
+  const docId = detailState.docId;
+  if (!d || !docId || !detailState.inLibrary) return;
+
+  let userRating = null;
+  try {
+    const raw = readDetailRatingRaw(d.userRating);
+    userRating = parseUserRating(raw === "" ? null : raw);
+  } catch (error) {
+    const message =
+      error instanceof UserRatingError ? error.message : USER_RATING_ERROR_MESSAGE;
+    if (d.userRating instanceof HTMLInputElement) {
+      d.userRating.setAttribute("aria-invalid", "true");
+    }
+    showDetailError(message);
+    return;
+  }
+
+  if (d.userRating instanceof HTMLInputElement) {
+    d.userRating.setAttribute("aria-invalid", "false");
+  }
+
+  const review = d.review instanceof HTMLTextAreaElement ? d.review.value.trim() : "";
+  const tags = parseDetailTags(d.tags instanceof HTMLInputElement ? d.tags.value : "");
+  const hasSpoilers = d.spoilers instanceof HTMLInputElement ? d.spoilers.checked : false;
+
+  const current = readDetailPersonalForm();
+  const changed =
+    current.userRating !== detailState.saved.userRating ||
+    current.userReview !== detailState.saved.userReview ||
+    current.tags !== detailState.saved.tags ||
+    current.hasSpoilers !== detailState.saved.hasSpoilers;
+
+  if (!changed) {
+    updateDetailDirtyWarning();
+    showDetailStatus(DETAIL_NOTHING_TO_SAVE_MESSAGE);
+    return;
+  }
+
+  setDetailBusy(true);
+  try {
+    await updatePersonal(docId, {
+      userRating,
+      userReview: review === "" ? null : review,
+      tags,
+      hasSpoilers,
+    });
+
+    detailState.saved = { ...current };
+    if (detailState.series) {
+      detailState.series = {
+        ...detailState.series,
+        userRating,
+        userReview: review === "" ? null : review,
+        tags,
+        hasSpoilers,
+      };
+    }
+
+    renderDetailUserRatingDisplay(userRating);
+    renderDetailSpoilerState();
+    updateDetailDirtyWarning();
+    showDetailStatus(DETAIL_SAVED_MESSAGE);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+    updateDetailControls();
+  }
+}
+
+/**
+ * Texto escrito en el campo de nota. El campo se pinta como texto
+ * (no número) para que se pueda escribir la coma decimal es-ES
+ * («7,5»), que `parseUserRating` acepta (ALG-S04).
+ *
+ * @param {HTMLInputElement|null|undefined} input
+ * @returns {string}
+ */
+function readDetailRatingRaw(input) {
+  if (!(input instanceof HTMLInputElement)) return "";
+  return typeof input.value === "string" ? input.value.trim() : "";
+}
+
+/**
+ * «Actualizar datos»: fuerza la recarga de TMDB (ALG-S06, AC-S29).
+ */
+async function handleDetailRefresh() {
+  if (detailState.inLibrary && detailState.docId) {
+    const ok = await loadLibraryDetail(detailState.docId, true);
+    if (ok) showDetailStatus(DETAIL_REFRESHED_MESSAGE);
+    return;
+  }
+
+  if (detailState.tmdbId) {
+    await loadCatalogDetail(detailState.tmdbId);
+  }
+}
+
+/**
+ * «Eliminar»: borra la serie tras confirmar (AC-S31). Si se cancela
+ * la confirmación, el documento sigue en la biblioteca.
+ */
+async function handleDetailDelete() {
+  const docId = detailState.docId;
+  if (!docId || !detailState.inLibrary) return;
+
+  const confirmed = window.confirm(DETAIL_DELETE_CONFIRM_MESSAGE);
+  if (!confirmed) return;
+
+  setDetailBusy(true);
+  try {
+    await deleteSeries(docId);
+    closeSeriesDetail();
+    showNotice("Serie eliminada de tu biblioteca.");
+  } catch (error) {
+    showDetailError(describeDetailError(error));
+  } finally {
+    setDetailBusy(false);
+    updateDetailControls();
+  }
+}
+
+/**
+ * «Mostrar reseña»: revela el texto con spoilers (AC-S16).
+ */
+function onDetailSpoilerReveal() {
+  detailState.spoilerRevealed = true;
+  renderDetailSpoilerState();
+  dom?.detail?.review?.focus?.();
+}
+
+/**
+ * Cualquier cambio en la parte personal actualiza el aviso de cambios
+ * pendientes y el estado de spoilers (D-S09, AC-S31).
+ */
+function onDetailPersonalInput() {
+  renderDetailSpoilerState();
+  updateDetailDirtyWarning();
+}
+
+// -------------------------------------------------------------
+// Alta manual de series (UI-S11, REQ-S02, AC-S08)
+// -------------------------------------------------------------
+
+/**
+ * Rellena el multi-select de géneros con el diccionario estático de TV
+ * (D-S08): así el filtro por género siempre funciona.
+ */
+function populateManualGenres() {
+  const select = dom?.manual?.genres;
+  if (!(select instanceof HTMLSelectElement)) return;
+
+  clearNode(select);
+  for (const genre of TV_GENRE_OPTIONS) {
+    const option = document.createElement("option");
+    option.value = String(genre.id);
+    option.textContent = genre.label;
+    select.append(option);
+  }
+}
+
+/**
+ * «Añadir manualmente»: muestra u oculta el formulario de alta
+ * manual (UI-S11). Sigue operativo sin TMDB (AC-S01, AC-S06).
+ */
+function onManualOpen() {
+  const form = dom?.manual?.form;
+  if (!form) return;
+
+  setManualFormVisible(form.hidden);
+}
+
+/**
+ * Muestra u oculta el formulario de alta manual.
+ *
+ * @param {boolean} visible
+ */
+function setManualFormVisible(visible) {
+  const form = dom?.manual?.form;
+  if (!form) return;
+
+  form.hidden = !visible;
+  if (visible) dom?.manual?.name?.focus?.();
+}
+
+/**
+ * Lee un entero opcional de un input: `null` si está vacío y
+ * `undefined` si el valor no es válido.
+ *
+ * @param {HTMLInputElement|null|undefined} input
+ * @param {number} min
+ * @param {number} max
+ * @returns {number|null|undefined}
+ */
+function readOptionalInteger(input, min, max) {
+  if (!(input instanceof HTMLInputElement)) return null;
+
+  const raw = input.value.trim();
+  if (raw === "") return null;
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) return undefined;
+
+  return parsed;
+}
+
+/**
+ * Géneros marcados en el multi-select del alta manual.
+ *
+ * @returns {{ genreIds: number[], genres: string[] }}
+ */
+function readManualGenres() {
+  const select = dom?.manual?.genres;
+  const genreIds = [];
+  const genres = [];
+
+  if (select instanceof HTMLSelectElement) {
+    for (const option of select.selectedOptions) {
+      const id = Number(option.value);
+      if (!Number.isInteger(id)) continue;
+      genreIds.push(id);
+      const label = TV_GENRE_OPTIONS.find((genre) => genre.id === id)?.label;
+      if (label) genres.push(label);
+    }
+  }
+
+  return { genreIds, genres };
+}
+
+/**
+ * Alta manual de una serie (UI-S11, REQ-S02, AC-S08). No hace
+ * ninguna llamada a TMDB: funciona sin conexión y sin clave.
+ *
+ * @param {SubmitEvent} event
+ */
+async function handleManualSubmit(event) {
+  event.preventDefault();
+
+  const manual = dom?.manual ?? {};
+
+  const name = manual.name?.value?.trim() ?? "";
+  if (name === "") {
+    setMessage(manual.error, MANUAL_NAME_ERROR);
+    manual.name?.focus?.();
+    return;
+  }
+
+  const year = readOptionalInteger(manual.year, MANUAL_MIN_YEAR, MANUAL_MAX_YEAR);
+  if (year === undefined) {
+    setMessage(manual.error, MANUAL_YEAR_ERROR);
+    manual.year?.focus?.();
+    return;
+  }
+
+  const seasons = readOptionalInteger(
+    manual.seasons,
+    MANUAL_MIN_SEASONS,
+    MANUAL_MAX_SEASONS
+  );
+  if (seasons === undefined) {
+    setMessage(manual.error, MANUAL_SEASONS_ERROR);
+    manual.seasons?.focus?.();
+    return;
+  }
+
+  const episodes = readOptionalInteger(
+    manual.episodes,
+    MANUAL_MIN_EPISODES,
+    MANUAL_MAX_EPISODES
+  );
+  if (episodes === undefined) {
+    setMessage(manual.error, MANUAL_EPISODES_ERROR);
+    manual.episodes?.focus?.();
+    return;
+  }
+
+  const overview = manual.overview?.value?.trim() ?? "";
+  const { genreIds, genres } = readManualGenres();
+
+  try {
+    await addManual({
+      name,
+      firstAirYear: year ?? null,
+      numberOfSeasons: seasons ?? null,
+      numberOfEpisodes: episodes ?? null,
+      overview: overview === "" ? null : overview,
+      genreIds,
+      genres,
+    });
+
+    if (manual.form instanceof HTMLFormElement) manual.form.reset();
+    setMessage(manual.error, "");
+    setManualFormVisible(false);
+    showManualStatus(MANUAL_SUCCESS_MESSAGE);
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    setMessage(manual.error, describeRepositoryError(error));
+  }
+}
+
+/**
+ * Muestra el aviso de éxito del alta manual.
+ *
+ * @param {string} message
+ */
+function showManualStatus(message) {
+  const form = dom?.manual?.form;
+  if (!form) return;
+
+  if (!manualStatusNode || !manualStatusNode.isConnected) {
+    const node = document.createElement("p");
+    node.className = "series-message";
+    node.setAttribute("role", "status");
+    manualStatusNode = node;
+    form.insertAdjacentElement("afterend", node);
+  }
+
+  setMessage(manualStatusNode, message);
+}
+
+// -------------------------------------------------------------
 // Acciones de las tarjetas (UI-S04)
 // -------------------------------------------------------------
 
@@ -2337,6 +4027,46 @@ function collectDom() {
       grid: byId("series-library-grid"),
       empty: byId("series-library-empty"),
     },
+    detail: {
+      dialog: byId("series-detail"),
+      title: byId("series-detail-title"),
+      originalTitle: byId("series-detail-original-title"),
+      poster: byId("series-detail-poster"),
+      backdrop: byId("series-detail-backdrop"),
+      firstAir: byId("series-detail-first-air"),
+      counts: byId("series-detail-counts"),
+      tmdbStatus: byId("series-detail-tmdb-status"),
+      tmdbRating: byId("series-detail-tmdb-rating"),
+      networks: byId("series-detail-networks"),
+      genres: byId("series-detail-genres"),
+      overview: byId("series-detail-overview"),
+      creators: byId("series-detail-creators"),
+      cast: byId("series-detail-cast"),
+      trailer: byId("series-detail-trailer"),
+      providers: byId("series-detail-providers"),
+      providersList: byId("series-detail-providers-list"),
+      status: byId("series-detail-status"),
+      favorite: byId("series-detail-favorite"),
+      progress: byId("series-detail-progress"),
+      next: byId("series-detail-next"),
+      rewatchCount: byId("series-detail-rewatch-count"),
+      rewatchInc: byId("series-detail-rewatch-inc"),
+      rewatchDec: byId("series-detail-rewatch-dec"),
+      watchDates: byId("series-detail-watch-dates"),
+      userRating: byId("series-detail-user-rating"),
+      userRatingDisplay: byId("series-detail-user-rating-display"),
+      review: byId("series-detail-review"),
+      spoilers: byId("series-detail-spoilers"),
+      spoilerWarning: byId("series-detail-spoiler-warning"),
+      spoilerReveal: byId("series-detail-spoiler-reveal"),
+      tags: byId("series-detail-tags"),
+      collections: byId("series-detail-collections"),
+      dirtyWarning: byId("series-detail-dirty-warning"),
+      save: byId("series-detail-save"),
+      refresh: byId("series-detail-refresh"),
+      remove: byId("series-detail-delete"),
+      close: byId("series-detail-close"),
+    },
     collections: {
       form: byId("series-collections-form"),
       name: byId("series-collection-name"),
@@ -2403,9 +4133,15 @@ export function mountSeries(options = {}) {
   searchToken = 0;
   libraryLoadError = "";
   noticeNode = null;
+  detailState = createDetailState();
 
   if (typeof options?.onOpenSeries === "function") {
     detailOpener = options.onOpenSeries;
+  } else {
+    // La ficha vive en este módulo (UI-S06, T-S08).
+    detailOpener = (model) => {
+      void openSeriesDetailDialog(model);
+    };
   }
 
   // --- Pestañas (UI-S01) ------------------------------------------
@@ -2428,6 +4164,54 @@ export function mountSeries(options = {}) {
 
   // --- Tarjetas (UI-S04) -----------------------------------------
   dom.section.addEventListener("click", onSectionClick);
+
+  // --- Ficha de serie (UI-S06, D-S09) ------------------------------
+  // Las opciones de estado se rellenan desde `seriesState.js` para
+  // que las etiquetas en español no se dupliquen en la vista.
+  const detailStatus = dom.detail?.status;
+  if (detailStatus instanceof HTMLSelectElement) {
+    clearNode(detailStatus);
+    for (const option of STATUS_OPTIONS) {
+      const node = document.createElement("option");
+      node.value = option.value;
+      node.textContent = option.label;
+      detailStatus.append(node);
+    }
+    detailStatus.value = "watchlist";
+  }
+
+  // El campo de nota se usa como texto para admitir la coma decimal
+  // es-ES («7,5»); el rango 0–10 en medios puntos lo valida
+  // `parseUserRating` (ALG-S04).
+  if (dom.detail?.userRating instanceof HTMLInputElement) {
+    dom.detail.userRating.type = "text";
+    dom.detail.userRating.setAttribute("inputmode", "decimal");
+  }
+
+  dom.detail?.dialog?.addEventListener("close", onSeriesDetailClosed);
+  dom.detail?.close?.addEventListener("click", closeSeriesDetail);
+  dom.detail?.status?.addEventListener("change", handleDetailStatusChange);
+  dom.detail?.favorite?.addEventListener("click", handleDetailFavorite);
+  dom.detail?.next?.addEventListener("click", handleDetailNext);
+  dom.detail?.rewatchInc?.addEventListener("click", onDetailRewatchInc);
+  dom.detail?.rewatchDec?.addEventListener("click", onDetailRewatchDec);
+  dom.detail?.collections?.addEventListener(
+    "change",
+    handleDetailCollectionsChange
+  );
+  dom.detail?.save?.addEventListener("click", handleDetailSave);
+  dom.detail?.refresh?.addEventListener("click", handleDetailRefresh);
+  dom.detail?.remove?.addEventListener("click", handleDetailDelete);
+  dom.detail?.spoilerReveal?.addEventListener("click", onDetailSpoilerReveal);
+  dom.detail?.userRating?.addEventListener("input", onDetailPersonalInput);
+  dom.detail?.review?.addEventListener("input", onDetailPersonalInput);
+  dom.detail?.tags?.addEventListener("input", onDetailPersonalInput);
+  dom.detail?.spoilers?.addEventListener("change", onDetailPersonalInput);
+
+  // --- Alta manual (UI-S11, REQ-S02, AC-S08) -----------------------
+  populateManualGenres();
+  dom.manual?.open?.addEventListener("click", onManualOpen);
+  dom.manual?.form?.addEventListener("submit", handleManualSubmit);
 
   // --- Biblioteca (UI-S04, UI-S05) --------------------------------
   // Los selectores de estado, género y orden se rellenan desde
@@ -2526,6 +4310,34 @@ export function unmountSeries() {
   dom?.library?.sort?.removeEventListener("change", applyLibraryFilters);
   dom?.library?.clear?.removeEventListener("click", clearLibraryFilters);
 
+  // --- Ficha de serie (UI-S06) --------------------------------------
+  dom?.detail?.dialog?.removeEventListener("close", onSeriesDetailClosed);
+  dom?.detail?.close?.removeEventListener("click", closeSeriesDetail);
+  dom?.detail?.status?.removeEventListener("change", handleDetailStatusChange);
+  dom?.detail?.favorite?.removeEventListener("click", handleDetailFavorite);
+  dom?.detail?.next?.removeEventListener("click", handleDetailNext);
+  dom?.detail?.rewatchInc?.removeEventListener("click", onDetailRewatchInc);
+  dom?.detail?.rewatchDec?.removeEventListener("click", onDetailRewatchDec);
+  dom?.detail?.collections?.removeEventListener(
+    "change",
+    handleDetailCollectionsChange
+  );
+  dom?.detail?.save?.removeEventListener("click", handleDetailSave);
+  dom?.detail?.refresh?.removeEventListener("click", handleDetailRefresh);
+  dom?.detail?.remove?.removeEventListener("click", handleDetailDelete);
+  dom?.detail?.spoilerReveal?.removeEventListener(
+    "click",
+    onDetailSpoilerReveal
+  );
+  dom?.detail?.userRating?.removeEventListener("input", onDetailPersonalInput);
+  dom?.detail?.review?.removeEventListener("input", onDetailPersonalInput);
+  dom?.detail?.tags?.removeEventListener("input", onDetailPersonalInput);
+  dom?.detail?.spoilers?.removeEventListener("change", onDetailPersonalInput);
+
+  // --- Alta manual (UI-S11) -----------------------------------------
+  dom?.manual?.open?.removeEventListener("click", onManualOpen);
+  dom?.manual?.form?.removeEventListener("submit", handleManualSubmit);
+
   for (const tab of SERIES_TABS) {
     const button = dom?.tabs?.[tab.key];
     const listeners = tabListeners.get(tab.key);
@@ -2539,6 +4351,19 @@ export function unmountSeries() {
   // DOM para no dejar restos.
   noticeNode?.remove();
   noticeNode = null;
+
+  // La ficha se cierra para no dejar un `<dialog>` modal abierto y
+  // sus nodos auxiliares se retiran del DOM.
+  if (dom?.detail?.dialog?.open) dom.detail.dialog.close();
+  detailErrorNode?.remove();
+  detailErrorNode = null;
+  detailStatusNode?.remove();
+  detailStatusNode = null;
+  detailHintNode?.remove();
+  detailHintNode = null;
+  manualStatusNode?.remove();
+  manualStatusNode = null;
+  detailState = createDetailState();
 
   // Los nodos de estado vacío de las listas se crean en tiempo de
   // ejecución: se retiran del DOM para no dejar restos.
