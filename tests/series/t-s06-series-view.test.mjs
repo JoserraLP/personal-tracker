@@ -600,6 +600,7 @@ test("T-S06 · mountSeries monta la sección y conmuta las tres pestañas (UI-S0
   };
   const state = { activeTab: "catalog" };
   let catalogLoads = 0;
+  let collectionRenders = 0;
 
   const code = extractFunction("activateTab") + "\nreturn activateTab;";
   const activateTab = new Function(
@@ -607,6 +608,7 @@ test("T-S06 · mountSeries monta la sección y conmuta las tres pestañas (UI-S0
     "state",
     "dom",
     "loadCatalog",
+    "renderCollections",
     code
   )(
     freezeArrayValue("SERIES_TABS"),
@@ -614,6 +616,9 @@ test("T-S06 · mountSeries monta la sección y conmuta las tres pestañas (UI-S0
     { tabs, panels },
     () => {
       catalogLoads += 1;
+    },
+    () => {
+      collectionRenders += 1;
     }
   );
 
@@ -626,6 +631,7 @@ test("T-S06 · mountSeries monta la sección y conmuta las tres pestañas (UI-S0
   assert.equal(panels.library.hidden, false);
   assert.equal(panels.catalog.hidden, true);
   assert.equal(catalogLoads, 0, "no carga el catálogo al abrir la biblioteca");
+  assert.equal(collectionRenders, 0, "no repinta colecciones al abrir la biblioteca");
 
   activateTab("catalog");
   assert.equal(tabs.catalog.getAttribute("aria-selected"), "true");
@@ -638,6 +644,11 @@ test("T-S06 · mountSeries monta la sección y conmuta las tres pestañas (UI-S0
   assert.equal(tabs.collections.getAttribute("aria-selected"), "true");
   assert.equal(panels.collections.hidden, false);
   assert.equal(panels.catalog.hidden, true);
+  assert.equal(
+    collectionRenders,
+    1,
+    "abrir «Mis colecciones» repinta la lista (UI-S10)"
+  );
 
   // Esqueleto: tablist con role/aria-selected y los tres paneles.
   assert.match(htmlSrc, /role="tablist"/);

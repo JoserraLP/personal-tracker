@@ -76,9 +76,25 @@
 //   - D-S14: una serie manual degrada a los capítulos ya registrados
 //     sin ninguna llamada a TMDB; nunca queda una pantalla en blanco.
 //
-// Tareas siguientes (mismo fichero, en cadena): T-S10 (colecciones).
-// Por eso el módulo deja estos enganches: `getSeriesViewState` para
-// el estado vivo y `refreshSeriesStats` para las estadísticas.
+// Alcance de esta tarea (T-S10):
+//   - UI-S10: pestaña «Mis colecciones» con creación, renombrado,
+//     descripción, borrado y el recuento «N series» calculado en
+//     cliente a partir de `collectionIds` (DB-S03, AC-S22).
+//   - UI-S10: el clic en «Ver series» filtra la biblioteca por esa
+//     colección (el mismo filtro `series-library-collection`) y cambia
+//     a la pestaña «Mi biblioteca».
+//   - DB-S03: al eliminar una colección desaparece de «Mis
+//     colecciones» y su id sale de `collectionIds` de las series
+//     afectadas (lo resuelve `deleteCollection` del repositorio).
+//   - UI-S11 / REQ-S02: alta manual completa con validación en
+//     español (nombre obligatorio, año, temporadas, episodios y
+//     géneros del diccionario de TV) y sin ninguna llamada a TMDB
+//     (AC-S08).
+//
+// Tareas siguientes (mismo fichero, en cadena): T-S11 (`js/app.js`,
+// fichero distinto). Por eso el módulo deja estos enganches:
+// `getSeriesViewState` para el estado vivo y `refreshSeriesStats`
+// para las estadísticas.
 //
 // Dependencias ya implementadas (se consumen, no se duplican):
 //   - `js/series/seriesState.js` (T-S03): etiquetas de estado,
@@ -115,7 +131,9 @@ import {
   MAX_REWATCH_COUNT,
   addFromTmdb,
   addManual,
+  createCollection,
   decRewatch,
+  deleteCollection,
   deleteSeries,
   ensureDetailCached,
   incRewatch,
@@ -130,6 +148,7 @@ import {
   subscribeSeries,
   unmarkEpisode,
   unmarkSeason,
+  updateCollection,
   updateEpisodePersonal,
   updatePersonal,
 } from "./seriesRepository.js";
@@ -380,12 +399,58 @@ const MANUAL_EPISODES_ERROR = "El número de episodios no es válido.";
 const MANUAL_SUCCESS_MESSAGE = "Serie añadida a tu biblioteca.";
 
 /** Límites del alta manual (coinciden con DB-S01). */
-const MANUAL_MIN_YEAR = 1900;
+const MANUAL_MIN_YEAR = 1888;
 const MANUAL_MAX_YEAR = 2100;
 const MANUAL_MIN_SEASONS = 0;
 const MANUAL_MAX_SEASONS = 1000;
 const MANUAL_MIN_EPISODES = 0;
 const MANUAL_MAX_EPISODES = 100000;
+
+// -------------------------------------------------------------
+// Constantes de «Mis colecciones» (UI-S10, DB-S03)
+// -------------------------------------------------------------
+
+/** Longitud máxima del nombre de una colección (DB-S03). */
+const COLLECTION_NAME_MAX = 60;
+
+/** Longitud máxima de la descripción de una colección (DB-S03). */
+const COLLECTION_DESCRIPTION_MAX = 300;
+
+/** Aviso cuando el nombre de la colección está vacío (DB-S03). */
+const COLLECTION_NAME_REQUIRED_MESSAGE =
+  "El nombre de la colección es obligatorio.";
+
+/** Aviso cuando el nombre de la colección es demasiado largo (DB-S03). */
+const COLLECTION_NAME_TOO_LONG_MESSAGE =
+  "El nombre no puede superar los 60 caracteres.";
+
+/** Aviso cuando la descripción es demasiado larga (DB-S03). */
+const COLLECTION_DESCRIPTION_TOO_LONG_MESSAGE =
+  "La descripción no puede superar los 300 caracteres.";
+
+/** Estado vacío de «Mis colecciones» (UI-S10). */
+const COLLECTIONS_EMPTY_MESSAGE = "Aún no tienes colecciones.";
+
+/** Texto del botón de envío en modo «crear» (UI-S10). */
+const COLLECTION_SUBMIT_CREATE_LABEL = "Crear colección";
+
+/** Texto del botón de envío en modo «editar» (UI-S10). */
+const COLLECTION_SUBMIT_EDIT_LABEL = "Guardar cambios";
+
+/** Título del formulario en modo «crear» (UI-S10). */
+const COLLECTION_FORM_CREATE_TITLE = "Nueva colección";
+
+/** Título del formulario en modo «editar» (UI-S10). */
+const COLLECTION_FORM_EDIT_TITLE = "Editar colección";
+
+/** Confirmación del borrado de una colección (UI-S10, AC-S22). */
+const COLLECTION_DELETE_CONFIRM_MESSAGE =
+  "¿Eliminar esta colección? Las series de tu biblioteca dejarán de pertenecer a ella.";
+
+/** Avisos de éxito del formulario de colecciones (UI-S10). */
+const COLLECTION_CREATED_MESSAGE = "Colección creada.";
+const COLLECTION_UPDATED_MESSAGE = "Colección actualizada.";
+const COLLECTION_DELETED_MESSAGE = "Colección eliminada.";
 
 /** Fecha de estreno en formato largo es-ES («13 de marzo de 2022»). */
 const longDateFormatter = new Intl.DateTimeFormat("es-ES", {
@@ -671,6 +736,30 @@ const tabListeners = new Map();
 
 /** Nodo de aviso general de la sección (`role="status"`). */
 let noticeNode = null;
+
+/**
+ * Modo del formulario de colecciones: `"create"` o `"edit"`
+ * (UI-S10).
+ */
+let collectionFormMode = "create";
+
+/**
+ * Id de la colección que se está editando (`null` en modo
+ * «crear») (UI-S10).
+ */
+let collectionEditingId = null;
+
+/**
+ * Botón «Cancelar» del formulario de colecciones: se crea en tiempo
+ * de ejecución y solo se muestra en modo «editar» (UI-S10).
+ */
+let collectionCancelButton = null;
+
+/** Nodo de error del formulario de colecciones (`role="alert"`). */
+let collectionErrorNode = null;
+
+/** Nodo de aviso del formulario de colecciones (`role="status"`). */
+let collectionStatusNode = null;
 
 // -------------------------------------------------------------
 // Descripción de errores en español (ALG-S05)
@@ -1766,6 +1855,10 @@ function onLibraryStatsSnapshot(series) {
   renderStats(list);
   syncCatalogAddButtons();
 
+  // El recuento «N series» de cada colección se calcula con la
+  // biblioteca completa (DB-S03, UI-S10).
+  updateCollectionCounts();
+
   // El estado vacío depende de si la biblioteca tiene alguna serie:
   // solo se actualiza cuando ya hay una pintada de la rejilla. Sin
   // ese dato, el recuento visible aún no es válido y el mensaje
@@ -1806,6 +1899,7 @@ function onLibrarySnapshot(series) {
 function onCollectionsSnapshot(collections) {
   state.collections = Array.isArray(collections) ? collections : [];
   populateCollectionFilter(state.collections);
+  renderCollections();
 }
 
 /**
@@ -3222,6 +3316,10 @@ async function handleDetailCollectionsChange(event) {
     if (detailState.series) {
       detailState.series = { ...detailState.series, collectionIds: ids };
     }
+    // El estado en memoria de la biblioteca se actualiza para que el
+    // recuento «N series» de cada colección sea coherente (UI-S10,
+    // AC-S22).
+    applyLibraryCollections(docId, ids);
     showDetailStatus(DETAIL_COLLECTIONS_MESSAGE);
     setMessage(dom?.messages?.error, "");
   } catch (error) {
@@ -3231,6 +3329,35 @@ async function handleDetailCollectionsChange(event) {
     setDetailBusy(false);
     updateDetailControls();
   }
+}
+
+/**
+ * Aplica en memoria las colecciones asignadas a una serie (AC-S22).
+ * No repinta: el parcheo de la tarjeta y el repintado los hace
+ * `renderLibrary`.
+ *
+ * @param {string} docId
+ * @param {Array<string>} collectionIds
+ */
+function applyLibraryCollections(docId, collectionIds) {
+  const ids = Array.isArray(collectionIds)
+    ? collectionIds.map((value) => String(value))
+    : [];
+
+  const patchList = (list) =>
+    list.map((item) =>
+      item?.id === docId ? { ...item, collectionIds: ids } : item
+    );
+
+  state.library = patchList(state.library);
+  state.libraryFiltered = patchList(state.libraryFiltered);
+
+  const current = state.libraryByDocId.get(docId);
+  if (current) {
+    state.libraryByDocId.set(docId, { ...current, collectionIds: ids });
+  }
+
+  updateCollectionCounts();
 }
 
 /**
@@ -4660,6 +4787,13 @@ function onManualOpen() {
   const form = dom?.manual?.form;
   if (!form) return;
 
+  // Al reabrir el formulario se limpian los avisos del intento
+  // anterior (UI-S11).
+  setMessage(dom?.manual?.error, "");
+  if (dom?.manual?.name instanceof HTMLInputElement) {
+    dom.manual.name.setAttribute("aria-invalid", "false");
+  }
+
   setManualFormVisible(form.hidden);
 }
 
@@ -4734,8 +4868,15 @@ async function handleManualSubmit(event) {
   const name = manual.name?.value?.trim() ?? "";
   if (name === "") {
     setMessage(manual.error, MANUAL_NAME_ERROR);
+    if (manual.name instanceof HTMLInputElement) {
+      manual.name.setAttribute("aria-invalid", "true");
+    }
     manual.name?.focus?.();
     return;
+  }
+
+  if (manual.name instanceof HTMLInputElement) {
+    manual.name.setAttribute("aria-invalid", "false");
   }
 
   const year = readOptionalInteger(manual.year, MANUAL_MIN_YEAR, MANUAL_MAX_YEAR);
@@ -4786,6 +4927,10 @@ async function handleManualSubmit(event) {
     setManualFormVisible(false);
     showManualStatus(MANUAL_SUCCESS_MESSAGE);
     setMessage(dom?.messages?.error, "");
+
+    // La serie recién creada se ve en la biblioteca (AC-S08): se abre
+    // esa pestaña para que el usuario vea el resultado del alta.
+    activateTab("library");
   } catch (error) {
     setMessage(manual.error, describeRepositoryError(error));
   }
@@ -4809,6 +4954,584 @@ function showManualStatus(message) {
   }
 
   setMessage(manualStatusNode, message);
+}
+
+// -------------------------------------------------------------
+// «Mis colecciones» (UI-S10, DB-S03, REQ-S11, AC-S22)
+// -------------------------------------------------------------
+
+/**
+ * Crea (una sola vez) el nodo de error del formulario de colecciones.
+ * Los errores se anuncian con `role="alert"` (UI-S13, NFR-S02).
+ *
+ * @returns {HTMLElement|null}
+ */
+function ensureCollectionErrorNode() {
+  if (collectionErrorNode && collectionErrorNode.isConnected) {
+    return collectionErrorNode;
+  }
+
+  const form = dom?.collections?.form;
+  if (!form) return null;
+
+  const node = document.createElement("p");
+  node.className = "series-message series-message--error";
+  node.setAttribute("role", "alert");
+  node.hidden = true;
+
+  form.insertAdjacentElement("afterend", node);
+
+  collectionErrorNode = node;
+  return node;
+}
+
+/**
+ * Crea (una sola vez) el nodo de aviso del formulario de
+ * colecciones. Los avisos se anuncian con `role="status"`
+ * (UI-S13, NFR-S02).
+ *
+ * @returns {HTMLElement|null}
+ */
+function ensureCollectionStatusNode() {
+  if (collectionStatusNode && collectionStatusNode.isConnected) {
+    return collectionStatusNode;
+  }
+
+  const form = dom?.collections?.form;
+  if (!form) return null;
+
+  const node = document.createElement("p");
+  node.className = "series-message";
+  node.setAttribute("role", "status");
+  node.hidden = true;
+
+  const anchor = collectionErrorNode?.isConnected ? collectionErrorNode : form;
+  anchor.insertAdjacentElement("afterend", node);
+
+  collectionStatusNode = node;
+  return node;
+}
+
+/**
+ * Crea (una sola vez) el botón «Cancelar» del formulario de
+ * colecciones. Solo se muestra en modo «editar» (UI-S10).
+ *
+ * @returns {HTMLElement|null}
+ */
+function ensureCollectionCancelButton() {
+  if (collectionCancelButton && collectionCancelButton.isConnected) {
+    return collectionCancelButton;
+  }
+
+  const submit = dom?.collections?.submit;
+  const form = dom?.collections?.form;
+  if (!submit || !form) return null;
+
+  const button = document.createElement("button");
+  button.className = "btn btn--secondary";
+  button.type = "button";
+  button.textContent = "Cancelar";
+  button.hidden = true;
+
+  submit.insertAdjacentElement("afterend", button);
+  button.addEventListener("click", handleCollectionCancel);
+
+  collectionCancelButton = button;
+  return button;
+}
+
+/**
+ * Escribe un error en el nodo de error del formulario (creándolo si
+ * hace falta).
+ *
+ * @param {string} message
+ */
+function showCollectionError(message) {
+  const node = ensureCollectionErrorNode();
+  if (node) setMessage(node, message);
+}
+
+/**
+ * Escribe un aviso en el nodo de aviso del formulario (creándolo si
+ * hace falta).
+ *
+ * @param {string} message
+ */
+function showCollectionStatus(message) {
+  const node = ensureCollectionStatusNode();
+  if (node) setMessage(node, message);
+}
+
+/**
+ * Cambia el formulario entre los modos «crear» y «editar»: cambia el
+ * título, la etiqueta del botón de envío y muestra u oculta el botón
+ * «Cancelar» (UI-S10).
+ *
+ * @param {"create"|"edit"} mode
+ */
+function setCollectionFormMode(mode) {
+  collectionFormMode = mode === "edit" ? "edit" : "create";
+
+  const form = dom?.collections?.form;
+  if (form) {
+    const title =
+      form.querySelector(".series-panel__subtitle") ?? form.querySelector("h3");
+    if (title) {
+      title.textContent =
+        collectionFormMode === "edit"
+          ? COLLECTION_FORM_EDIT_TITLE
+          : COLLECTION_FORM_CREATE_TITLE;
+    }
+  }
+
+  const submit = dom?.collections?.submit;
+  if (submit) {
+    submit.textContent =
+      collectionFormMode === "edit"
+        ? COLLECTION_SUBMIT_EDIT_LABEL
+        : COLLECTION_SUBMIT_CREATE_LABEL;
+  }
+
+  const cancel = ensureCollectionCancelButton();
+  if (cancel) cancel.hidden = collectionFormMode !== "edit";
+}
+
+/**
+ * Vacía el formulario y vuelve al modo «crear» (UI-S10).
+ */
+function resetCollectionForm() {
+  collectionEditingId = null;
+
+  const form = dom?.collections?.form;
+  if (form instanceof HTMLFormElement) form.reset();
+
+  const name = dom?.collections?.name;
+  if (name instanceof HTMLInputElement) {
+    name.value = "";
+    name.setAttribute("aria-invalid", "false");
+  }
+
+  const description = dom?.collections?.description;
+  if (description instanceof HTMLTextAreaElement) description.value = "";
+
+  setCollectionFormMode("create");
+
+  if (collectionErrorNode) setMessage(collectionErrorNode, "");
+  if (collectionStatusNode) setMessage(collectionStatusNode, "");
+}
+
+/**
+ * Lee los valores del formulario de colecciones (sin validar).
+ *
+ * @returns {{ name: string, description: string }}
+ */
+function readCollectionForm() {
+  const name = dom?.collections?.name;
+  const description = dom?.collections?.description;
+
+  return {
+    name: typeof name?.value === "string" ? name.value.trim() : "",
+    description:
+      typeof description?.value === "string" ? description.value.trim() : "",
+  };
+}
+
+/**
+ * Valida los valores del formulario de colecciones (DB-S03): el
+ * nombre es obligatorio (1–60 caracteres) y la descripción no puede
+ * superar los 300 caracteres.
+ *
+ * @param {{ name: string, description: string }} values
+ * @returns {{ valid: boolean, error: string }}
+ */
+function validateCollectionForm(values) {
+  const name = typeof values?.name === "string" ? values.name : "";
+  const description =
+    typeof values?.description === "string" ? values.description : "";
+
+  if (name === "") {
+    return { valid: false, error: COLLECTION_NAME_REQUIRED_MESSAGE };
+  }
+
+  if (name.length > COLLECTION_NAME_MAX) {
+    return { valid: false, error: COLLECTION_NAME_TOO_LONG_MESSAGE };
+  }
+
+  if (description.length > COLLECTION_DESCRIPTION_MAX) {
+    return { valid: false, error: COLLECTION_DESCRIPTION_TOO_LONG_MESSAGE };
+  }
+
+  return { valid: true, error: "" };
+}
+
+/**
+ * Recuento de series de una colección. Se calcula en cliente a
+ * partir de `collectionIds` de cada serie de la biblioteca (DB-S03,
+ * AC-S22): las colecciones no guardan la lista de series.
+ *
+ * @param {string} collectionId
+ * @param {Array<Record<string, unknown>>} [series]
+ * @returns {number}
+ */
+function countCollectionSeries(collectionId, series = state.library) {
+  const id = String(collectionId ?? "");
+  if (id === "") return 0;
+
+  let count = 0;
+
+  for (const item of Array.isArray(series) ? series : []) {
+    const ids = Array.isArray(item?.collectionIds) ? item.collectionIds : [];
+    if (ids.some((value) => String(value) === id)) count += 1;
+  }
+
+  return count;
+}
+
+/**
+ * Texto del recuento («1 serie», «3 series») (UI-S10).
+ *
+ * @param {number} count
+ * @returns {string}
+ */
+function formatCollectionCount(count) {
+  const total = formatInteger(count) ?? "0";
+  return `${total} ${count === 1 ? "serie" : "series"}`;
+}
+
+/**
+ * Actualiza el recuento de series de cada colección pintada. Se
+ * llama cuando llega la biblioteca completa, que es la fuente de los
+ * `collectionIds` (DB-S03, AC-S22).
+ */
+function updateCollectionCounts() {
+  const list = dom?.collections?.list;
+  if (!list) return;
+
+  for (const node of list.querySelectorAll('[data-series-role="collection-item"]')) {
+    if (!(node instanceof HTMLElement)) continue;
+
+    const countNode = node.querySelector('[data-series-role="collection-count"]');
+    if (!countNode) continue;
+
+    countNode.textContent = formatCollectionCount(
+      countCollectionSeries(node.dataset.collectionId ?? "")
+    );
+  }
+}
+
+/**
+ * Crea el elemento de una colección clonando la plantilla de
+ * `index.html`. Cada instancia recibe ids únicos (UI-S10).
+ *
+ * @param {Record<string, unknown>} collection
+ * @returns {HTMLElement|null}
+ */
+function createCollectionItem(collection) {
+  const template = dom?.templates?.collection;
+  if (!template || !template.content) return null;
+
+  const id = String(collection?.id ?? "");
+  if (id === "") return null;
+
+  const fragment = template.content.cloneNode(true);
+  const item = fragment.querySelector('[data-series-role="collection-item"]');
+  if (!(item instanceof HTMLElement)) return null;
+
+  const key = safeIdPart(id);
+  const name = String(collection?.name ?? "");
+
+  item.id = `series-collection-item-${key}`;
+  item.dataset.collectionId = id;
+
+  const nameNode = item.querySelector('[data-series-role="collection-name"]');
+  if (nameNode) nameNode.textContent = name;
+
+  const descriptionNode = item.querySelector(
+    '[data-series-role="collection-description"]'
+  );
+  if (descriptionNode) {
+    const text =
+      typeof collection?.description === "string" ? collection.description : "";
+    descriptionNode.textContent = text;
+    descriptionNode.hidden = text === "";
+  }
+
+  const countNode = item.querySelector('[data-series-role="collection-count"]');
+  if (countNode) {
+    countNode.textContent = formatCollectionCount(countCollectionSeries(id));
+  }
+
+  // Los ids de la plantilla se sustituyen por ids únicos: sin ellos
+  // se duplicarían en cada colección (UI-S10, REQ-C2).
+  const openButton = item.querySelector('[data-series-role="collection-open"]');
+  if (openButton instanceof HTMLElement) {
+    openButton.id = `series-collection-open-${key}`;
+    openButton.setAttribute("aria-label", `Ver las series de la colección ${name}`);
+  }
+
+  const renameButton = item.querySelector('[data-series-role="collection-rename"]');
+  if (renameButton instanceof HTMLElement) {
+    renameButton.id = `series-collection-rename-${key}`;
+    renameButton.setAttribute(
+      "aria-label",
+      `Renombrar o describir la colección ${name}`
+    );
+  }
+
+  const deleteButton = item.querySelector('[data-series-role="collection-delete"]');
+  if (deleteButton instanceof HTMLElement) {
+    deleteButton.id = `series-collection-delete-${key}`;
+    deleteButton.setAttribute("aria-label", `Eliminar la colección ${name}`);
+  }
+
+  return item;
+}
+
+/**
+ * Pinta la lista de colecciones (UI-S10). Si el foco estaba en una
+ * acción de una colección, se devuelve al botón equivalente tras el
+ * repintado (UI-S13, NFR-S02).
+ */
+function renderCollections() {
+  const list = dom?.collections?.list;
+  if (!list) return;
+
+  // Se memoriza el foco antes de repintar la lista.
+  const active =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const activeItem = active?.closest?.('[data-series-role="collection-item"]');
+  const focusedCollectionId =
+    activeItem instanceof HTMLElement ? activeItem.dataset.collectionId ?? "" : "";
+  const focusedRole = active?.dataset?.seriesRole ?? "";
+
+  clearNode(list);
+
+  const collections = state.collections;
+  const fragment = document.createDocumentFragment();
+
+  for (const collection of collections) {
+    const item = createCollectionItem(collection);
+    if (item) fragment.append(item);
+  }
+
+  list.append(fragment);
+
+  // Estado vacío en español (UI-S10).
+  const empty = dom?.collections?.empty;
+  if (empty) {
+    empty.textContent = COLLECTIONS_EMPTY_MESSAGE;
+    empty.hidden = collections.length > 0;
+  }
+
+  updateCollectionCounts();
+
+  // El foco vuelve al botón equivalente; si la colección ya no existe,
+  // se deja en la lista para no perder el hilo (UI-S13).
+  if (focusedCollectionId === "" || focusedRole === "") return;
+
+  for (const node of list.querySelectorAll('[data-series-role="collection-item"]')) {
+    if (!(node instanceof HTMLElement)) continue;
+    if (node.dataset.collectionId !== focusedCollectionId) continue;
+
+    const target = node.querySelector(`[data-series-role="${focusedRole}"]`);
+    if (target instanceof HTMLElement) {
+      target.focus();
+      return;
+    }
+  }
+
+  if (!list.hasAttribute("tabindex")) list.setAttribute("tabindex", "-1");
+  list.focus();
+}
+
+/**
+ * Envía el formulario de colecciones: crea una colección nueva o
+ * guarda los cambios de la que se está editando (UI-S10, DB-S03).
+ *
+ * @param {SubmitEvent} event
+ */
+async function handleCollectionsSubmit(event) {
+  event.preventDefault();
+
+  const values = readCollectionForm();
+  const validation = validateCollectionForm(values);
+
+  const nameInput = dom?.collections?.name;
+
+  if (!validation.valid) {
+    if (nameInput instanceof HTMLElement) {
+      nameInput.setAttribute("aria-invalid", "true");
+    }
+    showCollectionError(validation.error);
+    if (collectionStatusNode) setMessage(collectionStatusNode, "");
+    nameInput?.focus?.();
+    return;
+  }
+
+  if (nameInput instanceof HTMLElement) {
+    nameInput.setAttribute("aria-invalid", "false");
+  }
+  if (collectionErrorNode) setMessage(collectionErrorNode, "");
+
+  const submit = dom?.collections?.submit;
+  if (submit instanceof HTMLButtonElement) submit.disabled = true;
+
+  const description = values.description === "" ? null : values.description;
+  const editing = collectionFormMode === "edit" && collectionEditingId !== null;
+
+  try {
+    if (editing) {
+      await updateCollection(collectionEditingId, {
+        name: values.name,
+        description,
+      });
+    } else {
+      await createCollection({ name: values.name, description });
+    }
+
+    resetCollectionForm();
+    showCollectionStatus(
+      editing ? COLLECTION_UPDATED_MESSAGE : COLLECTION_CREATED_MESSAGE
+    );
+  } catch (error) {
+    showCollectionError(describeRepositoryError(error));
+  } finally {
+    if (submit instanceof HTMLButtonElement) submit.disabled = false;
+  }
+}
+
+/**
+ * «Renombrar»: pasa el formulario al modo «editar» con los datos de
+ * la colección (nombre y descripción) (UI-S10).
+ *
+ * @param {string} collectionId
+ */
+function handleCollectionRename(collectionId) {
+  const id = String(collectionId ?? "");
+  if (id === "") return;
+
+  const collection = state.collections.find((item) => String(item?.id) === id);
+  if (!collection) return;
+
+  collectionEditingId = id;
+
+  const nameInput = dom?.collections?.name;
+  if (nameInput instanceof HTMLInputElement) {
+    nameInput.value = String(collection.name ?? "");
+    nameInput.setAttribute("aria-invalid", "false");
+  }
+
+  const descriptionInput = dom?.collections?.description;
+  if (descriptionInput instanceof HTMLTextAreaElement) {
+    descriptionInput.value =
+      typeof collection.description === "string" ? collection.description : "";
+  }
+
+  setCollectionFormMode("edit");
+  if (collectionErrorNode) setMessage(collectionErrorNode, "");
+
+  showCollectionStatus(
+    `Editando «${String(collection.name ?? "")}». Guarda los cambios o cancela.`
+  );
+
+  nameInput?.focus?.();
+}
+
+/**
+ * «Eliminar»: borra la colección tras confirmar. El repositorio
+ * quita su id de `collectionIds` en las series afectadas (DB-S03,
+ * AC-S22).
+ *
+ * @param {string} collectionId
+ */
+async function handleCollectionDelete(collectionId) {
+  const id = String(collectionId ?? "");
+  if (id === "") return;
+
+  const collection = state.collections.find((item) => String(item?.id) === id);
+  const name = collection ? String(collection.name ?? "") : "";
+
+  const confirmed = window.confirm(COLLECTION_DELETE_CONFIRM_MESSAGE);
+  if (!confirmed) return;
+
+  try {
+    await deleteCollection(id);
+
+    if (collectionEditingId === id) resetCollectionForm();
+
+    // El id desaparece de `collectionIds` de las series afectadas: el
+    // estado en memoria se limpia al instante para que el recuento
+    // «N series» sea coherente (AC-S22).
+    removeCollectionFromLibraryState(id);
+
+    showCollectionStatus(COLLECTION_DELETED_MESSAGE);
+    if (collectionErrorNode) setMessage(collectionErrorNode, "");
+  } catch (error) {
+    showCollectionError(describeRepositoryError(error));
+  }
+}
+
+/**
+ * «Ver series»: filtra la biblioteca por la colección y abre la
+ * pestaña «Mi biblioteca» (UI-S10, AC-S22).
+ *
+ * @param {string} collectionId
+ */
+function handleCollectionOpen(collectionId) {
+  const id = String(collectionId ?? "");
+  if (id === "") return;
+
+  const select = dom?.library?.collection;
+  if (select instanceof HTMLSelectElement) {
+    const exists = Array.from(select.options).some((option) => option.value === id);
+
+    if (!exists) {
+      const collection = state.collections.find((item) => String(item?.id) === id);
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = collection ? String(collection.name ?? "") : id;
+      select.append(option);
+    }
+
+    select.value = id;
+  }
+
+  applyLibraryFilters();
+  activateTab("library");
+}
+
+/**
+ * «Cancelar»: descarta la edición en curso y vuelve al modo
+ * «crear» (UI-S10).
+ */
+function handleCollectionCancel() {
+  resetCollectionForm();
+  dom?.collections?.name?.focus?.();
+}
+
+/**
+ * Quita el id de una colección de `collectionIds` en el estado en
+ * memoria de la biblioteca (AC-S22). El repositorio ya lo hizo en
+ * Firestore: aquí solo se evita que el recuento «N series» siga
+ * mostrando la colección borrada hasta el siguiente snapshot.
+ *
+ * @param {string} collectionId
+ */
+function removeCollectionFromLibraryState(collectionId) {
+  const id = String(collectionId ?? "");
+  if (id === "") return;
+
+  const patchList = (list) =>
+    list.map((item) => {
+      const ids = Array.isArray(item?.collectionIds) ? item.collectionIds : [];
+      const next = ids.filter((value) => String(value) !== id);
+      return next.length === ids.length ? item : { ...item, collectionIds: next };
+    });
+
+  state.library = patchList(state.library);
+  state.libraryFiltered = patchList(state.libraryFiltered);
+
+  updateCollectionCounts();
 }
 
 // -------------------------------------------------------------
@@ -5124,6 +5847,36 @@ function onSectionClick(event) {
   const target = event.target instanceof Element ? event.target : null;
   if (!target) return;
 
+  // Colecciones (UI-S10): los botones de la plantilla de colección se
+  // delegan aquí en lugar de tener escuchas propias (se repinta la
+  // lista en cada snapshot).
+  const collectionItem = target.closest('[data-series-role="collection-item"]');
+  if (collectionItem instanceof HTMLElement) {
+    const collectionId = collectionItem.dataset.collectionId ?? "";
+
+    const collectionOpen = target.closest('[data-series-role="collection-open"]');
+    if (collectionOpen instanceof HTMLElement) {
+      handleCollectionOpen(collectionId);
+      return;
+    }
+
+    const collectionRename = target.closest(
+      '[data-series-role="collection-rename"]'
+    );
+    if (collectionRename instanceof HTMLElement) {
+      handleCollectionRename(collectionId);
+      return;
+    }
+
+    const collectionDelete = target.closest(
+      '[data-series-role="collection-delete"]'
+    );
+    if (collectionDelete instanceof HTMLElement) {
+      void handleCollectionDelete(collectionId);
+      return;
+    }
+  }
+
   const openButton = target.closest('[data-series-role="open"]');
   if (openButton) {
     const card = openButton.closest('[data-series-role="card"]');
@@ -5180,6 +5933,12 @@ function activateTab(key) {
 
   if (tab.key === "catalog") {
     void loadCatalog();
+  }
+
+  if (tab.key === "collections") {
+    // La lista se repinta al abrir la pestaña: el recuento «N series»
+    // puede haber cambiado con la última edición (UI-S10).
+    renderCollections();
   }
 }
 
@@ -5558,6 +6317,13 @@ export function mountSeries(options = {}) {
   dom.manual?.open?.addEventListener("click", onManualOpen);
   dom.manual?.form?.addEventListener("submit", handleManualSubmit);
 
+  // --- Colecciones (UI-S10, DB-S03, AC-S22) ------------------------
+  // El formulario crea o renombra colecciones; las acciones de cada
+  // fila se delegan en `onSectionClick`.
+  dom.collections?.form?.addEventListener("submit", handleCollectionsSubmit);
+  setCollectionFormMode("create");
+  renderCollections();
+
   // --- Biblioteca (UI-S04, UI-S05) --------------------------------
   // Los selectores de estado, género y orden se rellenan desde
   // `seriesState.js` para que las opciones y las etiquetas no se
@@ -5697,6 +6463,9 @@ export function unmountSeries() {
   dom?.manual?.open?.removeEventListener("click", onManualOpen);
   dom?.manual?.form?.removeEventListener("submit", handleManualSubmit);
 
+  // --- Colecciones (UI-S10) -----------------------------------------
+  dom?.collections?.form?.removeEventListener("submit", handleCollectionsSubmit);
+
   for (const tab of SERIES_TABS) {
     const button = dom?.tabs?.[tab.key];
     const listeners = tabListeners.get(tab.key);
@@ -5722,6 +6491,18 @@ export function unmountSeries() {
   detailHintNode = null;
   manualStatusNode?.remove();
   manualStatusNode = null;
+
+  // Nodos auxiliares del formulario de colecciones: se retiran del
+  // DOM para no dejar restos (UI-S10).
+  collectionCancelButton?.remove();
+  collectionCancelButton = null;
+  collectionErrorNode?.remove();
+  collectionErrorNode = null;
+  collectionStatusNode?.remove();
+  collectionStatusNode = null;
+  collectionFormMode = "create";
+  collectionEditingId = null;
+
   detailState = createDetailState();
   episodeState = createEpisodeState();
 
