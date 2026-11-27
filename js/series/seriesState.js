@@ -887,3 +887,277 @@ export function createLibraryFilters(overrides = {}) {
     sort: SORT_KEYS.has(input.sort) ? input.sort : DEFAULT_SORT_KEY,
   };
 }
+
+// -------------------------------------------------------------
+// NFR-S01 — Benchmark de rendimiento (solo desarrollo)
+//
+// Mide `computeSeriesStats` + `filterSeries` + `sortSeries` con 500
+// documentos sintéticos: 20 repeticiones y p95 ≤ 100 ms. No amplía la
+// API pública del módulo: se ejecuta a mano con
+// `SERIES_BENCH=1 node js/series/seriesState.js` y no tiene efecto
+// alguno al importar el módulo desde la vista o desde los tests.
+//
+// Valores de referencia registrados (27/11/2026, Node v24.14.1 en
+// Windows y Chrome headless a 1280×900): p95 = 1,63 ms con 500
+// documentos y 20 repeticiones; render inicial de `#series-section`
+// tras pulsar «Series» = 47,2 ms con 500 tarjetas (repositorio
+// sustituido por un stub sin red). Ambos valores están anotados en el
+// PR de T-S15 (#112).
+// -------------------------------------------------------------
+
+/** Documentos sintéticos del benchmark (NFR-S01). */
+const BENCHMARK_DOCUMENTS = 500;
+
+/** Repeticiones del benchmark (NFR-S01). */
+const BENCHMARK_REPETITIONS = 20;
+
+/** Presupuesto de p95 en milisegundos (NFR-S01). */
+const BENCHMARK_P95_BUDGET_MS = 100;
+
+/**
+ * Géneros de TV usados por los documentos sintéticos (D-S08): solo
+ * ids presentes en `TV_GENRES_ES`.
+ */
+const BENCHMARK_GENRES = Object.freeze([18, 35, 80, 99, 10765]);
+
+/** Estados internos barajados en la biblioteca sintética (DB-S01). */
+const BENCHMARK_STATUSES = Object.freeze([
+  "watched",
+  "watching",
+  "watchlist",
+  "dropped",
+]);
+
+/**
+ * Generador pseudoaleatorio determinista (LCG): el benchmark da el
+ * mismo conjunto de documentos en cada ejecución.
+ *
+ * @param {number} [seed]
+ * @returns {() => number} Número en [0, 1).
+ */
+function createBenchmarkRandom(seed = 20261127) {
+  let value = seed >>> 0;
+
+  return () => {
+    value = (value * 1664525 + 1013904223) >>> 0;
+    return value / 4294967296;
+  };
+}
+
+/**
+ * Crea la biblioteca sintética de NFR-S01 con la forma de una serie
+ * normalizada (`seriesRepository.normalizeSeries`).
+ *
+ * @param {number} [count]
+ * @returns {Array<Record<string, unknown>>}
+ */
+function createBenchmarkSeries(count = BENCHMARK_DOCUMENTS) {
+  const random = createBenchmarkRandom();
+  const pick = (list) => list[Math.floor(random() * list.length)];
+  const baseMillis = 1764547200000; // 2025-12-01T00:00:00Z
+  const dayMillis = 86400000;
+  const library = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const numberOfEpisodes =
+      random() < 0.15 ? null : 8 + Math.floor(random() * 80);
+    const watchedEpisodesCount =
+      numberOfEpisodes === null
+        ? Math.floor(random() * 40)
+        : Math.floor(random() * (numberOfEpisodes + 1));
+
+    library.push({
+      id: `bench-${String(index).padStart(4, "0")}`,
+      name: `Serie ${index} ${pick(["Ámbar", "Ñandú", "Zeta", "Índigo"])}`,
+      originalName: `Show ${index}`,
+      status: pick(BENCHMARK_STATUSES),
+      isFavorite: random() < 0.25,
+      genreIds: [
+        random() < 0.5 ? 18 : pick(BENCHMARK_GENRES),
+        pick(BENCHMARK_GENRES),
+      ],
+      collectionIds: random() < 0.5 ? [`col-${1 + Math.floor(random() * 2)}`] : [],
+      userRating: random() < 0.3 ? null : Math.round(random() * 20) / 2,
+      tmdbRating: random() < 0.2 ? null : Math.round(random() * 100) / 10,
+      addedAt: baseMillis - index * dayMillis,
+      lastWatchedAt: random() < 0.3 ? null : baseMillis - index * dayMillis / 2,
+      firstAirYear: 1990 + Math.floor(random() * 35),
+      watchedEpisodesCount,
+      favoriteEpisodesCount: Math.floor(random() * 10),
+      numberOfEpisodes,
+      episodeRuntime: random() < 0.3 ? null : 22 + Math.floor(random() * 40),
+    });
+  }
+
+  return library;
+}
+
+/**
+ * Percentil por rango más cercano (nearest-rank), sin interpolación
+ * entre muestras. Sin muestras es un error: un p95 = 0 daría un PASS
+ * falso.
+ *
+ * @param {number[]} values
+ * @param {number} fraction 0–1.
+ * @returns {number}
+ * @throws {Error} Si no hay muestras.
+ */
+function benchmarkPercentile(values, fraction) {
+  if (values.length === 0) {
+    throw new Error("El benchmark no tiene muestras que medir.");
+  }
+
+  const sorted = values.slice().sort((a, b) => a - b);
+  const rank = Math.ceil(fraction * sorted.length) - 1;
+  const index = Math.min(Math.max(rank, 0), sorted.length - 1);
+  return sorted[index];
+}
+
+/**
+ * Una pasada completa del pipeline de NFR-S01: estadísticas de la
+ * biblioteca completa, filtro combinado (AC-S24) y orden por progreso
+ * (AC-S25) sobre los 500 documentos.
+ *
+ * @param {Array<Record<string, unknown>>} library
+ * @returns {{stats: Record<string, unknown>, filtered: number, sorted: number}}
+ */
+function runBenchmarkPipeline(library) {
+  const stats = computeSeriesStats(library);
+
+  // AC-S24: estado + género + colección + rango 8–10 (los cuatro a la vez).
+  const combined = filterSeries(library, {
+    status: "watched",
+    genreId: 18,
+    collectionId: "col-1",
+    ratingMin: 8,
+    ratingMax: 10,
+  });
+
+  // AC-S24: «Limpiar filtros» devuelve la lista completa.
+  const cleared = filterSeries(library, {});
+
+  // Búsqueda sobre `name` + `originalName` (normalización NFD).
+  const searched = filterSeries(library, { query: "serie 4" });
+
+  const sorted = sortSeries(library, "progress");
+
+  return {
+    stats,
+    filtered: combined.length + cleared.length + searched.length,
+    sorted: sorted.length,
+  };
+}
+
+/**
+ * Ejecuta el benchmark de NFR-S01 y devuelve las muestras en ms.
+ *
+ * @param {number} [repetitions]
+ * @returns {{
+ *   documents: number,
+ *   repetitions: number,
+ *   samples: number[],
+ *   p95: number,
+ *   max: number,
+ *   median: number,
+ *   budget: number,
+ *   passed: boolean,
+ *   filtered: number,
+ *   sortVariants: number
+ * }}
+ */
+function runSeriesBenchmark(repetitions = BENCHMARK_REPETITIONS) {
+  const library = createBenchmarkSeries();
+
+  // Sin `performance.now()` no hay resolución sub-milisegundo: usar
+  // `Date.now()` falsearía las muestras, así que el benchmark aborta.
+  if (
+    typeof performance === "undefined" ||
+    typeof performance.now !== "function"
+  ) {
+    throw new Error(
+      "El benchmark de NFR-S01 requiere performance.now()."
+    );
+  }
+
+  const now = () => performance.now();
+
+  // Una pasada de calentamiento (JIT) que no entra en la muestra.
+  const warmup = runBenchmarkPipeline(library);
+
+  const samples = [];
+  let lastResult = warmup;
+
+  for (let index = 0; index < repetitions; index += 1) {
+    const start = now();
+    lastResult = runBenchmarkPipeline(library);
+    samples.push(now() - start);
+  }
+
+  const p95 = benchmarkPercentile(samples, 0.95);
+  const budget = BENCHMARK_P95_BUDGET_MS;
+
+  return {
+    documents: library.length,
+    repetitions: samples.length,
+    samples,
+    p95,
+    max: benchmarkPercentile(samples, 1),
+    median: benchmarkPercentile(samples, 0.5),
+    budget,
+    passed: samples.length === BENCHMARK_REPETITIONS && p95 <= budget,
+    filtered: lastResult.filtered,
+    sortVariants: SORT_OPTIONS.length,
+  };
+}
+
+/**
+ * Punto de entrada manual del benchmark (NFR-S01). No se exporta: la
+ * API pública del módulo no cambia.
+ *
+ * @returns {void}
+ */
+function reportSeriesBenchmark() {
+  const result = runSeriesBenchmark();
+  const label = result.passed ? "PASS" : "FAIL";
+  const round = (value) => Math.round(value * 1000) / 1000;
+
+  console.log(
+    `[NFR-S01] ${label} p95=${round(result.p95)} ms ` +
+      `(≤ ${result.budget} ms), mediana=${round(result.median)} ms, ` +
+      `máx=${round(result.max)} ms, ${result.documents} documentos, ` +
+      `${result.repetitions} repeticiones`
+  );
+  console.log(
+    `[NFR-S01-JSON] ${JSON.stringify({
+      documents: result.documents,
+      repetitions: result.repetitions,
+      p95Ms: round(result.p95),
+      medianMs: round(result.median),
+      maxMs: round(result.max),
+      budgetMs: result.budget,
+      passed: result.passed,
+      filteredCount: result.filtered,
+      samplesMs: result.samples.map(round),
+    })}`
+  );
+}
+
+// El benchmark solo se ejecuta al lanzar este módulo como script
+// principal (`SERIES_BENCH=1 node js/series/seriesState.js`). La
+// comprobación de `process.argv[1]` impide que se dispare al importarlo
+// desde `seriesView.js`, los tests u otra herramienta.
+const benchmarkEntryFile =
+  typeof process !== "undefined" &&
+  process &&
+  Array.isArray(process.argv) &&
+  typeof process.argv[1] === "string"
+    ? process.argv[1]
+    : "";
+
+if (
+  benchmarkEntryFile.endsWith("seriesState.js") &&
+  process.env &&
+  process.env.SERIES_BENCH === "1"
+) {
+  reportSeriesBenchmark();
+}

@@ -57,7 +57,7 @@ películas (issue #97, T-AC02).
 Fuente de verdad: `openspec/changes/series/specs-delta.md` (namespace `*-S*`).
 Micro-tareas de 1–2 ficheros, un solo escritor por fichero, dependencias
 explícitas. Reflejo de `openspec/changes/series/tasks.md` (T-S01..T-S15;
-T-S01..T-S14 `done`, T-S15 `todo`). Specs citadas por ID
+todas `done`). Specs citadas por ID
 (`rg "API-S01" openspec/changes/series/`).
 T-S06..T-S10 comparten `js/series/seriesView.js`: en cadena, no en paralelo.
 T-S15 se lista antes de T-S14 porque la auditoría valida su benchmark (NFR-S01).
@@ -77,7 +77,7 @@ T-S15 se lista antes de T-S14 porque la auditoría valida su benchmark (NFR-S01)
 | T-S11 | dev-frontend | `js/app.js` | UI-S01, REQ-D2 (MOD), REQ-D3 (MOD) | T-S10 | `#nav-series` alterna `#series-section` de forma excluyente con `#movies-section`, mantiene `aria-expanded`, oculta/muestra `#app-empty` conservando su texto, importa `seriesView` sin errores de consola; AC-S23 | done |
 | T-S12 | devops | `firestore.rules` | SEC-S01..S03, REQ-F2 (MOD) | — | `match /series/{document=**}` sustituye a `series/{itemId}` con el mismo owner-only (`isAllowedUser() && isOwner(userId)`) y **sin** funciones `isValid*`; `match /series_collections/{id}` con la misma regla limpia; el resto de matches y funciones previas intactos; AC-S27 y AC-S28 pasan con reglas desplegadas | done |
 | T-S13 | devops | `firestore.indexes.json` | DB-S05, REQ-S15, REQ-F2 (MOD) | T-S12 | Los 6 índices compuestos de DB-S05 añadidos con `collectionGroup:"series"` y estructura existente preservada; sin índices redundantes; `firebase deploy --only firestore:indexes --dry-run` sin errores | done |
-| T-S15 | tech-lead | `js/series/seriesState.js` (benchmark, sin cambios de API) | NFR-S01, ALG-S01, ALG-S02 | T-S03, T-S09 | Benchmark con 500 documentos sintéticos sobre `computeSeriesStats`, `filterSeries` y `sortSeries`: p95 ≤100 ms (`performance.now()`, 20 repeticiones) y render inicial de `#series-section` ≤1 s tras pulsar «Series»; ambos valores anotados en el PR; sin regresiones en AC-S24, AC-S25 ni AC-S26 | todo |
+| T-S15 | tech-lead | `js/series/seriesState.js` (benchmark, sin cambios de API) | NFR-S01, ALG-S01, ALG-S02 | T-S03, T-S09 | Benchmark con 500 documentos sintéticos sobre `computeSeriesStats`, `filterSeries` y `sortSeries`: p95 ≤100 ms (`performance.now()`, 20 repeticiones) y render inicial de `#series-section` ≤1 s tras pulsar «Series»; ambos valores anotados en el PR; sin regresiones en AC-S24, AC-S25 ni AC-S26 | done |
 | T-S14 | code-reviewer | (solo lectura) `openspec/changes/series/*.md` + `git diff` | todos los `*-S*` | T-S11, T-S13, T-S15 | Auditoría sin hallazgos abiertos de ambigüedad/testabilidad/cobertura AC (AC-S01..AC-S36 con tarea propietaria); cero inconsistencias de IDs entre specs-delta y tasks | done |
 
 ## Estado
@@ -90,14 +90,11 @@ T-S15 se lista antes de T-S14 porque la auditoría valida su benchmark (NFR-S01)
   T-M04=#88, T-M05=#85, T-M06=#87, T-M07=#90, T-M08=#91, T-M09=#92,
   T-M10=#93, T-M11=#94, T-M12=#86, T-M13=#89, T-M14=#95. Las issues bloqueadas
   llevan etiqueta `blocked` y se liberan cerrando su dependencia.
-- Delta `openspec/changes/series/` aprobado e implementado en `tasks.md` raíz:
-  T-S01..T-S14 `done` y T-S15 (rendimiento NFR-S01, #112) `todo`; las tres
-  tablas citan los mismos IDs de `specs-delta.md`. Mapa de issues (cambio
+- Delta `openspec/changes/series/` completado: T-S01..T-S15 `done` en las tres
+  tablas, mismas IDs de `specs-delta.md` citadas. Mapa de issues (cambio
   `series`): T-S01=#98, T-S02=#102, T-S03=#99, T-S04=#100, T-S05=#103,
   T-S06=#104, T-S07=#105, T-S08=#106, T-S09=#107, T-S10=#108, T-S11=#109,
-  T-S12=#101, T-S13=#110, T-S14=#111, T-S15=#112. T-S15 (#112) con etiqueta
-  `ready` (T-S03 y T-S09 ya cerradas); el resto del histórico liberado al
-  cerrar su dependencia. T-S04 (#100)
+  T-S12=#101, T-S13=#110, T-S14=#111, T-S15=#112. T-S04 (#100)
   completada, auditada (code-reviewer sin bloqueos, AC-S30 PASS) y cerrada;
   T-S05 (#103) y T-S06 (#104) liberadas con etiqueta `ready`. T-S12 (#101)
   completada (`match /series/{document=**}` + `series_collections`, dry-run
@@ -112,6 +109,16 @@ T-S15 se lista antes de T-S14 porque la auditoría valida su benchmark (NFR-S01)
   sincronizó estados y corrigió la redacción del intro. Re-auditoría
   APPROVED sin hallazgos abiertos ni inconsistencias de IDs (AC-S01..AC-S36).
   Cerrada; T-S15 (#112) liberada con etiqueta `ready`.
+- T-S15 (#112) completada: benchmark NFR-S01 en `js/series/seriesState.js`
+  (sección interna no exportada: 500 docs sintéticos con LCG semillado,
+  warmup + 20 reps, p95 nearest-rank, entrada `SERIES_BENCH=1`). Valores
+  registrados: p95 = 1,63 ms (runs independientes 1,57-1,81 ms, presupuesto
+  ≤100 ms) y render inicial de `#series-section` = 47,2 ms en Chrome
+  headless con repository/tmdb stubbeados (presupuesto ≤1 s). Exported API
+  intacta (20/20), import silencioso, suite completa 107/107 y
+  AC-S24/S25/S26 12/12 PASS. 1 ronda de fixes (6 MINOR de code-reviewer:
+  guard argv, muestras completas, sin fallback Date.now, géneros D-S08,
+  comentario nearest-rank, cabecera de valores). Cerrada.
 - T-S13 (#110) completada: 6 índices compuestos de DB-S05 con
   `collectionGroup:"series"` añadidos en `firestore.indexes.json` (+50 líneas),
   estructura previa preservada y sin índices redundantes; dry-run
