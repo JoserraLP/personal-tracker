@@ -1,0 +1,1267 @@
+/* =============================================================
+   Personal Tracker — estilos de la sección de series.
+
+   Alcance (T-S05, UI-S13 / NFR-S02):
+
+   - Sección `#series-section` y su cabecera.
+   - Barra de estadísticas (`#series-stats`).
+   - Pestañas (`role="tablist"`) y paneles.
+   - Buscadores, filtros y formularios (catálogo, biblioteca,
+     colecciones y alta manual).
+   - Rejillas responsivas y tarjeta de serie
+     (`<article class="series-card">`).
+   - Barras de progreso (tarjeta y ficha).
+   - Filas de capítulo (`<article class="episode-row">`).
+   - Estados vacíos, de error y de aviso.
+   - Diálogos de ficha (`#series-detail`) y de comentario de
+     capítulo (`#series-episode-review`).
+
+   Depende de los tokens de `css/app.css` (`--bg`, `--panel`,
+   `--text`, `--muted`, `--accent`, `--error`, `--border`,
+   `--radius`); aquí no se redefine ninguno, de modo que el shell
+   queda intacto. Los tokens propios de la sección se declaran en
+   `.series-section`, `.series-detail` y `.series-episode-review`
+   y heredan a sus hijos.
+
+   Contrato opcional con la vista (T-S06/T-S07): el texto del
+   badge de estado lo pone la vista en español (UI-S12); para
+   teñirlo se acepta el atributo `data-status` con el valor
+   interno (`watchlist`, `watching`, `watched`, `dropped`). Si no
+   se informa, el badge usa el aspecto neutro por defecto.
+
+   Accesibilidad (UI-S13, NFR-S02): anillo de foco visible en
+   todos los controles, foco inicial del diálogo resaltado,
+   contraste AA en textos e indicadores y `focus-visible`
+   consistente. Nada de este fichero redefine reglas de
+   `css/app.css` ni de `css/movies.css`: el shell no se rompe.
+   ============================================================= */
+
+/* -------------------------------------------------------------
+   Tokens locales de la sección
+   ------------------------------------------------------------- */
+
+.series-section,
+.series-detail,
+.series-episode-review {
+  /* Superficies (más oscuras que `--panel` para distinguirse).
+     `--series-surface` reutiliza el token `--bg` del shell. */
+  --series-surface: var(--bg, #171512);
+  --series-surface-raised: #2a2620;
+  --series-surface-sunken: #131110;
+
+  /* Bordes: `--series-border` decorativo, `--series-border-strong`
+     para los contornos de controles (cumple 3:1 de UI no textual). */
+  --series-border: #3a352e;
+  --series-border-strong: #7a7266;
+
+  /* Semánticos (contraste AA sobre las superficies anteriores). */
+  --series-warning: #ffd479;
+  --series-success: #7ee0a8;
+
+  color-scheme: dark;
+}
+
+/* -------------------------------------------------------------
+   Base de la sección
+   ------------------------------------------------------------- */
+
+/* Se usa el id estable `#series-section` de index.html: así el
+   selector de clase `.series-section` no se repite (el bloque de
+   tokens ya lo usa) y la cascada queda equivalente. */
+#series-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.series-section__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.series-section__title {
+  margin: 0;
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+
+/* Anillo de foco visible para todo control de la sección
+   (UI-S13, NFR-S02). Los controles con fondo propio lo refinan
+   abajo. */
+.series-section :focus-visible,
+.series-detail :focus-visible,
+.series-episode-review :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Los paneles (`role="tabpanel"`) son alcanzables con el teclado:
+   se separan un poco más el anillo para que no pegue al borde. */
+.series-section [role="tabpanel"]:focus-visible {
+  outline-offset: 4px;
+}
+
+/* -------------------------------------------------------------
+   Botones dentro de la sección
+   ------------------------------------------------------------- */
+
+.series-section .btn,
+.series-detail .btn,
+.series-episode-review .btn {
+  width: auto;
+  max-width: 100%;
+}
+
+.series-section .btn--secondary,
+.series-detail .btn--secondary,
+.series-episode-review .btn--secondary {
+  background: var(--series-surface-raised);
+  color: var(--text);
+  border-color: var(--series-border-strong);
+}
+
+.series-section .btn--secondary:hover,
+.series-detail .btn--secondary:hover,
+.series-episode-review .btn--secondary:hover {
+  background: #35302a;
+  border-color: var(--accent);
+}
+
+.series-section .btn--danger,
+.series-detail .btn--danger,
+.series-episode-review .btn--danger {
+  background: transparent;
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.series-section .btn--danger:hover,
+.series-detail .btn--danger:hover,
+.series-episode-review .btn--danger:hover {
+  background: rgb(255 138 128 / 0.14);
+}
+
+/* Botón deshabilitado (p. ej. «En biblioteca»): no es una espera. */
+.series-section .btn:disabled,
+.series-detail .btn:disabled,
+.series-episode-review .btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* -------------------------------------------------------------
+   Avisos: error (`role="alert"`) y aviso (`role="status"`)
+   ------------------------------------------------------------- */
+
+.series-message {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.series-message--error {
+  color: var(--error);
+  background: rgb(255 138 128 / 0.12);
+  border-color: rgb(255 138 128 / 0.45);
+}
+
+.series-message--warning {
+  color: var(--series-warning);
+  background: rgb(255 212 121 / 0.12);
+  border-color: rgb(255 212 121 / 0.45);
+}
+
+/* Estado vacío */
+.series-empty {
+  margin: 0;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--series-surface);
+  border: 1px dashed var(--series-border-strong);
+  border-radius: var(--radius);
+}
+
+/* -------------------------------------------------------------
+   Barra de estadísticas (UI-S02)
+   ------------------------------------------------------------- */
+
+.series-stats {
+  padding: 14px 16px;
+  background: var(--series-surface);
+  border: 1px solid var(--series-border);
+  border-radius: var(--radius);
+}
+
+.series-stats__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.series-stats__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.series-stats__label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.series-stats__value {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* -------------------------------------------------------------
+   Pestañas (UI-S01)
+   ------------------------------------------------------------- */
+
+.series-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--series-border);
+}
+
+.series-tab {
+  appearance: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.series-tab:hover {
+  color: var(--text);
+  background: var(--series-surface-raised);
+}
+
+.series-tab[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* -------------------------------------------------------------
+   Paneles
+   ------------------------------------------------------------- */
+
+.series-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.series-panel__subtitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.series-panel__results,
+.series-panel__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.series-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* -------------------------------------------------------------
+   Buscadores, filtros y formularios
+   ------------------------------------------------------------- */
+
+.series-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 460px;
+  width: 100%;
+}
+
+.series-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.series-input {
+  font: inherit;
+  color: var(--text);
+  background: var(--series-surface-sunken);
+  border: 1px solid var(--series-border-strong);
+  border-radius: 10px;
+  padding: 10px 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.series-input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.series-input:hover {
+  border-color: #8a8175;
+}
+
+.series-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.series-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* `select` con `multiple` (géneros del alta manual). */
+select.series-input[multiple] {
+  min-height: 120px;
+  padding: 6px;
+}
+
+/* Nota personal dentro de la fila de capítulo: campo corto. */
+.series-input--rating {
+  width: 88px;
+  flex: 0 0 auto;
+}
+
+/* Etiqueta + control en la misma línea (checkbox de spoilers). */
+.series-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.series-checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.series-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.series-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--series-surface);
+  border: 1px solid var(--series-border);
+  border-radius: var(--radius);
+}
+
+.series-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.series-field--actions {
+  align-self: end;
+}
+
+/* Campo en línea (nota del capítulo dentro de la fila). */
+.series-field--inline {
+  flex: 0 0 auto;
+  gap: 0;
+}
+
+/* Campo ancho: la barra de progreso ocupa la fila completa. */
+.series-field--progress {
+  flex: 1 1 240px;
+}
+
+.series-count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--series-surface);
+  border: 1px solid var(--series-border);
+  border-radius: var(--radius);
+}
+
+.series-form--manual {
+  border-color: var(--series-border-strong);
+}
+
+/* -------------------------------------------------------------
+   Rejillas de tarjetas
+   ------------------------------------------------------------- */
+
+.series-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* -------------------------------------------------------------
+   Tarjeta de serie (UI-S04)
+   ------------------------------------------------------------- */
+
+.series-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--series-surface);
+  border: 1px solid var(--series-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.series-card:hover {
+  border-color: var(--series-border-strong);
+  transform: translateY(-2px);
+}
+
+/* Botón principal: póster + título + año + nota. */
+.series-card__open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.series-card__poster {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: var(--series-surface-raised);
+  border-bottom: 1px solid var(--series-border);
+}
+
+.series-card__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  padding: 10px 12px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.series-card__year {
+  padding: 2px 12px 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-card__rating {
+  padding: 2px 12px 10px;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 12px 8px;
+}
+
+/* Badge de estado (texto en español, ver UI-S12). */
+.series-card__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  color: var(--text);
+  background: var(--series-surface-raised);
+  border: 1px solid var(--series-border-strong);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.series-card__status[data-status="watchlist"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.series-card__status[data-status="watching"] {
+  color: var(--series-warning);
+  border-color: var(--series-warning);
+}
+
+.series-card__status[data-status="watched"] {
+  color: var(--series-success);
+  border-color: var(--series-success);
+}
+
+.series-card__status[data-status="dropped"] {
+  color: var(--muted);
+  border-color: var(--muted);
+}
+
+/* «×N» de revisionados (UI-S04). */
+.series-card__rewatch {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  color: var(--muted);
+  background: var(--series-surface-raised);
+  border: 1px solid var(--series-border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--series-border);
+}
+
+.series-card__actions .btn {
+  flex: 1 1 auto;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+
+/* Favorito (UI-S04): `aria-pressed` refleja el estado real. */
+.series-card__actions .btn[aria-pressed="true"],
+.series-detail .btn[aria-pressed="true"] {
+  color: var(--accent);
+  background: rgb(138 180 248 / 0.16);
+  border-color: var(--accent);
+}
+
+/* -------------------------------------------------------------
+   Barras de progreso (UI-S04, UI-S06)
+   ------------------------------------------------------------- */
+
+.series-card__progress,
+.series-detail__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.series-card__progress {
+  padding: 0 12px 10px;
+}
+
+.series-card__progress-label,
+.series-detail__progress-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.series-card__progress-bar,
+.series-detail__progress-bar {
+  position: relative;
+  display: block;
+  flex: 1 1 auto;
+  min-width: 40px;
+  height: 8px;
+  overflow: hidden;
+  background: var(--series-surface-sunken);
+  border: 1px solid var(--series-border);
+  border-radius: 999px;
+}
+
+.series-card__progress-fill,
+.series-detail__progress-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+  transition: width 160ms ease;
+}
+
+.series-card__progress-percent,
+.series-detail__progress-percent {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------
+   Fila de capítulo (UI-S08)
+   ------------------------------------------------------------- */
+
+.series-episodes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.episode-row {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--series-surface);
+  border: 1px solid var(--series-border);
+  border-radius: var(--radius);
+}
+
+.episode-row__still {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--series-surface-sunken);
+  border: 1px solid var(--series-border);
+  border-radius: 10px;
+}
+
+.episode-row__main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.episode-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+}
+
+.episode-row__label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  color: var(--text);
+  background: var(--series-surface-raised);
+  border: 1px solid var(--series-border-strong);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.episode-row__name {
+  flex: 1 1 160px;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.episode-row__tmdb-rating {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.episode-row__overview {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.episode-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.episode-row__actions .btn {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.episode-row__actions .series-checkbox {
+  margin-top: 0;
+}
+
+/* Indicador visual: el capítulo tiene comentario o es favorito
+   (AC-S17). */
+.episode-row__indicator {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgb(138 180 248 / 0.25);
+}
+
+.episode-row__warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--series-warning);
+  background: rgb(255 212 121 / 0.12);
+  border: 1px solid rgb(255 212 121 / 0.45);
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.episode-row__warning-text {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------
+   Colecciones (UI-S10)
+   ------------------------------------------------------------- */
+
+.series-collections {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.series-collection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--series-surface);
+  border: 1px solid var(--series-border);
+  border-radius: var(--radius);
+}
+
+.series-collection__data {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.series-collection__name {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.series-collection__count {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-collection__description {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.series-collection__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.series-collection__actions .btn {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+/* -------------------------------------------------------------
+   Diálogo de ficha (UI-S06, UI-S07)
+   ------------------------------------------------------------- */
+
+/* Igual que la sección, se usa el id estable `#series-detail` de
+   index.html para no repetir el selector de clase del bloque de
+   tokens. */
+#series-detail {
+  width: min(920px, calc(100vw - 32px));
+  max-height: min(88vh, 900px);
+  padding: 0;
+  color: var(--text);
+  background: var(--series-surface);
+  border: 1px solid var(--series-border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.5);
+  overflow: hidden;
+}
+
+.series-detail[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.series-detail::backdrop {
+  background: rgb(0 0 0 / 0.65);
+}
+
+.series-detail__header {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: var(--series-surface-raised);
+  border-bottom: 1px solid var(--series-border);
+  overflow: hidden;
+}
+
+.series-detail__backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.25;
+  z-index: 0;
+}
+
+.series-detail__header > *:not(.series-detail__backdrop) {
+  position: relative;
+  z-index: 1;
+}
+
+.series-detail__headline {
+  display: flex;
+  flex: 1 1 320px;
+  gap: 16px;
+  min-width: 0;
+}
+
+.series-detail__poster {
+  flex: 0 0 auto;
+  width: 132px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: var(--series-surface-sunken);
+  border: 1px solid var(--series-border);
+  border-radius: 10px;
+}
+
+.series-detail__headline-text {
+  min-width: 0;
+}
+
+/* Foco inicial del diálogo (UI-S13): anillo visible al recibir
+   el foco mediante `focus()` (no solo con `:focus-visible`). */
+.series-detail__title {
+  margin: 0;
+  font-size: 1.4rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.series-detail__title:focus,
+.series-detail__title:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.series-detail__original-title {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.series-detail__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-detail__first-air,
+.series-detail__counts,
+.series-detail__tmdb-status {
+  color: var(--muted);
+}
+
+.series-detail__tmdb-rating {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.series-detail__networks {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.series-detail__genres {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.series-detail__body {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  min-height: 0;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.series-detail__block {
+  display: flex;
+  flex-direction: column;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  background: var(--series-surface-raised);
+  border: 1px solid var(--series-border);
+  border-radius: var(--radius);
+}
+
+/* El bloque de episodios ocupa el ancho completo de la ficha. */
+.series-detail__block--episodes {
+  grid-column: 1 / -1;
+}
+
+.series-detail__subtitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.series-detail__overview {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.series-detail__facts-list {
+  display: grid;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.series-detail__facts-list .series-label {
+  margin: 0;
+}
+
+.series-detail__creators,
+.series-detail__cast {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.series-detail__links {
+  margin: 0;
+}
+
+.series-detail__providers {
+  padding-top: 12px;
+  border-top: 1px solid var(--series-border);
+}
+
+.series-detail__list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.series-detail__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.series-detail__row > .series-field {
+  flex: 1 1 150px;
+}
+
+.series-detail__row--actions {
+  align-items: center;
+}
+
+.series-detail__rewatch-count {
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-detail__dates {
+  display: grid;
+  gap: 4px;
+  max-height: 150px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-detail__user-rating {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-detail__warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--series-warning);
+  background: rgb(255 212 121 / 0.12);
+  border: 1px solid rgb(255 212 121 / 0.45);
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.series-detail__warning-text {
+  margin: 0;
+  font-weight: 600;
+}
+
+.series-detail__collections {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--series-border);
+  border-radius: 10px;
+}
+
+.series-detail__collections > legend {
+  padding: 0 6px;
+}
+
+.series-detail__collections-list {
+  display: grid;
+  gap: 8px;
+  max-height: 170px;
+  overflow-y: auto;
+}
+
+.series-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* -------------------------------------------------------------
+   Diálogo de comentario de capítulo (UI-S09)
+   ------------------------------------------------------------- */
+
+#series-episode-review {
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(88vh, 700px);
+  padding: 16px;
+  color: var(--text);
+  background: var(--series-surface);
+  border: 1px solid var(--series-border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.5);
+  overflow-y: auto;
+}
+
+.series-episode-review[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.series-episode-review::backdrop {
+  background: rgb(0 0 0 / 0.65);
+}
+
+.series-episode-review__title {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+/* Foco inicial del diálogo de comentario (UI-S13). */
+.series-episode-review__title:focus,
+.series-episode-review__title:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.series-episode-review__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.series-episode-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* -------------------------------------------------------------
+   Responsive
+   ------------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .series-detail__body {
+    grid-template-columns: 1fr;
+  }
+
+  .series-detail__poster {
+    width: 104px;
+  }
+
+  .episode-row {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .series-grid {
+    grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+    gap: 12px;
+  }
+
+  .series-stats__list {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  }
+
+  .series-filters {
+    grid-template-columns: 1fr;
+  }
+
+  #series-detail {
+    width: calc(100vw - 16px);
+    max-height: 92vh;
+  }
+
+  .series-detail__headline {
+    flex-direction: column;
+  }
+
+  .series-detail__poster {
+    width: 92px;
+  }
+
+  .series-detail__actions .btn,
+  .series-collection__actions .btn,
+  .series-episode-review__actions .btn {
+    width: 100%;
+  }
+
+  .episode-row {
+    grid-template-columns: 1fr;
+  }
+
+  .episode-row__still {
+    max-width: 220px;
+  }
+
+  #series-episode-review {
+    width: calc(100vw - 16px);
+  }
+}
+
+/* Respeta la preferencia de movimiento reducido. */
+@media (prefers-reduced-motion: reduce) {
+  .series-card,
+  .series-card__progress-fill,
+  .series-detail__progress-fill {
+    transition: none;
+  }
+
+  .series-card:hover {
+    transform: none;
+  }
+}

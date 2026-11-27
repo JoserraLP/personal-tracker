@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="./resources/icon.png">
   <link rel="stylesheet" href="./css/app.css">
   <link rel="stylesheet" href="./css/movies.css">
+  <link rel="stylesheet" href="./css/series.css">
 </head>
 <body>
   <main class="shell">
@@ -50,6 +51,10 @@
         <!-- Primera categoría (REQ-D2 MOD, UI-M01). El botón alterna
              `#movies-section` y mantiene `aria-expanded` al día (T-M11). -->
         <button id="nav-movies" class="app-nav__item" type="button" aria-expanded="false" aria-controls="movies-section">Películas</button>
+        <!-- Segunda categoría (REQ-D2 MOD, UI-S01). El botón alterna
+             `#series-section` de forma excluyente con `#movies-section`
+             y mantiene `aria-expanded` al día (T-S11). -->
+        <button id="nav-series" class="app-nav__item" type="button" aria-expanded="false" aria-controls="series-section">Series</button>
       </nav>
 
       <div id="app-main" class="app-main">
@@ -441,6 +446,535 @@
                 <!-- Renombrar también permite editar la descripción (UI-M07). -->
                 <button id="movies-collection-rename" class="btn btn--secondary" type="button" data-movie-role="collection-rename">Renombrar</button>
                 <button id="movies-collection-delete" class="btn btn--danger" type="button" data-movie-role="collection-delete">Eliminar</button>
+              </div>
+            </li>
+          </template>
+        </section>
+
+        <!-- =============================================================
+             Sección de series (UI-S01..UI-S11).
+             Esqueleto en HTML: los datos los inyecta `js/series/seriesView.js`.
+             Todos los ids de la tabla de UI-S01..UI-S11 son estables
+             (REQ-C2) y no deben renombrarse. La sección arranca oculta:
+             la alterna `#nav-series` (REQ-D2 MOD, T-S11).
+             ============================================================= -->
+        <section id="series-section" class="series-section" hidden aria-labelledby="series-heading">
+          <header class="series-section__header">
+            <h2 id="series-heading" class="series-section__title">Series</h2>
+            <!-- Alta manual (UI-S11, REQ-S02): operativa sin TMDB. -->
+            <button id="series-manual-open" class="btn btn--secondary" type="button">Añadir manualmente</button>
+          </header>
+
+          <!-- Avisos generales de la sección (UI-S11, ALG-S05). -->
+          <p id="series-error" class="series-message series-message--error" role="alert" hidden></p>
+          <p id="series-tmdb-warning" class="series-message series-message--warning" role="status" hidden></p>
+
+          <!-- UI-S02: barra de estadísticas, siempre visible sobre las pestañas. -->
+          <section id="series-stats" class="series-stats" aria-labelledby="series-stats-heading">
+            <h3 id="series-stats-heading" class="sr-only">Estadísticas de series</h3>
+            <dl class="series-stats__list">
+              <div class="series-stats__item">
+                <dt class="series-stats__label">Completadas</dt>
+                <dd id="series-stats-watched" class="series-stats__value">—</dd>
+              </div>
+              <div class="series-stats__item">
+                <dt class="series-stats__label">En curso</dt>
+                <dd id="series-stats-watching" class="series-stats__value">—</dd>
+              </div>
+              <div class="series-stats__item">
+                <dt class="series-stats__label">Episodios vistos</dt>
+                <dd id="series-stats-episodes" class="series-stats__value">—</dd>
+              </div>
+              <div class="series-stats__item">
+                <dt class="series-stats__label">Capítulos favoritos</dt>
+                <dd id="series-stats-favorites" class="series-stats__value">—</dd>
+              </div>
+              <div class="series-stats__item">
+                <dt class="series-stats__label">Horas</dt>
+                <dd id="series-stats-hours" class="series-stats__value">—</dd>
+              </div>
+              <div class="series-stats__item">
+                <dt class="series-stats__label">Mi nota media</dt>
+                <dd id="series-stats-avg-user" class="series-stats__value">—</dd>
+              </div>
+              <div class="series-stats__item">
+                <dt class="series-stats__label">Nota media TMDB</dt>
+                <dd id="series-stats-avg-tmdb" class="series-stats__value">—</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- UI-S01: pestañas de la sección. -->
+          <div class="series-tabs" role="tablist" aria-label="Secciones de series">
+            <button id="series-tab-catalog" class="series-tab" type="button" role="tab" aria-selected="true" aria-controls="series-panel-catalog">Explorar catálogo</button>
+            <button id="series-tab-library" class="series-tab" type="button" role="tab" aria-selected="false" aria-controls="series-panel-library" tabindex="-1">Mi biblioteca</button>
+            <button id="series-tab-collections" class="series-tab" type="button" role="tab" aria-selected="false" aria-controls="series-panel-collections" tabindex="-1">Mis colecciones</button>
+          </div>
+
+          <!-- UI-S03: explorar catálogo (búsqueda instantánea + 4 listas). -->
+          <section id="series-panel-catalog" class="series-panel" role="tabpanel" aria-labelledby="series-tab-catalog" tabindex="0">
+            <div class="series-search">
+              <label class="series-label" for="series-catalog-search">Buscar en el catálogo</label>
+              <input id="series-catalog-search" class="series-input" type="search" name="catalogQuery" placeholder="Busca por título (mínimo 2 caracteres)" autocomplete="off" minlength="2">
+            </div>
+
+            <p id="series-catalog-error" class="series-message series-message--error" role="alert" hidden></p>
+
+            <!-- Con búsqueda activa se muestran los resultados y se ocultan las listas. -->
+            <div id="series-catalog-results" class="series-panel__results" hidden>
+              <h3 class="series-panel__subtitle">Resultados de la búsqueda</h3>
+              <div id="series-catalog-grid" class="series-grid"></div>
+              <p id="series-catalog-empty" class="series-empty" hidden>Sin resultados para «X».</p>
+            </div>
+
+            <div id="series-catalog-sections" class="series-panel__sections">
+              <section class="series-list" aria-labelledby="series-catalog-trending-heading">
+                <h3 id="series-catalog-trending-heading" class="series-panel__subtitle">Tendencias de la semana</h3>
+                <div id="series-catalog-trending" class="series-grid"></div>
+              </section>
+              <section class="series-list" aria-labelledby="series-catalog-popular-heading">
+                <h3 id="series-catalog-popular-heading" class="series-panel__subtitle">Populares</h3>
+                <div id="series-catalog-popular" class="series-grid"></div>
+              </section>
+              <section class="series-list" aria-labelledby="series-catalog-top-rated-heading">
+                <h3 id="series-catalog-top-rated-heading" class="series-panel__subtitle">Mejor valoradas</h3>
+                <div id="series-catalog-top-rated" class="series-grid"></div>
+              </section>
+              <section class="series-list" aria-labelledby="series-catalog-on-the-air-heading">
+                <h3 id="series-catalog-on-the-air-heading" class="series-panel__subtitle">En emisión</h3>
+                <div id="series-catalog-on-the-air" class="series-grid"></div>
+              </section>
+            </div>
+          </section>
+
+          <!-- UI-S05: mi biblioteca (buscador, filtros combinables y orden). -->
+          <section id="series-panel-library" class="series-panel" role="tabpanel" aria-labelledby="series-tab-library" tabindex="0" hidden>
+            <div class="series-filters" role="group" aria-label="Filtros de la biblioteca">
+              <div class="series-field">
+                <label class="series-label" for="series-library-search">Buscar en mi biblioteca</label>
+                <input id="series-library-search" class="series-input" type="search" name="libraryQuery" placeholder="Busca por título" autocomplete="off">
+              </div>
+              <div class="series-field">
+                <label class="series-label" for="series-library-status">Estado</label>
+                <select id="series-library-status" class="series-input" name="status">
+                  <option value="">Todos</option>
+                  <option value="watchlist">Pendientes</option>
+                  <option value="watching">Viendo</option>
+                  <option value="watched">Completadas</option>
+                  <option value="dropped">Abandonadas</option>
+                  <!-- Pseudofiltro: `isFavorite == true` (ALG-S02). -->
+                  <option value="favorites">Favoritas</option>
+                </select>
+              </div>
+              <div class="series-field">
+                <label class="series-label" for="series-library-genre">Género</label>
+                <!-- Las opciones se rellenan desde `TV_GENRES_ES` (js/series/seriesState.js, D-S08). -->
+                <select id="series-library-genre" class="series-input" name="genre">
+                  <option value="">Todos los géneros</option>
+                </select>
+              </div>
+              <div class="series-field">
+                <label class="series-label" for="series-library-collection">Colección</label>
+                <!-- «Todas» + los nombres de las colecciones del usuario (DB-S03). -->
+                <select id="series-library-collection" class="series-input" name="collection">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="series-field">
+                <label class="series-label" for="series-library-rating-min">Nota mínima</label>
+                <input id="series-library-rating-min" class="series-input" type="number" name="ratingMin" min="0" max="10" step="0.5" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="series-field">
+                <label class="series-label" for="series-library-rating-max">Nota máxima</label>
+                <input id="series-library-rating-max" class="series-input" type="number" name="ratingMax" min="0" max="10" step="0.5" inputmode="decimal" placeholder="10">
+              </div>
+              <div class="series-field">
+                <label class="series-label" for="series-library-sort">Ordenar por</label>
+                <!-- Las 7 claves de ALG-S02, con «Fecha de añadido» por defecto. -->
+                <select id="series-library-sort" class="series-input" name="sort">
+                  <option value="addedAt" selected>Fecha de añadido</option>
+                  <option value="lastWatchedAt">Último episodio visto</option>
+                  <option value="progress">Progreso</option>
+                  <option value="userRating">Mi puntuación</option>
+                  <option value="tmdbRating">Puntuación TMDB</option>
+                  <option value="firstAirYear">Año de estreno</option>
+                  <option value="name">Título (A-Z)</option>
+                </select>
+              </div>
+              <div class="series-field series-field--actions">
+                <button id="series-library-clear" class="btn btn--secondary" type="button">Limpiar filtros</button>
+              </div>
+            </div>
+
+            <p id="series-library-count" class="series-count">0 series</p>
+            <p id="series-library-error" class="series-message series-message--error" role="alert" hidden></p>
+            <div id="series-library-grid" class="series-grid"></div>
+            <p id="series-library-empty" class="series-empty" hidden>No hay series que coincidan con los filtros.</p>
+          </section>
+
+          <!-- UI-S10: mis colecciones. -->
+          <section id="series-panel-collections" class="series-panel" role="tabpanel" aria-labelledby="series-tab-collections" tabindex="0" hidden>
+            <form id="series-collections-form" class="series-form">
+              <h3 class="series-panel__subtitle">Nueva colección</h3>
+              <div class="series-field">
+                <label class="series-label" for="series-collection-name">Nombre</label>
+                <input id="series-collection-name" class="series-input" type="text" name="name" maxlength="60" required>
+              </div>
+              <div class="series-field">
+                <label class="series-label" for="series-collection-description">Descripción</label>
+                <textarea id="series-collection-description" class="series-input" name="description" rows="2" maxlength="300"></textarea>
+              </div>
+              <div class="series-field series-field--actions">
+                <button id="series-collection-submit" class="btn" type="submit">Crear colección</button>
+              </div>
+            </form>
+
+            <p id="series-collections-empty" class="series-empty">Aún no tienes colecciones.</p>
+            <ul id="series-collections-list" class="series-collections"></ul>
+          </section>
+
+          <!-- UI-S11: alta manual de series (sin conexión o sin resultados en TMDB). -->
+          <form id="series-manual-form" class="series-form series-form--manual" hidden>
+            <h3 class="series-panel__subtitle">Añadir serie manualmente</h3>
+            <div class="series-field">
+              <label class="series-label" for="series-manual-name">Título (obligatorio)</label>
+              <input id="series-manual-name" class="series-input" type="text" name="name" maxlength="200" required>
+            </div>
+            <div class="series-field">
+              <label class="series-label" for="series-manual-year">Año de estreno</label>
+              <input id="series-manual-year" class="series-input" type="number" name="firstAirYear" min="1888" max="2100" step="1" inputmode="numeric">
+            </div>
+            <div class="series-field">
+              <label class="series-label" for="series-manual-seasons">Temporadas</label>
+              <input id="series-manual-seasons" class="series-input" type="number" name="numberOfSeasons" min="0" max="100" step="1" inputmode="numeric">
+            </div>
+            <div class="series-field">
+              <label class="series-label" for="series-manual-episodes">Episodios</label>
+              <input id="series-manual-episodes" class="series-input" type="number" name="numberOfEpisodes" min="0" max="100000" step="1" inputmode="numeric">
+            </div>
+            <div class="series-field">
+              <label class="series-label" for="series-manual-overview">Sinopsis</label>
+              <textarea id="series-manual-overview" class="series-input" name="overview" rows="3" maxlength="2000"></textarea>
+            </div>
+            <div class="series-field">
+              <label class="series-label" for="series-manual-genres">Géneros</label>
+              <!-- Multi-select con el diccionario `TV_GENRES_ES` (D-S08). -->
+              <select id="series-manual-genres" class="series-input" name="genres" multiple size="6"></select>
+              <p class="series-hint">Mantén Ctrl (o Cmd) para seleccionar varios géneros.</p>
+            </div>
+            <p id="series-manual-error" class="series-message series-message--error" role="alert" hidden></p>
+            <div class="series-field series-field--actions">
+              <button id="series-manual-submit" class="btn" type="submit">Guardar serie</button>
+            </div>
+          </form>
+
+          <!-- =============================================================
+               UI-S06 y UI-S07: ficha de serie en un `<dialog>` nativo
+               (D-S05). El diálogo gestiona ESC y la capa modal; el foco
+               inicial va al título (`#series-detail-title`, `tabindex="-1"`).
+               El bloque de episodios (UI-S07) vive dentro de la ficha.
+               ============================================================= -->
+          <dialog id="series-detail" class="series-detail" aria-labelledby="series-detail-title">
+            <div class="series-detail__header">
+              <img id="series-detail-backdrop" class="series-detail__backdrop" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" hidden>
+              <div class="series-detail__headline">
+                <img id="series-detail-poster" class="series-detail__poster" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" hidden>
+                <div class="series-detail__headline-text">
+                  <h2 id="series-detail-title" class="series-detail__title" tabindex="-1">Cargando…</h2>
+                  <p id="series-detail-original-title" class="series-detail__original-title"></p>
+                  <p class="series-detail__facts">
+                    <span id="series-detail-first-air" class="series-detail__first-air"></span>
+                    <span id="series-detail-counts" class="series-detail__counts"></span>
+                    <span id="series-detail-tmdb-status" class="series-detail__tmdb-status"></span>
+                    <!-- La nota de TMDB se muestra separada de la nota personal (AC-S32). -->
+                    <span id="series-detail-tmdb-rating" class="series-detail__tmdb-rating"></span>
+                  </p>
+                  <p id="series-detail-networks" class="series-detail__networks"></p>
+                  <p id="series-detail-genres" class="series-detail__genres"></p>
+                </div>
+              </div>
+              <button id="series-detail-close" class="btn btn--secondary" type="button">Cerrar</button>
+            </div>
+
+            <div class="series-detail__body">
+              <!-- Bloque «catálogo»: metadatos de TMDB (API-S06, AC-S04). -->
+              <section class="series-detail__block" aria-labelledby="series-detail-info-heading">
+                <h3 id="series-detail-info-heading" class="sr-only">Datos de la serie</h3>
+                <p id="series-detail-overview" class="series-detail__overview"></p>
+                <dl class="series-detail__facts-list">
+                  <dt class="series-label">Creadores</dt>
+                  <dd id="series-detail-creators" class="series-detail__creators"></dd>
+                  <dt class="series-label">Reparto</dt>
+                  <dd id="series-detail-cast" class="series-detail__cast"></dd>
+                </dl>
+                <p class="series-detail__links">
+                  <a id="series-detail-trailer" class="btn btn--secondary" href="#" target="_blank" rel="noopener noreferrer" hidden>Ver tráiler</a>
+                </p>
+                <!-- «Dónde ver»: la sección se oculta si no hay proveedores (UI-S06). -->
+                <section id="series-detail-providers" class="series-detail__providers" hidden aria-labelledby="series-detail-providers-heading">
+                  <h3 id="series-detail-providers-heading" class="series-detail__subtitle">Dónde ver</h3>
+                  <ul id="series-detail-providers-list" class="series-detail__list"></ul>
+                </section>
+              </section>
+
+              <!-- Bloque «seguimiento»: estado, favoritos, progreso y notas. -->
+              <section class="series-detail__block" aria-labelledby="series-detail-tracking-heading">
+                <h3 id="series-detail-tracking-heading" class="series-detail__subtitle">Seguimiento</h3>
+
+                <div class="series-detail__row">
+                  <div class="series-field">
+                    <label class="series-label" for="series-detail-status">Estado</label>
+                    <select id="series-detail-status" class="series-input">
+                      <option value="watchlist">Pendiente</option>
+                      <option value="watching">Viendo</option>
+                      <option value="watched">Completada</option>
+                      <option value="dropped">Abandonada</option>
+                    </select>
+                  </div>
+                  <div class="series-field">
+                    <span class="series-label" id="series-detail-favorite-label">Favorito</span>
+                    <button id="series-detail-favorite" class="btn btn--secondary" type="button" aria-pressed="false" aria-labelledby="series-detail-favorite-label">
+                      <span aria-hidden="true">★</span>
+                      <span data-series-role="favorite-label">Marcar como favorita</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="series-detail__row">
+                  <!-- Progreso «6/24 · 25%» (UI-S06, AC-S10). -->
+                  <div class="series-field series-field--progress">
+                    <span class="series-label">Progreso</span>
+                    <div class="series-detail__progress" id="series-detail-progress">
+                      <span class="series-detail__progress-label" data-series-role="progress-label">0/0</span>
+                      <span class="series-detail__progress-bar" data-series-role="progress-bar" role="progressbar" aria-label="Progreso de la serie" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <span class="series-detail__progress-fill" data-series-role="progress-fill"></span>
+                      </span>
+                      <span class="series-detail__progress-percent" data-series-role="progress-percent">0%</span>
+                    </div>
+                  </div>
+                  <div class="series-field series-field--actions">
+                    <!-- Marcado rápido de un episodio (ALG-S03, AC-S11). -->
+                    <button id="series-detail-next" class="btn btn--secondary" type="button">+1 Episodio</button>
+                  </div>
+                </div>
+
+                <div class="series-detail__row">
+                  <div class="series-field">
+                    <span class="series-label">Revisionados</span>
+                    <span id="series-detail-rewatch-count" class="series-detail__rewatch-count">0</span>
+                  </div>
+                  <div class="series-field">
+                    <button id="series-detail-rewatch-inc" class="btn btn--secondary" type="button" aria-label="Sumar un revisionado">+1</button>
+                    <button id="series-detail-rewatch-dec" class="btn btn--secondary" type="button" aria-label="Restar un revisionado">−1</button>
+                  </div>
+                </div>
+
+                <ul id="series-detail-watch-dates" class="series-detail__dates"></ul>
+
+                <div class="series-field">
+                  <label class="series-label" for="series-detail-user-rating">Mi nota (0-10, medios puntos)</label>
+                  <input id="series-detail-user-rating" class="series-input" type="number" name="userRating" min="0" max="10" step="0.5" inputmode="decimal" placeholder="Sin nota">
+                  <!-- La nota personal se muestra separada de la de TMDB (AC-S32). -->
+                  <output id="series-detail-user-rating-display" class="series-detail__user-rating" for="series-detail-user-rating">Mi nota: —</output>
+                </div>
+
+                <div class="series-field">
+                  <label class="series-label" for="series-detail-review">Mi reseña</label>
+                  <textarea id="series-detail-review" class="series-input" name="userReview" rows="4" maxlength="2000"></textarea>
+                  <label class="series-checkbox">
+                    <input id="series-detail-spoilers" type="checkbox" name="hasSpoilers">
+                    Mi reseña contiene spoilers
+                  </label>
+                  <div id="series-detail-spoiler-warning" class="series-detail__warning" hidden>
+                    <p class="series-detail__warning-text">Contiene spoilers</p>
+                    <button id="series-detail-spoiler-reveal" class="btn btn--secondary" type="button">Mostrar reseña</button>
+                  </div>
+                </div>
+
+                <div class="series-field">
+                  <label class="series-label" for="series-detail-tags">Etiquetas (separadas por comas)</label>
+                  <input id="series-detail-tags" class="series-input" type="text" name="tags" maxlength="600">
+                </div>
+
+                <fieldset class="series-detail__collections">
+                  <legend class="series-label">Colecciones</legend>
+                  <!-- Un checkbox por colección del usuario (DB-S03). -->
+                  <div id="series-detail-collections" class="series-detail__collections-list"></div>
+                </fieldset>
+
+                <!-- Aviso de cambios pendientes: visible solo con cambios sin guardar (D-S09, AC-S31). -->
+                <p id="series-detail-dirty-warning" class="series-detail__warning" hidden>Cambios sin guardar</p>
+
+                <div class="series-detail__actions">
+                  <button id="series-detail-save" class="btn" type="button">Guardar</button>
+                  <button id="series-detail-refresh" class="btn btn--secondary" type="button">Actualizar datos</button>
+                  <!-- El borrado pide confirmación con «¿Eliminar esta serie de tu biblioteca?» (AC-S31). -->
+                  <button id="series-detail-delete" class="btn btn--danger" type="button">Eliminar</button>
+                </div>
+              </section>
+
+              <!-- =========================================================
+                   UI-S07: bloque de episodios dentro de la ficha.
+                   ========================================================= -->
+              <section class="series-detail__block series-detail__block--episodes" aria-labelledby="series-detail-episodes-heading">
+                <h3 id="series-detail-episodes-heading" class="series-detail__subtitle">Episodios</h3>
+
+                <div class="series-detail__row">
+                  <div class="series-field">
+                    <label class="series-label" for="series-detail-season">Temporada</label>
+                    <!-- Las opciones se rellenan con las temporadas de TMDB (ALG-S07). -->
+                    <select id="series-detail-season" class="series-input"></select>
+                  </div>
+                  <div class="series-field">
+                    <label class="series-label" for="series-detail-episodes-filter">Filtrar capítulos</label>
+                    <select id="series-detail-episodes-filter" class="series-input">
+                      <option value="all" selected>Todos los capítulos</option>
+                      <option value="favorites">Solo favoritos</option>
+                      <option value="reviewed">Con comentario</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="series-detail__row series-detail__row--actions">
+                  <!-- Marcado masivo de temporada (ALG-S08, AC-S20). -->
+                  <button id="series-detail-season-watch" class="btn btn--secondary" type="button">Marcar temporada como vista</button>
+                  <button id="series-detail-season-unwatch" class="btn btn--secondary" type="button">Desmarcar temporada</button>
+                </div>
+
+                <p id="series-detail-episodes-error" class="series-message series-message--error" role="alert" hidden>No se pudo cargar la temporada. Inténtalo de nuevo.</p>
+                <div id="series-detail-episodes" class="series-episodes"></div>
+                <p id="series-detail-episodes-empty" class="series-empty" hidden>Sin capítulos en esta temporada.</p>
+              </section>
+            </div>
+          </dialog>
+
+          <!-- =============================================================
+               UI-S09: diálogo de comentario de capítulo (D-S05). El
+               guardado es inmediato; cerrar sin guardar descarta lo
+               tecleado. Foco inicial en el título del diálogo.
+               ============================================================= -->
+          <dialog id="series-episode-review" class="series-episode-review" aria-labelledby="series-episode-review-title">
+            <h2 id="series-episode-review-title" class="series-episode-review__title" tabindex="-1">T1E1 · Nombre</h2>
+            <div class="series-episode-review__body">
+              <div class="series-field">
+                <label class="series-label" for="series-episode-review-text">Comentario</label>
+                <textarea id="series-episode-review-text" class="series-input" name="userReview" rows="5" maxlength="2000"></textarea>
+              </div>
+              <label class="series-checkbox">
+                <input id="series-episode-review-spoilers" type="checkbox" name="hasSpoilers">
+                Este comentario contiene spoilers
+              </label>
+            </div>
+            <div class="series-episode-review__actions">
+              <button id="series-episode-review-save" class="btn" type="button">Guardar</button>
+              <button id="series-episode-review-delete" class="btn btn--danger" type="button">Eliminar comentario</button>
+              <button id="series-episode-review-close" class="btn btn--secondary" type="button">Cerrar</button>
+            </div>
+          </dialog>
+
+          <!-- =============================================================
+               Plantilla de la tarjeta de serie (UI-S04), compartida por
+               catálogo y biblioteca. Al clonarla, la vista da a cada
+               instancia ids únicos (p. ej. `series-card-open-<serieId>`)
+               para no duplicar ids y localiza los elementos por los
+               atributos `data-series-role`.
+               ============================================================= -->
+          <template id="series-card-template">
+            <article class="series-card" data-series-role="card">
+              <button id="series-card-open" class="series-card__open" type="button" data-series-role="open">
+                <img class="series-card__poster" data-series-role="poster" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" decoding="async">
+                <span class="series-card__title" data-series-role="title"></span>
+                <span class="series-card__year" data-series-role="year"></span>
+                <span class="series-card__rating" data-series-role="rating"></span>
+              </button>
+              <p class="series-card__meta">
+                <!-- Badge de estado en español (UI-S12, AC-S09). -->
+                <span class="series-card__status" data-series-role="status"></span>
+                <!-- «×N» de revisionados: visible con `rewatchCount > 1` (UI-S04). -->
+                <span id="series-card-rewatch" class="series-card__rewatch" data-series-role="rewatch" hidden>×2</span>
+              </p>
+              <!-- Barra «6/24 · 25%»: se oculta sin `numberOfEpisodes` (UI-S04). -->
+              <div id="series-card-progress" class="series-card__progress" data-series-role="progress" hidden>
+                <span class="series-card__progress-label" data-series-role="progress-label">0/0</span>
+                <span class="series-card__progress-bar" data-series-role="progress-bar" role="progressbar" aria-label="Progreso de la serie" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                  <span class="series-card__progress-fill" data-series-role="progress-fill"></span>
+                </span>
+                <span class="series-card__progress-percent" data-series-role="progress-percent">0%</span>
+              </div>
+              <div class="series-card__actions">
+                <!-- Solo catálogo: alta inmediata con `status:"watchlist"`. -->
+                <button id="series-card-add" class="btn btn--secondary" type="button" data-series-role="add">Añadir</button>
+                <!-- Solo biblioteca: alterna `isFavorite` (AC-S13). -->
+                <button id="series-card-favorite" class="btn btn--secondary" type="button" aria-pressed="false" data-series-role="favorite" hidden>
+                  <span aria-hidden="true">★</span>
+                  <span data-series-role="favorite-label">Favorita</span>
+                </button>
+                <!-- Solo biblioteca: marcado rápido de un episodio (AC-S11). -->
+                <button id="series-card-next" class="btn btn--secondary" type="button" data-series-role="next" hidden>+1 Episodio</button>
+              </div>
+            </article>
+          </template>
+
+          <!-- =============================================================
+               Plantilla de la fila de episodio (UI-S08). Al clonarla, la
+               vista da a cada instancia ids únicos (p. ej.
+               `episode-row-label-S01E02`) y localiza los elementos por
+               los atributos `data-series-role`.
+               ============================================================= -->
+          <template id="series-episode-row-template">
+            <article class="episode-row" data-series-role="episode">
+              <img id="episode-row-still" class="episode-row__still" data-series-role="still" alt="" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" loading="lazy" decoding="async">
+              <div class="episode-row__main">
+                <p class="episode-row__head">
+                  <span id="episode-row-label" class="episode-row__label" data-series-role="label">T1E1</span>
+                  <span id="episode-row-name" class="episode-row__name" data-series-role="name"></span>
+                  <!-- La nota del episodio en TMDB va junto a la personal (UI-S08). -->
+                  <span id="episode-row-tmdb-rating" class="episode-row__tmdb-rating" data-series-role="tmdb-rating"></span>
+                </p>
+                <p id="episode-row-overview" class="episode-row__overview" data-series-role="overview"></p>
+                <div class="episode-row__actions">
+                  <label class="series-checkbox">
+                    <input id="episode-row-watched" type="checkbox" data-series-role="watched">
+                    <span>Visto</span>
+                  </label>
+                  <button id="episode-row-favorite" class="btn btn--secondary" type="button" aria-pressed="false" aria-label="Marcar capítulo como favorito" data-series-role="favorite">
+                    <span aria-hidden="true">★</span>
+                  </button>
+                  <label class="series-field series-field--inline">
+                    <span class="sr-only">Nota del capítulo (0-10, medios puntos)</span>
+                    <input id="episode-row-rating" class="series-input series-input--rating" type="number" name="userRating" min="0" max="10" step="0.5" inputmode="decimal" placeholder="Sin nota" data-series-role="rating">
+                  </label>
+                  <button id="episode-row-review-btn" class="btn btn--secondary" type="button" data-series-role="review">Comentario</button>
+                  <!-- Indicador visual: el capítulo tiene comentario o es favorito (AC-S17). -->
+                  <span id="episode-row-indicator" class="episode-row__indicator" data-series-role="indicator" hidden aria-hidden="true"></span>
+                </div>
+                <div id="episode-row-spoiler-warning" class="episode-row__warning" data-series-role="spoiler-warning" hidden>
+                  <p class="episode-row__warning-text">Contiene spoilers</p>
+                  <button class="btn btn--secondary" type="button" data-series-role="spoiler-reveal">Mostrar comentario</button>
+                </div>
+              </div>
+            </article>
+          </template>
+
+          <!-- =============================================================
+               Plantilla de una colección (UI-S10): nombre, recuento y
+               acciones. Al clonarla, la vista da a cada instancia ids
+               únicos (p. ej. `series-collection-open-<collectionId>`) para
+               no duplicar ids y localiza los elementos por los atributos
+               `data-series-role`.
+               ============================================================= -->
+          <template id="series-collection-item-template">
+            <li class="series-collection" id="series-collection-item" data-series-role="collection-item">
+              <div class="series-collection__data">
+                <p class="series-collection__name" data-series-role="collection-name"></p>
+                <p class="series-collection__count" data-series-role="collection-count">0 series</p>
+                <p class="series-collection__description" data-series-role="collection-description"></p>
+              </div>
+              <div class="series-collection__actions">
+                <button id="series-collection-open" class="btn btn--secondary" type="button" data-series-role="collection-open">Ver series</button>
+                <!-- Renombrar también permite editar la descripción (UI-S10). -->
+                <button id="series-collection-rename" class="btn btn--secondary" type="button" data-series-role="collection-rename">Renombrar</button>
+                <button id="series-collection-delete" class="btn btn--danger" type="button" data-series-role="collection-delete">Eliminar</button>
               </div>
             </li>
           </template>
