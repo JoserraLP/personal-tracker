@@ -74,7 +74,7 @@ T-S06..T-S10 comparten `js/series/seriesView.js`: en cadena, no en paralelo.
 | T-S10 | dev-frontend | `js/series/seriesView.js` | UI-S10, UI-S11, DB-S03, REQ-S02 | T-S09 | Mis colecciones: crear/renombrar/describir/eliminar, recuento «N series», clic para filtrar la biblioteca; alta manual completa con validación en español; AC-S08 y AC-S22 verificables | done |
 | T-S11 | dev-frontend | `js/app.js` | UI-S01, REQ-D2 (MOD), REQ-D3 (MOD) | T-S10 | `#nav-series` alterna `#series-section` de forma excluyente con `#movies-section`, mantiene `aria-expanded`, oculta/muestra `#app-empty` conservando su texto, importa `seriesView` sin errores de consola; AC-S23 | done |
 | T-S12 | devops | `firestore.rules` | SEC-S01..S03, REQ-F2 (MOD) | — | `match /series/{document=**}` sustituye a `series/{itemId}` con el mismo owner-only (`isAllowedUser() && isOwner(userId)`) y **sin** funciones `isValid*`; `match /series_collections/{id}` con la misma regla limpia; el resto de matches y funciones previas intactos; AC-S27 y AC-S28 pasan con reglas desplegadas | done |
-| T-S13 | devops | `firestore.indexes.json` | DB-S05, REQ-S15, REQ-F2 (MOD) | T-S12 | Los 6 índices compuestos de DB-S05 añadidos con `collectionGroup:"series"` y estructura existente preservada; sin índices redundantes; `firebase deploy --only firestore:indexes --dry-run` sin errores | todo |
+| T-S13 | devops | `firestore.indexes.json` | DB-S05, REQ-S15, REQ-F2 (MOD) | T-S12 | Los 6 índices compuestos de DB-S05 añadidos con `collectionGroup:"series"` y estructura existente preservada; sin índices redundantes; `firebase deploy --only firestore:indexes --dry-run` sin errores | done |
 | T-S14 | code-reviewer | (solo lectura) `openspec/changes/series/*.md` + `git diff` | todos los `*-S*` | T-S11, T-S13 | Auditoría sin hallazgos abiertos de ambigüedad/testabilidad/cobertura AC; cero inconsistencias de IDs entre specs-delta y tasks | todo |
 
 ## Estado
@@ -98,6 +98,11 @@ T-S06..T-S10 comparten `js/series/seriesView.js`: en cadena, no en paralelo.
   completada (`match /series/{document=**}` + `series_collections`, dry-run
   compilado sin errores; code-reviewer sin bloqueos, AC-S27/S28 PASS) y
   cerrada; T-S13 (#110) liberada con etiqueta `ready`.
+- T-S13 (#110) completada: 6 índices compuestos de DB-S05 con
+  `collectionGroup:"series"` añadidos en `firestore.indexes.json` (+50 líneas),
+  estructura previa preservada y sin índices redundantes; dry-run
+  `firestore:indexes` sin errores; code-reviewer PASS sin rondas de fix.
+  Cerrada; T-S14 (#111) liberada con etiqueta `ready`.
 - T-S08 (#106) completada: ficha de serie completa y alta manual en
   `js/series/seriesView.js` (code-reviewer sin bloqueos tras 1 ronda de fixes;
   qa: AC-S04/S32/S11/S14/S15/S16/S22-selector/S29-caché/S08/S01/S06/S31 PASS
