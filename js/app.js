@@ -7,10 +7,11 @@
 //      Entrar / Salir / Volver y el aviso de acceso no autorizado.
 //   2. Barra superior con los datos del usuario autenticado.
 //   3. Área principal con el estado vacío inicial.
-//   4. Navegación por categorías: la entrada «Películas» alterna la
-//      sección `#movies-section` y mantiene sincronizado
-//      `aria-expanded` y el estado vacío `#app-empty`
-//      (UI-M01, REQ-D2 MOD, REQ-D3 MOD).
+//   4. Navegación por categorías: las entradas «Películas» y
+//      «Series» alternan su sección (`#movies-section` y
+//      `#series-section`) de forma **excluyente**, mantienen
+//      sincronizado `aria-expanded` y el estado vacío `#app-empty`
+//      (UI-M01, UI-S01, REQ-D2 MOD, REQ-D3 MOD).
 //
 // Convenciones:
 //   - Módulos ESM sin build step (specs/00-overview.md §3, REQ-C1).
@@ -18,13 +19,15 @@
 //   - `js/firebase.js` es el único punto que conoce las URLs del
 //     CDN de Firebase; `js/allowed-emails.js` es la lista de
 //     correos autorizados (control de acceso web).
-//   - `js/movies/moviesView.js` orquesta la sección de películas: este
-//     módulo solo la monta y la desmonta al alternar la visibilidad.
+//   - `js/movies/moviesView.js` orquesta la sección de películas y
+//     `js/series/seriesView.js` la de series: este módulo solo las
+//     monta y las desmonta al alternar la visibilidad.
 // =============================================================
 
 import { login, logout, watchAuthState } from "./firebase.js";
 import { isEmailAllowed } from "./allowed-emails.js";
 import { mountMovies, unmountMovies } from "./movies/moviesView.js";
+import { mountSeries, unmountSeries } from "./series/seriesView.js";
 
 // -------------------------------------------------------------
 // Referencias del DOM (app shell de index.html)
@@ -64,6 +67,15 @@ const navMovies = document.getElementById("nav-movies");
 const moviesSection = document.getElementById("movies-section");
 
 /**
+ * Entrada de navegación de la sección de series (UI-S01, REQ-D2 MOD).
+ * Es un `button` con `aria-expanded` que este módulo mantiene al día.
+ */
+const navSeries = document.getElementById("nav-series");
+
+/** Contenedor de la sección de series (UI-S01). */
+const seriesSection = document.getElementById("series-section");
+
+/**
  * True tras rechazar un correo: la vista `denied` persiste aunque
  * el `logout()` automático dispare `watchAuthState` con null.
  * @type {boolean}
@@ -77,6 +89,14 @@ let deniedAccess = false;
  * @type {boolean}
  */
 let moviesMounted = false;
+
+/**
+ * True mientras la sección de series está montada y visible. El
+ * montaje y el desmontaje van ligados a la visibilidad: se monta al
+ * mostrarla y se desmonta al ocultarla (T-S11).
+ * @type {boolean}
+ */
+let seriesMounted = false;
 
 // -------------------------------------------------------------
 // Máquina de estados
@@ -127,67 +147,133 @@ function renderAllowed(user) {
 
   // El estado vacío del área principal solo se muestra cuando no hay
   // ninguna sección abierta (REQ-D3 MOD).
-  if (appEmpty) appEmpty.hidden = moviesMounted;
+  if (appEmpty) appEmpty.hidden = isAnySectionVisible();
 }
 
 // -------------------------------------------------------------
-// Sección de películas (UI-M01, REQ-D2 MOD, REQ-D3 MOD)
+// Secciones de categoría (UI-M01, UI-S01, REQ-D2 MOD, REQ-D3 MOD)
 // -------------------------------------------------------------
 
 /**
- * Muestra u oculta la sección de películas y mantiene sincronizados
- * `aria-expanded` de la entrada de navegación y el estado vacío
- * `#app-empty` (AC-M17).
+ * True si alguna sección de categoría está visible. El estado vacío
+ * `#app-empty` se oculta mientras lo haya (REQ-D3 MOD).
  *
- * Al mostrarse se monta la vista (`mountMovies`) y al ocultarse se
- * desmonta (`unmountMovies`) para cancelar sus suscripciones a
- * Firestore y sus temporizadores.
+ * Una sección montada siempre está visible: el montaje y el
+ * desmontaje van ligados a la visibilidad, así que basta con mirar
+ * los indicadores de montaje.
  *
- * @param {boolean} visible True para mostrar la sección.
+ * @returns {boolean}
+ */
+function isAnySectionVisible() {
+  return moviesMounted || seriesMounted;
+}
+
+/**
+ * Monta la vista de una sección de categoría.
+ *
+ * Un fallo de montaje no debe romper el shell: se avisa por consola
+ * y la sección sigue oculta (con `#app-empty` a la vista).
+ *
+ * @param {"movies" | "series"} kind Sección a montar.
+ * @returns {boolean} True si la vista ha quedado montada.
+ */
+function mountSection(kind) {
+  try {
+    if (kind === "movies") {
+      mountMovies();
+    } else {
+      mountSeries();
+    }
+    return true;
+  } catch (error) {
+    console.warn(
+      `No se pudo montar la sección de ${kind === "movies" ? "películas" : "series"}.`,
+      error
+    );
+    return false;
+  }
+}
+
+/**
+ * Desmonta la vista de una sección de categoría para cancelar sus
+ * suscripciones a Firestore y sus temporizadores.
+ *
+ * @param {"movies" | "series"} kind Sección a desmontar.
  * @returns {void}
  */
-function setMoviesVisible(visible) {
-  if (visible) {
-    if (!moviesMounted) {
-      try {
-        mountMovies();
-        moviesMounted = true;
-      } catch (error) {
-        // Un fallo de montaje no debe romper el shell: se mantiene
-        // el estado vacío y se avisa por consola.
-        console.warn("No se pudo montar la sección de películas.", error);
-        moviesMounted = false;
-      }
-    }
-  } else if (moviesMounted) {
-    try {
+function unmountSection(kind) {
+  try {
+    if (kind === "movies") {
       unmountMovies();
-    } catch (error) {
-      console.warn("No se pudo desmontar la sección de películas.", error);
+    } else {
+      unmountSeries();
     }
+  } catch (error) {
+    console.warn(
+      `No se pudo desmontar la sección de ${kind === "movies" ? "películas" : "series"}.`,
+      error
+    );
+  }
+}
+
+/**
+ * Activa una sección de categoría de forma **excluyente** (REQ-D2
+ * MOD): al mostrar una se pliegan las demás, se sincroniza
+ * `aria-expanded` de su entrada de navegación y se actualiza el
+ * estado vacío `#app-empty` (REQ-D3 MOD).
+ *
+ * Al mostrarse se monta la vista (`mountMovies` / `mountSeries`) y
+ * al ocultarse se desmonta (`unmountMovies` / `unmountSeries`).
+ *
+ * @param {"movies" | "series" | null} kind Sección a mostrar; `null`
+ *   pliega todas.
+ * @returns {void}
+ */
+function setActiveSection(kind) {
+  const moviesWanted = kind === "movies";
+  const seriesWanted = kind === "series";
+
+  // --- Montaje y desmontaje -------------------------------------
+  if (moviesWanted) {
+    if (!moviesMounted) moviesMounted = mountSection("movies");
+  } else if (moviesMounted) {
+    unmountSection("movies");
     moviesMounted = false;
   }
 
-  // La sección solo queda visible si la vista está montada.
-  const shown = visible && moviesMounted;
+  if (seriesWanted) {
+    if (!seriesMounted) seriesMounted = mountSection("series");
+  } else if (seriesMounted) {
+    unmountSection("series");
+    seriesMounted = false;
+  }
 
-  if (moviesSection) moviesSection.hidden = !shown;
-  if (navMovies) navMovies.setAttribute("aria-expanded", shown ? "true" : "false");
+  // --- Visibilidad y `aria-expanded` ----------------------------
+  // La sección solo queda visible si su vista está montada.
+  const moviesShown = moviesWanted && moviesMounted;
+  const seriesShown = seriesWanted && seriesMounted;
 
-  // REQ-D3 (MOD): `#app-empty` se oculta mientras la sección de
-  // películas está visible y vuelve al ocultarla. Su texto no cambia.
-  if (appEmpty) appEmpty.hidden = shown;
+  if (moviesSection) moviesSection.hidden = !moviesShown;
+  if (navMovies) navMovies.setAttribute("aria-expanded", moviesShown ? "true" : "false");
+
+  if (seriesSection) seriesSection.hidden = !seriesShown;
+  if (navSeries) navSeries.setAttribute("aria-expanded", seriesShown ? "true" : "false");
+
+  // REQ-D3 (MOD): `#app-empty` se oculta mientras `#movies-section`
+  // o `#series-section` estén visibles y vuelve al plegarlas. Su
+  // texto no cambia.
+  if (appEmpty) appEmpty.hidden = moviesShown || seriesShown;
 }
 
 /**
- * Devuelve la sección de películas a su estado inicial (oculta y sin
- * montar). Se usa al empezar o terminar una sesión para no dejar
+ * Devuelve las secciones de categoría a su estado inicial (ocultas y
+ * sin montar). Se usa al empezar o terminar una sesión para no dejar
  * suscripciones vivas ni una sección abierta de la sesión anterior.
  *
  * @returns {void}
  */
-function resetMoviesSection() {
-  setMoviesVisible(false);
+function resetSections() {
+  setActiveSection(null);
 }
 
 // -------------------------------------------------------------
@@ -218,11 +304,20 @@ btnBack?.addEventListener("click", () => {
   show("login");
 });
 
-// «Películas»: alterna la visibilidad de `#movies-section`
-// (UI-M01, REQ-D2 MOD, REQ-D3 MOD, AC-M17).
+// «Películas»: alterna la visibilidad de `#movies-section` de forma
+// excluyente con `#series-section` (UI-M01, REQ-D2 MOD, REQ-D3 MOD,
+// AC-M17).
 navMovies?.addEventListener("click", () => {
   const isHidden = moviesSection ? moviesSection.hidden : !moviesMounted;
-  setMoviesVisible(isHidden);
+  setActiveSection(isHidden ? "movies" : null);
+});
+
+// «Series»: alterna la visibilidad de `#series-section` de forma
+// excluyente con `#movies-section` (UI-S01, REQ-D2 MOD, REQ-D3 MOD,
+// AC-S23).
+navSeries?.addEventListener("click", () => {
+  const isHidden = seriesSection ? seriesSection.hidden : !seriesMounted;
+  setActiveSection(isHidden ? "series" : null);
 });
 
 // -------------------------------------------------------------
@@ -231,9 +326,9 @@ navMovies?.addEventListener("click", () => {
 
 watchAuthState(async (user) => {
   if (!user) {
-    // Al cerrar la sesión se desmonta la sección de películas: sus
-    // suscripciones a Firestore dejan de vivir.
-    resetMoviesSection();
+    // Al cerrar la sesión se desmontan las secciones de categoría:
+    // sus suscripciones a Firestore dejan de vivir.
+    resetSections();
     show(deniedAccess ? "denied" : "login");
     return;
   }
@@ -250,9 +345,9 @@ watchAuthState(async (user) => {
   }
 
   deniedAccess = false;
-  // Cada sesión empieza con el estado vacío y la sección de
-  // películas plegada.
-  resetMoviesSection();
+  // Cada sesión empieza con el estado vacío y las secciones de
+  // categoría plegadas.
+  resetSections();
   renderAllowed(user);
   show("allowed");
 });
