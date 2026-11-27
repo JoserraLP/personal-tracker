@@ -73,7 +73,7 @@ T-S06..T-S10 comparten `js/series/seriesView.js`: en cadena, no en paralelo.
 | T-S09 | dev-frontend | `js/series/seriesView.js` | UI-S07..S09, ALG-S03, ALG-S07, ALG-S08 | T-S08 | Bloque de episodios: selector de temporada con carga perezosa + caché de sesión, fila completa (nº, título, sinopsis, still, «TMDB 7,9», visto, favorito, puntuación, comentario con indicador), marcado/desmarcado masivo de temporada en lote, filtros «Todos los capítulos»/«Solo favoritos»/«Con comentario», diálogo de comentario con spoilers y borrado; degradación manual (D-S14); AC-S17, AC-S18, AC-S20, AC-S21 verificables | todo |
 | T-S10 | dev-frontend | `js/series/seriesView.js` | UI-S10, UI-S11, DB-S03, REQ-S02 | T-S09 | Mis colecciones: crear/renombrar/describir/eliminar, recuento «N series», clic para filtrar la biblioteca; alta manual completa con validación en español; AC-S08 y AC-S22 verificables | todo |
 | T-S11 | dev-frontend | `js/app.js` | UI-S01, REQ-D2 (MOD), REQ-D3 (MOD) | T-S10 | `#nav-series` alterna `#series-section` de forma excluyente con `#movies-section`, mantiene `aria-expanded`, oculta/muestra `#app-empty` conservando su texto, importa `seriesView` sin errores de consola; AC-S23 | todo |
-| T-S12 | devops | `firestore.rules` | SEC-S01..S03, REQ-F2 (MOD) | — | `match /series/{document=**}` sustituye a `series/{itemId}` con el mismo owner-only (`isAllowedUser() && isOwner(userId)`) y **sin** funciones `isValid*`; `match /series_collections/{id}` con la misma regla limpia; el resto de matches y funciones previas intactos; AC-S27 y AC-S28 pasan con reglas desplegadas | todo |
+| T-S12 | devops | `firestore.rules` | SEC-S01..S03, REQ-F2 (MOD) | — | `match /series/{document=**}` sustituye a `series/{itemId}` con el mismo owner-only (`isAllowedUser() && isOwner(userId)`) y **sin** funciones `isValid*`; `match /series_collections/{id}` con la misma regla limpia; el resto de matches y funciones previas intactos; AC-S27 y AC-S28 pasan con reglas desplegadas | done |
 | T-S13 | devops | `firestore.indexes.json` | DB-S05, REQ-S15, REQ-F2 (MOD) | T-S12 | Los 6 índices compuestos de DB-S05 añadidos con `collectionGroup:"series"` y estructura existente preservada; sin índices redundantes; `firebase deploy --only firestore:indexes --dry-run` sin errores | todo |
 | T-S14 | code-reviewer | (solo lectura) `openspec/changes/series/*.md` + `git diff` | todos los `*-S*` | T-S11, T-S13 | Auditoría sin hallazgos abiertos de ambigüedad/testabilidad/cobertura AC; cero inconsistencias de IDs entre specs-delta y tasks | todo |
 
@@ -94,7 +94,10 @@ T-S06..T-S10 comparten `js/series/seriesView.js`: en cadena, no en paralelo.
   T-S12=#101, T-S13=#110, T-S14=#111. T-S01, T-S03, T-S04 y T-S12 con etiqueta
   `ready`; el resto `blocked` hasta cerrar su dependencia. T-S04 (#100)
   completada, auditada (code-reviewer sin bloqueos, AC-S30 PASS) y cerrada;
-  T-S05 (#103) y T-S06 (#104) liberadas con etiqueta `ready`.
+  T-S05 (#103) y T-S06 (#104) liberadas con etiqueta `ready`. T-S12 (#101)
+  completada (`match /series/{document=**}` + `series_collections`, dry-run
+  compilado sin errores; code-reviewer sin bloqueos, AC-S27/S28 PASS) y
+  cerrada; T-S13 (#110) liberada con etiqueta `ready`.
 - Hallazgos de P-4 diferidos (no bloquean el núcleo): comentarios obsoletos en
   `js/config.js` (claves TMDB/Books/IGDB/Steam y refs a `cloudflare/` y
   `scripts/`), `js/firebase.js` (cita `db.js`) y `js/allowed-emails.js` (cita la

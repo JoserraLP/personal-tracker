@@ -141,7 +141,18 @@ service cloud.firestore {
         allow create, update: if isAllowedUser() && isOwner(userId) && isValidMovieCollection();
       }
 
-      match /series/{itemId} {
+      // Series (issue #101, SEC-S01): wildcard recursivo — una sola regla
+      // owner-only cubre users/{uid}/series/{seriesId} y su subcolección
+      // episodes/{episodeKey}. Sin isValid*(): los campos opcionales, los
+      // null y los documentos parciales nunca se bloquean (AC-S28); la
+      // validación de formato la hace el cliente (ALG-S03/ALG-S04).
+      match /series/{document=**} {
+        allow read, write: if isAllowedUser() && isOwner(userId);
+      }
+
+      // Colecciones de series (issue #101, SEC-S02, DB-S03): ruta física
+      // users/{uid}/series_collections — misma regla limpia, sin isValid*().
+      match /series_collections/{id} {
         allow read, write: if isAllowedUser() && isOwner(userId);
       }
 
