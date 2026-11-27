@@ -20,12 +20,29 @@
 //   - REQ-S12: la sección vive dentro de `#app-main` y se monta
 //     desde la navegación principal (T-S11).
 //
-// Tareas siguientes (mismo fichero, en cadena): T-S07 (biblioteca
-// con filtros y orden), T-S08 (ficha y alta manual), T-S09
-// (bloque de episodios) y T-S10 (colecciones). Por eso el módulo
-// deja estos enganches: `setSeriesDetailOpener` para la ficha,
-// `getSeriesViewState` para el estado vivo y `refreshSeriesStats`
-// para las estadísticas.
+// Alcance de esta tarea (T-S07):
+//   - UI-S05 / REQ-S13: «Mi biblioteca» con buscador instantáneo
+//     (debounce 300 ms), filtros combinables (estado o favoritas,
+//     género, colección y rango de nota 0–10 con paso 0,5), las
+//     siete claves de orden de `SORT_OPTIONS`, «Limpiar filtros»,
+//     contador «1 serie» / «N series» y dos estados vacíos
+//     distintos (biblioteca vacía / sin resultados).
+//   - ALG-S02: el filtrado y el orden se aplican en cliente sobre el
+//     snapshot que devuelve el servidor con sus filtros; al
+//     servidor solo van la igualdad (`status` o `isFavorite`) y los
+//     dos `array-contains` (`genreIds`, `collectionIds`).
+//   - AC-S13: el favorito de la tarjeta se actualiza de forma
+//     optimista, repinta la rejilla cuando la serie deja de cumplir
+//     el filtro activo y devuelve el foco al botón pulsado.
+//   - AC-S24 y AC-S25: los filtros se combinan con AND y las siete
+//     claves de orden respetan la colación es-ES, los nulls al
+//     final y el progreso sin `numberOfEpisodes` al final.
+//
+// Tareas siguientes (mismo fichero, en cadena): T-S08 (ficha y alta
+// manual), T-S09 (bloque de episodios) y T-S10 (colecciones). Por
+// eso el módulo deja estos enganches: `setSeriesDetailOpener` para
+// la ficha, `getSeriesViewState` para el estado vivo y
+// `refreshSeriesStats` para las estadísticas.
 //
 // Dependencias ya implementadas (se consumen, no se duplican):
 //   - `js/series/seriesState.js` (T-S03): etiquetas de estado,
@@ -42,8 +59,15 @@
 
 import {
   DEFAULT_SORT_KEY,
+  LIBRARY_STATUS_OPTIONS,
+  SORT_OPTIONS,
   STATUS_LABELS,
+  TV_GENRE_OPTIONS,
+  USER_RATING_ERROR_MESSAGE,
   computeSeriesStats,
+  createLibraryFilters,
+  filterSeries,
+  parseUserRating,
   sortSeries,
 } from "./seriesState.js";
 
@@ -51,6 +75,7 @@ import {
   addFromTmdb,
   setEpisodeWatched,
   setFavorite,
+  subscribeCollections,
   subscribeSeries,
 } from "./seriesRepository.js";
 
@@ -214,6 +239,26 @@ const LIBRARY_EMPTY_MESSAGE =
 const LIBRARY_NO_RESULTS_MESSAGE =
   "No hay series que coincidan con los filtros.";
 
+/**
+ * Error del rango de nota invertido: el mínimo es mayor que el
+ * máximo (UI-S05, ALG-S02).
+ */
+const RATING_RANGE_ORDER_ERROR =
+  "La nota mínima no puede ser mayor que la nota máxima.";
+
+/**
+ * Rango de nota sin filtros: todo válido y sin extremos fijados
+ * (estado inicial de la biblioteca, UI-S05).
+ */
+const EMPTY_RATING_RANGE = Object.freeze({
+  min: null,
+  max: null,
+  minValid: true,
+  maxValid: true,
+  inverted: false,
+  valid: true,
+});
+
 /** Póster de reserva cuando la serie no tiene `posterPath` (AC-S05). */
 const POSTER_PLACEHOLDER =
   "data:image/svg+xml;charset=utf-8," +
@@ -362,9 +407,20 @@ function clearNode(container) {
 /**
  * @typedef {Object} SeriesViewState
  * @property {string} activeTab Pestaña activa (UI-S01).
- * @property {Array<Record<string, unknown>>} library Biblioteca completa.
+ * @property {Array<Record<string, unknown>>} library Biblioteca completa
+ *   (sin filtros de servidor): alimenta las estadísticas (UI-S02).
+ * @property {Array<Record<string, unknown>>} libraryFiltered Biblioteca
+ *   con los filtros de servidor aplicados: alimenta la rejilla de
+ *   «Mi biblioteca» (UI-S05, ALG-S02).
  * @property {Map<string, Record<string, unknown>>} libraryByDocId
  * @property {Map<string, Record<string, unknown>>} libraryByTmdbId
+ * @property {ReturnType<typeof createLibraryFilters>} libraryFilters
+ *   Filtros de cliente normalizados (ALG-S02).
+ * @property {ReturnType<typeof readRatingRange>} libraryRatingRange
+ *   Último rango de nota validado: alimenta el mensaje de error sin
+ *   releer los inputs durante el render (UI-S05).
+ * @property {Array<Record<string, unknown>>} collections Colecciones
+ *   del usuario: opciones del filtro por colección (DB-S03).
  * @property {{
  *   loaded: boolean,
  *   loading: boolean,
@@ -386,8 +442,12 @@ function createViewState() {
   return {
     activeTab: DEFAULT_TAB,
     library: [],
+    libraryFiltered: [],
     libraryByDocId: new Map(),
     libraryByTmdbId: new Map(),
+    libraryFilters: createLibraryFilters(),
+    libraryRatingRange: EMPTY_RATING_RANGE,
+    collections: [],
     catalog: {
       loaded: false,
       loading: false,
@@ -403,8 +463,48 @@ let dom = null;
 /** Estado vivo de la vista. */
 let state = createViewState();
 
-/** Suscriptor de la biblioteca: alimenta estadísticas y tarjetas. */
+/**
+ * Suscriptor de la biblioteca con los filtros de servidor: alimenta
+ * la rejilla de «Mi biblioteca» (UI-S05).
+ */
 let libraryUnsubscribe = null;
+
+/**
+ * Suscriptor de la biblioteca sin filtros: alimenta las
+ * estadísticas (UI-S02) y el índice de series ya añadidas que usa el
+ * catálogo.
+ */
+let statsUnsubscribe = null;
+
+/** Suscriptor de las colecciones: opciones del filtro por colección. */
+let collectionsUnsubscribe = null;
+
+/** Temporizador de búsqueda en la biblioteca pendiente. */
+let librarySearchTimer = null;
+
+/**
+ * Firma de los filtros de servidor activos: evita resuscripciones
+ * innecesarias (ALG-S02).
+ */
+let serverFiltersSignature = "";
+
+/**
+ * Foco pendiente de devolver a un botón de la biblioteca tras un
+ * repintado de la rejilla (UI-S13, NFR-S02).
+ *
+ * @type {{ docId: string, role: string }|null}
+ */
+let pendingLibraryFocus = null;
+
+/** Series visibles en la última pintada de la biblioteca. */
+let libraryVisibleCount = 0;
+
+/**
+ * `true` cuando ya ha llegado el primer snapshot con los filtros de
+ * servidor. Antes de eso el recuento visible todavía no es válido y
+ * el estado vacío no se anuncia (UI-S05).
+ */
+let libraryFilteredLoaded = false;
 
 /** Temporizador de búsqueda del catálogo pendiente. */
 let searchTimer = null;
@@ -1120,44 +1220,406 @@ async function runCatalogSearch(query) {
 }
 
 // -------------------------------------------------------------
-// Biblioteca (UI-S04, ALG-S01)
+// Biblioteca: buscador, filtros combinables y orden (UI-S05,
+// ALG-S02, REQ-S13)
 // -------------------------------------------------------------
 
 /**
- * Pinta la biblioteca: las tarjetas del snapshot con el orden por
- * defecto de ALG-S02. T-S07 añadirá los filtros combinables, el
- * buscador y las siete claves de orden sobre este mismo render.
+ * Rellena el filtro de estado con las opciones de `seriesState.js`
+ * (UI-S05): «Todos», «Pendientes», «Viendo», «Completadas»,
+ * «Abandonadas» y «Favoritas» (pseudofiltro `isFavorite`).
+ */
+function populateStatusFilter() {
+  const select = dom?.library?.status;
+  if (!select) return;
+
+  clearNode(select);
+
+  for (const option of LIBRARY_STATUS_OPTIONS) {
+    const node = document.createElement("option");
+    node.value = option.value;
+    node.textContent = option.label;
+    select.append(node);
+  }
+
+  select.value = "";
+}
+
+/**
+ * Rellena el selector de orden con las siete claves de `SORT_OPTIONS`
+ * (UI-S05, ALG-S02). El orden por defecto es «Fecha de añadido».
+ */
+function populateSortFilter() {
+  const select = dom?.library?.sort;
+  if (!select) return;
+
+  clearNode(select);
+
+  for (const option of SORT_OPTIONS) {
+    const node = document.createElement("option");
+    node.value = option.value;
+    node.textContent = option.label;
+    select.append(node);
+  }
+
+  select.value = DEFAULT_SORT_KEY;
+}
+
+/**
+ * Rellena el filtro de género con el diccionario estático de TV
+ * (D-S08, UI-S05).
+ */
+function populateGenreFilter() {
+  const select = dom?.library?.genre;
+  if (!select) return;
+
+  clearNode(select);
+
+  const first = document.createElement("option");
+  first.value = "";
+  first.textContent = "Todos los géneros";
+  select.append(first);
+
+  for (const genre of TV_GENRE_OPTIONS) {
+    const option = document.createElement("option");
+    option.value = String(genre.id);
+    option.textContent = genre.label;
+    select.append(option);
+  }
+}
+
+/**
+ * Rellena el filtro de colección con los nombres del usuario
+ * (DB-S03, UI-S05). «Todas» es la opción por defecto.
+ *
+ * Si la colección seleccionada ya no existe (por ejemplo, porque se
+ * ha borrado), el filtro vuelve a «Todas» y se reaplican los filtros.
+ *
+ * @param {Array<Record<string, unknown>>} collections
+ */
+function populateCollectionFilter(collections) {
+  const select = dom?.library?.collection;
+  if (!select) return;
+
+  const previous = select.value;
+  clearNode(select);
+
+  const first = document.createElement("option");
+  first.value = "";
+  first.textContent = "Todas";
+  select.append(first);
+
+  for (const collection of collections) {
+    const option = document.createElement("option");
+    option.value = String(collection.id);
+    option.textContent = String(collection.name ?? "");
+    select.append(option);
+  }
+
+  const stillExists = collections.some(
+    (collection) => String(collection.id) === previous
+  );
+
+  if (previous !== "" && stillExists) {
+    select.value = previous;
+    return;
+  }
+
+  // La colección seleccionada ya no existe: el filtro vuelve a «Todas».
+  select.value = "";
+  if (previous !== "") applyLibraryFilters();
+}
+
+/**
+ * Valor de un filtro de nota: `null` si el campo está vacío.
+ *
+ * Lanza `UserRatingError` si el valor no cumple 0–10 con pasos de
+ * medio punto (ALG-S04); el mensaje va en español.
+ *
+ * @param {HTMLInputElement|null|undefined} input
+ * @returns {number|null}
+ */
+function readRatingValue(input) {
+  if (!input) return null;
+
+  const raw = typeof input.value === "string" ? input.value.trim() : "";
+  if (raw === "") return null;
+
+  return parseUserRating(raw);
+}
+
+/**
+ * Estado del rango de nota (UI-S05, ALG-S02, ALG-S04).
+ *
+ * Los extremos son inclusivos (ALG-S02) y se validan con
+ * `parseUserRating` (0–10, paso 0,5). Un extremo inválido **no** se
+ * aplica: el filtro se deja sin fijar. Un rango invertido (mínimo >
+ * máximo) tampoco se aplica y se avisa en español.
+ *
+ * Esta lectura es **pura**: no toca el DOM. El marcado `aria-invalid`
+ * lo aplica `applyRatingRangeState` en el camino de la acción del
+ * usuario, nunca durante un render (los renderes no deben mutar el
+ * estado de los inputs).
+ *
+ * @returns {{
+ *   min: number|null,
+ *   max: number|null,
+ *   minValid: boolean,
+ *   maxValid: boolean,
+ *   inverted: boolean,
+ *   valid: boolean
+ * }}
+ */
+function readRatingRange() {
+  const library = dom?.library ?? {};
+
+  let min = null;
+  let max = null;
+  let minValid = true;
+  let maxValid = true;
+
+  try {
+    min = readRatingValue(library.ratingMin);
+  } catch {
+    minValid = false;
+    min = null;
+  }
+
+  try {
+    max = readRatingValue(library.ratingMax);
+  } catch {
+    maxValid = false;
+    max = null;
+  }
+
+  const inverted =
+    minValid && maxValid && min !== null && max !== null && min > max;
+
+  return {
+    min: minValid && !inverted ? min : null,
+    max: maxValid && !inverted ? max : null,
+    minValid,
+    maxValid,
+    inverted,
+    valid: minValid && maxValid && !inverted,
+  };
+}
+
+/**
+ * Marca los campos de nota como inválidos cuando su valor no cumple
+ * el rango (UI-S13, NFR-S02). Se llama desde el camino de la acción
+ * del usuario (`applyLibraryFilters`), nunca desde un render.
+ *
+ * @param {ReturnType<typeof readRatingRange>} range
+ */
+function applyRatingRangeState(range) {
+  const library = dom?.library ?? {};
+  if (!range) return;
+
+  // Cada campo se marca por separado; un rango invertido invalida
+  // los dos extremos porque ninguno es aplicable.
+  const minInvalid = !range.minValid || range.inverted;
+  const maxInvalid = !range.maxValid || range.inverted;
+
+  if (library.ratingMin) {
+    library.ratingMin.setAttribute("aria-invalid", minInvalid ? "true" : "false");
+  }
+  if (library.ratingMax) {
+    library.ratingMax.setAttribute("aria-invalid", maxInvalid ? "true" : "false");
+  }
+}
+
+/**
+ * Mensaje de error del rango de nota (o `null` si es válido).
+ *
+ * @param {ReturnType<typeof readRatingRange>} range
+ * @returns {string|null}
+ */
+function readRatingError(range) {
+  if (!range) return null;
+  if (!range.minValid || !range.maxValid) return USER_RATING_ERROR_MESSAGE;
+  if (range.inverted) return RATING_RANGE_ORDER_ERROR;
+
+  return null;
+}
+
+/**
+ * Muestra en `series-library-error` el aviso que corresponda: primero
+ * el del rango de nota y, si no hay, el error de carga de la
+ * biblioteca (UI-S05).
+ *
+ * Solo escribe en el nodo de error: no relee ni muta los inputs.
+ *
+ * @param {ReturnType<typeof readRatingRange>} [range]
+ */
+function renderLibraryError(range) {
+  const current = range ?? state.libraryRatingRange;
+  setMessage(dom?.library?.error, readRatingError(current) ?? libraryLoadError);
+}
+
+/**
+ * Lee los controles de filtro de la biblioteca y los normaliza con
+ * `createLibraryFilters` (ALG-S02). Los filtros se combinan con AND
+ * (AC-S24): estado o favoritas, género, colección, rango de nota y
+ * búsqueda.
+ *
+ * @param {ReturnType<typeof readRatingRange>} [range] Rango de nota ya
+ *   validado en este mismo paso; si no se pasa, se lee aquí.
+ * @returns {ReturnType<typeof createLibraryFilters>}
+ */
+function readLibraryFilters(range) {
+  const library = dom?.library ?? {};
+  const status = library.status?.value ?? "";
+  const ratingRange = range ?? readRatingRange();
+
+  return createLibraryFilters({
+    query: library.search?.value ?? "",
+    status,
+    // «Favoritas» es un pseudofiltro: `isFavorite === true`.
+    favorite: status === "favorites",
+    genreId: library.genre?.value ? Number(library.genre.value) : null,
+    collectionId: library.collection?.value ?? "",
+    // Un extremo inválido o invertido no se aplica: el filtro se
+    // deja sin fijar (ALG-S02).
+    ratingMin: ratingRange.min,
+    ratingMax: ratingRange.max,
+    sort: library.sort?.value || DEFAULT_SORT_KEY,
+  });
+}
+
+/**
+ * Pinta la biblioteca: filtra en cliente (ALG-S02), ordena en cliente
+ * (D-S03) y actualiza el recuento y el estado vacío.
+ *
+ * El origen es el snapshot que devuelve el servidor con los filtros
+ * de servidor aplicados; el filtrado en cliente se mantiene para la
+ * búsqueda y el rango de nota, y vuelve a comprobar los filtros de
+ * servidor para que la lista nunca muestre series que no los
+ * cumplan.
  */
 function renderLibrary() {
   const grid = dom?.library?.grid;
-  const sorted = sortSeries(state.library, DEFAULT_SORT_KEY);
+  const filtered = filterSeries(state.libraryFiltered, state.libraryFilters);
+  const sorted = sortSeries(filtered, state.libraryFilters.sort);
 
   renderCards(grid, sorted, "library");
+  libraryVisibleCount = sorted.length;
 
   // Contador «1 serie» / «N series» (UI-S05).
   const count = dom?.library?.count;
   if (count) count.textContent = formatSeriesCount(sorted.length);
 
-  // Estados vacíos en español.
-  const empty = dom?.library?.empty;
-  if (empty) {
-    empty.textContent =
-      state.library.length === 0
-        ? LIBRARY_EMPTY_MESSAGE
-        : LIBRARY_NO_RESULTS_MESSAGE;
-    empty.hidden = sorted.length > 0;
+  // El estado vacío solo se anuncia cuando ya ha llegado el primer
+  // snapshot filtrado: antes de eso no se sabe si la biblioteca está
+  // vacía o si los filtros no dejan pasar ninguna serie.
+  if (libraryFilteredLoaded) {
+    updateLibraryEmptyState();
+  } else {
+    setVisible(dom?.library?.empty, false);
   }
 
-  setMessage(dom?.library?.error, libraryLoadError);
+  renderLibraryError();
+  flushPendingLibraryFocus();
 }
 
 /**
- * Recibe el snapshot de la biblioteca: alimenta la barra de
- * estadísticas (UI-S02) y las tarjetas de la biblioteca.
+ * Estado vacío de la biblioteca, en dos variantes distintas
+ * (UI-S05): «biblioteca vacía» cuando el usuario no tiene ninguna
+ * serie y «sin resultados» cuando tiene series pero ninguna cumple
+ * los filtros.
+ */
+function updateLibraryEmptyState() {
+  const empty = dom?.library?.empty;
+  if (!empty) return;
+
+  const libraryIsEmpty = state.library.length === 0;
+
+  empty.textContent = libraryIsEmpty
+    ? LIBRARY_EMPTY_MESSAGE
+    : LIBRARY_NO_RESULTS_MESSAGE;
+  empty.hidden = libraryVisibleCount > 0;
+}
+
+/**
+ * Aplica los cambios de los controles de la biblioteca.
+ *
+ * El rango de nota se valida **una sola vez** en este paso: el
+ * resultado se reutiliza para los filtros, para `aria-invalid` y
+ * para el mensaje de error.
+ */
+function applyLibraryFilters() {
+  const range = readRatingRange();
+
+  applyRatingRangeState(range);
+  state.libraryRatingRange = range;
+  state.libraryFilters = readLibraryFilters(range);
+
+  syncServerSubscription();
+  renderLibrary();
+}
+
+/**
+ * Restablece los controles y los filtros de la biblioteca
+ * («Limpiar filtros» de UI-S05): la lista completa vuelve a pintarse
+ * (AC-S24).
+ */
+function clearLibraryFilters() {
+  const library = dom?.library ?? {};
+
+  if (librarySearchTimer !== null) {
+    clearTimeout(librarySearchTimer);
+    librarySearchTimer = null;
+  }
+
+  if (library.search) library.search.value = "";
+  if (library.status) library.status.value = "";
+  if (library.genre) library.genre.value = "";
+  if (library.collection) library.collection.value = "";
+  if (library.ratingMin) library.ratingMin.value = "";
+  if (library.ratingMax) library.ratingMax.value = "";
+  if (library.sort) library.sort.value = DEFAULT_SORT_KEY;
+
+  // Los controles ya están vacíos: `applyLibraryFilters` relee los
+  // valores por defecto y renueva la suscripción sin filtros.
+  applyLibraryFilters();
+}
+
+/**
+ * Búsqueda instantánea de la biblioteca (mismo debounce que el
+ * catálogo: 300 ms, NFR-S04). Al vaciar el buscador se aplica al
+ * momento.
+ */
+function onLibrarySearchInput() {
+  if (librarySearchTimer !== null) {
+    clearTimeout(librarySearchTimer);
+    librarySearchTimer = null;
+  }
+
+  const query = dom?.library?.search?.value?.trim() ?? "";
+
+  if (query === "") {
+    applyLibraryFilters();
+    return;
+  }
+
+  librarySearchTimer = setTimeout(() => {
+    librarySearchTimer = null;
+    applyLibraryFilters();
+  }, SEARCH_DEBOUNCE_MS);
+}
+
+// -------------------------------------------------------------
+// Datos de la biblioteca y de las colecciones
+// -------------------------------------------------------------
+
+/**
+ * Recibe el snapshot de la biblioteca **sin** filtros: alimenta la
+ * barra de estadísticas (UI-S02) y el índice de series ya añadidas
+ * que usa el catálogo.
  *
  * @param {Array<Record<string, unknown>>} series
  */
-function onLibrarySnapshot(series) {
+function onLibraryStatsSnapshot(series) {
   const list = Array.isArray(series) ? series : [];
 
   state.library = list;
@@ -1171,27 +1633,184 @@ function onLibrarySnapshot(series) {
     }
   }
 
-  libraryLoadError = "";
-
   renderStats(list);
   syncCatalogAddButtons();
+
+  // El estado vacío depende de si la biblioteca tiene alguna serie:
+  // solo se actualiza cuando ya hay una pintada de la rejilla. Sin
+  // ese dato, el recuento visible aún no es válido y el mensaje
+  // podría ser incorrecto («biblioteca vacía» cuando los filtros
+  // simplemente no dejan pasar ninguna serie).
+  if (libraryFilteredLoaded) {
+    updateLibraryEmptyState();
+  }
+}
+
+/**
+ * Recibe el snapshot de la biblioteca **con** los filtros de
+ * servidor: es la lista que se pinta en la rejilla (UI-S05).
+ *
+ * @param {Array<Record<string, unknown>>} series
+ */
+function onLibrarySnapshot(series) {
+  state.libraryFiltered = Array.isArray(series) ? series : [];
+  libraryFilteredLoaded = true;
+
+  // El snapshot llegó bien: se descarta cualquier error de carga
+  // anterior para que el aviso no se quede pegado.
+  libraryLoadError = "";
+  renderLibraryError();
+
+  const grid = dom?.library?.grid;
+  if (grid) grid.removeAttribute("aria-busy");
+
   renderLibrary();
 }
 
 /**
- * Suscribe la biblioteca del usuario. Sin sesión activa se avisa en
- * español y la vista sigue operativa (SEC-S03).
+ * Recibe el snapshot de las colecciones: repuebla el filtro por
+ * colección (UI-S05, DB-S03).
+ *
+ * @param {Array<Record<string, unknown>>} collections
  */
-function subscribeLibrary() {
+function onCollectionsSnapshot(collections) {
+  state.collections = Array.isArray(collections) ? collections : [];
+  populateCollectionFilter(state.collections);
+}
+
+/**
+ * Filtros que el servidor puede aplicar (ALG-S02, DB-S05): una
+ * igualdad (`status` o `isFavorite`) y hasta dos `array-contains`
+ * (`genreIds`, `collectionIds`).
+ *
+ * «Favoritas» no es un estado interno: se traduce al pseudofiltro
+ * `isFavorite === true` para no mezclar ambas condiciones en la
+ * consulta.
+ *
+ * @returns {{
+ *   status: string,
+ *   favorite: boolean,
+ *   genreId: number|null,
+ *   collectionId: string
+ * }}
+ */
+function readServerFilters() {
+  const library = dom?.library ?? {};
+  const status = library.status?.value ?? "";
+  const isFavorites = status === "favorites";
+
+  return {
+    status: isFavorites ? "" : normalizeServerStatus(status),
+    favorite: isFavorites,
+    genreId: library.genre?.value ? Number(library.genre.value) : null,
+    collectionId: library.collection?.value ?? "",
+  };
+}
+
+/**
+ * Traduce el valor del selector de estado al estado interno válido
+ * para el servidor (DB-S01). Cualquier valor desconocido se ignora.
+ *
+ * @param {string} status
+ * @returns {string}
+ */
+function normalizeServerStatus(status) {
+  return Object.prototype.hasOwnProperty.call(STATUS_LABELS, status)
+    ? status
+    : "";
+}
+
+/**
+ * Firma comparable de los filtros de servidor: permite detectar un
+ * cambio real y evitar resuscripciones innecesarias.
+ *
+ * @param {{ status: string, favorite: boolean, genreId: number|null, collectionId: string }} filters
+ * @returns {string}
+ */
+function computeServerFiltersSignature(filters) {
+  return [
+    filters.status,
+    filters.favorite,
+    filters.genreId ?? "",
+    filters.collectionId,
+  ].join("|");
+}
+
+/**
+ * Suscribe la biblioteca con los filtros de servidor (UI-S05). Cada
+ * cambio de filtro renueva la suscripción para que Firestore use los
+ * índices correspondientes (DB-S05).
+ *
+ * @param {{ status: string, favorite: boolean, genreId: number|null, collectionId: string }} serverFilters
+ */
+function subscribeLibraryData(serverFilters) {
+  serverFiltersSignature = computeServerFiltersSignature(serverFilters);
+
+  if (typeof libraryUnsubscribe === "function") {
+    try {
+      libraryUnsubscribe();
+    } catch {
+      // Una baja fallida no debe impedir la nueva suscripción.
+    }
+    libraryUnsubscribe = null;
+  }
+
+  const grid = dom?.library?.grid;
+  if (grid) grid.setAttribute("aria-busy", "true");
+
   try {
-    libraryUnsubscribe = subscribeSeries({}, onLibrarySnapshot, (error) => {
-      libraryLoadError = `No se pudo cargar tu biblioteca de series. ${describeRepositoryError(error)}`;
-      renderLibrary();
-    });
+    libraryUnsubscribe = subscribeSeries(
+      serverFilters,
+      onLibrarySnapshot,
+      (error) => {
+        libraryLoadError = `No se pudo cargar tu biblioteca de series. ${describeRepositoryError(error)}`;
+        renderLibraryError();
+      }
+    );
   } catch (error) {
     libraryLoadError = describeRepositoryError(error);
     setMessage(dom?.messages?.error, libraryLoadError);
-    renderLibrary();
+    renderLibraryError();
+  }
+}
+
+/**
+ * Renueva la suscripción de la biblioteca cuando cambian los filtros
+ * que el servidor puede aplicar (estado/favoritas, género y
+ * colección).
+ */
+function syncServerSubscription() {
+  const serverFilters = readServerFilters();
+  if (
+    computeServerFiltersSignature(serverFilters) === serverFiltersSignature
+  ) {
+    return;
+  }
+
+  subscribeLibraryData(serverFilters);
+}
+
+/**
+ * Suscribe las fuentes auxiliares: la biblioteca sin filtros (para
+ * las estadísticas, UI-S02) y las colecciones (DB-S03). Sin sesión
+ * activa se avisa en español y la vista sigue operativa (SEC-S03).
+ */
+function subscribeLibrarySources() {
+  try {
+    statsUnsubscribe = subscribeSeries({}, onLibraryStatsSnapshot, (error) => {
+      libraryLoadError = `No se pudo cargar tu biblioteca de series. ${describeRepositoryError(error)}`;
+      renderLibraryError();
+    });
+  } catch (error) {
+    setMessage(dom?.messages?.error, describeRepositoryError(error));
+  }
+
+  try {
+    collectionsUnsubscribe = subscribeCollections(onCollectionsSnapshot, () => {
+      // Un fallo en las colecciones no debe romper la biblioteca.
+    });
+  } catch {
+    // Sin colecciones no hay filtro por colección; el resto funciona.
   }
 }
 
@@ -1245,6 +1864,10 @@ async function handleAddSeries(button) {
  * tarjeta se actualizan al instante. Si la escritura falla, se
  * revierte sobre los nodos vivos.
  *
+ * Si la serie deja de cumplir el filtro activo (por ejemplo, con el
+ * filtro «Favoritas»), la rejilla se repinta y la tarjeta desaparece
+ * de la lista (UI-S05).
+ *
  * @param {HTMLElement} button
  */
 async function handleToggleFavorite(button) {
@@ -1256,6 +1879,10 @@ async function handleToggleFavorite(button) {
   const previous = model.isFavorite;
   const next = !previous;
 
+  // El foco vuelve al botón de favorito aunque la rejilla se
+  // repinte durante la operación (UI-S13, NFR-S02).
+  pendingLibraryFocus = { docId, role: "favorite" };
+
   // El modelo vivo se actualiza de inmediato: un doble clic antes
   // del snapshot de Firestore alterna sobre el valor real y no sobre
   // el valor obsoleto.
@@ -1263,6 +1890,7 @@ async function handleToggleFavorite(button) {
 
   updateFavoriteButton(button, next);
   applyLibraryFavorite(docId, next);
+  syncLibraryCard(docId, next);
 
   try {
     await setFavorite(docId, next);
@@ -1272,9 +1900,13 @@ async function handleToggleFavorite(button) {
     // desconectado por un repintado anterior.
     model.isFavorite = previous;
     applyLibraryFavorite(docId, previous);
-    updateFavoriteButton(button, previous);
+    syncLibraryCard(docId, previous);
     setMessage(dom?.messages?.error, describeRepositoryError(error));
   }
+
+  // Tras el repintado, el foco vuelve al botón de favorito; si la
+  // serie ya no está en la lista, a la rejilla (UI-S13, NFR-S02).
+  restoreLibraryCardFocus(docId, "favorite");
 }
 
 /**
@@ -1286,13 +1918,44 @@ async function handleToggleFavorite(button) {
  * @param {boolean} isFavorite
  */
 function applyLibraryFavorite(docId, isFavorite) {
-  state.library = state.library.map((item) =>
-    item?.id === docId ? { ...item, isFavorite } : item
-  );
+  const patchList = (list) =>
+    list.map((item) => (item?.id === docId ? { ...item, isFavorite } : item));
+
+  state.library = patchList(state.library);
+  state.libraryFiltered = patchList(state.libraryFiltered);
 
   const current = state.libraryByDocId.get(docId);
   if (current) {
     state.libraryByDocId.set(docId, { ...current, isFavorite });
+  }
+}
+
+/**
+ * Refleja el nuevo estado de favorito en la tarjeta de la biblioteca.
+ * Si el filtro activo deja de incluir la serie (por ejemplo, con el
+ * filtro «Favoritas»), la rejilla se repinta y la tarjeta desaparece
+ * de la lista (UI-S05, AC-S13).
+ *
+ * @param {string} docId
+ * @param {boolean} isFavorite
+ */
+function syncLibraryCard(docId, isFavorite) {
+  const card = findLibraryCard(docId);
+  const series = state.libraryFiltered.find((item) => item?.id === docId);
+
+  if (!card || !series) {
+    renderLibrary();
+    return;
+  }
+
+  const button = card.querySelector('[data-series-role="favorite"]');
+  if (button instanceof HTMLElement) {
+    updateFavoriteButton(button, isFavorite);
+  }
+
+  const stillVisible = filterSeries([series], state.libraryFilters).length > 0;
+  if (!stillVisible) {
+    renderLibrary();
   }
 }
 
@@ -1415,10 +2078,40 @@ function applyLocalEpisodeProgress(docId, result) {
   state.library = state.library.map((item) =>
     item?.id === docId ? { ...item, ...patch } : item
   );
+  state.libraryFiltered = state.libraryFiltered.map((item) =>
+    item?.id === docId ? { ...item, ...patch } : item
+  );
   state.libraryByDocId.set(docId, { ...current, ...patch });
 
   renderStats(state.library);
   renderLibrary();
+}
+
+/**
+ * Devuelve el foco al botón pendiente tras un repintado de la
+ * rejilla (UI-S13, NFR-S02).
+ *
+ * Solo se restaura si el foco se ha perdido (el repintado ha
+ * sustituido la tarjeta) o si sigue dentro de la rejilla: si el
+ * usuario ha movido el foco a otro control, no se le quita.
+ */
+function flushPendingLibraryFocus() {
+  if (!pendingLibraryFocus) return;
+
+  const active = document.activeElement;
+  const grid = dom?.library?.grid;
+
+  const focusLost = active === null || active === document.body;
+  const insideGrid =
+    grid instanceof HTMLElement &&
+    active instanceof Node &&
+    grid.contains(active);
+
+  if (!focusLost && !insideGrid) return;
+
+  const { docId, role } = pendingLibraryFocus;
+  pendingLibraryFocus = null;
+  restoreLibraryCardFocus(docId, role);
 }
 
 /**
@@ -1699,6 +2392,13 @@ export function mountSeries(options = {}) {
   tabListeners.clear();
   clearAllGrids();
   libraryUnsubscribe = null;
+  statsUnsubscribe = null;
+  collectionsUnsubscribe = null;
+  librarySearchTimer = null;
+  serverFiltersSignature = "";
+  pendingLibraryFocus = null;
+  libraryVisibleCount = 0;
+  libraryFilteredLoaded = false;
   searchTimer = null;
   searchToken = 0;
   libraryLoadError = "";
@@ -1729,18 +2429,39 @@ export function mountSeries(options = {}) {
   // --- Tarjetas (UI-S04) -----------------------------------------
   dom.section.addEventListener("click", onSectionClick);
 
-  // --- Biblioteca (UI-S04) ----------------------------------------
+  // --- Biblioteca (UI-S04, UI-S05) --------------------------------
+  // Los selectores de estado, género y orden se rellenan desde
+  // `seriesState.js` para que las opciones y las etiquetas no se
+  // dupliquen en la vista.
+  populateStatusFilter();
+  populateGenreFilter();
+  populateSortFilter();
+
   // El contador y el estado vacío se anuncian a los lectores de
   // pantalla al cambiar.
   dom.library.count?.setAttribute("aria-live", "polite");
   dom.library.empty?.setAttribute("role", "status");
+
+  // Búsqueda instantánea (debounce 300 ms) y filtros combinables.
+  dom.library.search?.addEventListener("input", onLibrarySearchInput);
+  dom.library.search?.addEventListener("search", onLibrarySearchInput);
+  dom.library.status?.addEventListener("change", applyLibraryFilters);
+  dom.library.genre?.addEventListener("change", applyLibraryFilters);
+  dom.library.collection?.addEventListener("change", applyLibraryFilters);
+  dom.library.ratingMin?.addEventListener("change", applyLibraryFilters);
+  dom.library.ratingMax?.addEventListener("change", applyLibraryFilters);
+  dom.library.sort?.addEventListener("change", applyLibraryFilters);
+  dom.library.clear?.addEventListener("click", clearLibraryFilters);
 
   // --- Avisos de la sección (UI-S11) ------------------------------
   ensureNoticeNode();
 
   // --- Estadísticas y datos (UI-S02, ALG-S01) ---------------------
   renderStats([]);
-  subscribeLibrary();
+  // La biblioteca se suscribe con los filtros de servidor (ALG-S02);
+  // las estadísticas usan la biblioteca completa.
+  subscribeLibrarySources();
+  subscribeLibraryData(readServerFilters());
 
   // --- Estado inicial ---------------------------------------------
   activateTab(state.activeTab);
@@ -1763,23 +2484,47 @@ export function mountSeries(options = {}) {
 export function unmountSeries() {
   if (!activeController) return;
 
-  if (typeof libraryUnsubscribe === "function") {
+  // Bajas de las suscripciones: biblioteca filtrada (rejilla),
+  // biblioteca completa (estadísticas) y colecciones.
+  for (const unsubscribe of [
+    libraryUnsubscribe,
+    statsUnsubscribe,
+    collectionsUnsubscribe,
+  ]) {
+    if (typeof unsubscribe !== "function") continue;
     try {
-      libraryUnsubscribe();
+      unsubscribe();
     } catch {
       // Una baja fallida no debe impedir el desmontaje.
     }
   }
   libraryUnsubscribe = null;
+  statsUnsubscribe = null;
+  collectionsUnsubscribe = null;
+  serverFiltersSignature = "";
 
   if (searchTimer !== null) {
     clearTimeout(searchTimer);
     searchTimer = null;
   }
 
+  if (librarySearchTimer !== null) {
+    clearTimeout(librarySearchTimer);
+    librarySearchTimer = null;
+  }
+
   dom?.section?.removeEventListener("click", onSectionClick);
   dom?.catalog?.search?.removeEventListener("input", onCatalogSearchInput);
   dom?.catalog?.search?.removeEventListener("search", onCatalogSearchInput);
+  dom?.library?.search?.removeEventListener("input", onLibrarySearchInput);
+  dom?.library?.search?.removeEventListener("search", onLibrarySearchInput);
+  dom?.library?.status?.removeEventListener("change", applyLibraryFilters);
+  dom?.library?.genre?.removeEventListener("change", applyLibraryFilters);
+  dom?.library?.collection?.removeEventListener("change", applyLibraryFilters);
+  dom?.library?.ratingMin?.removeEventListener("change", applyLibraryFilters);
+  dom?.library?.ratingMax?.removeEventListener("change", applyLibraryFilters);
+  dom?.library?.sort?.removeEventListener("change", applyLibraryFilters);
+  dom?.library?.clear?.removeEventListener("click", clearLibraryFilters);
 
   for (const tab of SERIES_TABS) {
     const button = dom?.tabs?.[tab.key];
@@ -1810,6 +2555,9 @@ export function unmountSeries() {
   dom = null;
   state = createViewState();
   libraryLoadError = "";
+  pendingLibraryFocus = null;
+  libraryVisibleCount = 0;
+  libraryFilteredLoaded = false;
   // El abridor de la ficha (UI-S06) lo registrará T-S08 en el
   // siguiente montaje: no se conserva entre montajes.
   detailOpener = null;
