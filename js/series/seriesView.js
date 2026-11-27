@@ -58,10 +58,27 @@
 //   - UI-S11: alta manual de series sin conexión, con avisos en
 //     español y sin ninguna llamada a TMDB (AC-S08, AC-S01, AC-S06).
 //
-// Tareas siguientes (mismo fichero, en cadena): T-S09 (bloque de
-// episodios) y T-S10 (colecciones). Por eso el módulo deja estos
-// enganches: `getSeriesViewState` para el estado vivo y
-// `refreshSeriesStats` para las estadísticas.
+// Alcance de esta tarea (T-S09):
+//   - UI-S07: bloque de episodios dentro de la ficha con selector de
+//     temporada de carga perezosa (`getSeasonDetail` con la caché de
+//     sesión del cliente), marcado/desmarcado masivo de temporada y
+//     filtros «Todos los capítulos»/«Solo favoritos»/«Con comentario».
+//   - UI-S08: fila de capítulo completa (número «T1E3», título,
+//     sinopsis, still `w300`, «TMDB 7,9», visto, favorito, nota
+//     personal, botón «Comentario» e indicador visual).
+//   - UI-S09: diálogo de comentario de capítulo con spoilers,
+//     guardado inmediato y «Eliminar comentario».
+//   - ALG-S07: la fila fusiona los metadatos de TMDB con el
+//     documento personal del episodio (fuente de verdad de lo
+//     personal).
+//   - ALG-S08: el marcado masivo viaja en un único `writeBatch`
+//     (`markSeason`/`unmarkSeason`): no hay escrituras por capítulo.
+//   - D-S14: una serie manual degrada a los capítulos ya registrados
+//     sin ninguna llamada a TMDB; nunca queda una pantalla en blanco.
+//
+// Tareas siguientes (mismo fichero, en cadena): T-S10 (colecciones).
+// Por eso el módulo deja estos enganches: `getSeriesViewState` para
+// el estado vivo y `refreshSeriesStats` para las estadísticas.
 //
 // Dependencias ya implementadas (se consumen, no se duplican):
 //   - `js/series/seriesState.js` (T-S03): etiquetas de estado,
@@ -87,6 +104,7 @@ import {
   UserRatingError,
   computeSeriesStats,
   createLibraryFilters,
+  episodeKey,
   filterSeries,
   parseUserRating,
   sortSeries,
@@ -101,12 +119,18 @@ import {
   deleteSeries,
   ensureDetailCached,
   incRewatch,
+  markSeason,
   setCollections,
+  setEpisodeFavorite,
   setEpisodeWatched,
   setFavorite,
   setStatus,
   subscribeCollections,
+  subscribeEpisodes,
   subscribeSeries,
+  unmarkEpisode,
+  unmarkSeason,
+  updateEpisodePersonal,
   updatePersonal,
 } from "./seriesRepository.js";
 
@@ -116,10 +140,12 @@ import {
   fetchPopularSeries,
   fetchTopRatedSeries,
   fetchTrendingWeek,
+  getSeasonDetail,
   getSeriesDetail,
   isTmdbConfigured,
   posterUrl,
   searchSeries,
+  stillUrl,
   trailerUrl,
 } from "./tmdbTvClient.js";
 
@@ -2112,6 +2138,9 @@ function tmdbDetailToSeries(detail) {
       typeof data.numberOfSeasons === "number" ? data.numberOfSeasons : null,
     numberOfEpisodes:
       typeof data.numberOfEpisodes === "number" ? data.numberOfEpisodes : null,
+    // Temporadas de TMDB: alimentan el selector de temporada
+    // (UI-S07, ALG-S07).
+    seasons: Array.isArray(data.seasons) ? data.seasons : [],
     tmdbStatus: typeof data.tmdbStatus === "string" ? data.tmdbStatus : null,
     networks: Array.isArray(data.networks) ? data.networks : [],
     episodeRuntime:
@@ -2726,6 +2755,9 @@ function updateDetailControls() {
 
   updateDetailNextButton(d.next, detailState.series ?? {}, editable);
 
+  // Bloque de episodios (UI-S07): en el catálogo solo se consulta.
+  updateEpisodeControls();
+
   setMessage(detailHintNode, editable ? "" : DETAIL_CATALOG_HINT);
 }
 
@@ -2802,6 +2834,9 @@ function renderDetailSkeleton() {
   clearNode(d.collections);
   setVisible(d.spoilerWarning, false);
 
+  // El bloque de episodios se vacía: se repinta al cargar la ficha.
+  resetEpisodeBlock();
+
   renderDetailUserRatingDisplay(null);
   updateDetailDirtyWarning();
   updateDetailControls();
@@ -2877,6 +2912,18 @@ async function loadLibraryDetail(docId, force) {
     renderDetailPersonal(result.series);
     updateDetailControls();
     clearDetailMessages();
+
+    // Bloque de episodios (UI-S07): se prepara al abrir la ficha y no
+    // en cada recarga de «Actualizar datos».
+    if (episodeState.docId !== docId) {
+      initEpisodeBlock();
+    } else {
+      // Recarga de la misma ficha: las temporadas disponibles se
+      // recalculan por si el documento trae otros capítulos (D-S14).
+      episodeState.seasons = collectSeasonNumbers(detailState.series);
+      renderSeasonOptions();
+    }
+
     return true;
   } catch (error) {
     // Si hay datos previos se muestran con un aviso en español
@@ -2934,6 +2981,10 @@ async function loadCatalogDetail(tmdbId) {
     renderDetailPersonal(series);
     updateDetailControls();
     clearDetailMessages();
+
+    // Bloque de episodios en modo consulta (UI-S07).
+    initEpisodeBlock();
+
     return true;
   } catch (error) {
     const message = describeTmdbError(error);
@@ -2964,6 +3015,11 @@ function onSeriesDetailClosed() {
   detailState = createDetailState();
   clearDetailMessages();
   setMessage(dom?.messages?.error, "");
+
+  // El bloque de episodios y el diálogo de comentario se vacían
+  // (UI-S07, UI-S09).
+  resetEpisodeBlock();
+  closeEpisodeReview();
 
   // Los valores sin guardar se descartan: la próxima apertura vuelve
   // a mostrar los valores guardados (AC-S31).
@@ -3322,6 +3378,1257 @@ function onDetailSpoilerReveal() {
 function onDetailPersonalInput() {
   renderDetailSpoilerState();
   updateDetailDirtyWarning();
+}
+
+// -------------------------------------------------------------
+// Bloque de episodios (UI-S07, UI-S08, UI-S09, ALG-S03, ALG-S07,
+// ALG-S08, D-S14)
+// -------------------------------------------------------------
+
+/**
+ * Filtros de capítulos del bloque de episodios (UI-S07). Los valores
+ * coinciden con las opciones del esqueleto de `index.html`.
+ */
+const EPISODE_FILTERS = Object.freeze([
+  Object.freeze({ value: "all", label: "Todos los capítulos" }),
+  Object.freeze({ value: "favorites", label: "Solo favoritos" }),
+  Object.freeze({ value: "reviewed", label: "Con comentario" }),
+]);
+
+/** Error por defecto al cargar una temporada (UI-S07). */
+const EPISODES_ERROR_MESSAGE =
+  "No se pudo cargar la temporada. Inténtalo de nuevo.";
+
+/** Estado vacío: la temporada no tiene capítulos (UI-S07). */
+const EPISODES_EMPTY_MESSAGE = "Sin capítulos en esta temporada.";
+
+/** Estado vacío: el filtro activo no deja capítulos (AC-S21). */
+const EPISODES_FILTER_EMPTY_MESSAGE = "Sin capítulos con ese filtro.";
+
+/** Aviso de degradación de una serie sin metadatos de TMDB (D-S14). */
+const EPISODES_MANUAL_MESSAGE =
+  "Esta serie no tiene datos de TMDB: solo se muestran los capítulos registrados.";
+
+/** Imagen de reserva de las filas de capítulo (API-S08). */
+const STILL_PLACEHOLDER =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+/**
+ * @typedef {Object} EpisodeRowModel
+ * @property {string} key Clave del episodio (`S01E02`, ALG-S03).
+ * @property {number} seasonNumber Número de temporada.
+ * @property {number} episodeNumber Número de episodio.
+ * @property {string} label Etiqueta visible («T1E2»).
+ * @property {string} name Título del capítulo.
+ * @property {string} overview Sinopsis breve.
+ * @property {string|null} stillPath Ruta del still en TMDB.
+ * @property {number|null} tmdbRating Nota del capítulo en TMDB.
+ * @property {boolean} watched Episodio visto.
+ * @property {boolean} isFavorite Episodio favorito.
+ * @property {number|null} userRating Nota personal (0–10).
+ * @property {string} userReview Comentario del usuario.
+ * @property {boolean} hasSpoilers El comentario contiene spoilers.
+ */
+
+/**
+ * @typedef {Object} EpisodeState
+ * @property {string|null} docId Id del documento de la serie.
+ * @property {number|null} tmdbId Id de TMDB (`null` si es manual).
+ * @property {number} season Temporada mostrada.
+ * @property {string} filter Filtro activo («all», «favorites»,
+ *   «reviewed»).
+ * @property {number[]} seasons Temporadas disponibles.
+ * @property {Record<string, unknown>|null} seasonDetail Temporada de
+ *   TMDB en curso (`null` si no hay datos de TMDB).
+ * @property {Map<string, Record<string, unknown>>} docs Documentos
+ *   personales de episodio, indexados por clave.
+ * @property {EpisodeRowModel[]} rows Filas de la temporada actual.
+ * @property {boolean} busy `true` mientras hay una escritura.
+ * @property {string} error Mensaje de error de carga.
+ * @property {Set<string>} revealed Claves de capítulos con el
+ *   comentario revelado.
+ */
+
+/**
+ * Crea el estado del bloque de episodios.
+ *
+ * @returns {EpisodeState}
+ */
+function createEpisodeState() {
+  return {
+    docId: null,
+    tmdbId: null,
+    season: 1,
+    filter: "all",
+    seasons: [],
+    seasonDetail: null,
+    docs: new Map(),
+    rows: [],
+    busy: false,
+    error: "",
+    revealed: new Set(),
+  };
+}
+
+/** Estado vivo del bloque de episodios. */
+let episodeState = createEpisodeState();
+
+/** Suscriptor de los documentos de episodio de la serie abierta. */
+let episodesUnsubscribe = null;
+
+/**
+ * Estado del diálogo de comentario de capítulo (UI-S09).
+ *
+ * @type {{ key: string|null, seasonNumber: number, episodeNumber: number, name: string, trigger: HTMLElement|null }}
+ */
+let episodeReviewState = {
+  key: null,
+  seasonNumber: 1,
+  episodeNumber: 1,
+  name: "",
+  trigger: null,
+};
+
+/**
+ * Normaliza el número de temporada (siempre ≥ 1).
+ *
+ * @param {unknown} value
+ * @returns {number}
+ */
+function normalizeSeasonNumber(value) {
+  const season = Number(value);
+  return Number.isInteger(season) && season >= 1 ? season : 1;
+}
+
+/**
+ * Temporadas disponibles: las de TMDB, las del contador de la serie,
+ * las de los documentos de episodio y la temporada actual (ALG-S07).
+ *
+ * @param {Record<string, unknown>|null} series
+ * @returns {number[]}
+ */
+function collectSeasonNumbers(series) {
+  const found = new Set();
+
+  const seasons = Array.isArray(series?.seasons) ? series.seasons : [];
+  for (const item of seasons) {
+    const number = Number(item?.seasonNumber);
+    if (Number.isInteger(number) && number >= 1) found.add(number);
+  }
+
+  const total = Number(series?.numberOfSeasons);
+  if (Number.isInteger(total) && total >= 1) {
+    for (let number = 1; number <= Math.min(total, 99); number += 1) {
+      found.add(number);
+    }
+  }
+
+  for (const doc of episodeState.docs.values()) {
+    const number = Number(doc?.seasonNumber);
+    if (Number.isInteger(number) && number >= 1) found.add(number);
+  }
+
+  const current = Number(series?.currentSeason);
+  if (Number.isInteger(current) && current >= 1) found.add(current);
+
+  return [...found].sort((a, b) => a - b);
+}
+
+/**
+ * Etiqueta de una temporada en el selector («Temporada 1: La casa»).
+ *
+ * @param {Record<string, unknown>|null} series
+ * @param {number} seasonNumber
+ * @returns {string}
+ */
+function seasonLabel(series, seasonNumber) {
+  const seasons = Array.isArray(series?.seasons) ? series.seasons : [];
+
+  for (const item of seasons) {
+    if (Number(item?.seasonNumber) !== seasonNumber) continue;
+    const name = typeof item?.name === "string" ? item.name.trim() : "";
+    return name === ""
+      ? `Temporada ${seasonNumber}`
+      : `Temporada ${seasonNumber}: ${name}`;
+  }
+
+  return `Temporada ${seasonNumber}`;
+}
+
+/**
+ * Pinta las opciones del selector de temporada (UI-S07).
+ */
+function renderSeasonOptions() {
+  const select = dom?.detail?.season;
+  if (!(select instanceof HTMLSelectElement)) return;
+
+  clearNode(select);
+
+  const seasons =
+    episodeState.seasons.length > 0 ? episodeState.seasons : [episodeState.season];
+
+  for (const number of seasons) {
+    const option = document.createElement("option");
+    option.value = String(number);
+    option.textContent = seasonLabel(detailState.series, number);
+    select.append(option);
+  }
+
+  select.value = String(episodeState.season);
+}
+
+/**
+ * Traduce un error de carga de temporada (ALG-S05): el 404 de una
+ * temporada tiene su propio mensaje en español.
+ *
+ * @param {unknown} error
+ * @returns {string}
+ */
+function describeSeasonError(error) {
+  const code =
+    error && typeof error === "object" && typeof error.code === "string"
+      ? error.code
+      : "";
+
+  if (code === "HTTP_404") return "Temporada no encontrada en TMDB.";
+
+  return describeTmdbError(error);
+}
+
+/**
+ * Muestra el error del bloque de episodios (`role="alert"`).
+ *
+ * @param {string} message
+ */
+function showEpisodesError(message) {
+  const node = dom?.detail?.episodesError;
+  if (!node) return;
+
+  const text = typeof message === "string" ? message.trim() : "";
+  setText(node, text === "" ? EPISODES_ERROR_MESSAGE : text);
+  setVisible(node, true);
+}
+
+/**
+ * Fusiona los metadatos de TMDB con los documentos personales de la
+ * temporada (ALG-S07). Lo personal manda: el documento del episodio es
+ * la fuente de verdad de visto, favorito, nota y comentario.
+ */
+function buildEpisodeRows() {
+  const season = episodeState.season;
+  const detail = episodeState.seasonDetail;
+  const tmdbEpisodes = Array.isArray(detail?.episodes) ? detail.episodes : [];
+
+  /** @type {Map<number, EpisodeRowModel>} */
+  const byNumber = new Map();
+
+  for (const item of tmdbEpisodes) {
+    const number = Number(item?.episodeNumber);
+    if (!Number.isInteger(number) || number < 1) continue;
+
+    byNumber.set(number, {
+      key: episodeKey(season, number),
+      seasonNumber: season,
+      episodeNumber: number,
+      label: `T${season}E${number}`,
+      name: typeof item?.name === "string" ? item.name : "",
+      overview: typeof item?.overview === "string" ? item.overview : "",
+      stillPath: typeof item?.stillPath === "string" ? item.stillPath : null,
+      tmdbRating:
+        typeof item?.voteAverage === "number" && Number.isFinite(item.voteAverage)
+          ? item.voteAverage
+          : null,
+      watched: false,
+      isFavorite: false,
+      userRating: null,
+      userReview: "",
+      hasSpoilers: false,
+    });
+  }
+
+  for (const doc of episodeState.docs.values()) {
+    if (Number(doc?.seasonNumber) !== season) continue;
+
+    const number = Number(doc?.episodeNumber);
+    if (!Number.isInteger(number) || number < 1) continue;
+
+    const key = episodeKey(season, number);
+    const base =
+      byNumber.get(number) ??
+      /** @type {EpisodeRowModel} */ ({
+        key,
+        seasonNumber: season,
+        episodeNumber: number,
+        label: `T${season}E${number}`,
+        name: "",
+        overview: "",
+        stillPath: null,
+        tmdbRating: null,
+        watched: false,
+        isFavorite: false,
+        userRating: null,
+        userReview: "",
+        hasSpoilers: false,
+      });
+
+    const docName = typeof doc?.episodeName === "string" ? doc.episodeName : "";
+
+    byNumber.set(number, {
+      ...base,
+      name: base.name !== "" ? base.name : docName,
+      watched: doc?.watched === true,
+      isFavorite: doc?.isFavorite === true,
+      userRating:
+        typeof doc?.userRating === "number" && Number.isFinite(doc.userRating)
+          ? doc.userRating
+          : null,
+      userReview: typeof doc?.userReview === "string" ? doc.userReview : "",
+      hasSpoilers: doc?.hasSpoilers === true,
+    });
+  }
+
+  episodeState.rows = [...byNumber.values()].sort(
+    (a, b) => a.episodeNumber - b.episodeNumber
+  );
+}
+
+/**
+ * Filas que superan el filtro activo (UI-S07, AC-S21).
+ *
+ * @returns {EpisodeRowModel[]}
+ */
+function filteredEpisodeRows() {
+  const filter = episodeState.filter;
+
+  if (filter === "favorites") {
+    return episodeState.rows.filter((row) => row.isFavorite);
+  }
+
+  if (filter === "reviewed") {
+    return episodeState.rows.filter((row) => row.userReview.trim() !== "");
+  }
+
+  return episodeState.rows;
+}
+
+/**
+ * recuerda el foco dentro de una fila para devolverlo tras el
+ * repintado (UI-S13, NFR-S02).
+ *
+ * @returns {{ key: string, role: string }|null}
+ */
+function captureEpisodeFocus() {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return null;
+
+  const key = active.getAttribute("data-episode-key");
+  const role = active.getAttribute("data-episode-role");
+  if (!key || !role) return null;
+
+  return { key, role };
+}
+
+/**
+ * Devuelve el foco al control equivalente tras el repintado.
+ *
+ * @param {{ key: string, role: string }|null} focus
+ */
+function restoreEpisodeFocus(focus) {
+  if (!focus) return;
+
+  const container = dom?.detail?.episodes;
+  if (!container) return;
+
+  const target = container.querySelector(
+    `[data-episode-key="${focus.key}"][data-episode-role="${focus.role}"]`
+  );
+  if (target instanceof HTMLElement) target.focus();
+}
+
+/**
+ * Crea una fila de capítulo (UI-S08, AC-S17).
+ *
+ * @param {EpisodeRowModel} model
+ * @returns {HTMLElement}
+ */
+function createEpisodeRow(model) {
+  const template = dom?.templates?.episodeRow;
+  const fragment = template?.content?.cloneNode(true) ?? null;
+  const row = fragment?.querySelector('[data-series-role="episode"]') ?? null;
+
+  if (!(row instanceof HTMLElement)) {
+    const fallback = document.createElement("article");
+    fallback.className = "episode-row";
+    return fallback;
+  }
+
+  const suffix = safeIdPart(model.key);
+  const query = (role) => row.querySelector(`[data-series-role="${role}"]`);
+
+  const still = query("still");
+  const label = query("label");
+  const name = query("name");
+  const tmdbRating = query("tmdb-rating");
+  const overview = query("overview");
+  const watched = query("watched");
+  const favorite = query("favorite");
+  const rating = query("rating");
+  const review = query("review");
+  const indicator = query("indicator");
+  const spoilerWarning = query("spoiler-warning");
+  const spoilerReveal = query("spoiler-reveal");
+
+  // Ids únicos por fila: nunca se repiten dentro del documento
+  // (REQ-C2, UI-S08).
+  if (still instanceof HTMLElement) still.id = `episode-row-still-${suffix}`;
+  if (label instanceof HTMLElement) label.id = `episode-row-label-${suffix}`;
+  if (name instanceof HTMLElement) name.id = `episode-row-name-${suffix}`;
+  if (tmdbRating instanceof HTMLElement) {
+    tmdbRating.id = `episode-row-tmdb-rating-${suffix}`;
+  }
+  if (overview instanceof HTMLElement) {
+    overview.id = `episode-row-overview-${suffix}`;
+  }
+  if (watched instanceof HTMLInputElement) watched.id = `episode-row-watched-${suffix}`;
+  if (favorite instanceof HTMLButtonElement) {
+    favorite.id = `episode-row-favorite-${suffix}`;
+  }
+  if (rating instanceof HTMLInputElement) rating.id = `episode-row-rating-${suffix}`;
+  if (review instanceof HTMLButtonElement) {
+    review.id = `episode-row-review-btn-${suffix}`;
+  }
+  if (indicator instanceof HTMLElement) {
+    indicator.id = `episode-row-indicator-${suffix}`;
+  }
+  if (spoilerWarning instanceof HTMLElement) {
+    spoilerWarning.id = `episode-row-spoiler-warning-${suffix}`;
+  }
+
+  const editable = Boolean(episodeState.docId);
+
+  // Número y título (AC-S17).
+  setText(label, model.label);
+  setText(name, model.name === "" ? "Capítulo sin título" : model.name);
+
+  // Sinopsis breve.
+  setText(overview, model.overview);
+  setVisible(overview, model.overview !== "");
+
+  // Nota del capítulo en TMDB, junto a la personal (UI-S08).
+  const ratingText = formatRating(model.tmdbRating);
+  setText(tmdbRating, ratingText === null ? "" : `TMDB ${ratingText}`);
+  setVisible(tmdbRating, ratingText !== null);
+
+  // Imagen del capítulo (`w300`, API-S08).
+  if (still instanceof HTMLImageElement) {
+    const url = stillUrl(model.stillPath, "w300");
+    still.src = url ?? STILL_PLACEHOLDER;
+    still.alt = url ? `Imagen de ${model.label}` : "";
+  }
+
+  // Visto (etiqueta persistente «Visto»).
+  if (watched instanceof HTMLInputElement) {
+    watched.checked = model.watched;
+    watched.disabled = !editable;
+    watched.setAttribute("aria-label", `${model.label} · Visto`);
+    watched.dataset.episodeKey = model.key;
+    watched.dataset.episodeRole = "watched";
+  }
+
+  // Favorito del capítulo (`aria-pressed`).
+  if (favorite instanceof HTMLButtonElement) {
+    favorite.setAttribute("aria-pressed", model.isFavorite ? "true" : "false");
+    favorite.disabled = !editable;
+    favorite.setAttribute(
+      "aria-label",
+      model.isFavorite
+        ? `Quitar ${model.label} de favoritos`
+        : `Marcar ${model.label} como favorito`
+    );
+    favorite.dataset.episodeKey = model.key;
+    favorite.dataset.episodeRole = "favorite";
+  }
+
+  // Nota personal (0–10 con paso 0,5, ALG-S04).
+  if (rating instanceof HTMLInputElement) {
+    // Texto (no número) para admitir la coma decimal es-ES («7,5»).
+    rating.type = "text";
+    rating.setAttribute("inputmode", "decimal");
+    // La nota se muestra en formato es-ES («7,5»), igual que el resto
+    // de notas de la vista.
+    const personalRatingText = formatRating(model.userRating);
+    rating.value = personalRatingText === null ? "" : personalRatingText;
+    rating.disabled = !editable;
+    rating.setAttribute(
+      "aria-label",
+      `Nota de ${model.label} (0-10, medios puntos)`
+    );
+    rating.dataset.episodeKey = model.key;
+    rating.dataset.episodeRole = "rating";
+  }
+
+  // Botón de comentario (UI-S09).
+  if (review instanceof HTMLButtonElement) {
+    review.disabled = !editable;
+    review.setAttribute("aria-label", `Comentario de ${model.label}`);
+    review.dataset.episodeKey = model.key;
+    review.dataset.episodeRole = "review";
+  }
+
+  // Indicador visual: el capítulo tiene comentario o es favorito
+  // (AC-S17).
+  if (indicator instanceof HTMLElement) {
+    const hasComment = model.userReview.trim() !== "";
+    indicator.hidden = !(hasComment || model.isFavorite);
+    indicator.title = hasComment ? "Tiene comentario" : "Capítulo favorito";
+  }
+
+  // Comentario del capítulo y aviso de spoilers (UI-S08).
+  const main = row.querySelector(".episode-row__main");
+  if (main instanceof HTMLElement) {
+    const comment = document.createElement("p");
+    comment.className = "episode-row__comment";
+    comment.id = `episode-row-comment-${suffix}`;
+    comment.dataset.episodeKey = model.key;
+    comment.dataset.episodeRole = "comment";
+    comment.textContent = model.userReview;
+    main.append(comment);
+
+    const hasComment = model.userReview.trim() !== "";
+    const revealed = episodeState.revealed.has(model.key);
+    const spoiler = model.hasSpoilers && hasComment && !revealed;
+
+    comment.hidden = spoiler || !hasComment;
+    setVisible(spoilerWarning, spoiler);
+  }
+
+  if (spoilerReveal instanceof HTMLButtonElement) {
+    spoilerReveal.setAttribute("aria-label", `Mostrar comentario de ${model.label}`);
+    spoilerReveal.dataset.episodeKey = model.key;
+    spoilerReveal.dataset.episodeRole = "spoiler-reveal";
+    spoilerReveal.addEventListener("click", () => {
+      episodeState.revealed.add(model.key);
+      renderEpisodeRows();
+    });
+  }
+
+  // --- Acciones de la fila (con escuchas directas: las filas no
+  // --- usan la delegación de clics de la sección, UI-S13). -------
+  watched?.addEventListener("change", () => {
+    void handleEpisodeWatched(model, watched.checked);
+  });
+
+  favorite?.addEventListener("click", () => {
+    void handleEpisodeFavorite(model);
+  });
+
+  rating?.addEventListener("change", () => {
+    void handleEpisodeRating(model, rating.value);
+  });
+
+  review?.addEventListener("click", () => {
+    openEpisodeReview(model, review);
+  });
+
+  // La fila no usa la delegación de `data-series-role` de la sección:
+  // los atributos se retiran para que ningún clic llegue al
+  // delegador de las tarjetas.
+  row.removeAttribute("data-series-role");
+  for (const node of row.querySelectorAll("[data-series-role]")) {
+    node.removeAttribute("data-series-role");
+  }
+
+  return row;
+}
+
+/**
+ * Pinta la lista de capítulos de la temporada con sus estados vacío y
+ * de error (UI-S07, AC-S21).
+ */
+function renderEpisodeRows() {
+  const d = dom?.detail;
+  const container = d?.episodes;
+  if (!container) return;
+
+  const focus = captureEpisodeFocus();
+
+  clearNode(container);
+
+  const rows = filteredEpisodeRows();
+  const hasEpisodes = episodeState.rows.length > 0;
+  const error = episodeState.error;
+
+  if (rows.length === 0) {
+    const message = error
+      ? ""
+      : hasEpisodes
+        ? EPISODES_FILTER_EMPTY_MESSAGE
+        : EPISODES_EMPTY_MESSAGE;
+    setText(d.episodesEmpty, message);
+    setVisible(d.episodesEmpty, message !== "");
+  } else {
+    setVisible(d.episodesEmpty, false);
+    for (const row of rows) container.append(createEpisodeRow(row));
+  }
+
+  if (error) {
+    showEpisodesError(error);
+  } else {
+    setVisible(d.episodesError, false);
+  }
+
+  restoreEpisodeFocus(focus);
+}
+
+/**
+ * Carga la temporada seleccionada (ALG-S07). La caché de sesión vive
+ * en `tmdbTvClient.js` (`{seriesId}:{seasonNumber}`): dentro de la
+ * misma sesión no se repite la petición.
+ *
+ * @param {number} seasonNumber
+ * @returns {Promise<void>}
+ */
+async function loadEpisodeSeason(seasonNumber) {
+  const season = normalizeSeasonNumber(seasonNumber);
+  episodeState.season = season;
+  episodeState.error = "";
+
+  const tmdbId = episodeState.tmdbId;
+
+  // Serie manual: degradación sin ninguna llamada a TMDB (D-S14).
+  if (tmdbId === null) {
+    episodeState.seasonDetail = null;
+    buildEpisodeRows();
+    renderEpisodeRows();
+    return;
+  }
+
+  if (!isTmdbConfigured()) {
+    episodeState.seasonDetail = null;
+    episodeState.error = TMDB_ERROR_MESSAGES.NO_API_KEY;
+    buildEpisodeRows();
+    renderEpisodeRows();
+    return;
+  }
+
+  try {
+    const detail = await getSeasonDetail(tmdbId, season);
+    if (episodeState.season !== season) return;
+
+    episodeState.seasonDetail = detail;
+    episodeState.error = "";
+    buildEpisodeRows();
+    renderEpisodeRows();
+  } catch (error) {
+    if (episodeState.season !== season) return;
+
+    episodeState.seasonDetail = null;
+    episodeState.error = describeSeasonError(error);
+    buildEpisodeRows();
+    renderEpisodeRows();
+  }
+}
+
+/**
+ * Suscribe los documentos de episodio de la serie abierta: lo
+ * personal es la fuente de verdad de cada fila (ALG-S07).
+ *
+ * @param {string} docId
+ */
+function subscribeSeriesEpisodes(docId) {
+  stopEpisodesSubscription();
+
+  try {
+    episodesUnsubscribe = subscribeEpisodes(
+      docId,
+      (docs) => {
+        if (episodeState.docId !== docId) return;
+
+        const map = new Map();
+        for (const doc of docs ?? []) {
+          const key =
+            typeof doc?.episodeKey === "string"
+              ? doc.episodeKey
+              : typeof doc?.id === "string"
+                ? doc.id
+                : "";
+          if (key === "") continue;
+          map.set(key, doc);
+        }
+
+        episodeState.docs = map;
+
+        // Las temporadas disponibles se recalculan: una serie manual
+        // (`numberOfSeasons:null`) puede tener capítulos registrados
+        // en otras temporadas (D-S14, ALG-S07).
+        const seasons = collectSeasonNumbers(detailState.series);
+        const changed =
+          seasons.length !== episodeState.seasons.length ||
+          seasons.some((number, index) => number !== episodeState.seasons[index]);
+        if (changed) {
+          episodeState.seasons = seasons;
+          renderSeasonOptions();
+        }
+
+        buildEpisodeRows();
+        renderEpisodeRows();
+      },
+      (error) => {
+        showDetailError(describeRepositoryError(error));
+      }
+    );
+  } catch (error) {
+    episodesUnsubscribe = null;
+    showDetailError(describeRepositoryError(error));
+  }
+}
+
+/**
+ * Cancela la suscripción de episodios.
+ */
+function stopEpisodesSubscription() {
+  if (typeof episodesUnsubscribe === "function") {
+    try {
+      episodesUnsubscribe();
+    } catch {
+      // Una baja fallida no debe impedir el desmontaje.
+    }
+  }
+  episodesUnsubscribe = null;
+}
+
+/**
+ * Prepara el bloque de episodios al abrir la ficha (UI-S07).
+ */
+function initEpisodeBlock() {
+  stopEpisodesSubscription();
+
+  episodeState = createEpisodeState();
+  episodeState.docId = detailState.docId;
+
+  const tmdbId = Number(detailState.tmdbId);
+  episodeState.tmdbId =
+    Number.isInteger(tmdbId) && tmdbId > 0 ? tmdbId : null;
+
+  episodeState.season = normalizeSeasonNumber(detailState.series?.currentSeason);
+
+  if (episodeState.docId) {
+    subscribeSeriesEpisodes(episodeState.docId);
+  }
+
+  episodeState.seasons = collectSeasonNumbers(detailState.series);
+  renderSeasonOptions();
+  updateEpisodeControls();
+
+  // Serie manual: solo los capítulos registrados (D-S14).
+  if (episodeState.tmdbId === null) {
+    episodeState.seasons = collectSeasonNumbers(detailState.series);
+    renderSeasonOptions();
+    buildEpisodeRows();
+    renderEpisodeRows();
+    if (detailState.inLibrary) showDetailStatus(EPISODES_MANUAL_MESSAGE);
+    return;
+  }
+
+  void loadEpisodeSeason(episodeState.season);
+}
+
+/**
+ * Vacía el bloque de episodios (apertura y cierre de la ficha).
+ */
+function resetEpisodeBlock() {
+  stopEpisodesSubscription();
+  episodeState = createEpisodeState();
+
+  const d = dom?.detail;
+  clearNode(d?.episodes);
+  setVisible(d?.episodesEmpty, false);
+  setVisible(d?.episodesError, false);
+  if (d?.season instanceof HTMLSelectElement) clearNode(d.season);
+  if (d?.episodesFilter instanceof HTMLSelectElement) {
+    d.episodesFilter.value = "all";
+  }
+}
+
+/**
+ * Habilita o deshabilita los controles del bloque de episodios según
+ * el contexto (biblioteca o catálogo) y la escritura en curso.
+ */
+function updateEpisodeControls() {
+  const d = dom?.detail;
+  if (!d) return;
+
+  const editable =
+    detailState.inLibrary &&
+    Boolean(detailState.docId) &&
+    !detailState.busy &&
+    !episodeState.busy;
+
+  if (d.seasonWatch instanceof HTMLButtonElement) d.seasonWatch.disabled = !editable;
+  if (d.seasonUnwatch instanceof HTMLButtonElement) {
+    d.seasonUnwatch.disabled = !editable;
+  }
+  if (d.season instanceof HTMLSelectElement) d.season.disabled = episodeState.busy;
+}
+
+/**
+ * Marca el bloque de episodios como ocupado durante una escritura.
+ *
+ * @param {boolean} busy
+ */
+function setEpisodesBusy(busy) {
+  episodeState.busy = busy;
+  updateEpisodeControls();
+}
+
+/**
+ * Aplica el resultado de una escritura de episodio: actualiza el
+ * documento personal en memoria y los contadores del padre (DB-S04,
+ * ALG-S08).
+ *
+ * @param {Record<string, unknown>|null} result
+ * @param {string|null} key Clave del capítulo (`null` en el lote).
+ * @param {Record<string, unknown>} patch Campos del capítulo.
+ */
+function applyEpisodeResult(result, key, patch) {
+  if (key !== null && key !== undefined) {
+    const current = episodeState.docs.get(key);
+    const seasonNumber = Number(patch?.seasonNumber ?? current?.seasonNumber ?? 1);
+    const episodeNumber = Number(patch?.episodeNumber ?? current?.episodeNumber ?? 1);
+
+    episodeState.docs.set(key, {
+      episodeKey: key,
+      seasonNumber,
+      episodeNumber,
+      episodeName: typeof current?.episodeName === "string" ? current.episodeName : "",
+      watched: current?.watched === true,
+      isFavorite: current?.isFavorite === true,
+      userRating: typeof current?.userRating === "number" ? current.userRating : null,
+      userReview: typeof current?.userReview === "string" ? current.userReview : "",
+      hasSpoilers: current?.hasSpoilers === true,
+      ...patch,
+    });
+  }
+
+  if (result && typeof result === "object" && detailState.series) {
+    detailState.series = {
+      ...detailState.series,
+      watchedEpisodesCount:
+        typeof result.watchedEpisodesCount === "number"
+          ? result.watchedEpisodesCount
+          : detailState.series.watchedEpisodesCount,
+      favoriteEpisodesCount:
+        typeof result.favoriteEpisodesCount === "number"
+          ? result.favoriteEpisodesCount
+          : detailState.series.favoriteEpisodesCount,
+      currentSeason:
+        typeof result.currentSeason === "number"
+          ? result.currentSeason
+          : detailState.series.currentSeason,
+      currentEpisode:
+        typeof result.currentEpisode === "number"
+          ? result.currentEpisode
+          : detailState.series.currentEpisode,
+      status:
+        typeof result.status === "string" ? result.status : detailState.series.status,
+    };
+
+    renderDetailTracking(detailState.series);
+
+    // La biblioteca en memoria y las estadísticas se actualizan con el
+    // mismo resultado (AC-S19).
+    if (episodeState.docId) {
+      applyLocalEpisodeProgress(episodeState.docId, result);
+    }
+  }
+
+  buildEpisodeRows();
+  renderEpisodeRows();
+}
+
+/**
+ * Marca o desmarca un capítulo (ALG-S03, D-S09: se guarda de
+ * inmediato).
+ *
+ * @param {EpisodeRowModel} model
+ * @param {boolean} watched
+ */
+async function handleEpisodeWatched(model, watched) {
+  const docId = episodeState.docId;
+  if (!docId) return;
+
+  setEpisodesBusy(true);
+  try {
+    const result = watched
+      ? await setEpisodeWatched(docId, model.seasonNumber, model.episodeNumber, {
+          episodeName: model.name,
+        })
+      : await unmarkEpisode(docId, model.seasonNumber, model.episodeNumber);
+
+    applyEpisodeResult(result, model.key, { watched });
+    showDetailStatus(
+      watched ? "Episodio marcado como visto." : "Episodio desmarcado."
+    );
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeRepositoryError(error));
+  } finally {
+    setEpisodesBusy(false);
+  }
+}
+
+/**
+ * Alterna el favorito de un capítulo (AC-S19).
+ *
+ * @param {EpisodeRowModel} model
+ */
+async function handleEpisodeFavorite(model) {
+  const docId = episodeState.docId;
+  if (!docId) return;
+
+  const next = !model.isFavorite;
+
+  setEpisodesBusy(true);
+  try {
+    const result = await setEpisodeFavorite(
+      docId,
+      model.seasonNumber,
+      model.episodeNumber,
+      next
+    );
+
+    applyEpisodeResult(result, model.key, { isFavorite: next });
+    showDetailStatus(
+      next ? "Capítulo marcado como favorito." : "Capítulo retirado de favoritos."
+    );
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeRepositoryError(error));
+  } finally {
+    setEpisodesBusy(false);
+  }
+}
+
+/**
+ * Guarda la nota personal de un capítulo (ALG-S04, D-S09).
+ *
+ * @param {EpisodeRowModel} model
+ * @param {string} rawValue Texto escrito en el campo de nota.
+ */
+async function handleEpisodeRating(model, rawValue) {
+  const docId = episodeState.docId;
+  if (!docId) return;
+
+  let value = null;
+  try {
+    value = parseUserRating(typeof rawValue === "string" ? rawValue.trim() : "");
+  } catch (error) {
+    showDetailError(
+      error instanceof UserRatingError ? error.message : USER_RATING_ERROR_MESSAGE
+    );
+    return;
+  }
+
+  setEpisodesBusy(true);
+  try {
+    const result = await updateEpisodePersonal(
+      docId,
+      model.seasonNumber,
+      model.episodeNumber,
+      { userRating: value }
+    );
+
+    applyEpisodeResult(result, model.key, { userRating: value });
+    showDetailStatus(
+      value === null ? "Nota del capítulo eliminada." : "Nota del capítulo guardada."
+    );
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeRepositoryError(error));
+  } finally {
+    setEpisodesBusy(false);
+  }
+}
+
+/**
+ * Marcado masivo de temporada: un único lote (`markSeason`) con los
+ * upserts de episodio y la actualización del padre (ALG-S08, AC-S20).
+ */
+async function handleSeasonWatch() {
+  const docId = episodeState.docId;
+  if (!docId) return;
+
+  const rows = episodeState.rows;
+  if (rows.length === 0) {
+    showDetailError("No hay capítulos que marcar en esta temporada.");
+    return;
+  }
+
+  const episodes = rows.map((row) => ({
+    episodeNumber: row.episodeNumber,
+    name: row.name,
+  }));
+  const seasonLengths = { [episodeState.season]: rows.length };
+
+  setEpisodesBusy(true);
+  try {
+    const result = await markSeason(docId, episodeState.season, episodes, {
+      seasonLengths,
+    });
+
+    for (const row of rows) {
+      const current = episodeState.docs.get(row.key);
+      // Todos los capítulos de la temporada se actualizan en memoria,
+      // también los que aún no tenían documento: el marcado masivo
+      // los crea en Firestore (ALG-S08).
+      episodeState.docs.set(row.key, {
+        episodeKey: row.key,
+        seasonNumber: row.seasonNumber,
+        episodeNumber: row.episodeNumber,
+        episodeName: row.name,
+        watched: true,
+        isFavorite: current?.isFavorite === true,
+        userRating: typeof current?.userRating === "number" ? current.userRating : null,
+        userReview: typeof current?.userReview === "string" ? current.userReview : "",
+        hasSpoilers: current?.hasSpoilers === true,
+      });
+    }
+
+    applyEpisodeResult(result, null, {});
+    showDetailStatus("Temporada marcada como vista.");
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeRepositoryError(error));
+  } finally {
+    setEpisodesBusy(false);
+  }
+}
+
+/**
+ * Desmarcado masivo de temporada: un único lote (`unmarkSeason`) que
+ * conserva favoritos, notas y comentarios (ALG-S08, AC-S20).
+ */
+async function handleSeasonUnwatch() {
+  const docId = episodeState.docId;
+  if (!docId) return;
+
+  const rows = episodeState.rows;
+  if (rows.length === 0) {
+    showDetailError("No hay capítulos que desmarcar en esta temporada.");
+    return;
+  }
+
+  const episodes = rows.map((row) => ({
+    episodeNumber: row.episodeNumber,
+    name: row.name,
+  }));
+  const seasonLengths = { [episodeState.season]: rows.length };
+
+  setEpisodesBusy(true);
+  try {
+    const result = await unmarkSeason(docId, episodeState.season, episodes, {
+      seasonLengths,
+    });
+
+    for (const row of rows) {
+      const current = episodeState.docs.get(row.key);
+      if (!current) continue;
+      episodeState.docs.set(row.key, { ...current, watched: false });
+    }
+
+    applyEpisodeResult(result, null, {});
+    showDetailStatus("Temporada desmarcada.");
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeRepositoryError(error));
+  } finally {
+    setEpisodesBusy(false);
+  }
+}
+
+/**
+ * Cambio de temporada: carga perezosa de la temporada (ALG-S07).
+ */
+function onEpisodeSeasonChange() {
+  const select = dom?.detail?.season;
+  if (!(select instanceof HTMLSelectElement)) return;
+
+  const season = normalizeSeasonNumber(select.value);
+  episodeState.season = season;
+
+  if (episodeState.tmdbId === null) {
+    // Serie manual: no hay llamada a TMDB (D-S14).
+    episodeState.seasonDetail = null;
+    buildEpisodeRows();
+    renderEpisodeRows();
+    return;
+  }
+
+  void loadEpisodeSeason(season);
+}
+
+/**
+ * Cambio del filtro de capítulos (UI-S07, AC-S21).
+ */
+function onEpisodeFilterChange() {
+  const select = dom?.detail?.episodesFilter;
+  if (!(select instanceof HTMLSelectElement)) return;
+
+  const value = select.value;
+  episodeState.filter = EPISODE_FILTERS.some((item) => item.value === value)
+    ? value
+    : "all";
+
+  renderEpisodeRows();
+}
+
+// -------------------------------------------------------------
+// Diálogo de comentario de capítulo (UI-S09, AC-S18)
+// -------------------------------------------------------------
+
+/**
+ * Abre el diálogo de comentario de un capítulo (UI-S09).
+ *
+ * @param {EpisodeRowModel} model
+ * @param {HTMLElement|null} trigger
+ */
+function openEpisodeReview(model, trigger) {
+  const d = dom?.episodeReview;
+  if (!d?.dialog) return;
+
+  episodeReviewState = {
+    key: model.key,
+    seasonNumber: model.seasonNumber,
+    episodeNumber: model.episodeNumber,
+    name: model.name,
+    trigger: trigger ?? null,
+  };
+
+  setText(
+    d.title,
+    model.name === "" ? model.label : `${model.label} · ${model.name}`
+  );
+  if (d.text instanceof HTMLTextAreaElement) d.text.value = model.userReview;
+  if (d.spoilers instanceof HTMLInputElement) d.spoilers.checked = model.hasSpoilers;
+
+  if (!d.dialog.open) {
+    try {
+      d.dialog.showModal();
+    } catch {
+      // Navegador sin diálogo modal: se abre igualmente.
+      d.dialog.setAttribute("open", "");
+    }
+  }
+
+  // Foco inicial en el título del diálogo (UI-S13, NFR-S02).
+  d.title?.focus?.();
+}
+
+/**
+ * Vacía el formulario del diálogo de comentario.
+ */
+function resetEpisodeReviewForm() {
+  const d = dom?.episodeReview;
+  if (!d) return;
+
+  if (d.text instanceof HTMLTextAreaElement) d.text.value = "";
+  if (d.spoilers instanceof HTMLInputElement) d.spoilers.checked = false;
+}
+
+/**
+ * Cierra el diálogo de comentario.
+ */
+function closeEpisodeReview() {
+  const dialog = dom?.episodeReview?.dialog;
+  if (dialog?.open) {
+    dialog.close();
+    return;
+  }
+  resetEpisodeReviewForm();
+}
+
+/**
+ * Al cerrarse el diálogo: lo tecleado se descarta y el foco vuelve al
+ * botón «Comentario» que lo abrió (UI-S09, UI-S13).
+ */
+function onEpisodeReviewClosed() {
+  const trigger = episodeReviewState.trigger;
+
+  resetEpisodeReviewForm();
+  episodeReviewState = {
+    key: null,
+    seasonNumber: 1,
+    episodeNumber: 1,
+    name: "",
+    trigger: null,
+  };
+
+  if (trigger && trigger.isConnected && typeof trigger.focus === "function") {
+    trigger.focus();
+  }
+}
+
+/**
+ * «Guardar»: el comentario se persiste de inmediato (UI-S09, D-S09).
+ */
+async function saveEpisodeReview() {
+  const d = dom?.episodeReview;
+  const docId = episodeState.docId;
+  const key = episodeReviewState.key;
+  if (!d || !docId || key === null) return;
+
+  const text = d.text instanceof HTMLTextAreaElement ? d.text.value.trim() : "";
+  const hasSpoilers =
+    d.spoilers instanceof HTMLInputElement ? d.spoilers.checked : false;
+
+  setEpisodesBusy(true);
+  try {
+    const result = await updateEpisodePersonal(
+      docId,
+      episodeReviewState.seasonNumber,
+      episodeReviewState.episodeNumber,
+      { userReview: text, hasSpoilers }
+    );
+
+    applyEpisodeResult(result, key, { userReview: text, hasSpoilers });
+    closeEpisodeReview();
+    showDetailStatus("Comentario guardado.");
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeRepositoryError(error));
+  } finally {
+    setEpisodesBusy(false);
+  }
+}
+
+/**
+ * «Eliminar comentario»: `userReview` queda a `""` y `hasSpoilers` a
+ * `false` (AC-S18).
+ */
+async function deleteEpisodeReview() {
+  const d = dom?.episodeReview;
+  const docId = episodeState.docId;
+  const key = episodeReviewState.key;
+  if (!d || !docId || key === null) return;
+
+  setEpisodesBusy(true);
+  try {
+    const result = await updateEpisodePersonal(
+      docId,
+      episodeReviewState.seasonNumber,
+      episodeReviewState.episodeNumber,
+      { userReview: "", hasSpoilers: false }
+    );
+
+    applyEpisodeResult(result, key, { userReview: "", hasSpoilers: false });
+    closeEpisodeReview();
+    showDetailStatus("Comentario eliminado.");
+    setMessage(dom?.messages?.error, "");
+  } catch (error) {
+    showDetailError(describeRepositoryError(error));
+  } finally {
+    setEpisodesBusy(false);
+  }
 }
 
 // -------------------------------------------------------------
@@ -3753,6 +5060,10 @@ function applyLocalEpisodeProgress(docId, result) {
       typeof result.watchedEpisodesCount === "number"
         ? result.watchedEpisodesCount
         : current.watchedEpisodesCount,
+    favoriteEpisodesCount:
+      typeof result.favoriteEpisodesCount === "number"
+        ? result.favoriteEpisodesCount
+        : current.favoriteEpisodesCount,
     currentSeason:
       typeof result.currentSeason === "number"
         ? result.currentSeason
@@ -4066,6 +5377,24 @@ function collectDom() {
       refresh: byId("series-detail-refresh"),
       remove: byId("series-detail-delete"),
       close: byId("series-detail-close"),
+      // Bloque de episodios (UI-S07).
+      season: byId("series-detail-season"),
+      seasonWatch: byId("series-detail-season-watch"),
+      seasonUnwatch: byId("series-detail-season-unwatch"),
+      episodesFilter: byId("series-detail-episodes-filter"),
+      episodes: byId("series-detail-episodes"),
+      episodesEmpty: byId("series-detail-episodes-empty"),
+      episodesError: byId("series-detail-episodes-error"),
+    },
+    // Diálogo de comentario de capítulo (UI-S09).
+    episodeReview: {
+      dialog: byId("series-episode-review"),
+      title: byId("series-episode-review-title"),
+      text: byId("series-episode-review-text"),
+      spoilers: byId("series-episode-review-spoilers"),
+      save: byId("series-episode-review-save"),
+      remove: byId("series-episode-review-delete"),
+      close: byId("series-episode-review-close"),
     },
     collections: {
       form: byId("series-collections-form"),
@@ -4094,6 +5423,7 @@ function collectDom() {
     templates: {
       card: byId("series-card-template"),
       collection: byId("series-collection-item-template"),
+      episodeRow: byId("series-episode-row-template"),
     },
   };
 }
@@ -4134,6 +5464,7 @@ export function mountSeries(options = {}) {
   libraryLoadError = "";
   noticeNode = null;
   detailState = createDetailState();
+  episodeState = createEpisodeState();
 
   if (typeof options?.onOpenSeries === "function") {
     detailOpener = options.onOpenSeries;
@@ -4207,6 +5538,20 @@ export function mountSeries(options = {}) {
   dom.detail?.review?.addEventListener("input", onDetailPersonalInput);
   dom.detail?.tags?.addEventListener("input", onDetailPersonalInput);
   dom.detail?.spoilers?.addEventListener("change", onDetailPersonalInput);
+
+  // --- Bloque de episodios (UI-S07, UI-S08, UI-S09) ----------------
+  dom.detail?.season?.addEventListener("change", onEpisodeSeasonChange);
+  dom.detail?.episodesFilter?.addEventListener("change", onEpisodeFilterChange);
+  dom.detail?.seasonWatch?.addEventListener("click", handleSeasonWatch);
+  dom.detail?.seasonUnwatch?.addEventListener("click", handleSeasonUnwatch);
+
+  // El diálogo de comentario de capítulo (UI-S09) se gestiona con
+  // escuchas directas: las filas no usan la delegación de clics de
+  // la sección.
+  dom.episodeReview?.dialog?.addEventListener("close", onEpisodeReviewClosed);
+  dom.episodeReview?.save?.addEventListener("click", saveEpisodeReview);
+  dom.episodeReview?.remove?.addEventListener("click", deleteEpisodeReview);
+  dom.episodeReview?.close?.addEventListener("click", closeEpisodeReview);
 
   // --- Alta manual (UI-S11, REQ-S02, AC-S08) -----------------------
   populateManualGenres();
@@ -4334,6 +5679,20 @@ export function unmountSeries() {
   dom?.detail?.tags?.removeEventListener("input", onDetailPersonalInput);
   dom?.detail?.spoilers?.removeEventListener("change", onDetailPersonalInput);
 
+  // --- Bloque de episodios (UI-S07, UI-S09) -------------------------
+  dom?.detail?.season?.removeEventListener("change", onEpisodeSeasonChange);
+  dom?.detail?.episodesFilter?.removeEventListener(
+    "change",
+    onEpisodeFilterChange
+  );
+  dom?.detail?.seasonWatch?.removeEventListener("click", handleSeasonWatch);
+  dom?.detail?.seasonUnwatch?.removeEventListener("click", handleSeasonUnwatch);
+  dom?.episodeReview?.dialog?.removeEventListener("close", onEpisodeReviewClosed);
+  dom?.episodeReview?.save?.removeEventListener("click", saveEpisodeReview);
+  dom?.episodeReview?.remove?.removeEventListener("click", deleteEpisodeReview);
+  dom?.episodeReview?.close?.removeEventListener("click", closeEpisodeReview);
+  stopEpisodesSubscription();
+
   // --- Alta manual (UI-S11) -----------------------------------------
   dom?.manual?.open?.removeEventListener("click", onManualOpen);
   dom?.manual?.form?.removeEventListener("submit", handleManualSubmit);
@@ -4364,6 +5723,7 @@ export function unmountSeries() {
   manualStatusNode?.remove();
   manualStatusNode = null;
   detailState = createDetailState();
+  episodeState = createEpisodeState();
 
   // Los nodos de estado vacío de las listas se crean en tiempo de
   // ejecución: se retiran del DOM para no dejar restos.
