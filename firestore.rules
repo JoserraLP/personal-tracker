@@ -75,6 +75,14 @@ service cloud.firestore {
     // exige formato si el campo está presente, para no romper parches
     // parciales de updateDoc ni los serverTimestamp ausentes en updates
     // (addedAt/updatedAt nunca se requieren).
+    //
+    // NOTA (issue #97): el lenguaje de reglas de Firestore NO permite
+    // validar elemento por elemento una lista (no existen los
+    // cuantificadores tipo predicado sobre colecciones y su uso rompe la
+    // evaluación: negaba todo create/update de películas). Por eso tags,
+    // collectionIds y genreIds solo se validan como lista con límite de
+    // tamaño; la validación por elemento de su contenido se hace en la
+    // app y en los seeds.
     function isValidMovieDoc() {
       let data = request.resource.data;
       return (!("status" in data)
@@ -89,15 +97,11 @@ service cloud.firestore {
             && data.userRating >= 0 && data.userRating <= 10))
         && (!("userReview" in data) || data.userReview == null
           || (data.userReview is string && data.userReview.size() <= 2000))
-        && (!("tags" in data)
-          || (data.tags is list && data.tags.size() <= 20
-            && data.tags.all(t, t is string && t.size() <= 30)))
+        && (!("tags" in data) || (data.tags is list && data.tags.size() <= 20))
         && (!("collectionIds" in data)
-          || (data.collectionIds is list && data.collectionIds.size() <= 50
-            && data.collectionIds.all(c, c is string)))
+          || (data.collectionIds is list && data.collectionIds.size() <= 50))
         && (!("genreIds" in data)
-          || (data.genreIds is list && data.genreIds.size() <= 30
-            && data.genreIds.all(g, g is int || g is float)))
+          || (data.genreIds is list && data.genreIds.size() <= 30))
         && (!("source" in data) || data.source in ["tmdb", "manual"]);
     }
 

@@ -41,11 +41,16 @@ pendientes). Specs citadas por ID (`rg "API-M01" openspec/changes/movies/`).
 
 App Check quedó en modo supervisión tras denegar escrituras por error (403
 antes de evaluar reglas). T-AC01 prepara el modo depuración local para una
-futura activación en firme (delta SEC-M pendiente de especificar).
+futura activación en firme (delta SEC-M pendiente de especificar). T-AC01 se
+revirtió a petición del usuario; la causa real fue otra: `isValidMovieDoc()`
+usaba `list.all(...)`, sintaxis inexistente en el lenguaje de reglas, que el
+CLI publica con warnings y que en ejecución deniega todo create/update de
+películas (issue #97, T-AC02).
 
 | Task | Owner | Files | Spec refs | Depends | Done when (resumen BDD) | Status |
 |---|---|---|---|---|---|---|
-| T-AC01 | dev-backend | `js/firebase.js` | petición usuario (#96) | — | En localhost/127.0.0.1 se define `self.FIREBASE_APPCHECK_DEBUG_TOKEN = true` antes de la inicialización de Firebase (coincidencia exacta de hostname); en producción nunca se asigna; `node --check` OK; UTF-8 sin BOM. Revisado y aprobado; seguimiento: el flag queda inerte hasta integrar el debug provider / `initializeAppCheck` con reCAPTCHA (futura delta SEC-\*) | done |
+| T-AC01 | dev-backend | `js/firebase.js` | petición usuario (#96) | — | En localhost/127.0.0.1 se define `self.FIREBASE_APPCHECK_DEBUG_TOKEN = true` antes de la inicialización de Firebase (coincidencia exacta de hostname); en producción nunca se asigna; `node --check` OK; UTF-8 sin BOM. Revisado y aprobado; seguimiento: el flag queda inerte hasta integrar el debug provider / `initializeAppCheck` con reCAPTCHA (futura delta SEC-\*) | done (revertida) |
+| T-AC02 | devops | `firestore.rules` | SEC-M02/M03 (MOD, #97) | — | Sin `list.all(...)` en `firestore.rules` (las 3 cláusulas de tipo por elemento eliminadas); resto de validaciones intacto (owner-only, status, isFavorite, hasSpoilers, watchCount 0–1000, userRating 0–10, userReview ≤2000, tamaños ≤20/≤50/≤30, source); `firebase deploy --only firestore:rules --dry-run` compila sin warnings; UTF-8 sin BOM. Revisado y aprobado | done |
 
 ## Estado
 
