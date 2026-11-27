@@ -37,6 +37,16 @@ pendientes). Specs citadas por ID (`rg "API-M01" openspec/changes/movies/`).
 | T-M13 | devops | `firestore.indexes.json` | DB-M04, REQ-F2 (MOD) | T-M12 | 6 índices compuestos de DB-M04 (`collectionGroup:"movies"`), estructura preservada | done |
 | T-M14 | code-reviewer | (read-only) `openspec/changes/movies/*.md` + `git diff` | todos `*-M*` | T-M11, T-M13 | Auditoría sin hallazgos abiertos (2 rondas de fixes: REQ-C5 en `js/app.js`/`css/app.css`, AC-M26..M27, citas REQ-M, NFR-M01/M05 medibles, ALG-M03 unwatch→0, UI-M05/M09); cero inconsistencias de IDs entre specs-delta y tasks | done |
 
+## Ops — App Check (#96)
+
+App Check quedó en modo supervisión tras denegar escrituras por error (403
+antes de evaluar reglas). T-AC01 prepara el modo depuración local para una
+futura activación en firme (delta SEC-M pendiente de especificar).
+
+| Task | Owner | Files | Spec refs | Depends | Done when (resumen BDD) | Status |
+|---|---|---|---|---|---|---|
+| T-AC01 | dev-backend | `js/firebase.js` | petición usuario (#96) | — | En localhost/127.0.0.1 se define `self.FIREBASE_APPCHECK_DEBUG_TOKEN = true` antes de la inicialización de Firebase (coincidencia exacta de hostname); en producción nunca se asigna; `node --check` OK; UTF-8 sin BOM. Revisado y aprobado; seguimiento: el flag queda inerte hasta integrar el debug provider / `initializeAppCheck` con reCAPTCHA (futura delta SEC-\*) | done |
+
 ## Estado
 
 - BASE, P-1, P-2, P-3, P-3b y P-4 completados. Árbol podado y verificado.

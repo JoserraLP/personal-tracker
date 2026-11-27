@@ -40,6 +40,16 @@ import {
 
 import { firebaseConfig } from "./config.js";
 
+// App Check: token de depuración solo en desarrollo local.
+// El flag debe existir ANTES de inicializar App Check; en producción
+// nunca se asigna (coincidencia exacta de hostname).
+if (
+  location.hostname === "localhost" ||
+  location.hostname === "127.0.0.1"
+) {
+  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
+
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
